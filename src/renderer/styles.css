@@ -1,0 +1,247 @@
+:root {
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #1c2430;
+  background: transparent;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.widget {
+  width: 100%;
+  height: 100%;
+  padding: 14px 18px 10px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 205px;
+  align-items: end;
+  background: transparent;
+  user-select: none;
+}
+
+.bubble {
+  position: relative;
+  width: min(100%, 390px);
+  margin: 0 auto;
+  padding: 18px;
+  border: 1px solid rgba(27, 35, 46, 0.13);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(242, 247, 247, 0.93)),
+    rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 20px 60px rgba(20, 32, 43, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84);
+  -webkit-app-region: drag;
+}
+
+.bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -15px;
+  width: 28px;
+  height: 28px;
+  border-right: 1px solid rgba(27, 35, 46, 0.13);
+  border-bottom: 1px solid rgba(27, 35, 46, 0.13);
+  background: rgba(246, 249, 249, 0.96);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.window-controls {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 6px;
+  -webkit-app-region: no-drag;
+}
+
+.icon-button,
+.send-button,
+.mode {
+  border: 0;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.icon-button {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 8px;
+  color: #39485a;
+  background: rgba(238, 244, 244, 0.82);
+}
+
+.icon-button:hover {
+  background: rgba(223, 234, 234, 0.95);
+}
+
+.status-row {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-right: 76px;
+  color: #5a6878;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #bf4b4b;
+  box-shadow: 0 0 0 3px rgba(191, 75, 75, 0.12);
+}
+
+.status-dot.online {
+  background: #2c9d78;
+  box-shadow: 0 0 0 3px rgba(44, 157, 120, 0.13);
+}
+
+.answer {
+  min-height: 108px;
+  max-height: 178px;
+  margin: 12px 0 14px;
+  overflow-y: auto;
+  color: #202938;
+  font-size: 16px;
+  line-height: 1.48;
+  white-space: pre-wrap;
+  word-break: keep-all;
+}
+
+.answer.muted {
+  color: #6e7b89;
+}
+
+.mode-row {
+  height: 36px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+  -webkit-app-region: no-drag;
+}
+
+.mode {
+  min-width: 0;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: 9px;
+  color: #526172;
+  background: rgba(232, 239, 239, 0.9);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.mode.active {
+  color: #101820;
+  background: #b8ddd2;
+}
+
+.prompt-row {
+  height: 42px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.prompt-row input {
+  min-width: 0;
+  height: 42px;
+  padding: 0 13px;
+  border: 1px solid rgba(44, 59, 74, 0.12);
+  border-radius: 10px;
+  outline: 0;
+  color: #1c2430;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.prompt-row input:focus {
+  border-color: rgba(40, 129, 111, 0.45);
+  box-shadow: 0 0 0 3px rgba(40, 129, 111, 0.12);
+}
+
+.send-button {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #fff;
+  background: #197a68;
+}
+
+.send-button:disabled {
+  cursor: default;
+  color: #81909f;
+  background: #dce6e5;
+}
+
+.send-button.stop {
+  color: #fff;
+  background: #a84444;
+}
+
+.log-list {
+  min-height: 54px;
+  margin-top: 10px;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  -webkit-app-region: no-drag;
+}
+
+.log-line {
+  min-height: 16px;
+  overflow: hidden;
+  color: #6a7480;
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-line.tool {
+  color: #256d63;
+}
+
+.log-line.error {
+  color: #a84444;
+}
+
+.mascot {
+  width: 210px;
+  height: 210px;
+  justify-self: center;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 24px rgba(18, 27, 36, 0.24));
+  -webkit-app-region: drag;
+}

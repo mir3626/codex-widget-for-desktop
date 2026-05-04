@@ -1,0 +1,37 @@
+{
+  "name": "codex-widget-for-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A resident desktop Codex-style agent widget with a streaming local daemon.",
+  "main": "dist/main/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:electron\"",
+    "dev:renderer": "vite --host 127.0.0.1",
+    "dev:electron": "wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .",
+    "build": "tsc -p tsconfig.node.json && vite build",
+    "start": "npm run build && electron .",
+    "smoke": "npm run build && node scripts/smoke-daemon.mjs",
+    "lint": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.0.4",
+    "electron": "^39.2.3",
+    "lucide-react": "^0.554.0",
+    "openai": "^6.10.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "vite": "^7.2.4",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@types/ws": "^8.18.1",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "typescript": "^5.9.3",
+    "wait-on": "^9.0.3"
+  }
+}
