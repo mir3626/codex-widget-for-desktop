@@ -2,6 +2,7 @@ import { Bot, CircleDot, Eye, Globe2, Pin, Send, SquareTerminal, X } from "lucid
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import mascotUrl from "./assets/mascot.png";
 import type { ClientMessage, ServerEvent, WidgetMode } from "../shared/protocol.js";
+import { hideWidget, togglePinned } from "./shell";
 
 type LogLine = {
   id: string;
@@ -147,12 +148,12 @@ export function App() {
 
   return (
     <main className="widget">
-      <section className="bubble" aria-live="polite">
+      <section className="bubble" aria-live="polite" data-tauri-drag-region>
         <div className="window-controls">
-          <button className="icon-button" title="Pin" onClick={() => window.widgetShell.togglePin()}>
+          <button className="icon-button" title="Pin" onClick={() => void togglePinned()}>
             <Pin size={16} />
           </button>
-          <button className="icon-button" title="Hide" onClick={() => window.widgetShell.hide()}>
+          <button className="icon-button" title="Hide" onClick={() => void hideWidget()}>
             <X size={16} />
           </button>
         </div>
@@ -209,7 +210,7 @@ export function App() {
         </div>
       </section>
 
-      <img className="mascot" src={mascotUrl} alt="" draggable={false} />
+      <img className="mascot" src={mascotUrl} alt="" draggable={false} data-tauri-drag-region />
     </main>
   );
 }

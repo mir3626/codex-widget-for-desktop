@@ -1,14 +1,22 @@
 # Codex Widget for Desktop
 
-A floating desktop agent widget inspired by old resident office assistants. It stays out of the taskbar, lives in the tray, streams responses in real time from a local daemon, and is structured for future browser, DOM, screen-capture, and terminal tools.
+A floating Tauri desktop agent widget inspired by old resident office assistants. It stays out of the taskbar, lives in the tray, streams responses in real time from a local daemon, and is structured for future browser, DOM, screen-capture, and terminal tools.
 
 ## Stack
 
-- Electron for a transparent, always-on-top, skip-taskbar desktop widget and tray icon
+- Tauri for a transparent, always-on-top, skip-taskbar desktop widget and tray icon
 - React + Vite for the widget UI
 - Node/TypeScript daemon with WebSocket event streaming
 - OpenAI Responses API streaming when `OPENAI_API_KEY` is set
 - Mock streaming fallback when no API key is set
+
+## Prerequisites
+
+Tauri requires Rust/Cargo on the development machine. On Windows, install the Tauri prerequisites first:
+
+- Rust via `rustup`
+- Microsoft C++ Build Tools
+- Microsoft Edge WebView2 runtime
 
 ## Run
 
@@ -16,6 +24,8 @@ A floating desktop agent widget inspired by old resident office assistants. It s
 npm install
 npm run dev
 ```
+
+`npm run dev` starts a native Tauri WebView window. Vite still serves the renderer at `127.0.0.1:5173` during development, but that URL is only a dev asset server. The widget itself is the native Tauri window, not the browser tab.
 
 For live model responses, copy `.env.example` to `.env` or set environment variables before launch:
 
@@ -27,15 +37,16 @@ npm run dev
 
 ## Scripts
 
-- `npm run dev`: start Vite and the Electron widget
-- `npm run build`: compile Electron/daemon code and build the renderer
+- `npm run dev`: start the Tauri desktop widget
+- `npm run build`: build the Tauri desktop app
+- `npm run build:web`: compile the daemon and build the renderer without invoking Cargo
 - `npm run smoke`: build and verify the daemon WebSocket stream
 - `npm run lint`: TypeScript checks
 
 ## Architecture
 
 ```text
-Electron Widget
+Tauri Widget
   - transparent frameless window
   - always on top
   - hidden from taskbar

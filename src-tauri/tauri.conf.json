@@ -1,0 +1,43 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Codex Widget",
+  "version": "0.1.0",
+  "identifier": "com.mir3626.codex-widget-for-desktop",
+  "build": {
+    "beforeDevCommand": "npm run build:daemon && npm run dev:renderer",
+    "beforeBuildCommand": "npm run build:web",
+    "devUrl": "http://127.0.0.1:5173",
+    "frontendDist": "../dist-renderer"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Codex Widget",
+        "url": "/?daemonPort=4128",
+        "width": 430,
+        "height": 610,
+        "minWidth": 360,
+        "minHeight": 500,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "center": false,
+        "x": 1420,
+        "y": 420
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": ["icons/icon.png"],
+    "resources": ["../dist/daemon"]
+  }
+}
