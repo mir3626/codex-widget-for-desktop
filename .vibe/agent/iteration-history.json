@@ -1,0 +1,27 @@
+{
+  "$schema": "./iteration-history.schema.json",
+  "currentIteration": "iter-1",
+  "iterations": [
+    {
+      "id": "iter-1",
+      "label": "Resident Agent Widget Foundation",
+      "startedAt": "2026-05-04T00:00:00.000Z",
+      "completedAt": null,
+      "goal": "Continue development of the Tauri desktop Codex-style resident agent widget through vibe-doctor sprints.",
+      "plannedSprints": [
+        "sprint-01-auth-architecture",
+        "sprint-02-browser-dom-bridge",
+        "sprint-03-terminal-pty-provider",
+        "sprint-04-screen-vision-provider",
+        "sprint-05-packaging-and-startup"
+      ],
+      "completedSprints": [],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.6,
+        "real-tool-providers": 0.1,
+        "oauth-ready-auth": 0
+      },
+      "summary": "The MVP shell, UI, and daemon stream exist. Next work should harden auth architecture and replace provider stubs with real integrations."
+    }
+  ]
+}

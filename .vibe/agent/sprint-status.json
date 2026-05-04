@@ -1,0 +1,57 @@
+{
+  "$schema": "./sprint-status.schema.json",
+  "schemaVersion": "0.1",
+  "project": {
+    "name": "codex-widget-for-desktop",
+    "createdAt": "2026-05-04T00:00:00.000Z",
+    "runtime": "node24",
+    "framework": "tauri-react-node"
+  },
+  "sprints": [],
+  "verificationCommands": [
+    {
+      "id": "lint",
+      "command": "npm run lint",
+      "expectExitCode": 0
+    },
+    {
+      "id": "build-web",
+      "command": "npm run build:web",
+      "expectExitCode": 0
+    },
+    {
+      "id": "smoke",
+      "command": "npm run smoke",
+      "expectExitCode": 0,
+      "expectStdoutContains": "daemon smoke ok"
+    },
+    {
+      "id": "cargo-check",
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -Command \". .\\scripts\\use-msvc-env.ps1; Push-Location src-tauri; cargo check --no-default-features; Pop-Location\"",
+      "expectExitCode": 0,
+      "runOutsideSandbox": true
+    }
+  ],
+  "handoff": {
+    "currentSprintId": "idle",
+    "lastActionSummary": "Tauri desktop widget MVP is running; vibe-doctor v1.7.2 harness is installed and verified for future sprint development.",
+    "openIssues": [
+      "OAuth/backend proxy architecture is not implemented yet.",
+      "Browser DOM, screen vision, and terminal PTY providers are stubs."
+    ],
+    "orchestratorContextBudget": "medium",
+    "preferencesActive": [
+      "Korean responses",
+      "Tauri shell over Electron",
+      "daemon-owned session architecture"
+    ],
+    "handoffDocPath": ".vibe/agent/handoff.md",
+    "updatedAt": "2026-05-04T04:25:52.000Z"
+  },
+  "pendingRisks": [],
+  "lastSprintScope": [],
+  "lastSprintScopeGlob": [],
+  "sprintsSinceLastAudit": 0,
+  "stateUpdatedAt": "2026-05-04T04:25:52.000Z",
+  "verifiedAt": "2026-05-04T04:25:52.000Z"
+}

@@ -1,0 +1,201 @@
+{
+  "$schema": "./sync-manifest.schema.json",
+  "manifestVersion": "1.0",
+  "files": {
+    "harness": [
+      ".vibe/harness/src/**",
+      ".vibe/harness/scripts/**",
+      ".vibe/harness/test/**",
+      ".vibe/harness/migrations/**",
+      ".vibe/harness/playwright.config.ts",
+      ".vibe/harness/tsconfig.json",
+      ".vibe/harness/tsconfig.harness.json",
+      "scripts/vibe-sync-bootstrap.mjs",
+      ".vibe/agent/_common-rules.md",
+      ".vibe/agent/re-incarnation.md",
+      ".vibe/agent/README.md",
+      ".vibe/agent/sprint-status.schema.json",
+      ".vibe/agent/project-map.schema.json",
+      ".vibe/agent/sprint-api-contracts.schema.json",
+      ".vibe/agent/iteration-history.schema.json",
+      ".vibe/model-registry.json",
+      ".vibe/model-registry.schema.json",
+      ".vibe/settings-presets/**",
+      ".vibe/sync-manifest.json",
+      ".claude/agents/**",
+      ".claude/skills/**",
+      ".claude/templates/**",
+      ".claude/statusline.mjs",
+      ".claude/statusline.sh",
+      ".claude/statusline.ps1",
+      ".codex/agents/**",
+      ".codex/skills/**",
+      "docs/context/codex-execution.md",
+      "docs/context/orchestration.md",
+      "docs/context/harness-gaps.md",
+      "docs/orchestration/providers.md",
+      "docs/release/**"
+    ],
+    "hybrid": {
+      "CLAUDE.md": {
+        "strategy": "section-merge",
+        "harnessMarkers": [
+          "HARNESS:core-framing",
+          "HARNESS:role-constraints",
+          "HARNESS:trigger-matrix",
+          "HARNESS:reasoning-policy",
+          "HARNESS:hook-enforcement",
+          "HARNESS:sprint-flow",
+          "HARNESS:mechanical-overrides"
+        ],
+        "preserveMarkers": [
+          "SPRINT_ROLES",
+          "PROJECT:custom-rules"
+        ],
+        "note": "HARNESS:* sections replaced from upstream; SPRINT_ROLES and PROJECT:* preserved"
+      },
+      "AGENTS.md": {
+        "strategy": "section-merge",
+        "harnessMarkers": [
+          "HARNESS:agent-memory"
+        ],
+        "preserveMarkers": [
+          "PROJECT:custom-rules"
+        ],
+        "note": "HARNESS section replaced from upstream; PROJECT:* sections preserved"
+      },
+      "GEMINI.md": {
+        "strategy": "section-merge",
+        "harnessMarkers": [
+          "HARNESS:agent-memory"
+        ],
+        "preserveMarkers": [
+          "PROJECT:custom-rules"
+        ],
+        "note": "HARNESS section replaced from upstream; PROJECT:* sections preserved"
+      },
+      ".claude/settings.json": {
+        "strategy": "json-deep-merge",
+        "harnessKeys": [
+          "hooks",
+          "statusLine"
+        ],
+        "projectKeys": [
+          "permissions"
+        ]
+      },
+      ".vscode/settings.json": {
+        "strategy": "json-deep-merge",
+        "harnessKeys": [
+          "files.autoGuessEncoding",
+          "files.encoding",
+          "files.eol",
+          "files.insertFinalNewline"
+        ],
+        "note": "Keep UTF-8 editor defaults while preserving project-specific VS Code settings"
+      },
+      ".vscode/extensions.json": {
+        "strategy": "json-array-union",
+        "harnessKeys": [
+          "recommendations"
+        ],
+        "note": "Append harness extension recommendations without deleting project recommendations"
+      },
+      ".gitattributes": {
+        "strategy": "line-union",
+        "note": "Preserve project attributes while appending harness text/encoding defaults"
+      },
+      ".editorconfig": {
+        "strategy": "line-union",
+        "note": "Preserve project editor rules while appending harness UTF-8 defaults"
+      },
+      ".env.example": {
+        "strategy": "replace-if-unmodified",
+        "note": "Update only when the project has not customized its environment template"
+      },
+      ".github/workflows/ci.yml": {
+        "strategy": "replace-if-unmodified",
+        "note": "Update only when the project has not customized CI"
+      },
+      ".gitignore": {
+        "strategy": "line-union",
+        "note": "Preserve project ignore entries while appending new upstream harness ignores"
+      },
+      "package.json": {
+        "strategy": "json-deep-merge",
+        "harnessKeys": [
+          "scripts.vibe:*",
+          "engines"
+        ],
+        "projectKeys": [
+          "name",
+          "version",
+          "description",
+          "scripts.test",
+          "scripts.build",
+          "scripts.typecheck",
+          "scripts.test:ui",
+          "dependencies",
+          "devDependencies"
+        ]
+      },
+      ".vibe/config.json": {
+        "strategy": "json-deep-merge",
+        "harnessKeys": [
+          "harnessVersion",
+          "qa",
+          "mode"
+        ],
+        "projectKeys": [
+          "orchestrator",
+          "sprintRoles",
+          "sprint",
+          "providers",
+          "harnessVersionInstalled",
+          "upstream",
+          "bundle",
+          "browserSmoke",
+          "audit"
+        ]
+      }
+    },
+    "project": [
+      "docs/context/product.md",
+      "docs/context/architecture.md",
+      "docs/context/conventions.md",
+      "docs/context/qa.md",
+      "docs/context/secrets.md",
+      "docs/context/tokens.md",
+      ".vibe/config.local.json",
+      ".env",
+      ".vibe/agent/sprint-status.json",
+      ".vibe/agent/project-map.json",
+      ".vibe/agent/sprint-api-contracts.json",
+      ".vibe/agent/iteration-history.json",
+      ".vibe/agent/handoff.md",
+      ".vibe/agent/session-log.md",
+      ".vibe/agent/project-decisions.jsonl",
+      ".vibe/agent/tokens.json",
+      ".vibe/archive/README.md",
+      "docs/plans/project-milestones.md",
+      "docs/plans/**",
+      "docs/reports/**",
+      "src/**",
+      "scripts/**",
+      "test/**",
+      "app/**",
+      "components/**",
+      "lib/**"
+    ]
+  },
+  "migrations": {
+    "1.0.0": ".vibe/harness/migrations/1.0.0.mjs",
+    "1.1.0": ".vibe/harness/migrations/1.1.0.mjs",
+    "1.2.0": ".vibe/harness/migrations/1.2.0.mjs",
+    "1.2.1": ".vibe/harness/migrations/1.2.1.mjs",
+    "1.3.0": ".vibe/harness/migrations/1.3.0.mjs",
+    "1.4.0": ".vibe/harness/migrations/1.4.0.mjs",
+    "1.6.2": ".vibe/harness/migrations/1.6.2.mjs",
+    "1.7.0": ".vibe/harness/migrations/1.7.0.mjs"
+  }
+}

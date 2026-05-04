@@ -12,7 +12,28 @@
     "build:daemon": "tsc -p tsconfig.node.json",
     "build:renderer": "vite build",
     "smoke": "npm run build:web && node scripts/smoke-daemon.mjs",
-    "lint": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json"
+    "lint": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "vibe:build": "tsc -p .vibe/harness/tsconfig.json",
+    "vibe:typecheck": "tsc -p .vibe/harness/tsconfig.harness.json --noEmit",
+    "vibe:self-test": "node --import tsx --test .vibe/harness/test/*.test.ts",
+    "vibe:test-ui": "node .vibe/harness/scripts/vibe-playwright-test.mjs",
+    "vibe:doctor": "npx tsx .vibe/harness/src/commands/doctor.ts",
+    "vibe:init": "npx tsx .vibe/harness/src/commands/init.ts",
+    "vibe:interview": "node .vibe/harness/scripts/vibe-interview.mjs",
+    "vibe:bundle-size": "npx tsx .vibe/harness/src/commands/bundle-size.ts",
+    "vibe:browser-smoke": "node .vibe/harness/scripts/vibe-browser-smoke.mjs",
+    "vibe:qa": "npx tsx .vibe/harness/src/commands/qa.ts",
+    "vibe:usage": "npx tsx .vibe/harness/src/commands/summarize-usage.ts",
+    "vibe:report": "npx tsx .vibe/harness/src/commands/write-report.ts",
+    "vibe:config-audit": "npx tsx .vibe/harness/src/commands/audit-config.ts",
+    "vibe:run-agent": "npx tsx .vibe/harness/src/commands/run-agent.ts",
+    "vibe:sync": "npx tsx .vibe/harness/src/commands/sync.ts",
+    "vibe:gen-schemas": "node .vibe/harness/scripts/vibe-gen-schemas.mjs",
+    "vibe:audit-lightweight": "node .vibe/harness/scripts/vibe-audit-lightweight.mjs",
+    "vibe:rule-audit": "node .vibe/harness/scripts/vibe-rule-audit.mjs",
+    "vibe:dashboard": "node .vibe/harness/scripts/vibe-dashboard.mjs",
+    "vibe:session-start": "node .vibe/harness/scripts/vibe-agent-session-start.mjs",
+    "vibe:checkpoint": "node .vibe/harness/scripts/vibe-checkpoint.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.0",
@@ -22,14 +43,21 @@
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "vite": "^7.2.4",
-    "ws": "^8.18.3"
+    "ws": "^8.18.3",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tauri-apps/cli": "^2.11.0",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/ws": "^8.18.1",
-    "typescript": "^5.9.3"
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "zod-to-json-schema": "^3.25.2"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

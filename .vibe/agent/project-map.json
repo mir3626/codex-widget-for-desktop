@@ -1,0 +1,48 @@
+{
+  "$schema": "./project-map.schema.json",
+  "schemaVersion": "0.1",
+  "updatedAt": "2026-05-04T00:00:00.000Z",
+  "lastSprintId": "bootstrap",
+  "modules": {
+    "src/shared/protocol.ts": {
+      "exports": [
+        "ClientMessage",
+        "ServerEvent",
+        "WidgetMode",
+        "ToolEmitter"
+      ],
+      "imports": []
+    },
+    "src/daemon/server.ts": {
+      "exports": [
+        "startDaemon"
+      ],
+      "imports": [
+        "src/daemon/agent.ts",
+        "src/shared/protocol.ts"
+      ]
+    },
+    "src/renderer/App.tsx": {
+      "exports": [
+        "App"
+      ],
+      "imports": [
+        "src/shared/protocol.ts",
+        "src/renderer/shell.ts"
+      ]
+    },
+    "src-tauri/src/lib.rs": {
+      "exports": [
+        "run"
+      ],
+      "imports": []
+    }
+  },
+  "activePlatformRules": [
+    {
+      "rule": "Load MSVC environment with scripts/use-msvc-env.ps1 before native Tauri/Rust checks when link.exe is unavailable.",
+      "location": "docs/context/qa.md",
+      "sprintAdded": "bootstrap"
+    }
+  ]
+}

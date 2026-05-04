@@ -1,0 +1,66 @@
+{
+  "harnessVersion": "1.7.2",
+  "harnessVersionInstalled": "1.7.2",
+  "upstream": {
+    "type": "git",
+    "url": "https://github.com/mir3626/vibe-doctor",
+    "ref": "^v1.7.0"
+  },
+  "orchestrator": "claude-opus",
+  "sprintRoles": {
+    "planner": "claude-opus",
+    "generator": "codex",
+    "evaluator": "claude-opus"
+  },
+  "sprint": {
+    "unit": "feature",
+    "subAgentPerRole": true,
+    "freshContextPerSprint": true
+  },
+  "providers": {
+    "claude-opus": {
+      "command": "claude",
+      "args": [
+        "-p",
+        "{prompt}"
+      ],
+      "env": {}
+    },
+    "codex": {
+      "command": ".\\.vibe\\harness\\scripts\\run-codex.cmd",
+      "args": [
+        "{prompt}"
+      ],
+      "env": {}
+    }
+  },
+  "qa": {
+    "preferScripts": [
+      "smoke",
+      "lint",
+      "build:web",
+      "build"
+    ]
+  },
+  "bundle": {
+    "enabled": false,
+    "dir": "dist-renderer",
+    "limitGzipKB": 120,
+    "excludeExt": [
+      ".map"
+    ]
+  },
+  "browserSmoke": {
+    "enabled": false,
+    "configPath": ".vibe/smoke.config.js"
+  },
+  "audit": {
+    "everyN": 5,
+    "projectRoots": [
+      "src",
+      "src-tauri"
+    ],
+    "prototypeLocThreshold": 5000
+  },
+  "mode": "human"
+}
