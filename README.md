@@ -15,8 +15,21 @@ A floating Tauri desktop agent widget inspired by old resident office assistants
 Tauri requires Rust/Cargo on the development machine. On Windows, install the Tauri prerequisites first:
 
 - Rust via `rustup`
-- Microsoft C++ Build Tools
+- Microsoft C++ Build Tools with `Desktop development with C++`
 - Microsoft Edge WebView2 runtime
+
+If `cargo` fails with `link.exe not found`, Visual Studio is installed without the C++ toolchain. Open Visual Studio Installer and add `Desktop development with C++`, or run:
+
+```powershell
+winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --norestart"
+```
+
+After installation, a normal PowerShell can load the compiler environment for this project:
+
+```powershell
+.\scripts\use-msvc-env.ps1
+npm run dev
+```
 
 ## Run
 

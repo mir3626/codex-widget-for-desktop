@@ -6,5 +6,6 @@ dist-renderer/
 npm-debug.log*
 *.tsbuildinfo
 coverage/
+src-tauri/target/
 .DS_Store
 Thumbs.db
