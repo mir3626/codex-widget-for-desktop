@@ -97,7 +97,7 @@ Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only sta
 - The native window is configured with `skipTaskbar: true`; tray Show/Hide/Quit is the resident control surface.
 - The titlebar close button hides the window to tray. The tray Quit item exits the app.
 - Windows start-at-login is implemented by setting the current executable in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` through native Tauri commands.
-- Packaged builds do not depend on a user-installed `node` command for the widget daemon. `npm run build:web` creates a dependency-bundled daemon entry at `dist/daemon-bundle/standalone.js` and copies the current build Node executable into `dist/node-runtime`; Tauri bundles both directories as resources.
+- Packaged builds do not depend on a user-installed `node` command for the widget daemon. `npm run build:web` creates a dependency-bundled daemon entry at `dist/daemon-bundle/standalone.js` and copies the current build Node executable into `dist/node-runtime`; Tauri bundles both directories as resources. The native resolver checks Tauri's resource directory and the installed exe-adjacent `_up_` resource directory before falling back to development `dist` or system `node`.
 - The native daemon supervisor resolves the bundled daemon and bundled Node runtime from the Tauri resource directory first, then falls back to system `node` only if the resource runtime is absent.
 - `npm run build` must produce both MSI and NSIS bundles before a release is considered installable on Windows.
 
@@ -114,7 +114,7 @@ Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only sta
 - `npm run build:web`: compile daemon and renderer without invoking Cargo.
 - `npm run smoke:node-runtime`: verify the bundled Node runtime can execute the bundled daemon without relying on repository `node_modules`.
 - `npm run smoke:release-launch`: launch the release exe hidden and verify the packaged daemon WebSocket responds on `127.0.0.1:4128`.
-- `npm run smoke:release-install`: run the NSIS installer silently, verify installed resources, launch the installed app hidden, verify the packaged daemon WebSocket, silently uninstall, and check cleanup.
+- `npm run smoke:release-install`: run the NSIS installer silently, verify installed resources, launch the installed app hidden, verify the installed bundled daemon WebSocket, kill the bundled daemon to verify native supervisor restart, silently uninstall, and check cleanup.
 - `npm run release:verify`: run the full live release gate in sequence and report the release artifact sizes.
 - `npm run smoke`: build web/daemon and verify WebSocket streaming.
 - `powershell -NoProfile -ExecutionPolicy Bypass -Command ". .\scripts\use-msvc-env.ps1; Push-Location src-tauri; cargo check --no-default-features; Pop-Location"`: native shell compile check on Windows.

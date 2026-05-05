@@ -96,5 +96,5 @@ npm run vibe:checkpoint
 - Bundled Node runtime smoke verifies local daemon startup without repository `node_modules`; installed MSI launch observation is still manual.
 - `npm run smoke:release-resources` verifies generated MSI/NSIS scripts include bundled daemon/runtime/provider resources, but it does not install and launch the artifacts.
 - `npm run smoke:release-launch` starts the release exe hidden and verifies the daemon WebSocket on port `4128`.
-- `npm run smoke:release-install` performs a Windows NSIS silent install, launches the installed app hidden, verifies the bundled daemon on port `4128`, silently uninstalls, and checks cleanup; MSI install/uninstall is still manual.
+- `npm run smoke:release-install` performs a Windows NSIS silent install, launches the installed app hidden, verifies the installed bundled daemon on port `4128`, kills that daemon to verify native supervisor restart, silently uninstalls, and checks cleanup; MSI install/uninstall is still manual.
 - `npm run release:verify` is the single full release gate and runs the live provider/resident smokes, Tauri build, release resource smoke, release exe launch smoke, and NSIS install smoke.

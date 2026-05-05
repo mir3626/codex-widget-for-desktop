@@ -88,6 +88,8 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added a browser DOM extension Options page backed by `chrome.storage.sync`, so users can point the extension at another local daemon port without editing extension code. The extension only accepts local `http://127.0.0.1/...` or `http://localhost/...` snapshot URLs ending in `/providers/dom/snapshot`.
 - Added `npm run smoke:release-install` for NSIS silent install/uninstall observation: it refuses to overwrite existing install state, launches the installed app hidden, verifies the daemon WebSocket, uninstalls, and checks install directory, uninstall registry entry, product install key, and desktop shortcut cleanup.
 - Added `npm run release:verify` as the one-command live release gate. It runs `smoke:all:live`, `build`, release resource smoke, release exe launch smoke, NSIS install smoke, and prints release artifact sizes.
+- Fixed installed-build daemon resource resolution. The native shell now checks the installed exe-adjacent `_up_` resource directory for `dist/daemon-bundle/standalone.js` and `dist/node-runtime/node.exe` before falling back to development paths or system `node`.
+- Strengthened `npm run smoke:release-install` to find the installed bundled daemon process, kill it, and verify the native supervisor restarts it with a new PID before uninstall cleanup.
 
 ## Next Recommended Sprint
 
@@ -102,7 +104,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge with local-only Options URL configuration; no store-packaged extension or native messaging bridge yet.
 - Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, optional OCR command hook, and direct app-server image input; bundled OCR engine packaging is still pending.
 - Terminal/PTY provider supports explicit one-shot commands and a persistent `/pty` command session, but it is not a raw ConPTY/full-screen interactive terminal yet.
-- Store-packaged browser extension, deeper interactive PTY, MSI install/uninstall observation, installed-app crash observation, and longer soak tests remain open for live-service readiness.
+- Store-packaged browser extension, deeper interactive PTY, MSI install/uninstall observation, full app-process crash observation, and longer soak tests remain open for live-service readiness.
 
 ## Verification
 
@@ -560,6 +562,15 @@ Completed after release verification gate pass:
 - `node --check scripts\release-verify.mjs`
 - `npm run release:verify`
 - Release verification ran the live smoke gate, Tauri release build, release resource smoke, release exe launch smoke, and NSIS install smoke, then reported release exe/MSI/NSIS artifact sizes.
+
+Completed after installed daemon resource/restart pass:
+
+- `cargo fmt --check --manifest-path src-tauri\Cargo.toml`
+- `cargo check --manifest-path src-tauri\Cargo.toml --no-default-features`
+- `npm run build`
+- `node --check scripts\smoke-release-install.mjs`
+- `npm run smoke:release-install`
+- Manual diagnostic confirmed the installed app spawned `%LOCALAPPDATA%\Codex Widget\_up_\dist\node-runtime\node.exe` with `_up_\dist\daemon-bundle\standalone.js`, not repo `dist` or system `node`.
 
 Completed after persistent terminal session pass:
 

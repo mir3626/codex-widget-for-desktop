@@ -873,7 +873,7 @@ fn resolve_daemon_script(app: &tauri::AppHandle) -> Option<PathBuf> {
         return Some(dev_script);
     }
 
-    if let Ok(resource_dir) = app.path().resource_dir() {
+    for resource_dir in resource_roots(app) {
         let bundled_script = resource_dir.join("dist/daemon-bundle/standalone.js");
         if bundled_script.exists() {
             return Some(bundled_script);
@@ -893,7 +893,7 @@ fn resolve_daemon_script(app: &tauri::AppHandle) -> Option<PathBuf> {
 }
 
 fn resolve_node_runtime(app: &tauri::AppHandle) -> PathBuf {
-    if let Ok(resource_dir) = app.path().resource_dir() {
+    for resource_dir in resource_roots(app) {
         let bundled_runtime = resource_dir
             .join("dist/node-runtime")
             .join(node_runtime_filename());
@@ -903,6 +903,23 @@ fn resolve_node_runtime(app: &tauri::AppHandle) -> PathBuf {
     }
 
     PathBuf::from("node")
+}
+
+fn resource_roots(app: &tauri::AppHandle) -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        roots.push(resource_dir);
+    }
+
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(exe_dir) = exe.parent() {
+            roots.push(exe_dir.join("_up_"));
+            roots.push(exe_dir.to_path_buf());
+        }
+    }
+
+    roots
 }
 
 fn node_runtime_filename() -> &'static str {

@@ -35,7 +35,7 @@ const app = spawn(releaseExe, [], {
 
 try {
   await waitForDaemon();
-  console.log(`release launch smoke ok: ${releaseExe} started bundled daemon on ${daemonPort}`);
+  console.log(`release launch smoke ok: ${releaseExe} started daemon on ${daemonPort}`);
 } finally {
   cleanupProcessTree(app.pid);
   await waitUntilPortClosed();

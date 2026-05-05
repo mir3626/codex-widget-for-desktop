@@ -18,6 +18,7 @@ const installerPath = join(
 const installDir = join(process.env.LOCALAPPDATA ?? join(process.env.USERPROFILE ?? root, "AppData", "Local"), "Codex Widget");
 const installedExe = join(installDir, "codex-widget-for-desktop.exe");
 const uninstallExe = join(installDir, "uninstall.exe");
+const bundledNodeExe = join(installDir, "_up_", "dist", "node-runtime", "node.exe");
 const daemonPort = 4128;
 const uninstallKey = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Codex Widget";
 const productKey = "HKCU\\Software\\mir3626\\Codex Widget";
@@ -73,6 +74,7 @@ try {
   });
   appPid = app.pid;
   await waitForDaemon(app);
+  await verifyInstalledDaemonRestart(app);
   cleanupProcessTree(appPid);
   appPid = undefined;
   await waitUntilPortClosed();
@@ -81,7 +83,9 @@ try {
   await waitUntilUninstalled();
   cleanupSmokeProductKey();
 
-  console.log(`release install smoke ok: installed, launched, verified daemon, and uninstalled from ${installDir}`);
+  console.log(
+    `release install smoke ok: installed, launched, verified daemon restart, and uninstalled from ${installDir}`
+  );
 } finally {
   cleanupProcessTree(appPid);
   await waitUntilPortClosed().catch(() => undefined);
@@ -136,6 +140,54 @@ function cleanupSmokeProductKey() {
       windowsHide: true
     });
   }
+}
+
+async function verifyInstalledDaemonRestart(app) {
+  const firstPid = findInstalledDaemonPid();
+  if (!firstPid) {
+    throw new Error(`Could not find installed bundled daemon process at ${bundledNodeExe}.`);
+  }
+
+  cleanupProcessTree(firstPid);
+  await waitUntil(() => !isPidRunning(firstPid), "Timed out waiting for killed installed daemon process to exit.");
+  await waitForDaemon(app);
+
+  const secondPid = findInstalledDaemonPid();
+  if (!secondPid) {
+    throw new Error("Installed app daemon responded but the bundled daemon process was not discoverable.");
+  }
+  if (secondPid === firstPid) {
+    throw new Error(`Installed app daemon process did not restart after kill: pid ${firstPid}`);
+  }
+}
+
+function findInstalledDaemonPid() {
+  const script = [
+    "Get-CimInstance Win32_Process",
+    "| Where-Object {",
+    "$_.CommandLine -like '*Codex Widget*_up_*daemon-bundle*standalone.js*'",
+    "}",
+    "| Select-Object -First 1 -ExpandProperty ProcessId"
+  ].join(" ");
+  const result = spawnSync("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true
+  });
+  if (result.status !== 0) {
+    return undefined;
+  }
+  const pid = Number.parseInt(result.stdout.trim(), 10);
+  return Number.isFinite(pid) ? pid : undefined;
+}
+
+function isPidRunning(pid) {
+  const result = spawnSync("powershell.exe", ["-NoProfile", "-Command", `Get-Process -Id ${pid}`], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true
+  });
+  return result.status === 0;
 }
 
 function readRegistryDefault(key) {
@@ -261,4 +313,15 @@ async function waitUntilUninstalled() {
   if (queryRegistryKey(uninstallKey)) {
     throw new Error("Silent uninstall left the uninstall registry entry behind.");
   }
+}
+
+async function waitUntil(predicate, message) {
+  const deadline = Date.now() + 12_000;
+  while (Date.now() < deadline) {
+    if (predicate()) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error(message);
 }
