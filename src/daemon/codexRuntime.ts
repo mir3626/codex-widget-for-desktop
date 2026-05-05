@@ -143,6 +143,43 @@ export function terminateProcessTree(pid: number | undefined): void {
   }
 }
 
+export async function terminateProcessTreeAndWait(pid: number | undefined, timeoutMs = 5_000): Promise<void> {
+  if (!pid) {
+    return;
+  }
+
+  if (process.platform === "win32") {
+    await new Promise<void>((resolveWait) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+        resolveWait();
+      };
+      const timer = setTimeout(finish, timeoutMs);
+      const taskkill = spawn("taskkill.exe", ["/pid", String(pid), "/t", "/f"], {
+        stdio: "ignore",
+        windowsHide: true
+      });
+      taskkill.on("error", finish);
+      taskkill.on("exit", finish);
+    });
+    return;
+  }
+
+  terminateProcessTree(pid);
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (!isProcessAlive(pid)) {
+      return;
+    }
+    await delay(50);
+  }
+}
+
 function normalizeCodexSandboxMode(value: unknown): CodexSandboxMode {
   return value === "workspace-write" ? "workspace-write" : DEFAULT_CODEX_SANDBOX_MODE;
 }
@@ -185,4 +222,17 @@ function readAdditionalCodexDirs(workdir: string): string[] {
 
 function normalizeComparablePath(path: string): string {
   return process.platform === "win32" ? path.toLowerCase() : path;
+}
+
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolveDelay) => setTimeout(resolveDelay, ms));
 }

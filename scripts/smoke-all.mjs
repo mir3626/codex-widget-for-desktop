@@ -23,6 +23,7 @@ const steps = [
 ];
 
 if (includeLive) {
+  steps.push(["Codex app-server live", process.execPath, ["scripts/smoke-codex-app-server-live.mjs"]]);
   steps.push(["Screen capture helper OCR", process.execPath, ["scripts/smoke-screen-helper-ocr.mjs"]]);
   steps.push(["Screen capture helper live", process.execPath, ["scripts/smoke-screen-helper-live.mjs"]]);
   steps.push(["Screen capture request live", process.execPath, ["scripts/smoke-screen-capture-request.mjs"]]);
@@ -33,7 +34,7 @@ for (const [label, command, args] of steps) {
   await run(command, args);
 }
 
-console.log(`\nsmoke:all ok${includeLive ? " with live screen helper" : ""}`);
+console.log(`\nsmoke:all ok${includeLive ? " with live checks" : ""}`);
 
 function run(command, args) {
   return new Promise((resolve, reject) => {

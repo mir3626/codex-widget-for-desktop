@@ -781,6 +781,14 @@ Completed after fake app-server protocol smoke pass:
 - `npm run smoke:all`
 - `smoke:all` now includes fake Codex app-server coverage for thread reuse, streaming deltas, approval interaction forwarding, and regenerate rollback.
 
+Completed after live app-server smoke pass:
+
+- Added `npm run smoke:app-server:live` and included it in `npm run smoke:all:live`.
+- `npm run smoke:app-server:live` passed against the logged-in local Codex CLI with 12 streaming deltas.
+- App-server shutdown now waits for the Codex child process tree before daemon close returns, preventing live smoke temp workdir cleanup from racing the background CLI process.
+- `npm run smoke:all:live`, `npm run build`, and `npm run smoke:release-resources` passed after the live smoke addition.
+- Latest release artifacts: `codex-widget-for-desktop.exe` 10,315,776 bytes, MSI 39,505,920 bytes, NSIS 26,763,736 bytes.
+
 Completed after Vision crop/diff metadata pass:
 
 - `node --check scripts/smoke-screen-provider.mjs`

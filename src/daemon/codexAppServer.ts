@@ -7,7 +7,7 @@ import {
   renderBranchContext,
   type AgentSelection,
   type CodexExecutionContext,
-  terminateProcessTree
+  terminateProcessTreeAndWait
 } from "./codexRuntime.js";
 import type { RuntimeInteraction, RuntimeStatus, ToolEmitter } from "../shared/protocol.js";
 
@@ -221,7 +221,7 @@ export class CodexAppServerBridge {
     const child = this.child;
     this.child = undefined;
     if (child && child.exitCode === null && !child.killed) {
-      terminateProcessTree(child.pid);
+      await terminateProcessTreeAndWait(child.pid);
     }
     this.closing = false;
   }

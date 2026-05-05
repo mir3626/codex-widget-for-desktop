@@ -22,9 +22,12 @@ Run this when changing the Windows screen capture helper and a desktop session i
 
 ```powershell
 npm run smoke:all:live
+npm run smoke:app-server:live
 npm run smoke:screen-helper:ocr
 npm run smoke:screen-capture:live
 ```
+
+`smoke:all:live` includes the live Codex app-server smoke and live screen-helper checks; run the individual commands when isolating one live dependency.
 
 Run this after resident daemon lifecycle, runtime status, or resource-budget changes:
 

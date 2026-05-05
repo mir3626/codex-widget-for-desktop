@@ -112,7 +112,8 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run smoke:all`: run the standard serial readiness gate without rebuilding daemon in parallel
 - `npm run smoke:daemon-reconnect`: verify an active daemon response survives renderer WebSocket reconnect and replays a snapshot
 - `npm run smoke:app-server`: run the daemon against a fake Codex app-server and verify resident thread context, approval interaction forwarding, streaming deltas, and rollback behavior
-- `npm run smoke:all:live`: run the serial readiness gate plus the live Windows screen capture helper
+- `npm run smoke:app-server:live`: optional live Codex CLI app-server smoke for logged-in developer machines; set `CODEX_WIDGET_LIVE_SMOKE_MODEL`, `CODEX_WIDGET_LIVE_SMOKE_REASONING_EFFORT`, or `CODEX_WIDGET_LIVE_SMOKE_TIMEOUT_MS` to tune it
+- `npm run smoke:all:live`: run the serial readiness gate plus live Codex app-server and Windows screen capture helper checks
 - `npm run smoke:resident`: run the idle resident daemon health/resource smoke
 - `npm run smoke:resident-soak`: run a short resident daemon soak with runtime samples, ping/pong health checks, and RSS growth limits
 - `npm run smoke:release-resources`: verify the latest MSI/NSIS build scripts include the bundled daemon, Node runtime, PTY runtime, screen helper, and DOM extension resources

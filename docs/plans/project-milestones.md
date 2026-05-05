@@ -31,6 +31,7 @@ Evidence:
 - Approval and user-input request plumbing is first-class widget UI.
 - The daemon emits runtime health status for clients, active requests, and app-server state.
 - `npm run smoke:app-server` verifies fake app-server thread reuse, streaming deltas, approval forwarding, and rollback behavior.
+- `npm run smoke:app-server:live` verifies a logged-in local Codex CLI can run the real app-server path end to end.
 - The native Tauri shell supervises the daemon process with capped restart backoff and shutdown cleanup.
 - Renderer code can read native daemon state while WebSocket reconnect is in progress.
 - The native shell resolves bundled daemon/runtime resources before falling back to a system `node` command.
