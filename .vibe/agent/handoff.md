@@ -68,6 +68,10 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
   - GFM tables use fixed full-width layout on wide viewports and contained horizontal scrolling on narrow widget widths.
   - Prompt resize clamps against the actual panel height so the composer cannot cover the conversation region.
   - More action menus are aligned above the button with right edges matched.
+- Added app-server-backed regenerate boundaries:
+  - The renderer computes how many assistant turns are removed when regenerating a selected answer.
+  - The daemon receives `regenerate.dropTurns` and calls Codex app-server `thread/rollback` before starting the replacement turn.
+  - This preserves app-server context before the selected answer without sending the visible chat history as a prompt.
 - Added `docs/providers/dom-snapshot-bookmarklet.js`, `docs/providers/screen-snapshot-example.json`, `npm run smoke:dom`, `npm run smoke:extension`, `npm run smoke:screen`, `npm run smoke:screen-capture:live`, `npm run smoke:screen-helper`, `npm run smoke:screen-helper:live`, and `npm run smoke:terminal`.
 - Added `npm run smoke:renderer-chat` for browser-level validation of multi-turn chat overlap, table width, prompt resize, and response action menu placement.
 
@@ -524,6 +528,14 @@ Completed after renderer chat layout hardening:
 - `npm run smoke:renderer-chat`
 - `npm run smoke:all:live`
 - `npm run build`
+
+Completed after regenerate rollback pass:
+
+- `npm run lint`
+- `npm run smoke:renderer-chat`
+- `npm run smoke:all:live`
+- `npm run build`
+- The renderer smoke asserts that regenerating the first of three assistant answers sends `regenerate.dropTurns: 3`.
 
 Completed latest release build after provider/runtime readiness passes:
 

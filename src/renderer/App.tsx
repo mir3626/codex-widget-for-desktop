@@ -844,7 +844,10 @@ export function App() {
       text: userMessage.text,
       mode,
       model: selectedModel,
-      reasoningEffort
+      reasoningEffort,
+      regenerate: {
+        dropTurns: Math.max(1, removedAssistantIds.length)
+      }
     });
   }
 

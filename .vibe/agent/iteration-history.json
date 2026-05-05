@@ -50,7 +50,7 @@
         "real-tool-providers": 0.72,
         "resident-desktop-readiness": 0.7
       },
-      "summary": "Iteration 2 has added runtime protocol durability, app-server interaction UI, app-server start/error diagnostics, visible chat persistence, renderer chat layout hardening with a Playwright smoke, provider status events, runtime health status, DOM snapshot ingress, an unpacked browser DOM extension, Screen/Vision snapshot ingress, a daemon-triggered Windows screen capture helper, explicit one-shot terminal execution, a persistent /pty command session, start-at-login settings, tray-oriented hide behavior, serial smoke readiness gates, resident resource smoke, and verified release installer builds. OCR/direct image model input, store extension packaging, and true raw interactive PTY remain open."
+      "summary": "Iteration 2 has added runtime protocol durability, app-server interaction UI, app-server start/error diagnostics, visible chat persistence, app-server-backed regenerate rollback, renderer chat layout hardening with a Playwright smoke, provider status events, runtime health status, DOM snapshot ingress, an unpacked browser DOM extension, Screen/Vision snapshot ingress, a daemon-triggered Windows screen capture helper, explicit one-shot terminal execution, a persistent /pty command session, start-at-login settings, tray-oriented hide behavior, serial smoke readiness gates, resident resource smoke, and verified release installer builds. OCR/direct image model input, store extension packaging, and true raw interactive PTY remain open."
     }
   ]
 }

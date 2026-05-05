@@ -76,6 +76,7 @@ Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only sta
 - Approval policy: `CODEX_WIDGET_CODEX_APPROVAL_POLICY=on-request` is the default so app-server command/file/user-input requests can surface in the widget instead of being silently declined. Set it to `never` only for trusted automation experiments.
 - Interaction model: app-server server requests become `interaction.required` events. The renderer shows compact approval/input cards and returns `interaction.respond` messages to the daemon.
 - Reset model: `session.reset` clears the renderer-visible chat, local persistence, proxy session id, and app-server thread id. The next prompt starts a fresh Codex thread.
+- Regeneration model: response regenerate sends a `regenerate.dropTurns` boundary from the renderer. In Codex app-server mode the daemon applies `thread/rollback` before starting the replacement turn, preserving the thread before the selected answer without replaying visible chat history through the prompt.
 - Provider status model: daemon emits `provider.status` after connection so each mode tab has a stable capability/status surface. DOM and Screen become ready after snapshots are posted; terminal is ready by default.
 - Runtime health model: daemon emits `runtime.status` on connection and periodically after that. The renderer settings panel displays daemon uptime, client count, active request count, app-server state, app-server start count, and the latest app-server error.
 

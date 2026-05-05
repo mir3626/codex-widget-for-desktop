@@ -80,3 +80,5 @@
 - 2026-05-05T14:59:30.000+09:00 [verification][release-build] `npm run build` passed after persistent terminal session work and produced release exe plus MSI/NSIS bundles.
 - 2026-05-05T15:12:00.000+09:00 [fix][renderer-chat-layout] Hardened conversation layout flow, fixed wide-table sizing, clamped prompt resize against actual panel height, and aligned More menus to the triggering button's top-right edge.
 - 2026-05-05T15:12:00.000+09:00 [verification][renderer-chat-layout] Added and passed `npm run smoke:renderer-chat`; also passed `npm run lint`, `npm run smoke:all:live`, and `npm run build`.
+- 2026-05-05T15:30:00.000+09:00 [architecture][regenerate] Added `regenerate.dropTurns` to the renderer-daemon protocol and wired Codex app-server `thread/rollback` before replacement turns, so response regeneration preserves context before the selected answer without prompt-replaying visible history.
+- 2026-05-05T15:30:00.000+09:00 [verification][regenerate] Passed `npm run lint`, `npm run smoke:renderer-chat`, `npm run smoke:all:live`, and `npm run build`; renderer smoke now asserts a first-answer regenerate across three answers sends `dropTurns: 3`.

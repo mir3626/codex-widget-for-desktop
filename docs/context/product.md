@@ -17,6 +17,7 @@ The primary user is a developer who wants a persistent desktop companion similar
 - The daemon owns a background Codex `app-server` process when Codex auth is active, streams JSON-RPC deltas into the widget, and keeps one resident thread alive across prompts.
 - App-server approval and user-input requests now surface as widget interaction cards, so the UI can participate in local file/tool flows instead of dropping those requests.
 - Visible chat history is persisted locally across renderer reloads and can be cleared with an explicit New chat reset that also resets daemon session state.
+- Regenerate now truncates the visible chat from the selected answer onward and asks the app-server to roll back the same number of thread turns before starting the replacement response.
 - Mode tabs receive daemon-owned provider status, giving Agent, DOM, Vision, and PTY a stable contract before each provider becomes fully real.
 - DOM mode accepts live browser snapshots through `POST /providers/dom/snapshot` and injects that context into the model request. An unpacked Chrome/Edge extension can send active-tab snapshots into that endpoint.
 - Vision mode accepts screen snapshots through `POST /providers/screen/snapshot` and injects screen description/OCR context into the model request. The widget can ask the daemon to run a Windows PowerShell helper that captures the virtual desktop and posts a compressed image snapshot.

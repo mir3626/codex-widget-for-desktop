@@ -95,6 +95,9 @@ export type ClientMessage =
       mode: WidgetMode;
       model?: ModelId;
       reasoningEffort?: ReasoningEffort;
+      regenerate?: {
+        dropTurns: number;
+      };
     }
   | {
       type: "cancel";

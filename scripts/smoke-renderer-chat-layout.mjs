@@ -34,6 +34,7 @@ if (!daemonAddress || typeof daemonAddress === "string") {
 }
 const daemonPort = daemonAddress.port;
 let requestCount = 0;
+const askMessages = [];
 
 daemon.on("connection", (socket) => {
   socket.send(
@@ -71,6 +72,7 @@ daemon.on("connection", (socket) => {
       return;
     }
 
+    askMessages.push(message);
     requestCount += 1;
     const answer = requestCount === 1 ? firstAnswer : requestCount === 2 ? secondAnswer : thirdAnswer;
     streamAnswer(socket, message.id, answer);
@@ -116,13 +118,25 @@ try {
   await assertPromptDoesNotCoverConversation(page);
   await assertNoMessageOverlap(page);
 
-  await page.waitForSelector('[aria-label="More response actions"]');
+  await page.waitForFunction(() => document.querySelectorAll('[aria-label="Regenerate response"]').length === 3);
   await page.getByLabel("More response actions").first().click();
   await assertMenuTopRightAligned(page);
+  await page.keyboard.press("Escape");
 
   await page.setViewportSize({ width: 1160, height: 760 });
   await page.waitForTimeout(120);
   await assertWideTableUsesContainer(page);
+  await page.setViewportSize({ width: 500, height: 820 });
+  await page.waitForTimeout(120);
+
+  await page.getByLabel("Regenerate response").first().click();
+  await waitUntil(() => askMessages.length >= 4, "Timed out waiting for regenerate request.");
+  const regenerateRequest = askMessages[3];
+  if (regenerateRequest.text !== askMessages[0].text || regenerateRequest.regenerate?.dropTurns !== 3) {
+    throw new Error(`Regenerate request did not target the clicked answer boundary: ${JSON.stringify(regenerateRequest)}`);
+  }
+  await page.waitForFunction(() => document.querySelectorAll(".user-message").length === 1);
+  await assertNoMessageOverlap(page);
 
   console.log(`renderer chat layout smoke ok on vite ${baseUrl} daemon ${daemonPort}`);
 } finally {
@@ -209,5 +223,15 @@ async function assertWideTableUsesContainer(page) {
   });
   if (Math.abs(result.scrollWidth - result.tableWidth) > 3) {
     throw new Error(`Wide table does not fill its container: ${JSON.stringify(result)}`);
+  }
+}
+
+async function waitUntil(predicate, message) {
+  const startedAt = Date.now();
+  while (!predicate()) {
+    if (Date.now() - startedAt > 6000) {
+      throw new Error(message);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 40));
   }
 }

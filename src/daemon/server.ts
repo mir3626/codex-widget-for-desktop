@@ -216,6 +216,7 @@ async function handleMessage(
   controllers.set(message.id, controller);
 
   try {
+    await prepareRegeneration(message, auth, codexAppServer);
     await runAgentStream(message, (event) => send(socket, event), controller.signal, {
       ...auth.getProxyCredentials(),
       session: agentSession,
@@ -418,6 +419,22 @@ function summarizeScreenSnapshot(snapshot: ScreenSnapshot): Omit<ScreenSnapshot,
     imageDataUrlLength: snapshot.imageDataUrl.length,
     capturedAt: snapshot.capturedAt
   };
+}
+
+async function prepareRegeneration(
+  message: Extract<ClientMessage, { type: "ask" }>,
+  auth: OAuthSession,
+  codexAppServer: CodexAppServerBridge
+): Promise<void> {
+  const dropTurns = Math.floor(message.regenerate?.dropTurns ?? 0);
+  if (dropTurns < 1) {
+    return;
+  }
+
+  const status = auth.getStatus();
+  if (status.mode === "codex" && status.authenticated && process.env.CODEX_WIDGET_CODEX_RUNTIME !== "exec") {
+    await codexAppServer.rollbackThread(dropTurns);
+  }
 }
 
 function broadcast(clients: Set<WebSocket>, event: ServerEvent): void {

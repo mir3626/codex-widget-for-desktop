@@ -90,6 +90,17 @@ export class CodexAppServerBridge {
     this.threadId = undefined;
   }
 
+  async rollbackThread(numTurns: number): Promise<boolean> {
+    if (!this.threadId || numTurns < 1) {
+      return false;
+    }
+    await this.request("thread/rollback", {
+      threadId: this.threadId,
+      numTurns
+    });
+    return true;
+  }
+
   getStatus(): RuntimeStatus["codexAppServer"] {
     return {
       state: this.ws?.readyState === WebSocket.OPEN ? "connected" : this.starting ? "starting" : "closed",
