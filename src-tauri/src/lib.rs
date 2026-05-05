@@ -756,6 +756,10 @@ fn resolve_daemon_script(app: &tauri::AppHandle) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::{
+        fs,
+        time::{SystemTime, UNIX_EPOCH},
+    };
 
     #[test]
     fn daemon_restart_delay_uses_capped_exponential_backoff() {
@@ -766,5 +770,67 @@ mod tests {
         assert_eq!(daemon_restart_delay(4), Duration::from_millis(12_000));
         assert_eq!(daemon_restart_delay(5), Duration::from_millis(15_000));
         assert_eq!(daemon_restart_delay(99), Duration::from_millis(15_000));
+    }
+
+    #[test]
+    fn daemon_supervisor_restarts_exited_child() {
+        if Command::new("node").arg("--version").output().is_err() {
+            eprintln!("skipping daemon supervisor restart test because node is unavailable");
+            return;
+        }
+
+        let test_dir = std::env::temp_dir().join(format!(
+            "codex-widget-supervisor-test-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system clock before unix epoch")
+                .as_millis()
+        ));
+        fs::create_dir_all(&test_dir).expect("failed to create supervisor test dir");
+        let script = test_dir.join("daemon-exit.js");
+        let counter = test_dir.join("restart-count.txt");
+        fs::write(
+            &script,
+            r#"const fs = require("fs");
+const file = process.env.CODEX_WIDGET_SUPERVISOR_TEST_COUNTER;
+const current = fs.existsSync(file) ? Number(fs.readFileSync(file, "utf8")) : 0;
+fs.writeFileSync(file, String(current + 1));
+process.exit(1);
+"#,
+        )
+        .expect("failed to write supervisor test script");
+
+        std::env::set_var("CODEX_WIDGET_SUPERVISOR_TEST_COUNTER", &counter);
+        let child_slot = Arc::new(Mutex::new(None));
+        let stop = Arc::new(AtomicBool::new(false));
+        let worker_child_slot = Arc::clone(&child_slot);
+        let worker_stop = Arc::clone(&stop);
+        let handle =
+            thread::spawn(move || supervise_daemon(script, worker_child_slot, worker_stop));
+
+        let deadline = Instant::now() + Duration::from_secs(6);
+        let mut restart_count = 0;
+        while Instant::now() < deadline {
+            restart_count = fs::read_to_string(&counter)
+                .ok()
+                .and_then(|value| value.parse::<u32>().ok())
+                .unwrap_or(0);
+            if restart_count >= 2 {
+                break;
+            }
+            thread::sleep(Duration::from_millis(100));
+        }
+
+        stop.store(true, Ordering::SeqCst);
+        kill_daemon_child(&child_slot);
+        handle.join().expect("supervisor thread panicked");
+        std::env::remove_var("CODEX_WIDGET_SUPERVISOR_TEST_COUNTER");
+        let _ = fs::remove_dir_all(&test_dir);
+
+        assert!(
+            restart_count >= 2,
+            "expected supervisor to restart exited child at least once, saw {restart_count}"
+        );
     }
 }

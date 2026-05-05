@@ -57,5 +57,5 @@ Evidence:
 - `npm run smoke:all` provides a serial readiness gate that avoids parallel build races across provider smokes.
 - `npm run smoke:screen-capture:live` verifies the widget-protocol screen capture request path.
 - Runtime status exposes app-server start count and latest error in the widget settings panel.
-- `npm run smoke:tauri-supervisor` covers the native supervisor restart-backoff guard.
+- `npm run smoke:tauri-supervisor` covers native supervisor restart backoff and actual child restart after exit.
 - Native crash-recovery UX surfacing and longer soak tests remain open.

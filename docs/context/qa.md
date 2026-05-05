@@ -71,4 +71,4 @@ npm run vibe:checkpoint
 - Screen/Vision provider is snapshot-based and has a Windows capture helper plus app-server image input; OCR is not implemented yet.
 - Terminal provider supports explicit one-shot commands and a persistent command session through `/pty`, but it is not a raw ConPTY/full-screen interactive terminal yet.
 - OAuth proxy live streaming requires an auth/proxy service and is not covered by CI-like smoke tests.
-- Packaged daemon restart backoff has a Rust guard test; end-to-end native crash/restart observation in an installed app is still manual.
+- Packaged daemon restart backoff and child restart have Rust tests; end-to-end native crash/restart observation in an installed app is still manual.

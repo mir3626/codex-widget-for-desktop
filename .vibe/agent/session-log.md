@@ -88,4 +88,4 @@
 - 2026-05-05T16:14:00.000+09:00 [architecture][dom-extension-package] Added browser DOM extension icon assets, manifest icon/action metadata, and a dependency-free zip packager at `npm run package:extension`.
 - 2026-05-05T16:14:00.000+09:00 [verification][dom-extension-package] Passed `npm run package:extension`, `npm run smoke:extension`, `npm run lint`, `npm run smoke:all:live`, and `npm run build`; extension smoke validates zip entries.
 - 2026-05-05T16:25:00.000+09:00 [architecture][native-daemon-supervisor] Replaced the packaged Tauri daemon child holder with a native supervisor that restarts the Node daemon after unexpected exits using capped exponential backoff while preserving dev-mode duplicate-spawn suppression.
-- 2026-05-05T16:25:00.000+09:00 [verification][native-daemon-supervisor] Added and passed `npm run smoke:tauri-supervisor` for the restart-backoff guard.
+- 2026-05-05T16:25:00.000+09:00 [verification][native-daemon-supervisor] Added and passed `npm run smoke:tauri-supervisor` for capped restart backoff and actual child restart after exit.
