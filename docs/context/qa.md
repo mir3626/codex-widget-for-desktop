@@ -68,7 +68,7 @@ Run this after `release:verify` and `release:soak` when preparing a release cand
 npm run release:readiness
 ```
 
-Use `node scripts/release-readiness.mjs --require-manual-gates` only when browser store submission has been explicitly confirmed. The default two-hour soak evidence is recorded in `docs/reports/release-soak-2026-05-05-2h.md`.
+Use `node scripts/release-readiness.mjs --require-manual-gates` only after `npm run release:confirm-browser-store -- --store <store> --submission-id <id>` or equivalent listing URL evidence has recorded the actual store dashboard submission. The default two-hour soak evidence is recorded in `docs/reports/release-soak-2026-05-05-2h.md`.
 
 Run this after Tauri/Rust/native shell changes:
 
@@ -123,5 +123,6 @@ npm run vibe:checkpoint
 - `npm run smoke:release-msi-install` performs a Windows MSI silent install into a per-user test directory, launches the installed app hidden, verifies the installed bundled daemon on port `4128`, silently uninstalls, and checks cleanup.
 - `npm run release:verify` is the single full release gate and runs the live provider/resident smokes, Tauri build, release resource smoke, release exe launch smoke, NSIS install smoke, and MSI install smoke.
 - `npm run release:browser-store-packet` generates the browser extension store submission packet with listing/privacy/review copy, native-host notes, icons, and checksums.
-- `npm run release:readiness` audits the current release artifacts, browser store readiness metadata/package/submission packet, latest release soak JSON report, and manual release blockers; after the 2026-05-05 two-hour soak, strict mode fails only until browser store submission is confirmed.
+- `npm run release:confirm-browser-store` records actual Chrome Web Store or Edge Add-ons submission evidence into `dist/reports/browser-store-submission-confirmation.json`.
+- `npm run release:readiness` audits the current release artifacts, browser store readiness metadata/package/submission packet/submission confirmation, latest release soak JSON report, and manual release blockers; after the 2026-05-05 two-hour soak, strict mode fails only until browser store submission is confirmed.
 - `npm run release:soak` is the longer hidden release-exe soak. It defaults to 60 seconds and can be tuned with `CODEX_WIDGET_RELEASE_SOAK_MS`, `CODEX_WIDGET_RELEASE_SOAK_MAX_WORKING_SET_MB`, and `CODEX_WIDGET_RELEASE_SOAK_MAX_GROWTH_MB`. It writes a JSON evidence report to `dist/reports/release-soak-latest.json` by default; set `CODEX_WIDGET_RELEASE_SOAK_REPORT` when running a named multi-hour/manual soak. The 2026-05-05 two-hour run passed with 1,439 runtime samples, 3,587 pongs, 358.5 MB ending working set, and -54.0 MB growth.

@@ -22,6 +22,7 @@
     "release:verify": "node scripts/release-verify.mjs",
     "release:readiness": "node scripts/release-readiness.mjs",
     "release:browser-store-packet": "node scripts/prepare-browser-store-submission.mjs",
+    "release:confirm-browser-store": "node scripts/confirm-browser-store-submission.mjs",
     "release:soak": "npm run build && node scripts/smoke-release-soak.mjs",
     "smoke": "npm run build:web && node scripts/smoke-daemon.mjs",
     "smoke:all": "node scripts/smoke-all.mjs",

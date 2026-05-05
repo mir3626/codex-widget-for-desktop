@@ -16,6 +16,9 @@ const reportPath = resolve(
 const outputPath = resolve(
   process.env.CODEX_WIDGET_RELEASE_READINESS_REPORT?.trim() || join(root, "dist", "reports", "release-readiness-latest.json")
 );
+const browserStoreSubmissionReportPath = resolve(
+  process.env.CODEX_WIDGET_BROWSER_STORE_SUBMISSION_REPORT?.trim() || join(root, "dist", "reports", "browser-store-submission-confirmation.json")
+);
 
 const checks = [];
 const blockers = [];
@@ -52,7 +55,12 @@ if (soakReport) {
   assertSoakReport(soakReport, reportPath);
 }
 
-manualGate("browser-store-submission", process.env.CODEX_WIDGET_BROWSER_STORE_SUBMITTED === "1", "Browser store account submission has not been confirmed.");
+const browserStoreSubmission = readBrowserStoreSubmissionConfirmation(browserStoreSubmissionReportPath);
+manualGate(
+  "browser-store-submission",
+  process.env.CODEX_WIDGET_BROWSER_STORE_SUBMITTED === "1" || browserStoreSubmission.confirmed,
+  browserStoreSubmission.reason || "Browser store account submission has not been confirmed."
+);
 manualGate(
   "multi-hour-soak",
   process.env.CODEX_WIDGET_RELEASE_MULTI_HOUR_SOAK_ACCEPTED === "1" || Number(soakReport?.durationMs ?? 0) >= multiHourSoakMs,
@@ -199,6 +207,57 @@ function manualGate(id, passed, reason) {
 
   blockers.push({ id, reason });
   checks.push({ id, status: strictManualGates ? "fail" : "manual", detail: reason });
+}
+
+function readBrowserStoreSubmissionConfirmation(path) {
+  if (!existsSync(path)) {
+    return { confirmed: false, reason: "Browser store account submission has not been confirmed." };
+  }
+
+  try {
+    const report = JSON.parse(readFileSync(path, "utf8"));
+    const failures = [];
+    if (report.version !== version) {
+      failures.push(`version ${JSON.stringify(report.version)} != ${version}`);
+    }
+    if (!["chrome-web-store", "edge-add-ons"].includes(report.store)) {
+      failures.push("store must be chrome-web-store or edge-add-ons");
+    }
+    if (Number.isNaN(Date.parse(report.submittedAt))) {
+      failures.push("submittedAt must be a valid timestamp");
+    }
+    if (report.confirmation?.submitted !== true) {
+      failures.push("confirmation.submitted must be true");
+    }
+    if (!String(report.listingUrl ?? "").trim() && !String(report.submissionId ?? "").trim()) {
+      failures.push("listingUrl or submissionId is required");
+    }
+    if (report.packageName !== `codex-widget-dom-extension-${version}.zip`) {
+      failures.push("packageName does not match release version");
+    }
+    if (!/^[a-f0-9]{64}$/i.test(String(report.packageSha256 ?? ""))) {
+      failures.push("packageSha256 must be a SHA-256 hex digest");
+    }
+
+    checks.push({
+      id: "browser-store-submission-report",
+      status: failures.length === 0 ? "pass" : "fail",
+      detail: failures.length === 0
+        ? `${path} store=${report.store} submittedAt=${report.submittedAt}`
+        : failures.join("; ")
+    });
+
+    return failures.length === 0
+      ? { confirmed: true }
+      : { confirmed: false, reason: `Browser store submission report is invalid: ${failures.join("; ")}` };
+  } catch (error) {
+    checks.push({
+      id: "browser-store-submission-report",
+      status: "fail",
+      detail: error instanceof Error ? error.message : "invalid JSON"
+    });
+    return { confirmed: false, reason: "Browser store submission report is invalid." };
+  }
 }
 
 function normalizePositiveNumber(value, fallback) {

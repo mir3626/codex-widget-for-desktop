@@ -22,6 +22,7 @@ Objective: continue `/vibe-iterate` until Codex Widget for Desktop is close to r
 | OAuth/Codex sign-in path is not manual env editing | Codex CLI sign-in flow and auth status are documented in `README.md`; earlier renderer/daemon auth changes are present in session log | Covered |
 | DOM provider is usable | `providers/browser-dom-extension`, `providers/browser-native-host`, `npm run smoke:dom`, `npm run smoke:extension`, `npm run smoke:browser-native-host` | Covered |
 | Browser store submission materials exist | `dist/browser-store-submission/codex-widget-dom-extension-0.1.0/submission-manifest.json`, `npm run release:browser-store-packet`, `npm run smoke:browser-store` | Covered for packet; actual store account submission remains manual |
+| Browser store submission can be confirmed with evidence | `npm run release:confirm-browser-store` writes `dist/reports/browser-store-submission-confirmation.json`; `node scripts/release-readiness.mjs --require-manual-gates` validates the report | Covered for evidence capture; actual store account submission remains manual |
 | Vision/screen capture is usable | `providers/screen-capture-helper`, `npm run smoke:screen`, `npm run smoke:screen-helper`, `npm run smoke:screen-capture:live` | Covered |
 | OCR runtime/language packaging exists | `scripts/prepare-ocr-runtime.mjs`, `scripts/fetch-ocr-languages.mjs`, `npm run smoke:ocr-runtime` | Covered |
 | Vision repeated-capture metadata exists | Screen snapshot hash/diff/threshold fields in provider registry and `npm run smoke:screen` | Covered |
@@ -53,7 +54,7 @@ The objective is not marked complete because browser store account submission ha
 To clear the final blocker after submission:
 
 ```powershell
-$env:CODEX_WIDGET_BROWSER_STORE_SUBMITTED='1'
+npm run release:confirm-browser-store -- --store chrome-web-store --submission-id <id>
 node scripts/release-readiness.mjs --require-manual-gates
 ```
 
