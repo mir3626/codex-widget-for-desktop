@@ -65,7 +65,7 @@ export async function closeWidget(): Promise<void> {
     await invoke("close_window");
   } catch {
     try {
-      await getCurrentWindow().close();
+      await getCurrentWindow().hide();
     } catch {
       window.close();
     }
@@ -150,5 +150,21 @@ export async function openExternalUrl(url: string): Promise<void> {
     await invoke("open_external_url", { url });
   } catch {
     window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
+
+export async function readAutostartEnabled(): Promise<boolean> {
+  try {
+    return await invoke<boolean>("get_autostart_enabled");
+  } catch {
+    return false;
+  }
+}
+
+export async function setAutostartEnabled(enabled: boolean): Promise<boolean> {
+  try {
+    return await invoke<boolean>("set_autostart_enabled", { enabled });
+  } catch {
+    return false;
   }
 }

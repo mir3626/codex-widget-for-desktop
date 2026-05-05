@@ -74,7 +74,7 @@ fn apply_pin_state(window: &WebviewWindow, pinned: bool) -> Result<(), String> {
 
 #[tauri::command]
 fn close_window(window: WebviewWindow) -> Result<(), String> {
-    window.close().map_err(|error| error.to_string())
+    window.hide().map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -103,6 +103,17 @@ fn open_external_url(url: String) -> Result<(), String> {
     open_url_with_system_browser(&url)
 }
 
+#[tauri::command]
+fn get_autostart_enabled() -> Result<bool, String> {
+    read_autostart_enabled()
+}
+
+#[tauri::command]
+fn set_autostart_enabled(enabled: bool) -> Result<bool, String> {
+    write_autostart_enabled(enabled)?;
+    read_autostart_enabled()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -115,7 +126,9 @@ pub fn run() {
             close_window,
             set_window_frame,
             start_window_resize,
-            open_external_url
+            open_external_url,
+            get_autostart_enabled,
+            set_autostart_enabled
         ])
         .setup(|app| {
             if let Some(state) = app.try_state::<DaemonProcess>() {
@@ -467,6 +480,74 @@ fn open_url_with_system_browser(url: &str) -> Result<(), String> {
         .spawn()
         .map(|_| ())
         .map_err(|error| error.to_string())
+}
+
+#[cfg(target_os = "windows")]
+fn read_autostart_enabled() -> Result<bool, String> {
+    let output = Command::new("reg.exe")
+        .args([
+            "query",
+            "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+            "/v",
+            "Codex Widget",
+        ])
+        .stdin(Stdio::null())
+        .output()
+        .map_err(|error| error.to_string())?;
+
+    Ok(output.status.success())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn read_autostart_enabled() -> Result<bool, String> {
+    Ok(false)
+}
+
+#[cfg(target_os = "windows")]
+fn write_autostart_enabled(enabled: bool) -> Result<(), String> {
+    let key = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+    if enabled {
+        let exe = std::env::current_exe().map_err(|error| error.to_string())?;
+        let value = format!("\"{}\"", exe.display());
+        let status = Command::new("reg.exe")
+            .args([
+                "add",
+                key,
+                "/v",
+                "Codex Widget",
+                "/t",
+                "REG_SZ",
+                "/d",
+                &value,
+                "/f",
+            ])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .map_err(|error| error.to_string())?;
+        if !status.success() {
+            return Err("failed to enable start at login".to_string());
+        }
+        return Ok(());
+    }
+
+    let status = Command::new("reg.exe")
+        .args(["delete", key, "/v", "Codex Widget", "/f"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map_err(|error| error.to_string())?;
+    if !status.success() && read_autostart_enabled()? {
+        return Err("failed to disable start at login".to_string());
+    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn write_autostart_enabled(_enabled: bool) -> Result<(), String> {
+    Err("start at login is currently implemented on Windows only".to_string())
 }
 
 fn spawn_daemon(app: &tauri::AppHandle) -> Option<Child> {

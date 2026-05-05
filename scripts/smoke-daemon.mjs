@@ -35,8 +35,16 @@ function waitForCompletion() {
 try {
   await waitForCompletion();
   const deltaCount = events.filter((event) => event.type === "message.delta").length;
+  const providerStatus = events.find((event) => event.type === "provider.status");
+  const runtimeStatus = events.find((event) => event.type === "runtime.status");
   if (deltaCount === 0) {
     throw new Error("No streamed delta events were emitted.");
+  }
+  if (!providerStatus || providerStatus.providers?.length !== 4) {
+    throw new Error("Provider status event was not emitted.");
+  }
+  if (!runtimeStatus || typeof runtimeStatus.status?.uptimeSeconds !== "number") {
+    throw new Error("Runtime status event was not emitted.");
   }
   console.log(`daemon smoke ok: ${deltaCount} deltas on port ${daemon.port}`);
 } finally {

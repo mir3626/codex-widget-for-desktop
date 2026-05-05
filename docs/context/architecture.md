@@ -6,7 +6,7 @@
 Tauri desktop shell
   - src-tauri/
   - transparent always-on-top widget window
-  - tray icon and native window controls
+  - tray icon, start-at-login command, and native window controls
   - starts the local Node daemon in dev/build flows
 
 React renderer
@@ -76,6 +76,14 @@ Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only sta
 - Interaction model: app-server server requests become `interaction.required` events. The renderer shows compact approval/input cards and returns `interaction.respond` messages to the daemon.
 - Reset model: `session.reset` clears the renderer-visible chat, local persistence, proxy session id, and app-server thread id. The next prompt starts a fresh Codex thread.
 - Provider status model: daemon emits `provider.status` after connection so each mode tab has a stable capability/status surface before the real DOM, Vision, and PTY providers are implemented.
+- Runtime health model: daemon emits `runtime.status` on connection and periodically after that. The renderer settings panel displays daemon uptime, client count, active request count, and app-server state.
+
+## Resident Desktop Boundary
+
+- The native window is configured with `skipTaskbar: true`; tray Show/Hide/Quit is the resident control surface.
+- The titlebar close button hides the window to tray. The tray Quit item exits the app.
+- Windows start-at-login is implemented by setting the current executable in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` through native Tauri commands.
+- `npm run build` must produce both MSI and NSIS bundles before a release is considered installable on Windows.
 
 ## Provider Roadmap
 

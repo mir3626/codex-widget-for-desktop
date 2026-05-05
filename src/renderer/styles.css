@@ -100,6 +100,14 @@ button {
   border-radius: 0;
 }
 
+.widget-panel.is-overlay-mode {
+  grid-template-rows:
+    var(--titlebar-height)
+    32px
+    36px
+    minmax(0, 1fr);
+}
+
 .resize-handle {
   position: absolute;
   z-index: 8;
@@ -413,6 +421,11 @@ body.is-resizing-prompt * {
 }
 
 .titlebar-button.active {
+  color: #123f36;
+  background: var(--accent-soft);
+}
+
+.icon-button.active {
   color: #123f36;
   background: var(--accent-soft);
 }
@@ -1464,6 +1477,140 @@ body.is-resizing-prompt * {
   padding: 10px;
   overflow: hidden;
   -webkit-app-region: no-drag;
+}
+
+.settings-panel {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  padding: 10px;
+  overflow: auto;
+  -webkit-app-region: no-drag;
+}
+
+.settings-section {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid rgba(36, 42, 50, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.settings-heading {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings-heading strong {
+  color: #303842;
+  font-size: 12.5px;
+}
+
+.settings-heading span {
+  min-width: 0;
+  overflow: hidden;
+  color: #76818e;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toggle-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle-row input {
+  width: 34px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.toggle-row span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.toggle-row strong {
+  color: #303842;
+  font-size: 12px;
+}
+
+.toggle-row small {
+  color: #697481;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.runtime-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.runtime-metric {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 8px;
+  background: rgba(236, 241, 242, 0.82);
+}
+
+.runtime-metric span {
+  overflow: hidden;
+  color: #7a8490;
+  font-size: 9.5px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.runtime-metric strong {
+  overflow: hidden;
+  color: #2f3843;
+  font-size: 11.5px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-settings {
+  gap: 5px;
+}
+
+.provider-row {
+  min-width: 0;
+  height: 24px;
+  display: grid;
+  grid-template-columns: 8px auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  color: #687381;
+  font-size: 11.5px;
+}
+
+.provider-row strong {
+  color: #303842;
+  font-size: 11.5px;
+}
+
+.provider-row span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .auth-panel label {

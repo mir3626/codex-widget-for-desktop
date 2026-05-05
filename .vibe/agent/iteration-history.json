@@ -34,7 +34,9 @@
         "iter-2-sprint-02-tool-provider-shell",
         "iter-2-sprint-03-resident-desktop-ops"
       ],
-      "completedSprints": [],
+      "completedSprints": [
+        "iter-2-sprint-01-runtime-protocol"
+      ],
       "carryover": "Iter-1 delivered the Tauri shell, Codex auth, streaming conversation UX, and app-server default runtime. Open carryover: app-server approvals/user input, real DOM/Vision/PTY providers, report/milestone files, and resident desktop ops.",
       "openRisks": [
         "Codex app-server protocol is experimental.",
@@ -42,12 +44,12 @@
         "Renderer-visible conversation state and Codex app-server thread state can diverge if reset/retry flows are not explicit."
       ],
       "milestoneProgress": {
-        "resident-widget-mvp": 0.72,
-        "durable-codex-runtime": 0.55,
+        "resident-widget-mvp": 0.78,
+        "durable-codex-runtime": 0.62,
         "real-tool-providers": 0.16,
-        "resident-desktop-readiness": 0.2
+        "resident-desktop-readiness": 0.55
       },
-      "summary": "Iteration 2 starts from the app-server checkpoint and prioritizes runtime protocol durability, provider surfaces, and resident desktop readiness."
+      "summary": "Iteration 2 has added runtime protocol durability, app-server interaction UI, visible chat persistence, provider status events, runtime health status, start-at-login settings, tray-oriented hide behavior, and verified release installer builds. Real DOM/Vision/PTY provider implementations remain open."
     }
   ]
 }

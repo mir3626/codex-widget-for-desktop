@@ -11,12 +11,15 @@ The primary user is a developer who wants a persistent desktop companion similar
 ## Current State
 
 - Tauri shell is in place with transparent, frameless, always-on-top, skip-taskbar window settings.
+- The shell has tray Show/Hide/Quit behavior, hides to tray from the titlebar close button, and exposes a Windows start-at-login toggle in the widget settings panel.
 - React/Vite renderer displays the generated mascot, speech bubble, mode controls, status, and prompt input.
 - Local Node daemon exposes a WebSocket stream on `127.0.0.1:4128`.
 - The daemon owns a background Codex `app-server` process when Codex auth is active, streams JSON-RPC deltas into the widget, and keeps one resident thread alive across prompts.
 - App-server approval and user-input requests now surface as widget interaction cards, so the UI can participate in local file/tool flows instead of dropping those requests.
 - Visible chat history is persisted locally across renderer reloads and can be cleared with an explicit New chat reset that also resets daemon session state.
 - Mode tabs receive daemon-owned provider status, giving Agent, DOM, Vision, and PTY a stable contract before each provider becomes fully real.
+- Runtime health status is streamed from the daemon into the settings panel.
+- `npm run build` produces Windows MSI and NSIS installer bundles.
 - The daemon keeps `codex exec resume` as a fallback runtime and supports mock/OAuth proxy streaming for non-Codex auth modes.
 - Browser DOM, screen vision, and terminal PTY modes currently have provider stubs rather than real integrations.
 - Windows Tauri prerequisites are documented and verified on the local machine.

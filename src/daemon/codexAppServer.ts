@@ -8,7 +8,7 @@ import {
   type CodexExecutionContext,
   terminateProcessTree
 } from "./codexRuntime.js";
-import type { RuntimeInteraction, ToolEmitter } from "../shared/protocol.js";
+import type { RuntimeInteraction, RuntimeStatus, ToolEmitter } from "../shared/protocol.js";
 
 type JsonRpcId = string;
 
@@ -84,6 +84,15 @@ export class CodexAppServerBridge {
 
   resetThread(): void {
     this.threadId = undefined;
+  }
+
+  getStatus(): RuntimeStatus["codexAppServer"] {
+    return {
+      state: this.ws?.readyState === WebSocket.OPEN ? "connected" : this.starting ? "starting" : "closed",
+      pid: this.child?.pid,
+      hasThread: Boolean(this.threadId),
+      activeTurn: Boolean(this.activeTurn)
+    };
   }
 
   respondToInteraction(input: {

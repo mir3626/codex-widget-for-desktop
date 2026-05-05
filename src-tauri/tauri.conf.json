@@ -24,7 +24,7 @@
         "transparent": true,
         "shadow": false,
         "alwaysOnTop": true,
-        "skipTaskbar": false,
+        "skipTaskbar": true,
         "center": false,
         "x": 1420,
         "y": 420
@@ -37,7 +37,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["icons/icon.png"],
+    "icon": ["icons/icon.png", "icons/icon.ico"],
     "resources": ["../dist/daemon"]
   }
 }

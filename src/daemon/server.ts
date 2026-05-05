@@ -5,7 +5,7 @@ import { CodexAppServerBridge } from "./codexAppServer.js";
 import { resolveCodexExecutionContext } from "./codexRuntime.js";
 import { OAuthSession } from "./oauth.js";
 import { getProviderStatuses } from "./tools.js";
-import type { ClientMessage, ServerEvent } from "../shared/protocol.js";
+import type { ClientMessage, RuntimeStatus, ServerEvent } from "../shared/protocol.js";
 
 export type DaemonHandle = {
   port: number;
@@ -20,6 +20,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
   let serverRef: Server | undefined;
   const controllers = new Map<string, AbortController>();
   const clients = new Set<WebSocket>();
+  const startedAt = Date.now();
   const auth = new OAuthSession(() => (serverRef ? getServerPort(serverRef) : 0));
   const codexAppServer = new CodexAppServerBridge();
   const agentSession: AgentSessionState = {};
@@ -39,6 +40,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     send(socket, { type: "connected", daemon: daemonInfo(getServerPort(server), auth.getStatus()) });
     send(socket, { type: "auth.status", auth: auth.getStatus() });
     send(socket, { type: "provider.status", providers: getProviderStatuses() });
+    send(socket, { type: "runtime.status", status: readRuntimeStatus(startedAt, clients, controllers, codexAppServer) });
     send(socket, { type: "session.state", state: "idle" });
 
     socket.on("message", (raw) => {
@@ -63,10 +65,14 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     });
   });
   syncCodexAppServer(auth, codexAppServer);
+  const runtimeStatusTimer = setInterval(() => {
+    broadcast(clients, { type: "runtime.status", status: readRuntimeStatus(startedAt, clients, controllers, codexAppServer) });
+  }, 5_000);
 
   return {
     port: getServerPort(server),
     close: async () => {
+      clearInterval(runtimeStatusTimer);
       await new Promise<void>((resolve, reject) => {
         for (const controller of controllers.values()) {
           controller.abort();
@@ -322,4 +328,18 @@ function getServerPort(server: Server): number {
     return 0;
   }
   return address.port;
+}
+
+function readRuntimeStatus(
+  startedAt: number,
+  clients: Set<WebSocket>,
+  controllers: Map<string, AbortController>,
+  codexAppServer: CodexAppServerBridge
+): RuntimeStatus {
+  return {
+    uptimeSeconds: Math.max(0, Math.floor((Date.now() - startedAt) / 1000)),
+    clients: clients.size,
+    activeRequests: controllers.size,
+    codexAppServer: codexAppServer.getStatus()
+  };
 }

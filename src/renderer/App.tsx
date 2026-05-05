@@ -17,6 +17,7 @@ import {
   PinOff,
   RotateCw,
   Send,
+  Settings,
   Square,
   SquareTerminal,
   Volume2,
@@ -51,6 +52,7 @@ import {
   type ProviderStatus,
   type ReasoningEffort,
   type RuntimeInteraction,
+  type RuntimeStatus,
   type ServerEvent,
   type WidgetMode
 } from "../shared/protocol.js";
@@ -58,7 +60,9 @@ import {
   closeWidget,
   minimizeWidget,
   openExternalUrl,
+  readAutostartEnabled,
   readWidgetWindowGeometry,
+  setAutostartEnabled,
   setWidgetWindowFrame,
   startDragWidget,
   startResizeWidget,
@@ -152,6 +156,7 @@ export function App() {
   const [selectedModel, setSelectedModel] = useState<ModelId>(() => readStoredModel());
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>(() => readStoredReasoningEffort());
   const [providerStatuses, setProviderStatuses] = useState<ProviderStatus[]>([]);
+  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus | null>(null);
   const [status, setStatus] = useState("connecting");
   const [auth, setAuth] = useState<AuthStatus>({
     mode: "mock",
@@ -170,6 +175,8 @@ export function App() {
   const [logLines, setLogLines] = useState<LogLine[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showTokenForm, setShowTokenForm] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [autostartEnabled, setAutostartEnabledState] = useState(false);
   const [tokenInput, setTokenInput] = useState("");
   const [proxyInput, setProxyInput] = useState("http://127.0.0.1:8787/agent/stream");
   const [modelLabelInput, setModelLabelInput] = useState("oauth-token");
@@ -282,6 +289,10 @@ export function App() {
       document.removeEventListener("keydown", closeMenuFromEscape);
     };
   }, [openActionMenuId]);
+
+  useEffect(() => {
+    void readAutostartEnabled().then(setAutostartEnabledState);
+  }, []);
 
   useEffect(() => {
     chatMessagesRef.current = chatMessages;
@@ -425,6 +436,11 @@ export function App() {
 
     if (event.type === "provider.status") {
       setProviderStatuses(event.providers);
+      return;
+    }
+
+    if (event.type === "runtime.status") {
+      setRuntimeStatus(event.status);
       return;
     }
 
@@ -883,6 +899,7 @@ export function App() {
     }
 
     if (auth.signInMethod === "token") {
+      setShowSettings(false);
       setShowTokenForm(true);
       if (auth.proxyUrl) {
         setProxyInput(auth.proxyUrl);
@@ -895,6 +912,29 @@ export function App() {
     }
 
     send({ type: "auth.start" });
+  }
+
+  function toggleSettings() {
+    setShowSettings((current) => {
+      const next = !current;
+      if (next) {
+        setShowTokenForm(false);
+      }
+      return next;
+    });
+  }
+
+  function updateAutostart(enabled: boolean) {
+    setAutostartEnabledState(enabled);
+    void setAutostartEnabled(enabled)
+      .then((nextEnabled) => {
+        setAutostartEnabledState(nextEnabled);
+        appendLog(nextEnabled ? "start at login enabled" : "start at login disabled", "tool");
+      })
+      .catch(() => {
+        setAutostartEnabledState(!enabled);
+        appendLog("start at login unavailable", "error");
+      });
   }
 
   function saveToken(event: FormEvent) {
@@ -1138,10 +1178,15 @@ export function App() {
       ? "Sign in"
       : auth.reason ?? "Sign in is not configured";
   const panelStyle = { "--prompt-composer-height": `${promptHeight}px` } as CSSProperties;
+  const isOverlayPanelOpen = showSettings || showTokenForm;
 
   return (
     <main className={maximized ? "widget-shell is-maximized" : "widget-shell"} style={shellStyle}>
-      <section className="widget-panel" style={panelStyle} aria-live="polite">
+      <section
+        className={isOverlayPanelOpen ? "widget-panel is-overlay-mode" : "widget-panel"}
+        style={panelStyle}
+        aria-live="polite"
+      >
         {RESIZE_HANDLES.map((handle) => (
           <div
             key={handle.direction}
@@ -1220,7 +1265,7 @@ export function App() {
             >
               <Square size={12} />
             </button>
-            <button className="titlebar-button close" title="Close" aria-label="Close" onClick={() => void closeWidget()}>
+            <button className="titlebar-button close" title="Hide to tray" aria-label="Hide to tray" onClick={() => void closeWidget()}>
               <X size={14} />
             </button>
           </div>
@@ -1242,6 +1287,16 @@ export function App() {
           >
             {auth.authenticated ? <LogOut size={14} /> : <LogIn size={14} />}
             <span>{authLabel}</span>
+          </button>
+          <button
+            type="button"
+            className={showSettings ? "icon-button active" : "icon-button"}
+            title="Settings"
+            aria-label="Settings"
+            aria-pressed={showSettings}
+            onClick={toggleSettings}
+          >
+            <Settings size={14} />
           </button>
         </div>
 
@@ -1265,7 +1320,54 @@ export function App() {
           })}
         </div>
 
-        {showTokenForm ? (
+        {showSettings ? (
+          <section className="settings-panel" aria-label="Settings">
+            <div className="settings-section">
+              <div className="settings-heading">
+                <strong>Resident</strong>
+                <span>Desktop behavior</span>
+              </div>
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={autostartEnabled}
+                  onChange={(event) => updateAutostart(event.target.checked)}
+                />
+                <span>
+                  <strong>Start at login</strong>
+                  <small>Register this app in the Windows user startup list.</small>
+                </span>
+              </label>
+            </div>
+
+            <div className="settings-section">
+              <div className="settings-heading">
+                <strong>Runtime</strong>
+                <span>{runtimeStatus ? formatRuntimeAge(runtimeStatus.uptimeSeconds) : "Waiting for daemon"}</span>
+              </div>
+              <div className="runtime-grid">
+                <RuntimeMetric label="Clients" value={runtimeStatus?.clients ?? 0} />
+                <RuntimeMetric label="Active" value={runtimeStatus?.activeRequests ?? 0} />
+                <RuntimeMetric label="Codex" value={runtimeStatus?.codexAppServer.state ?? "closed"} />
+                <RuntimeMetric label="Thread" value={runtimeStatus?.codexAppServer.hasThread ? "ready" : "none"} />
+              </div>
+            </div>
+
+            <div className="settings-section provider-settings">
+              <div className="settings-heading">
+                <strong>Providers</strong>
+                <span>{providerStatuses.length} modes</span>
+              </div>
+              {providerStatuses.map((provider) => (
+                <div key={provider.mode} className="provider-row">
+                  <span className={`mode-status-dot ${provider.state}`} aria-hidden="true" />
+                  <strong>{provider.label}</strong>
+                  <span>{provider.detail}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : showTokenForm ? (
           <form className="auth-panel" onSubmit={saveToken}>
             <label>
               <span>Agent proxy URL</span>
@@ -1432,6 +1534,8 @@ export function App() {
           </section>
         )}
 
+        {!isOverlayPanelOpen ? (
+          <>
         <form className="prompt-row" onPointerDownCapture={focusPromptInput} onSubmit={submit}>
           <div
             className="prompt-resize-handle"
@@ -1519,6 +1623,8 @@ export function App() {
             ))}
           </div>
         </div>
+          </>
+        ) : null}
       </section>
 
       <img
@@ -1542,6 +1648,15 @@ type InteractionCardProps = {
   onChange: (interactionId: string, fieldId: string, value: string) => void;
   onRespond: (interaction: RuntimeInteraction, decision: "approve" | "decline" | "submit") => void;
 };
+
+function RuntimeMetric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="runtime-metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
 
 function InteractionCard({ interaction, values, onChange, onRespond }: InteractionCardProps) {
   const fields = interaction.fields ?? [];
@@ -1929,6 +2044,21 @@ function readStoredModel(): ModelId {
 
 function readStoredReasoningEffort(): ReasoningEffort {
   return normalizeReasoningEffort(localStorage.getItem(REASONING_STORAGE_KEY));
+}
+
+function formatRuntimeAge(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return "just started";
+  }
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 1) {
+    return `${seconds}s uptime`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 1) {
+    return `${minutes}m uptime`;
+  }
+  return `${hours}h ${minutes % 60}m uptime`;
 }
 
 function createInteractionDraft(interaction: RuntimeInteraction): Record<string, string> {

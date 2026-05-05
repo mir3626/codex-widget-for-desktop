@@ -71,6 +71,18 @@ export type ProviderStatus = {
   capabilities: string[];
 };
 
+export type RuntimeStatus = {
+  uptimeSeconds: number;
+  clients: number;
+  activeRequests: number;
+  codexAppServer: {
+    state: "closed" | "starting" | "connected";
+    pid?: number;
+    hasThread: boolean;
+    activeTurn: boolean;
+  };
+};
+
 export type ClientMessage =
   | {
       type: "ask";
@@ -175,6 +187,10 @@ export type ServerEvent =
   | {
       type: "provider.status";
       providers: ProviderStatus[];
+    }
+  | {
+      type: "runtime.status";
+      status: RuntimeStatus;
     }
   | {
       type: "error";
