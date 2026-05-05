@@ -92,6 +92,8 @@ export type BranchContextMessage = {
   text: string;
 };
 
+export type MessageSnapshotStatus = "pending" | "thinking" | "tooling" | "streaming" | "done" | "cancelled" | "error";
+
 export type ClientMessage =
   | {
       type: "ask";
@@ -173,6 +175,12 @@ export type ServerEvent =
       type: "message.completed";
       id: string;
       text: string;
+    }
+  | {
+      type: "message.snapshot";
+      id: string;
+      text: string;
+      status: MessageSnapshotStatus;
     }
   | {
       type: "tool.started";

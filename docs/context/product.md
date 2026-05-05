@@ -25,6 +25,7 @@ The primary user is a developer who wants a persistent desktop companion similar
 - Terminal/PTY mode executes explicit local shell commands, supports a persistent `/pty` command session, and streams output as widget tool events.
 - Runtime health status is streamed from the daemon into the settings panel.
 - App-server diagnostics include start count and latest error in runtime status so resident failures are visible from the widget.
+- The daemon retains recent assistant response snapshots and replays them to reconnecting renderer clients, so WebSocket/WebView reconnects do not automatically abort an active response or lose the latest streamed text.
 - The chat renderer has a Playwright smoke for multi-turn layout, GFM tables, prompt resizing, and response action menu placement.
 - `npm run build` produces Windows MSI and NSIS installer bundles with a bundled daemon JS entry and bundled Node runtime, so the installed widget daemon does not require a user-installed `node` command.
 - Installed builds resolve the exe-adjacent `_up_` resource directory before falling back to development paths, so NSIS-installed apps use the bundled Node runtime and daemon bundle.

@@ -6,6 +6,7 @@ const steps = [
   npmStep("lint"),
   npmStep("build:web"),
   ["daemon stream", process.execPath, ["scripts/smoke-daemon.mjs"]],
+  ["daemon reconnect replay", process.execPath, ["scripts/smoke-daemon-reconnect.mjs"]],
   ["DOM provider", process.execPath, ["scripts/smoke-dom-provider.mjs"]],
   ["Screen provider", process.execPath, ["scripts/smoke-screen-provider.mjs"]],
   ["Terminal provider", process.execPath, ["scripts/smoke-terminal.mjs"]],

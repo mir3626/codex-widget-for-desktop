@@ -7,7 +7,7 @@ import { OAuthSession } from "./oauth.js";
 import { captureScreenSnapshot } from "./providers/screenCaptureProvider.js";
 import { ProviderRegistry, type ScreenSnapshot } from "./providers/providerRegistry.js";
 import { getProviderStatuses } from "./tools.js";
-import type { ClientMessage, RuntimeStatus, ServerEvent } from "../shared/protocol.js";
+import type { ClientMessage, MessageSnapshotStatus, RuntimeStatus, ServerEvent } from "../shared/protocol.js";
 
 export type DaemonHandle = {
   port: number;
@@ -18,9 +18,19 @@ export type DaemonOptions = {
   port?: number;
 };
 
+type RetainedMessage = {
+  id: string;
+  text: string;
+  status: MessageSnapshotStatus;
+  updatedAt: number;
+};
+
+const MAX_RETAINED_MESSAGES = 80;
+
 export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHandle> {
   let serverRef: Server | undefined;
   const controllers = new Map<string, AbortController>();
+  const retainedMessages = new Map<string, RetainedMessage>();
   const clients = new Set<WebSocket>();
   const startedAt = Date.now();
   const auth = new OAuthSession(() => (serverRef ? getServerPort(serverRef) : 0));
@@ -45,17 +55,25 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     send(socket, { type: "provider.status", providers: getProviderStatuses(providers) });
     send(socket, { type: "runtime.status", status: readRuntimeStatus(startedAt, clients, controllers, codexAppServer) });
     send(socket, { type: "session.state", state: "idle" });
+    replayRetainedMessages(socket, retainedMessages);
 
     socket.on("message", (raw) => {
-      void handleMessage(raw.toString(), socket, controllers, auth, clients, agentSession, codexAppServer, providers, getServerPort(server));
+      void handleMessage(
+        raw.toString(),
+        socket,
+        controllers,
+        retainedMessages,
+        auth,
+        clients,
+        agentSession,
+        codexAppServer,
+        providers,
+        getServerPort(server)
+      );
     });
 
     socket.on("close", () => {
       clients.delete(socket);
-      for (const controller of controllers.values()) {
-        controller.abort();
-      }
-      controllers.clear();
     });
   });
 
@@ -103,6 +121,7 @@ async function handleMessage(
   raw: string,
   socket: WebSocket,
   controllers: Map<string, AbortController>,
+  retainedMessages: Map<string, RetainedMessage>,
   auth: OAuthSession,
   clients: Set<WebSocket>,
   agentSession: AgentSessionState,
@@ -175,19 +194,19 @@ async function handleMessage(
   if (message.type === "cancel") {
     controllers.get(message.id)?.abort();
     controllers.delete(message.id);
-    send(socket, { type: "session.state", state: "cancelled", id: message.id });
+    retainAndBroadcast(clients, retainedMessages, { type: "session.state", state: "cancelled", id: message.id });
     return;
   }
 
   if (message.type === "session.reset") {
-    resetRuntimeSession(controllers, agentSession, codexAppServer);
+    resetRuntimeSession(controllers, retainedMessages, agentSession, codexAppServer);
     broadcast(clients, { type: "session.reset" });
     broadcast(clients, { type: "session.state", state: "idle" });
     return;
   }
 
   if (message.type === "session.branch") {
-    resetRuntimeSession(controllers, agentSession, codexAppServer);
+    resetRuntimeSession(controllers, retainedMessages, agentSession, codexAppServer);
     broadcast(clients, { type: "session.state", state: "idle" });
     return;
   }
@@ -218,7 +237,7 @@ async function handleMessage(
 
   try {
     await prepareRegeneration(message, auth, codexAppServer);
-    await runAgentStream(message, (event) => send(socket, event), controller.signal, {
+    await runAgentStream(message, (event) => retainAndBroadcast(clients, retainedMessages, event), controller.signal, {
       ...auth.getProxyCredentials(),
       session: agentSession,
       codexAppServer,
@@ -226,15 +245,15 @@ async function handleMessage(
     });
   } catch (error) {
     if (controller.signal.aborted) {
-      send(socket, { type: "session.state", state: "cancelled", id: message.id });
+      retainAndBroadcast(clients, retainedMessages, { type: "session.state", state: "cancelled", id: message.id });
       return;
     }
-    send(socket, {
+    retainAndBroadcast(clients, retainedMessages, {
       type: "error",
       id: message.id,
       message: error instanceof Error ? error.message : "Unknown daemon error."
     });
-    send(socket, { type: "session.state", state: "error", id: message.id });
+    retainAndBroadcast(clients, retainedMessages, { type: "session.state", state: "error", id: message.id });
   } finally {
     controllers.delete(message.id);
   }
@@ -277,6 +296,7 @@ function resetAgentSession(agentSession: AgentSessionState): void {
 
 function resetRuntimeSession(
   controllers: Map<string, AbortController>,
+  retainedMessages: Map<string, RetainedMessage>,
   agentSession: AgentSessionState,
   codexAppServer: CodexAppServerBridge
 ): void {
@@ -284,6 +304,7 @@ function resetRuntimeSession(
     controller.abort();
   }
   controllers.clear();
+  retainedMessages.clear();
   resetAgentSession(agentSession);
   codexAppServer.resetThread();
 }
@@ -454,6 +475,107 @@ async function prepareRegeneration(
 function broadcast(clients: Set<WebSocket>, event: ServerEvent): void {
   for (const client of clients) {
     send(client, event);
+  }
+}
+
+function retainAndBroadcast(
+  clients: Set<WebSocket>,
+  retainedMessages: Map<string, RetainedMessage>,
+  event: ServerEvent
+): void {
+  retainServerEvent(retainedMessages, event);
+  broadcast(clients, event);
+}
+
+function retainServerEvent(retainedMessages: Map<string, RetainedMessage>, event: ServerEvent): void {
+  if (event.type === "message.delta") {
+    const current = retainedMessages.get(event.id);
+    retainMessage(retainedMessages, {
+      id: event.id,
+      text: `${current?.text ?? ""}${event.text}`,
+      status: current?.status === "tooling" ? "tooling" : "streaming",
+      updatedAt: Date.now()
+    });
+    return;
+  }
+
+  if (event.type === "message.completed") {
+    retainMessage(retainedMessages, {
+      id: event.id,
+      text: event.text,
+      status: "done",
+      updatedAt: Date.now()
+    });
+    return;
+  }
+
+  if (event.type === "session.state" && event.id) {
+    const status = sessionStateToSnapshotStatus(event.state);
+    if (!status) {
+      return;
+    }
+    const current = retainedMessages.get(event.id);
+    retainMessage(retainedMessages, {
+      id: event.id,
+      text: current?.text ?? "",
+      status,
+      updatedAt: Date.now()
+    });
+    return;
+  }
+
+  if (event.type === "tool.started" || event.type === "tool.completed") {
+    const current = retainedMessages.get(event.id);
+    retainMessage(retainedMessages, {
+      id: event.id,
+      text: current?.text ?? "",
+      status: event.type === "tool.started" ? "tooling" : "streaming",
+      updatedAt: Date.now()
+    });
+    return;
+  }
+
+  if (event.type === "error" && event.id) {
+    const current = retainedMessages.get(event.id);
+    retainMessage(retainedMessages, {
+      id: event.id,
+      text: current?.text ?? "",
+      status: "error",
+      updatedAt: Date.now()
+    });
+  }
+}
+
+function sessionStateToSnapshotStatus(state: Extract<ServerEvent, { type: "session.state" }>["state"]): MessageSnapshotStatus | undefined {
+  if (state === "idle") {
+    return undefined;
+  }
+  if (state === "thinking" || state === "tooling" || state === "streaming" || state === "cancelled" || state === "error") {
+    return state;
+  }
+  return undefined;
+}
+
+function retainMessage(retainedMessages: Map<string, RetainedMessage>, message: RetainedMessage): void {
+  retainedMessages.set(message.id, message);
+  if (retainedMessages.size <= MAX_RETAINED_MESSAGES) {
+    return;
+  }
+
+  const oldest = [...retainedMessages.values()].sort((left, right) => left.updatedAt - right.updatedAt)[0];
+  if (oldest) {
+    retainedMessages.delete(oldest.id);
+  }
+}
+
+function replayRetainedMessages(socket: WebSocket, retainedMessages: Map<string, RetainedMessage>): void {
+  for (const message of [...retainedMessages.values()].sort((left, right) => left.updatedAt - right.updatedAt)) {
+    send(socket, {
+      type: "message.snapshot",
+      id: message.id,
+      text: message.text,
+      status: message.status
+    });
   }
 }
 

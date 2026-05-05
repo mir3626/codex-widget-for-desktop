@@ -95,6 +95,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added browser extension store-readiness metadata: `store-listing.md`, `privacy.md`, `review-notes.md`, and `npm run smoke:browser-store` for permission rationale/privacy/package validation.
 - Added `npm run release:soak`, a longer hidden release-exe soak that checks runtime samples, ping/pong health, daemon process presence, process-tree working set, and cleanup after the soak.
 - Made response Branch runtime-safe: Branch now sends `session.branch` to reset daemon-side proxy/app-server session state, stores the selected user/assistant pair as a one-shot `branchContext`, sends that seed with the next prompt only, and clears it after use so visible branch state does not keep running against hidden old app-server context.
+- Added daemon reconnect replay: active agent events are broadcast to connected clients, bounded assistant response snapshots are retained in the daemon, reconnecting renderers receive `message.snapshot`, and a WebSocket close no longer aborts every active request.
 
 ## Next Recommended Sprint
 
@@ -614,6 +615,15 @@ Completed after branch-safe runtime pass:
 - `npm run smoke:screen`
 - `npm run smoke:all`
 - Daemon smoke now verifies `session.branch` does not broadcast a visible `session.reset`; renderer chat smoke verifies Branch sends `session.branch`, the next prompt includes one-shot `branchContext`, and the following branch prompt does not replay that seed.
+
+Completed after reconnect replay pass:
+
+- `npm run lint`
+- `npm run smoke:daemon-reconnect`
+- `npm run smoke`
+- `npm run smoke:renderer-chat`
+- `npm run smoke:all`
+- Reconnect smoke verifies an active response survives the first WebSocket closing, a second client receives a `message.snapshot` containing the already-streamed text, and the final `message.completed` reaches the reconnected client.
 
 Completed after persistent terminal session pass:
 

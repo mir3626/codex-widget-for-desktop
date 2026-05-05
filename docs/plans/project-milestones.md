@@ -4,7 +4,7 @@
 
 Goal: keep a small Tauri desktop widget resident on Windows with reliable window controls, prompt/chat UX, streaming Codex responses, session reset, and recoverable daemon lifecycle.
 
-Current progress: 0.85
+Current progress: 0.86
 
 Evidence:
 - Tauri shell, borderless resize, pin, opacity, mascot drag, and model/reasoning controls are implemented.
@@ -13,6 +13,7 @@ Evidence:
 - Visible chat history persists locally across renderer reloads after Iteration 2 kickoff.
 - Multi-turn chat layout, GFM tables, prompt resizing, and response action menu placement are covered by a Playwright renderer smoke.
 - Response Branch is covered by the renderer smoke and now resets daemon runtime state before sending a one-shot branch seed with the next prompt.
+- Reconnecting renderer clients receive retained daemon response snapshots, and active requests continue after the original WebSocket closes.
 - The widget hides to tray, stays off the taskbar, and exposes resident settings.
 - Packaged Tauri builds now supervise the Node daemon and restart it after unexpected exits.
 - Native daemon supervisor diagnostics are visible in the renderer status strip and Settings runtime grid.
@@ -22,7 +23,7 @@ Evidence:
 
 Goal: use a long-lived Codex runtime boundary instead of prompt-injected one-shot calls, while preserving fallback and safe process cleanup.
 
-Current progress: 0.84
+Current progress: 0.86
 
 Evidence:
 - `CodexAppServerBridge` owns process startup, WebSocket JSON-RPC initialization, thread creation, turn streaming, interrupt, and shutdown.
@@ -33,6 +34,7 @@ Evidence:
 - Renderer code can read native daemon state while WebSocket reconnect is in progress.
 - The native shell resolves bundled daemon/runtime resources before falling back to a system `node` command.
 - Response Branch uses `session.branch` plus one-shot `branchContext` so branch UI state and app-server/proxy session state do not silently diverge.
+- Agent events are broadcast to connected clients and retained as bounded response snapshots for reconnect replay, reducing coupling between Codex turns and a single renderer socket.
 
 ## real-tool-providers
 

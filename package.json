@@ -22,6 +22,7 @@
     "smoke:all": "node scripts/smoke-all.mjs",
     "smoke:all:live": "node scripts/smoke-all.mjs --include-live",
     "smoke:dom": "npm run build:daemon && node scripts/smoke-dom-provider.mjs",
+    "smoke:daemon-reconnect": "npm run build:daemon && node scripts/smoke-daemon-reconnect.mjs",
     "smoke:extension": "node scripts/smoke-browser-extension.mjs",
     "smoke:browser-native-host": "node scripts/smoke-browser-native-host.mjs",
     "smoke:browser-store": "node scripts/smoke-browser-store-readiness.mjs",

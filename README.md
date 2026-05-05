@@ -51,7 +51,7 @@ Widget prompts are intentionally not executed from this repository. The daemon s
 
 The default Codex approval policy is `CODEX_WIDGET_CODEX_APPROVAL_POLICY=on-request`. When app-server asks for permission or more input, the widget shows a compact interaction card and sends the response back through the daemon.
 
-The renderer keeps the visible chat timeline in localStorage, and the titlebar New chat button clears both the visible conversation and the daemon-side session/thread state. Response Branch starts a fresh daemon runtime session and sends the selected exchange as one-shot context on the next prompt, so branch conversations do not continue on hidden old app-server state. Mode tabs are backed by daemon-provided provider status so future DOM, Vision, and PTY providers can attach without changing the basic UI contract.
+The renderer keeps the visible chat timeline in localStorage, and the titlebar New chat button clears both the visible conversation and the daemon-side session/thread state. Response Branch starts a fresh daemon runtime session and sends the selected exchange as one-shot context on the next prompt, so branch conversations do not continue on hidden old app-server state. The daemon also retains recent response snapshots for reconnecting renderer clients. Mode tabs are backed by daemon-provided provider status so future DOM, Vision, and PTY providers can attach without changing the basic UI contract.
 
 For resident use, the widget hides to tray from the titlebar close button and can be restored or quit from the tray menu. The Settings button exposes Start at login, provider status, and daemon runtime health. On Windows, Start at login writes the current executable to the current user's `Run` registry key.
 
@@ -108,6 +108,7 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run build:web`: compile the daemon, create the bundled daemon entry, build the renderer, and prepare the bundled Node runtime
 - `npm run package:extension`: create `dist/providers/codex-widget-dom-extension-0.1.0.zip`
 - `npm run smoke:all`: run the standard serial readiness gate without rebuilding daemon in parallel
+- `npm run smoke:daemon-reconnect`: verify an active daemon response survives renderer WebSocket reconnect and replays a snapshot
 - `npm run smoke:all:live`: run the serial readiness gate plus the live Windows screen capture helper
 - `npm run smoke:resident`: run the idle resident daemon health/resource smoke
 - `npm run smoke:resident-soak`: run a short resident daemon soak with runtime samples, ping/pong health checks, and RSS growth limits

@@ -50,6 +50,7 @@ import {
   type AuthStatus,
   type BranchContextMessage,
   type ClientMessage,
+  type MessageSnapshotStatus,
   type ModelId,
   type ProviderStatus,
   type ReasoningEffort,
@@ -431,6 +432,11 @@ export function App() {
       return;
     }
 
+    if (event.type === "message.snapshot") {
+      applyAssistantSnapshot(event.id, event.text, event.status);
+      return;
+    }
+
     if (event.type === "tool.started") {
       markAssistantMessage(event.id, "tooling");
       appendLog(`${event.label}`, "tool");
@@ -526,6 +532,34 @@ export function App() {
     completedResponseIdsRef.current.add(id);
     setChatMessages((current) => ensureAssistantMessage(current, id));
     scheduleAssistantTyping();
+  }
+
+  function applyAssistantSnapshot(id: string, text: string, status: MessageSnapshotStatus) {
+    streamBuffersRef.current.set(id, text);
+    if (status === "done") {
+      completedResponseIdsRef.current.add(id);
+    } else {
+      completedResponseIdsRef.current.delete(id);
+    }
+
+    const nextStatus = snapshotStatusToAssistantStatus(status);
+    setChatMessages((current) =>
+      ensureAssistantMessage(current, id).map((message) =>
+        message.role === "assistant" && message.id === id
+          ? {
+              ...message,
+              text,
+              status: nextStatus
+            }
+          : message
+      )
+    );
+
+    if (isAssistantWorking(nextStatus)) {
+      setActiveId(id);
+    } else if (activeId === id) {
+      setActiveId(null);
+    }
   }
 
   function scheduleAssistantTyping(delay = STREAM_TYPE_BASE_INTERVAL_MS) {
@@ -2078,6 +2112,17 @@ function getTypingDelay(character: string, remaining: number): number {
 
 function isAssistantWorking(status: AssistantMessageStatus): boolean {
   return status === "pending" || status === "thinking" || status === "tooling" || status === "streaming" || status === "typing";
+}
+
+function snapshotStatusToAssistantStatus(status: MessageSnapshotStatus): AssistantMessageStatus {
+  return status === "done" ||
+    status === "cancelled" ||
+    status === "error" ||
+    status === "thinking" ||
+    status === "tooling" ||
+    status === "streaming"
+    ? status
+    : "pending";
 }
 
 function assistantStatusLabel(status: AssistantMessageStatus): string {
