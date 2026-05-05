@@ -48,4 +48,16 @@ The extension posts:
 }
 ```
 
+## Native Messaging
+
+The service worker first tries the optional native messaging host `com.mir3626.codex_widget_dom`. If the host is not registered, it falls back to direct local HTTP.
+
+Register the host with:
+
+```powershell
+.\providers\browser-native-host\install-native-messaging-host.ps1 -ExtensionId <extension-id>
+```
+
+See [../browser-native-host](../browser-native-host) for host details and uninstall instructions.
+
 The daemon keeps only the latest snapshot. It returns `OK`/`ERR` badge text on the extension action after each send attempt.

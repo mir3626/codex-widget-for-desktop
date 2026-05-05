@@ -14,7 +14,10 @@ const requiredFragments = [
   "dist\\node-runtime\\node.exe",
   "dist\\node-runtime\\node-runtime.json",
   "providers\\screen-capture-helper\\capture-screen.ps1",
-  "providers\\browser-dom-extension\\manifest.json"
+  "providers\\browser-dom-extension\\manifest.json",
+  "providers\\browser-native-host\\native-host.mjs",
+  "providers\\browser-native-host\\codex-widget-dom-native-host.cmd",
+  "providers\\browser-native-host\\install-native-messaging-host.ps1"
 ];
 
 for (const path of [msiScript, nsisScript, msiArtifact, nsisArtifact]) {
@@ -28,7 +31,7 @@ for (const fragment of requiredFragments) {
   assertIncludes(nsisText, fragment, nsisScript);
 }
 
-console.log("release resources smoke ok: bundled daemon, node runtime, screen helper, and DOM extension are in MSI/NSIS scripts");
+console.log("release resources smoke ok: bundled daemon, node runtime, screen helper, DOM extension, and browser native host are in MSI/NSIS scripts");
 
 function assertFile(path) {
   if (!existsSync(path)) {

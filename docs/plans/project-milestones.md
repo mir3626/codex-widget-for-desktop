@@ -36,16 +36,16 @@ Evidence:
 
 Goal: replace Agent/DOM/Vision/PTY stubs with real desktop/browser/terminal context providers that stream tool events through one widget protocol.
 
-Current progress: 0.7
+Current progress: 0.74
 
 Evidence:
 - Provider modes and tool-event rendering exist.
 - Browser DOM mode accepts live snapshots through the local daemon and injects them into model context.
-- An unpacked Chrome/Edge extension can send active-tab DOM snapshots to the daemon, exposes a local-only Options page for daemon URL changes, and `npm run package:extension` produces a zip package with icon assets.
+- An unpacked Chrome/Edge extension can send active-tab DOM snapshots to the daemon, exposes a local-only Options page for daemon URL changes, can use an optional Chrome/Edge native messaging host before falling back to HTTP, and `npm run package:extension` produces a zip package with icon assets.
 - Screen/Vision mode accepts live snapshots through the local daemon, injects description/OCR context into model requests, and attaches image data to app-server Vision turns.
 - A Windows PowerShell helper captures the virtual desktop as compressed JPEG data, can run a local OCR command or auto-detected `tesseract`, and posts the result to the Screen/Vision endpoint; the widget can trigger that helper through the daemon protocol.
 - Terminal/PTY mode executes explicit shell commands, supports a persistent `/pty` command session, and streams output as tool events.
-- Bundled OCR engine packaging, browser store submission/native messaging, and true raw interactive PTY remain open.
+- Bundled OCR engine packaging, browser store submission metadata/review prep, and true raw interactive PTY remain open.
 
 ## resident-desktop-readiness
 

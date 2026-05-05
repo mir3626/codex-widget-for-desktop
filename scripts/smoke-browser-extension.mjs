@@ -13,6 +13,7 @@ assertEqual(manifest.manifest_version, 3, "manifest_version");
 assertIncludes(manifest.permissions, "activeTab", "permissions");
 assertIncludes(manifest.permissions, "scripting", "permissions");
 assertIncludes(manifest.permissions, "storage", "permissions");
+assertIncludes(manifest.permissions, "nativeMessaging", "permissions");
 assertIncludes(manifest.host_permissions, "http://127.0.0.1/*", "host_permissions");
 assertIncludes(manifest.host_permissions, "http://localhost/*", "host_permissions");
 assertEqual(manifest.background?.service_worker, "service-worker.js", "background.service_worker");
@@ -40,6 +41,8 @@ for (const marker of [
   "chrome.action.onClicked",
   "chrome.scripting.executeScript",
   "chrome.storage.sync.get",
+  "chrome.runtime.sendNativeMessage",
+  "com.mir3626.codex_widget_dom",
   "/providers/dom/snapshot",
   "window.getSelection",
   "document.body"

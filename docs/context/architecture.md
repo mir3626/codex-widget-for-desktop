@@ -88,7 +88,7 @@ Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only sta
 
 ## Provider Boundary
 
-- DOM provider: external browser tooling can `POST /providers/dom/snapshot` to the local daemon with `{ url, title, selection, text }`. The latest snapshot is surfaced as a tool event in Browser/DOM mode and injected into the model request context. `providers/browser-dom-extension` packages the first Chrome/Edge Manifest V3 bridge for active-tab snapshots, includes an Options page for local daemon URL changes, and `npm run package:extension` writes a zip artifact for manual installation or store-prep review.
+- DOM provider: external browser tooling can `POST /providers/dom/snapshot` to the local daemon with `{ url, title, selection, text }`. The latest snapshot is surfaced as a tool event in Browser/DOM mode and injected into the model request context. `providers/browser-dom-extension` packages the Chrome/Edge Manifest V3 bridge for active-tab snapshots, includes an Options page for local daemon URL changes, tries the optional `providers/browser-native-host` native messaging bridge first, and `npm run package:extension` writes a zip artifact for manual installation or store-prep review.
 - Screen/Vision provider: external capture tooling can `POST /providers/screen/snapshot` with `{ source, title, description, ocrText, imageDataUrl }`. The latest text/description/OCR snapshot is surfaced as a Vision mode tool event and injected into the model request context; base64 image data is retained in daemon state and attached to Codex app-server Vision turns as an image input. `providers/screen-capture-helper/capture-screen.ps1` is the first Windows helper for posting a compressed virtual-screen capture, and the renderer can ask the daemon to run it through `provider.captureScreen`. The helper supports optional local OCR through `tesseract` auto-detection or a `CODEX_WIDGET_SCREEN_OCR_COMMAND` command template that receives the captured JPEG path as `{image}`.
 - Terminal provider: Terminal/PTY mode has two local command paths. One-shot commands use explicit prefixes (`/run`, `$`, `PS>`, `run:`, or fenced shell blocks), stream stdout/stderr as `tool.output`, and summarize the result into the assistant response. Persistent command sessions use `/pty start`, `/pty <command>`, `/pty status`, and `/pty stop` to keep shell state between commands in a daemon-owned child process. Both paths block destructive command patterns unless `CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE=1`. The persistent session is still command-oriented; raw interactive TTY/full-screen ConPTY behavior is not implemented yet.
 
@@ -103,7 +103,7 @@ Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only sta
 
 ## Provider Roadmap
 
-- Browser DOM provider: browser store submission metadata, optional native messaging, accessible labels, and element highlighting on top of the packaged localhost extension bridge.
+- Browser DOM provider: browser store submission metadata, accessible labels, and element highlighting on top of the packaged localhost/native-messaging extension bridge.
 - Controlled browser provider: Playwright/CDP for automation in a managed browser context.
 - Screen provider: crop/diff and richer OCR engine packaging on top of the existing daemon-triggered Windows capture helper, optional OCR command hook, and direct app-server image input.
 - Terminal provider: true ConPTY/node-pty process sessions for raw interactive terminal programs on top of the current command-oriented `/pty` session path.

@@ -1,4 +1,5 @@
 const DEFAULT_DAEMON_DOM_SNAPSHOT_URL = "http://127.0.0.1:4128/providers/dom/snapshot";
+const NATIVE_HOST_NAME = "com.mir3626.codex_widget_dom";
 const BADGE_RESET_MS = 1600;
 
 chrome.action.onClicked.addListener((tab) => {
@@ -14,19 +15,56 @@ async function sendActiveTabSnapshot(tab) {
     setBadge(tab.id, "...", "#64748b");
     const snapshot = await readSnapshotFromTab(tab.id);
     const daemonUrl = await readDaemonSnapshotUrl();
-    const response = await fetch(daemonUrl, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(snapshot)
-    });
-
-    if (!response.ok) {
-      throw new Error(`Daemon rejected DOM snapshot (${response.status}).`);
+    const nativeResult = await trySendNativeSnapshot(snapshot, daemonUrl);
+    if (!nativeResult.ok) {
+      await postSnapshotToDaemon(snapshot, daemonUrl);
     }
     setBadge(tab.id, "OK", "#0f766e");
   } catch (error) {
     console.error("[Codex Widget] DOM snapshot failed", error);
     setBadge(tab.id, "ERR", "#b91c1c");
+  }
+}
+
+async function trySendNativeSnapshot(snapshot, daemonUrl) {
+  try {
+    const response = await sendNativeMessage({
+      type: "domSnapshot",
+      daemonUrl,
+      snapshot
+    });
+    if (response?.ok === true) {
+      return { ok: true };
+    }
+    return { ok: false, error: response?.error ?? "Native host did not accept the snapshot." };
+  } catch (error) {
+    console.debug("[Codex Widget] Native messaging unavailable; falling back to HTTP.", error);
+    return { ok: false, error };
+  }
+}
+
+function sendNativeMessage(message) {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendNativeMessage(NATIVE_HOST_NAME, message, (response) => {
+      const error = chrome.runtime.lastError;
+      if (error) {
+        reject(new Error(error.message));
+        return;
+      }
+      resolve(response);
+    });
+  });
+}
+
+async function postSnapshotToDaemon(snapshot, daemonUrl) {
+  const response = await fetch(daemonUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(snapshot)
+  });
+
+  if (!response.ok) {
+    throw new Error(`Daemon rejected DOM snapshot (${response.status}).`);
   }
 }
 

@@ -58,6 +58,14 @@ try {
     join(installDir, "_up_", "providers", "browser-dom-extension", "options.html"),
     "Missing browser extension Options page after install."
   );
+  assertFile(
+    join(installDir, "_up_", "providers", "browser-native-host", "native-host.mjs"),
+    "Missing browser native host after install."
+  );
+  assertFile(
+    join(installDir, "_up_", "providers", "browser-native-host", "install-native-messaging-host.ps1"),
+    "Missing browser native host installer after install."
+  );
   if (!queryRegistryKey(uninstallKey)) {
     throw new Error("Silent install did not register an uninstall entry.");
   }

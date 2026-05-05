@@ -19,7 +19,7 @@ The primary user is a developer who wants a persistent desktop companion similar
 - Visible chat history is persisted locally across renderer reloads and can be cleared with an explicit New chat reset that also resets daemon session state.
 - Regenerate now truncates the visible chat from the selected answer onward and asks the app-server to roll back the same number of thread turns before starting the replacement response.
 - Mode tabs receive daemon-owned provider status, giving Agent, DOM, Vision, and PTY a stable contract before each provider becomes fully real.
-- DOM mode accepts live browser snapshots through `POST /providers/dom/snapshot` and injects that context into the model request. An unpacked Chrome/Edge extension can send active-tab snapshots into that endpoint and has an Options page for local daemon URL changes.
+- DOM mode accepts live browser snapshots through `POST /providers/dom/snapshot` and injects that context into the model request. An unpacked Chrome/Edge extension can send active-tab snapshots through an optional native messaging host or direct local HTTP fallback, and has an Options page for local daemon URL changes.
 - Vision mode accepts screen snapshots through `POST /providers/screen/snapshot`, injects screen description/OCR context into the model request, and attaches captured image data as an app-server image input for Vision turns. The widget can ask the daemon to run a Windows PowerShell helper that captures the virtual desktop, optionally runs a local OCR command, and posts a compressed image snapshot.
 - Terminal/PTY mode executes explicit local shell commands, supports a persistent `/pty` command session, and streams output as widget tool events.
 - Runtime health status is streamed from the daemon into the settings panel.
@@ -30,7 +30,7 @@ The primary user is a developer who wants a persistent desktop companion similar
 - `npm run smoke:release-install` verifies the NSIS installer can silently install, launch the installed app with its bundled daemon, restart that daemon through native supervision after a forced kill, shut the daemon down after an app-process kill, and uninstall cleanly.
 - `npm run release:verify` runs the full live release gate and reports release artifact sizes.
 - The daemon keeps `codex exec resume` as a fallback runtime and supports mock/OAuth proxy streaming for non-Codex auth modes.
-- DOM and Vision modes have snapshot ingress; DOM has an unpacked browser extension bridge with icon assets, local-only Options URL configuration, and a generated zip package; Vision has a Windows capture helper, optional local OCR command hook, and direct app-server image input; Terminal has one-shot command execution plus a persistent command session. Bundled OCR engine packaging, browser store submission/native messaging, MSI install/uninstall observation, and true raw interactive PTY are still open.
+- DOM and Vision modes have snapshot ingress; DOM has an unpacked browser extension bridge with icon assets, local-only Options URL configuration, optional Chrome/Edge native messaging host, and a generated zip package; Vision has a Windows capture helper, optional local OCR command hook, and direct app-server image input; Terminal has one-shot command execution plus a persistent command session. Bundled OCR engine packaging, browser store submission polish, MSI install/uninstall observation, and true raw interactive PTY are still open.
 - Windows Tauri prerequisites are documented and verified on the local machine.
 
 ## Product Goals
