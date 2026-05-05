@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-1",
+  "currentIteration": "iter-2",
   "iterations": [
     {
       "id": "iter-1",
@@ -22,6 +22,32 @@
         "oauth-ready-auth": 0
       },
       "summary": "The MVP shell, UI, and daemon stream exist. Next work should harden auth architecture and replace provider stubs with real integrations."
+    },
+    {
+      "id": "iter-2",
+      "label": "Resident Runtime Expansion",
+      "startedAt": "2026-05-05T12:42:04.335+09:00",
+      "completedAt": null,
+      "goal": "Expand the widget beyond one-off UI patches into a durable resident desktop Codex assistant with stable app-server protocol, interaction UI, persistent conversation state, provider contracts, and desktop operations hardening.",
+      "plannedSprints": [
+        "iter-2-sprint-01-runtime-protocol",
+        "iter-2-sprint-02-tool-provider-shell",
+        "iter-2-sprint-03-resident-desktop-ops"
+      ],
+      "completedSprints": [],
+      "carryover": "Iter-1 delivered the Tauri shell, Codex auth, streaming conversation UX, and app-server default runtime. Open carryover: app-server approvals/user input, real DOM/Vision/PTY providers, report/milestone files, and resident desktop ops.",
+      "openRisks": [
+        "Codex app-server protocol is experimental.",
+        "Approval and tool input semantics need UI-backed handling before file operations feel trustworthy.",
+        "Renderer-visible conversation state and Codex app-server thread state can diverge if reset/retry flows are not explicit."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.72,
+        "durable-codex-runtime": 0.55,
+        "real-tool-providers": 0.16,
+        "resident-desktop-readiness": 0.2
+      },
+      "summary": "Iteration 2 starts from the app-server checkpoint and prioritizes runtime protocol durability, provider surfaces, and resident desktop readiness."
     }
   ]
 }

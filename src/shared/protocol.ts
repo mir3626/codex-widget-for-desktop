@@ -46,6 +46,31 @@ export type AuthStatus = {
   reason?: string;
 };
 
+export type RuntimeInteractionKind = "approval" | "input";
+
+export type RuntimeInteraction = {
+  id: string;
+  requestId?: string;
+  kind: RuntimeInteractionKind;
+  title: string;
+  body: string;
+  action?: string;
+  fields?: Array<{
+    id: string;
+    label: string;
+    placeholder?: string;
+    multiline?: boolean;
+  }>;
+};
+
+export type ProviderStatus = {
+  mode: WidgetMode;
+  label: string;
+  state: "ready" | "stub" | "unavailable";
+  detail: string;
+  capabilities: string[];
+};
+
 export type ClientMessage =
   | {
       type: "ask";
@@ -58,6 +83,15 @@ export type ClientMessage =
   | {
       type: "cancel";
       id: string;
+    }
+  | {
+      type: "session.reset";
+    }
+  | {
+      type: "interaction.respond";
+      id: string;
+      decision: "approve" | "decline" | "submit";
+      answers?: Record<string, string>;
     }
   | {
       type: "ping";
@@ -130,6 +164,17 @@ export type ServerEvent =
       id: string;
       action: string;
       reason: string;
+    }
+  | {
+      type: "interaction.required";
+      interaction: RuntimeInteraction;
+    }
+  | {
+      type: "session.reset";
+    }
+  | {
+      type: "provider.status";
+      providers: ProviderStatus[];
     }
   | {
       type: "error";

@@ -8,7 +8,7 @@ import {
   type CodexExecutionContext,
   terminateProcessTree
 } from "./codexRuntime.js";
-import type { ToolEmitter } from "../shared/protocol.js";
+import type { RuntimeInteraction, ToolEmitter } from "../shared/protocol.js";
 
 type JsonRpcId = string;
 
@@ -39,6 +39,12 @@ type ActiveTurn = {
   cleanup: () => void;
 };
 
+type PendingInteraction = {
+  rpcId: string | number;
+  kind: RuntimeInteraction["kind"];
+  timer: NodeJS.Timeout;
+};
+
 type ThreadStartResponse = {
   thread?: {
     id?: string;
@@ -59,6 +65,7 @@ type AppServerNotification = {
 const APP_SERVER_START_TIMEOUT_MS = 15_000;
 const APP_SERVER_REQUEST_TIMEOUT_MS = 90_000;
 const APP_SERVER_TURN_TIMEOUT_MS = 15 * 60_000;
+const APP_SERVER_INTERACTION_TIMEOUT_MS = 10 * 60_000;
 
 export class CodexAppServerBridge {
   private child: ChildProcess | undefined;
@@ -67,6 +74,7 @@ export class CodexAppServerBridge {
   private threadId: string | undefined;
   private nextRequestId = 1;
   private pendingRequests = new Map<JsonRpcId, PendingRequest>();
+  private pendingInteractions = new Map<string, PendingInteraction>();
   private activeTurn: ActiveTurn | undefined;
   private closing = false;
 
@@ -76,6 +84,30 @@ export class CodexAppServerBridge {
 
   resetThread(): void {
     this.threadId = undefined;
+  }
+
+  respondToInteraction(input: {
+    id: string;
+    decision: "approve" | "decline" | "submit";
+    answers?: Record<string, string>;
+  }): boolean {
+    const pending = this.pendingInteractions.get(input.id);
+    if (!pending) {
+      return false;
+    }
+
+    clearTimeout(pending.timer);
+    this.pendingInteractions.delete(input.id);
+
+    if (pending.kind === "input") {
+      this.respond(pending.rpcId, { answers: input.answers ?? {} });
+      return true;
+    }
+
+    this.respond(pending.rpcId, {
+      decision: input.decision === "approve" ? "approve" : "decline"
+    });
+    return true;
   }
 
   async runTurn(input: {
@@ -101,7 +133,7 @@ export class CodexAppServerBridge {
         }
       ],
       cwd: input.context.workdir,
-      approvalPolicy: "never",
+      approvalPolicy: input.context.approvalPolicy,
       model: input.selection.model,
       effort: input.selection.reasoningEffort
     })) as TurnStartResponse;
@@ -268,7 +300,7 @@ export class CodexAppServerBridge {
     const response = (await this.request("thread/start", {
       model: selection.model,
       cwd: context.workdir,
-      approvalPolicy: "never",
+      approvalPolicy: context.approvalPolicy,
       sandbox: context.sandbox,
       config: {
         model_reasoning_effort: selection.reasoningEffort
@@ -383,26 +415,99 @@ export class CodexAppServerBridge {
       return;
     }
 
-    this.activeTurn?.emit({
-      type: "approval.required",
-      id: this.activeTurn.widgetRequestId,
-      action: message.method ?? "app-server request",
-      reason: "Codex app-server requested an interaction that the widget UI does not support yet."
-    });
-
     switch (message.method) {
       case "item/commandExecution/requestApproval":
-        this.respond(id, { decision: "decline" });
+        this.queueApprovalInteraction(id, message, "Command approval");
         return;
       case "item/fileChange/requestApproval":
-        this.respond(id, { decision: "decline" });
+        this.queueApprovalInteraction(id, message, "File change approval");
         return;
       case "item/tool/requestUserInput":
-        this.respond(id, { answers: {} });
+        this.queueUserInputInteraction(id, message);
         return;
       default:
         this.respondError(id, -32601, `Unsupported app-server request: ${message.method ?? "unknown"}`);
     }
+  }
+
+  private queueApprovalInteraction(id: string | number, message: JsonRpcMessage, fallbackTitle: string): void {
+    const active = this.activeTurn;
+    if (!active) {
+      this.respond(id, { decision: "decline" });
+      return;
+    }
+
+    const params = readRecord(message.params);
+    const item = readRecord(params?.item) ?? params;
+    const action = readInteractionAction(item, fallbackTitle);
+    const reason = readInteractionReason(item, params, "Codex needs permission before continuing.");
+    const interactionId = this.storePendingInteraction(id, "approval");
+
+    active.emit({
+      type: "approval.required",
+      id: active.widgetRequestId,
+      action,
+      reason
+    });
+    active.emit({
+      type: "interaction.required",
+      interaction: {
+        id: interactionId,
+        requestId: active.widgetRequestId,
+        kind: "approval",
+        title: action,
+        body: reason,
+        action
+      }
+    });
+  }
+
+  private queueUserInputInteraction(id: string | number, message: JsonRpcMessage): void {
+    const active = this.activeTurn;
+    if (!active) {
+      this.respond(id, { answers: {} });
+      return;
+    }
+
+    const params = readRecord(message.params);
+    const interactionId = this.storePendingInteraction(id, "input");
+    active.emit({
+      type: "interaction.required",
+      interaction: {
+        id: interactionId,
+        requestId: active.widgetRequestId,
+        kind: "input",
+        title: readInputTitle(params),
+        body: readInteractionReason(params, undefined, "Codex needs more information to continue."),
+        fields: readInputFields(params)
+      }
+    });
+  }
+
+  private storePendingInteraction(
+    rpcId: string | number,
+    kind: RuntimeInteraction["kind"]
+  ): string {
+    const interactionId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const timer = setTimeout(() => {
+      const pending = this.pendingInteractions.get(interactionId);
+      if (!pending) {
+        return;
+      }
+      this.pendingInteractions.delete(interactionId);
+      if (pending.kind === "input") {
+        this.respond(pending.rpcId, { answers: {} });
+        return;
+      }
+      this.respond(pending.rpcId, { decision: "decline" });
+    }, APP_SERVER_INTERACTION_TIMEOUT_MS);
+
+    this.pendingInteractions.set(interactionId, {
+      rpcId,
+      kind,
+      timer
+    });
+    return interactionId;
   }
 
   private handleNotification(message: AppServerNotification): void {
@@ -529,6 +634,16 @@ export class CodexAppServerBridge {
   }
 
   private rejectAll(error: Error): void {
+    for (const [id, pending] of this.pendingInteractions.entries()) {
+      clearTimeout(pending.timer);
+      if (pending.kind === "input") {
+        this.respond(pending.rpcId, { answers: {} });
+      } else {
+        this.respond(pending.rpcId, { decision: "decline" });
+      }
+      this.pendingInteractions.delete(id);
+    }
+
     for (const [id, pending] of this.pendingRequests.entries()) {
       clearTimeout(pending.timer);
       pending.reject(error);
@@ -545,6 +660,91 @@ export class CodexAppServerBridge {
 
 function readRecord(value: unknown): Record<string, unknown> | undefined {
   return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : undefined;
+}
+
+function readInteractionAction(item: Record<string, unknown> | undefined, fallback: string): string {
+  if (!item) {
+    return fallback;
+  }
+
+  for (const key of ["command", "path", "file", "title", "name", "tool"]) {
+    const value = item[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return fallback;
+}
+
+function readInteractionReason(
+  primary: Record<string, unknown> | undefined,
+  secondary: Record<string, unknown> | undefined,
+  fallback: string
+): string {
+  for (const record of [primary, secondary]) {
+    if (!record) {
+      continue;
+    }
+
+    for (const key of ["reason", "message", "description", "prompt", "summary"]) {
+      const value = record[key];
+      if (typeof value === "string" && value.trim()) {
+        return value.trim();
+      }
+    }
+  }
+
+  return fallback;
+}
+
+function readInputTitle(params: Record<string, unknown> | undefined): string {
+  const title = params?.title;
+  return typeof title === "string" && title.trim() ? title.trim() : "Input required";
+}
+
+function readInputFields(params: Record<string, unknown> | undefined): RuntimeInteraction["fields"] {
+  const rawFields = params?.fields;
+  if (Array.isArray(rawFields)) {
+    const fields = rawFields.flatMap((field, index) => {
+      const record = readRecord(field);
+      if (!record) {
+        return [];
+      }
+
+      const id = typeof record.id === "string" && record.id.trim() ? record.id.trim() : `answer_${index + 1}`;
+      const label =
+        typeof record.label === "string" && record.label.trim()
+          ? record.label.trim()
+          : typeof record.name === "string" && record.name.trim()
+            ? record.name.trim()
+            : `Answer ${index + 1}`;
+      const placeholder =
+        typeof record.placeholder === "string" && record.placeholder.trim() ? record.placeholder.trim() : undefined;
+
+      return [
+        {
+          id,
+          label,
+          placeholder,
+          multiline: record.multiline === true
+        }
+      ];
+    });
+
+    if (fields.length > 0) {
+      return fields;
+    }
+  }
+
+  return [
+    {
+      id: "answer",
+      label: "Response",
+      placeholder: "Type a response for Codex",
+      multiline: true
+    }
+  ];
 }
 
 function describeToolItem(item: Record<string, unknown> | undefined): { name: string; label: string } | undefined {

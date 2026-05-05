@@ -761,6 +761,26 @@ body.is-resizing-prompt * {
   background: var(--accent-soft);
 }
 
+.mode-status-dot {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #8b95a1;
+}
+
+.mode-status-dot.ready {
+  background: var(--accent);
+}
+
+.mode-status-dot.stub {
+  background: var(--warning);
+}
+
+.mode-status-dot.unavailable {
+  background: var(--danger);
+}
+
 .conversation {
   position: relative;
   min-height: 0;
@@ -1273,6 +1293,121 @@ body.is-resizing-prompt * {
 
 .message-action-menu button.is-stop:hover {
   background: rgba(229, 235, 237, 0.92);
+}
+
+.interaction-card {
+  width: 100%;
+  max-width: 100%;
+  display: grid;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid rgba(39, 119, 101, 0.18);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(241, 247, 246, 0.92)),
+    var(--panel-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.interaction-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.interaction-copy strong {
+  color: #1f433c;
+  font-size: 12.5px;
+  line-height: 1.2;
+}
+
+.interaction-copy p {
+  color: #52606d;
+  font-size: 11.5px;
+  line-height: 1.42;
+}
+
+.interaction-fields {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.interaction-fields label {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.interaction-fields label span {
+  color: #687381;
+  font-size: 10.5px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.interaction-fields input,
+.interaction-fields textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(36, 42, 50, 0.12);
+  border-radius: 8px;
+  outline: 0;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.95);
+  font-size: 12px;
+}
+
+.interaction-fields input {
+  height: 30px;
+  padding: 0 9px;
+}
+
+.interaction-fields textarea {
+  min-height: 62px;
+  max-height: 116px;
+  padding: 8px 9px;
+  resize: vertical;
+  line-height: 1.38;
+}
+
+.interaction-fields input:focus,
+.interaction-fields textarea:focus {
+  border-color: rgba(39, 119, 101, 0.45);
+  box-shadow: 0 0 0 3px rgba(39, 119, 101, 0.1);
+}
+
+.interaction-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.interaction-actions button {
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 9px;
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 750;
+}
+
+.interaction-actions button.ghost {
+  color: #5d6875;
+  background: rgba(232, 237, 239, 0.9);
+}
+
+.interaction-actions button.primary {
+  color: #ffffff;
+  background: var(--accent);
+}
+
+.interaction-actions button:hover {
+  filter: brightness(0.98);
 }
 
 .empty-state {

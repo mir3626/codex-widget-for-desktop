@@ -4,6 +4,7 @@ import { daemonInfo, runAgentStream, type AgentSessionState } from "./agent.js";
 import { CodexAppServerBridge } from "./codexAppServer.js";
 import { resolveCodexExecutionContext } from "./codexRuntime.js";
 import { OAuthSession } from "./oauth.js";
+import { getProviderStatuses } from "./tools.js";
 import type { ClientMessage, ServerEvent } from "../shared/protocol.js";
 
 export type DaemonHandle = {
@@ -37,6 +38,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     clients.add(socket);
     send(socket, { type: "connected", daemon: daemonInfo(getServerPort(server), auth.getStatus()) });
     send(socket, { type: "auth.status", auth: auth.getStatus() });
+    send(socket, { type: "provider.status", providers: getProviderStatuses() });
     send(socket, { type: "session.state", state: "idle" });
 
     socket.on("message", (raw) => {
@@ -163,6 +165,29 @@ async function handleMessage(
     controllers.get(message.id)?.abort();
     controllers.delete(message.id);
     send(socket, { type: "session.state", state: "cancelled", id: message.id });
+    return;
+  }
+
+  if (message.type === "session.reset") {
+    for (const controller of controllers.values()) {
+      controller.abort();
+    }
+    controllers.clear();
+    resetAgentSession(agentSession);
+    codexAppServer.resetThread();
+    broadcast(clients, { type: "session.reset" });
+    broadcast(clients, { type: "session.state", state: "idle" });
+    return;
+  }
+
+  if (message.type === "interaction.respond") {
+    const handled = codexAppServer.respondToInteraction(message);
+    if (!handled) {
+      send(socket, {
+        type: "error",
+        message: "That Codex interaction is no longer active."
+      });
+    }
     return;
   }
 

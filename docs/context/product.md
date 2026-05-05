@@ -14,6 +14,9 @@ The primary user is a developer who wants a persistent desktop companion similar
 - React/Vite renderer displays the generated mascot, speech bubble, mode controls, status, and prompt input.
 - Local Node daemon exposes a WebSocket stream on `127.0.0.1:4128`.
 - The daemon owns a background Codex `app-server` process when Codex auth is active, streams JSON-RPC deltas into the widget, and keeps one resident thread alive across prompts.
+- App-server approval and user-input requests now surface as widget interaction cards, so the UI can participate in local file/tool flows instead of dropping those requests.
+- Visible chat history is persisted locally across renderer reloads and can be cleared with an explicit New chat reset that also resets daemon session state.
+- Mode tabs receive daemon-owned provider status, giving Agent, DOM, Vision, and PTY a stable contract before each provider becomes fully real.
 - The daemon keeps `codex exec resume` as a fallback runtime and supports mock/OAuth proxy streaming for non-Codex auth modes.
 - Browser DOM, screen vision, and terminal PTY modes currently have provider stubs rather than real integrations.
 - Windows Tauri prerequisites are documented and verified on the local machine.
@@ -23,6 +26,7 @@ The primary user is a developer who wants a persistent desktop companion similar
 - Keep the assistant resident on the desktop with tray control and no taskbar clutter.
 - Stream partial answers, tool state, approvals, and local provider output into the widget.
 - Avoid prompt-injecting one-shot CLI calls as the core architecture. The local daemon owns session state and talks to a background Codex runtime over a structured protocol.
+- Keep the renderer-daemon protocol explicit enough that future DOM, screen, terminal, approval, and provider features can be added without patching ad hoc UI state.
 - Keep end-user auth in OAuth and keep OpenAI/API credentials behind a backend proxy.
 - Add real providers incrementally: browser DOM bridge, controlled browser automation, screen capture/vision, and terminal PTY.
 

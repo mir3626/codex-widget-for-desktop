@@ -40,6 +40,12 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Fixed the renderer/Tauri UI mismatch after native testing: window size is now widget-scale (`360x480` config, observed about `374x488` including shadow), taskbar/shadow are enabled, titlebar has Pin/Minimize/Maximize/Close controls, and drag regions are restricted to the titlebar grip/identity so Sign in and the prompt input receive clicks.
 - Removed local response evaluation/feedback controls from assistant messages. Response actions now expose copy, regenerate, and a top-right More menu with local branch and browser speech read-aloud actions; streaming markdown links and raw URLs are revealed as whole tokens to avoid visible markdown reflow.
 - Switched the default Codex-mode runtime from per-request `codex exec` to a daemon-supervised background `codex app-server` JSON-RPC bridge. The daemon now starts the app-server child process, keeps one `threadId` alive, sends prompts as `turn/start`, maps `item/agentMessage/delta` to widget stream events, interrupts turns on cancel, and terminates the child process on shutdown/sign-out. `CODEX_WIDGET_CODEX_RUNTIME=exec` remains the explicit fallback.
+- Pushed checkpoint commit `d066dd5` to `origin/main` with message `CHECKPOINT BEFORE BIG PATCH`.
+- Started `/vibe-iterate` Iteration `iter-2` (`Resident Runtime Expansion`) and added milestone/report state for runtime protocol, provider shell, and resident desktop ops.
+- Added first-class renderer-daemon runtime interactions: app-server approval/user-input server requests now emit `interaction.required`, render compact approval/input cards in the widget, and return `interaction.respond` to the daemon instead of being silently declined.
+- Added `CODEX_WIDGET_CODEX_APPROVAL_POLICY=on-request` as the default app-server approval policy, with `never` still available for trusted automation experiments.
+- Added visible chat timeline persistence across renderer reloads plus a titlebar New chat control that clears local chat state and resets daemon proxy/app-server session state.
+- Added daemon-owned provider status events for Agent, DOM, Vision, and PTY modes so the mode tabs now have a reusable capability/status contract before real providers are implemented.
 
 ## Next Recommended Sprint
 
@@ -48,12 +54,13 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 ## Open Issues
 
 - Codex app-server is still marked experimental by the Codex CLI, so the bridge should preserve the `codex exec resume` fallback until the protocol is stable enough for production packaging.
-- App-server approval and tool-user-input requests currently receive conservative decline/empty responses; a future sprint should add native widget UI for approval, elicitation, and permission prompts.
+- App-server approval and tool-user-input requests now have renderer UI, but the exact Codex app-server protocol is still experimental and may require adapter changes as CLI releases evolve.
 - External OAuth provider/backend agent proxy support remains optional for non-Codex auth modes; this repo primarily implements the desktop widget/daemon client boundary.
 - OAuth refresh tokens are not persisted; users may need to sign in again when an access token expires.
 - Browser DOM provider is a stub.
 - Screen capture/vision provider is a stub.
 - Terminal PTY provider is a stub.
+- Tray/autostart, crash recovery, and long-run resource budget gates remain open for resident desktop readiness.
 
 ## Verification
 
@@ -394,12 +401,22 @@ Completed after Codex app-server runtime transition:
 - Updated `docs/context/product.md`, `docs/context/architecture.md`, and `.env.example` with `CODEX_WIDGET_CODEX_RUNTIME=app-server` default and `exec` fallback.
 - UTF-8/mojibake checks over touched daemon/context files
 
+Completed after `/vibe-iterate` iter-2 runtime protocol pass:
+
+- `npm run lint`
+- `npm run smoke`
+- Daemon provider/reset protocol smoke confirmed `provider.status` and `session.reset` events.
+- Renderer Playwright smoke confirmed localStorage chat restore, provider status dots, and New chat reset cleanup.
+- Renderer Playwright fake-WebSocket smoke confirmed approval and user-input interaction cards return `interaction.respond` payloads.
+- Live daemon app-server smoke confirmed two-turn context preservation still works with `CODEX_WIDGET_CODEX_APPROVAL_POLICY=on-request`.
+- Regenerated `docs/reports/project-report.html`.
+
 ## Restart Steps
 
 1. Run `git status --short --untracked-files=all` and inspect the sync diff.
 2. Default local live auth is Codex CLI auth. Use `CODEX_WIDGET_AUTH_MODE=codex`; Sign in should invoke `codex login` if the user is not already logged into Codex/ChatGPT.
 3. Default Codex runtime is `CODEX_WIDGET_CODEX_RUNTIME=app-server`, which starts a daemon-owned background `codex app-server`. Set `CODEX_WIDGET_CODEX_RUNTIME=exec` only to force the older `codex exec resume` fallback.
-4. Widget-launched Codex sessions default to `CODEX_WIDGET_CODEX_WORKDIR=<user-home>` and `CODEX_WIDGET_CODEX_SANDBOX=danger-full-access`; override only when testing a different desktop file boundary.
+4. Widget-launched Codex sessions default to `CODEX_WIDGET_CODEX_WORKDIR=<user-home>`, `CODEX_WIDGET_CODEX_SANDBOX=danger-full-access`, and `CODEX_WIDGET_CODEX_APPROVAL_POLICY=on-request`; override only when testing a different desktop file boundary or trusted no-approval automation path.
 5. Use the dev auth proxy only for mock backend OAuth experiments: run `npm run dev:auth-proxy` or set `CODEX_WIDGET_DEV_AUTH_PROXY=1` before `npm run dev`.
 6. For production-style backend OAuth proxy live responses, set `CODEX_WIDGET_AUTH_MODE=pkce` and replace `CODEX_WIDGET_AUTH_BASE_URL`/`CODEX_WIDGET_AGENT_PROXY_URL` with a real backend that implements `/oauth/authorize`, `/oauth/token`, redirects to `http://127.0.0.1:4128/oauth/callback`, and serves streaming model responses.
 7. For token-mode fallback responses, set `CODEX_WIDGET_AUTH_MODE=token`, press Sign in in the widget, and use the inline token form to save the OAuth access token and backend proxy URL into gitignored `.env`.
@@ -407,6 +424,7 @@ Completed after Codex app-server runtime transition:
 9. Use `npm run dev` for renderer HMR plus daemon restart-on-change; use `npm run dev:services` only when testing the service loop without launching Tauri.
 10. Run `npm run lint && npm run smoke` after follow-up TypeScript/widget changes.
 11. For renderer UI work, capture a `360x480` Playwright smoke against `http://127.0.0.1:5173/?daemonPort=4128` to check overlap in the fixed Tauri viewport. Model/reasoning selectors live between the status strip and mode tabs and persist to localStorage keys `codex-widget-model` and `codex-widget-reasoning-effort`.
-12. Run `npm run vibe:checkpoint` before ending any follow-up maintenance session.
+12. Renderer visible chat persists under `codex-widget-chat-messages:v1`; use the titlebar New chat control or `session.reset` protocol event to clear both UI and daemon session state.
+13. Run `npm run vibe:checkpoint` before ending any follow-up maintenance session.
 
 Use `docs/context/qa.md` for routine follow-up commands.

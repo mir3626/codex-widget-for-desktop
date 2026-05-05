@@ -1,0 +1,25 @@
+{
+  "id": "iter-2",
+  "mode": "iterate",
+  "carryover": "iter-1",
+  "createdAt": "2026-05-05T12:42:04.335+09:00",
+  "goal": "Build Codex Widget as a resident desktop assistant, not a turn-scoped demo panel.",
+  "newUserRequests": [
+    "Commit and push the current checkpoint before a large patch.",
+    "Use vibe-iterate and continue implementing as many complete widget features as practical.",
+    "Treat app-server as the default long-lived Codex runtime.",
+    "Consider architecture, project structure, reusability, and extensibility whenever adding features."
+  ],
+  "carryoverSummary": [
+    "Tauri shell, daemon WebSocket, Codex CLI auth, streaming renderer, and app-server default runtime exist.",
+    "Renderer-daemon protocol needs durable interaction events.",
+    "App-server approval and user-input requests should no longer be silently declined.",
+    "Visible chat state should survive renderer reloads and expose an explicit new-chat reset."
+  ],
+  "plannedSprints": [
+    "iter-2-sprint-01-runtime-protocol",
+    "iter-2-sprint-02-tool-provider-shell",
+    "iter-2-sprint-03-resident-desktop-ops"
+  ],
+  "status": "in-progress"
+}

@@ -13,6 +13,7 @@ React renderer
   - src/renderer/
   - mascot, speech bubble, controls, mode selector
   - connects to ws://127.0.0.1:4128
+  - persists visible chat timeline in localStorage and exposes explicit New chat reset
 
 Local daemon
   - src/daemon/
@@ -21,11 +22,11 @@ Local daemon
   - Codex app-server bridge for resident Codex sessions
   - codex exec resume fallback for app-server startup failures or explicit exec mode
   - OAuth proxy streaming or mock streaming fallback for non-Codex auth modes
-  - provider stubs for browser, screen, and terminal
+  - provider status registry for agent, browser, screen, and terminal modes
 
 Shared protocol
   - src/shared/protocol.ts
-  - ClientMessage and ServerEvent contracts
+  - ClientMessage and ServerEvent contracts, including session reset and runtime interaction requests
 ```
 
 ## Ownership Boundaries
@@ -71,6 +72,10 @@ Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only sta
 - Session model: one widget daemon keeps one Codex `threadId` alive and sends each prompt as a new `turn/start`.
 - Fallback: set `CODEX_WIDGET_CODEX_RUNTIME=exec` to force the older `codex exec` / `codex exec resume` runtime.
 - Policy injection: widget-specific file-operation and protected-source-root rules are sent once as app-server thread developer instructions instead of being appended as conversation history.
+- Approval policy: `CODEX_WIDGET_CODEX_APPROVAL_POLICY=on-request` is the default so app-server command/file/user-input requests can surface in the widget instead of being silently declined. Set it to `never` only for trusted automation experiments.
+- Interaction model: app-server server requests become `interaction.required` events. The renderer shows compact approval/input cards and returns `interaction.respond` messages to the daemon.
+- Reset model: `session.reset` clears the renderer-visible chat, local persistence, proxy session id, and app-server thread id. The next prompt starts a fresh Codex thread.
+- Provider status model: daemon emits `provider.status` after connection so each mode tab has a stable capability/status surface before the real DOM, Vision, and PTY providers are implemented.
 
 ## Provider Roadmap
 

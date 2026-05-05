@@ -8,7 +8,7 @@ A floating Tauri desktop agent widget inspired by old resident office assistants
 - React + Vite for the widget UI
 - Node/TypeScript daemon with WebSocket event streaming
 - OpenAI/ChatGPT account sign-in through the local Codex CLI
-- Codex CLI-backed live responses after sign-in
+- Codex CLI-backed live responses after sign-in, using a daemon-owned `codex app-server` by default
 - Optional OAuth Bearer-token proxy streaming for backend experiments
 - Mock streaming fallback when no live auth path is available
 
@@ -46,7 +46,11 @@ In development, `npm run dev` also starts `scripts/dev-hot.mjs`. Renderer change
 
 By default, Sign in delegates to the local Codex CLI. That gives the widget the same workflow as Codex itself: click Sign in, complete OpenAI/ChatGPT browser authentication if needed, then return to the widget. No OpenAI token is typed into the widget.
 
-Widget prompts are intentionally not executed from this repository. The daemon starts `codex exec` from the user home directory with `danger-full-access`, so ordinary desktop file tasks can still search, create, edit, move, or delete requested user files without treating the widget source tree as the active project or paying the Windows home-directory sandbox setup cost. Override the root with `CODEX_WIDGET_CODEX_WORKDIR`, add extra writable roots with `CODEX_WIDGET_CODEX_ADD_DIRS`, or set `CODEX_WIDGET_CODEX_SANDBOX=workspace-write|danger-full-access` before launch when a different local-file boundary is needed.
+Widget prompts are intentionally not executed from this repository. The daemon starts a background `codex app-server` from the user home directory with `danger-full-access`, so ordinary desktop file tasks can still search, create, edit, move, or delete requested user files without treating the widget source tree as the active project or paying the Windows home-directory sandbox setup cost. Override the root with `CODEX_WIDGET_CODEX_WORKDIR`, add extra writable roots with `CODEX_WIDGET_CODEX_ADD_DIRS`, set `CODEX_WIDGET_CODEX_SANDBOX=workspace-write|danger-full-access`, or force the old `codex exec` fallback with `CODEX_WIDGET_CODEX_RUNTIME=exec` before launch.
+
+The default Codex approval policy is `CODEX_WIDGET_CODEX_APPROVAL_POLICY=on-request`. When app-server asks for permission or more input, the widget shows a compact interaction card and sends the response back through the daemon.
+
+The renderer keeps the visible chat timeline in localStorage, and the titlebar New chat button clears both the visible conversation and the daemon-side session/thread state. Mode tabs are backed by daemon-provided provider status so future DOM, Vision, and PTY providers can attach without changing the basic UI contract.
 
 For backend OAuth proxy experiments, point the daemon at an OAuth provider and agent proxy before launch:
 

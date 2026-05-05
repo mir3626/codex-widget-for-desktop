@@ -41,3 +41,31 @@ Goal: make the widget practical to install and run as a resident desktop utility
 Dependencies: stable shell and daemon startup.
 
 Expected scope: Tauri bundle settings, autostart/tray behavior, release smoke checklist.
+
+## Iteration iter-2: Resident Runtime Expansion
+
+Carryover: Iteration 1 produced the resident Tauri shell, OAuth/Codex auth boundary, streaming chat UX, and default `codex app-server` runtime. The next iteration focuses on turning that foundation into a durable desktop assistant instead of a prototype conversation panel.
+
+### iter-2-sprint-01-runtime-protocol
+
+Goal: stabilize the renderer-daemon protocol for long-lived Codex sessions, including session reset, app-server interactions, and persistent visible conversation state.
+
+Dependencies: `CodexAppServerBridge`, shared `ServerEvent`/`ClientMessage`, renderer chat timeline.
+
+Expected scope: shared protocol types, app-server approval/user-input bridge, renderer interaction cards, local chat persistence, `CODEX_WIDGET_CODEX_APPROVAL_POLICY` config.
+
+### iter-2-sprint-02-tool-provider-shell
+
+Goal: promote DOM, Vision, and PTY modes from passive stubs to provider contracts with clear status, permission, and event surfaces.
+
+Dependencies: runtime protocol from sprint 01.
+
+Expected scope: provider interfaces, mode-specific state cards, PTY command lifecycle spike, browser/screen permission placeholders with testable events.
+
+### iter-2-sprint-03-resident-desktop-ops
+
+Goal: harden resident desktop behavior for daily use.
+
+Dependencies: stable runtime lifecycle.
+
+Expected scope: tray/autostart settings, resource budget checks, crash/reconnect recovery, process cleanup verification, report/checkpoint refresh.

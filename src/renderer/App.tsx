@@ -1,6 +1,8 @@
 import {
   Activity,
+  Ban,
   Bot,
+  Check,
   CircleDot,
   CircleStop,
   Copy,
@@ -8,6 +10,7 @@ import {
   Globe2,
   LogIn,
   LogOut,
+  MessageSquarePlus,
   MoreHorizontal,
   Minus,
   Pin,
@@ -45,7 +48,9 @@ import {
   type AuthStatus,
   type ClientMessage,
   type ModelId,
+  type ProviderStatus,
   type ReasoningEffort,
+  type RuntimeInteraction,
   type ServerEvent,
   type WidgetMode
 } from "../shared/protocol.js";
@@ -83,6 +88,8 @@ type ChatMessage =
       status: AssistantMessageStatus;
     };
 
+type InteractionDrafts = Record<string, Record<string, string>>;
+
 const MODES: Array<{ mode: WidgetMode; label: string; icon: typeof Bot }> = [
   { mode: "agent", label: "Agent", icon: Bot },
   { mode: "browser", label: "DOM", icon: Globe2 },
@@ -92,6 +99,7 @@ const MODES: Array<{ mode: WidgetMode; label: string; icon: typeof Bot }> = [
 
 const MODEL_STORAGE_KEY = "codex-widget-model";
 const REASONING_STORAGE_KEY = "codex-widget-reasoning-effort";
+const CHAT_STORAGE_KEY = "codex-widget-chat-messages:v1";
 const MIN_WINDOW_WIDTH = 320;
 const MIN_WINDOW_HEIGHT = 480;
 const PROMPT_COMPOSER_MIN_HEIGHT = 46;
@@ -143,6 +151,7 @@ export function App() {
   const [mode, setMode] = useState<WidgetMode>("agent");
   const [selectedModel, setSelectedModel] = useState<ModelId>(() => readStoredModel());
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>(() => readStoredReasoningEffort());
+  const [providerStatuses, setProviderStatuses] = useState<ProviderStatus[]>([]);
   const [status, setStatus] = useState("connecting");
   const [auth, setAuth] = useState<AuthStatus>({
     mode: "mock",
@@ -153,7 +162,9 @@ export function App() {
   });
   const [connected, setConnected] = useState(false);
   const [input, setInput] = useState("");
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => readStoredChatMessages());
+  const [interactions, setInteractions] = useState<RuntimeInteraction[]>([]);
+  const [interactionDrafts, setInteractionDrafts] = useState<InteractionDrafts>({});
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [logLines, setLogLines] = useState<LogLine[]>([]);
@@ -274,7 +285,12 @@ export function App() {
 
   useEffect(() => {
     chatMessagesRef.current = chatMessages;
+    persistChatMessages(chatMessages);
   }, [chatMessages]);
+
+  useEffect(() => {
+    restoreMessageBuffers(chatMessagesRef.current);
+  }, []);
 
   useEffect(() => {
     function clampPromptForViewport() {
@@ -383,6 +399,32 @@ export function App() {
     if (event.type === "tool.completed") {
       markAssistantMessage(event.id, "streaming");
       appendLog(`${event.tool} done`, "tool");
+      return;
+    }
+
+    if (event.type === "interaction.required") {
+      setInteractions((current) => [event.interaction, ...current.filter((item) => item.id !== event.interaction.id)].slice(0, 3));
+      setInteractionDrafts((current) => ({
+        ...current,
+        [event.interaction.id]: createInteractionDraft(event.interaction)
+      }));
+      appendLog(event.interaction.title, "tool");
+      return;
+    }
+
+    if (event.type === "approval.required") {
+      appendLog(event.action, "tool");
+      return;
+    }
+
+    if (event.type === "session.reset") {
+      resetVisibleSession(false);
+      appendLog("new chat", "tool");
+      return;
+    }
+
+    if (event.type === "provider.status") {
+      setProviderStatuses(event.providers);
       return;
     }
 
@@ -495,6 +537,19 @@ export function App() {
     ]);
   }
 
+  function restoreMessageBuffers(messages: ChatMessage[]) {
+    for (const message of messages) {
+      if (message.role !== "assistant") {
+        continue;
+      }
+
+      streamBuffersRef.current.set(message.id, message.text);
+      if (message.status === "done") {
+        completedResponseIdsRef.current.add(message.id);
+      }
+    }
+  }
+
   function send(message: ClientMessage) {
     const socket = socketRef.current;
     if (!socket || socket.readyState !== WebSocket.OPEN) {
@@ -502,6 +557,57 @@ export function App() {
       return;
     }
     socket.send(JSON.stringify(message));
+  }
+
+  function resetVisibleSession(sendToDaemon = true) {
+    if (activeId && sendToDaemon) {
+      send({ type: "cancel", id: activeId });
+    }
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    streamBuffersRef.current.clear();
+    completedResponseIdsRef.current.clear();
+    setActiveId(null);
+    setSpeakingMessageId(null);
+    setOpenActionMenuId(null);
+    setInteractions([]);
+    setInteractionDrafts({});
+    setChatMessages([]);
+    localStorage.removeItem(CHAT_STORAGE_KEY);
+    if (sendToDaemon) {
+      send({ type: "session.reset" });
+    }
+  }
+
+  function respondToInteraction(
+    interaction: RuntimeInteraction,
+    decision: "approve" | "decline" | "submit"
+  ) {
+    const answers = interactionDrafts[interaction.id] ?? {};
+    send({
+      type: "interaction.respond",
+      id: interaction.id,
+      decision,
+      answers
+    });
+    setInteractions((current) => current.filter((item) => item.id !== interaction.id));
+    setInteractionDrafts((current) => {
+      const next = { ...current };
+      delete next[interaction.id];
+      return next;
+    });
+    appendLog(decision === "approve" ? "approved" : decision === "decline" ? "declined" : "submitted", "tool");
+  }
+
+  function updateInteractionDraft(interactionId: string, fieldId: string, value: string) {
+    setInteractionDrafts((current) => ({
+      ...current,
+      [interactionId]: {
+        ...(current[interactionId] ?? {}),
+        [fieldId]: value
+      }
+    }));
   }
 
   function submit(event: FormEvent) {
@@ -1012,6 +1118,11 @@ export function App() {
   const busy = Boolean(activeId);
   const activeMode = MODES.find((item) => item.mode === mode) ?? MODES[0];
   const ActiveModeIcon = activeMode.icon;
+  const providerStatusByMode = useMemo(
+    () => new Map(providerStatuses.map((provider) => [provider.mode, provider])),
+    [providerStatuses]
+  );
+  const activeProviderStatus = providerStatusByMode.get(mode);
   const statusTone = connected ? (auth.authenticated ? "online" : "warning") : "offline";
   const authLabel = auth.authenticated ? "Sign out" : "Sign in";
   const liveLabel = auth.authenticated
@@ -1076,6 +1187,14 @@ export function App() {
 
           <div className="window-controls">
             <button
+              className="titlebar-button"
+              title="New chat"
+              aria-label="New chat"
+              onClick={() => resetVisibleSession(true)}
+            >
+              <MessageSquarePlus size={14} />
+            </button>
+            <button
               className={pinned ? "pin-button active" : "pin-button"}
               title={pinned ? "Pinned" : "Unpinned"}
               aria-label={pinned ? "Pinned" : "Unpinned"}
@@ -1129,16 +1248,18 @@ export function App() {
         <div className="mode-row" role="tablist" aria-label="Mode">
           {MODES.map((item) => {
             const Icon = item.icon;
+            const providerStatus = providerStatusByMode.get(item.mode);
             return (
               <button
                 key={item.mode}
                 className={mode === item.mode ? "mode active" : "mode"}
-                title={item.label}
+                title={providerStatus ? `${item.label}: ${providerStatus.detail}` : item.label}
                 aria-pressed={mode === item.mode}
                 onClick={() => setMode(item.mode)}
               >
                 <Icon size={15} />
                 <span>{item.label}</span>
+                {providerStatus ? <span className={`mode-status-dot ${providerStatus.state}`} aria-hidden="true" /> : null}
               </button>
             );
           })}
@@ -1182,16 +1303,17 @@ export function App() {
           </form>
         ) : (
           <section ref={conversationRef} className="conversation" aria-label="Conversation">
-            {chatMessages.length === 0 ? (
+            {chatMessages.length === 0 && interactions.length === 0 ? (
               <div className="empty-state">
                 <span className="empty-icon">
                   <ActiveModeIcon size={20} />
                 </span>
                 <strong>{auth.authenticated ? "Ready" : "Sign in required"}</strong>
-                <span>{activeMode.label}</span>
+                <span>{activeProviderStatus?.state === "stub" ? "Provider pending" : activeMode.label}</span>
               </div>
             ) : (
-              chatMessages.map((message) =>
+              <>
+              {chatMessages.map((message) =>
                 message.role === "user" ? (
                   <article key={message.id} className="message user-message">
                     <p>{message.text}</p>
@@ -1295,7 +1417,17 @@ export function App() {
                     )}
                   </article>
                 )
-              )
+              )}
+              {interactions.map((interaction) => (
+                <InteractionCard
+                  key={interaction.id}
+                  interaction={interaction}
+                  values={interactionDrafts[interaction.id] ?? {}}
+                  onChange={updateInteractionDraft}
+                  onRespond={respondToInteraction}
+                />
+              ))}
+              </>
             )}
           </section>
         )}
@@ -1403,6 +1535,62 @@ export function App() {
 type MarkdownPreProps = ComponentPropsWithoutRef<"pre"> & {
   onCopyCode: (text: string) => void;
 };
+
+type InteractionCardProps = {
+  interaction: RuntimeInteraction;
+  values: Record<string, string>;
+  onChange: (interactionId: string, fieldId: string, value: string) => void;
+  onRespond: (interaction: RuntimeInteraction, decision: "approve" | "decline" | "submit") => void;
+};
+
+function InteractionCard({ interaction, values, onChange, onRespond }: InteractionCardProps) {
+  const fields = interaction.fields ?? [];
+
+  return (
+    <article className="interaction-card">
+      <div className="interaction-copy">
+        <strong>{interaction.title}</strong>
+        <p>{interaction.body}</p>
+      </div>
+      {interaction.kind === "input" ? (
+        <div className="interaction-fields">
+          {fields.map((field) => (
+            <label key={field.id}>
+              <span>{field.label}</span>
+              {field.multiline ? (
+                <textarea
+                  value={values[field.id] ?? ""}
+                  placeholder={field.placeholder}
+                  onChange={(event) => onChange(interaction.id, field.id, event.target.value)}
+                />
+              ) : (
+                <input
+                  value={values[field.id] ?? ""}
+                  placeholder={field.placeholder}
+                  onChange={(event) => onChange(interaction.id, field.id, event.target.value)}
+                />
+              )}
+            </label>
+          ))}
+        </div>
+      ) : null}
+      <div className="interaction-actions">
+        <button type="button" className="ghost" onClick={() => onRespond(interaction, "decline")}>
+          <Ban size={13} />
+          <span>Deny</span>
+        </button>
+        <button
+          type="button"
+          className="primary"
+          onClick={() => onRespond(interaction, interaction.kind === "input" ? "submit" : "approve")}
+        >
+          <Check size={13} />
+          <span>{interaction.kind === "input" ? "Send" : "Allow"}</span>
+        </button>
+      </div>
+    </article>
+  );
+}
 
 function MarkdownTable({ children, ...props }: ComponentPropsWithoutRef<"table">) {
   return (
@@ -1741,6 +1929,71 @@ function readStoredModel(): ModelId {
 
 function readStoredReasoningEffort(): ReasoningEffort {
   return normalizeReasoningEffort(localStorage.getItem(REASONING_STORAGE_KEY));
+}
+
+function createInteractionDraft(interaction: RuntimeInteraction): Record<string, string> {
+  const fields = interaction.fields ?? [];
+  if (fields.length === 0) {
+    return {};
+  }
+
+  return Object.fromEntries(fields.map((field) => [field.id, ""]));
+}
+
+function readStoredChatMessages(): ChatMessage[] {
+  const stored = localStorage.getItem(CHAT_STORAGE_KEY);
+  if (!stored) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(stored) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed.flatMap(readStoredChatMessage).slice(-80);
+  } catch {
+    return [];
+  }
+}
+
+function readStoredChatMessage(value: unknown): ChatMessage[] {
+  if (typeof value !== "object" || value === null) {
+    return [];
+  }
+
+  const record = value as Record<string, unknown>;
+  if (typeof record.id !== "string" || typeof record.text !== "string") {
+    return [];
+  }
+
+  if (record.role === "user") {
+    return [{ id: record.id, role: "user", text: record.text }];
+  }
+
+  if (record.role === "assistant") {
+    const status = record.status === "error" || record.status === "cancelled" ? record.status : "done";
+    return [{ id: record.id, role: "assistant", text: record.text, status }];
+  }
+
+  return [];
+}
+
+function persistChatMessages(messages: ChatMessage[]): void {
+  const persisted = messages
+    .slice(-80)
+    .map((message): ChatMessage =>
+      message.role === "assistant" && isAssistantWorking(message.status)
+        ? { ...message, status: "cancelled" }
+        : message
+    );
+
+  if (persisted.length === 0) {
+    localStorage.removeItem(CHAT_STORAGE_KEY);
+    return;
+  }
+
+  localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(persisted));
 }
 
 function calculateResizeFrame(state: ResizeDragState) {

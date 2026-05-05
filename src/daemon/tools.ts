@@ -1,4 +1,37 @@
-import type { ToolEmitter, WidgetMode } from "../shared/protocol.js";
+import type { ProviderStatus, ToolEmitter, WidgetMode } from "../shared/protocol.js";
+
+export function getProviderStatuses(): ProviderStatus[] {
+  return [
+    {
+      mode: "agent",
+      label: "Agent",
+      state: "ready",
+      detail: "Codex app-server runtime",
+      capabilities: ["streaming", "session", "approval"]
+    },
+    {
+      mode: "browser",
+      label: "DOM",
+      state: "stub",
+      detail: "Browser bridge pending",
+      capabilities: ["active-tab", "selection", "metadata"]
+    },
+    {
+      mode: "screen",
+      label: "Vision",
+      state: "stub",
+      detail: "Screen capture pending",
+      capabilities: ["capture", "crop", "diff"]
+    },
+    {
+      mode: "terminal",
+      label: "PTY",
+      state: "stub",
+      detail: "PTY provider pending",
+      capabilities: ["shell", "output", "cancel"]
+    }
+  ];
+}
 
 export async function emitModePreview(
   id: string,
