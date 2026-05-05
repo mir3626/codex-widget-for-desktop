@@ -60,7 +60,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
   - The Vision-mode Capture action sends `provider.captureScreen` to the daemon, which runs the screen capture helper and refreshes provider status without requiring the user to run PowerShell manually.
   - Screen/Vision image data is now attached to Codex app-server Vision turns as image input instead of remaining daemon-only metadata.
   - The Windows screen capture helper now supports optional OCR text through auto-detected `tesseract` or a `CODEX_WIDGET_SCREEN_OCR_COMMAND`/`-OcrCommand` template that receives `{image}`.
-  - Added bundled OCR runtime packaging: `npm run build:ocr-runtime` prepares `dist/ocr-runtime/ocr-runtime.json`, can copy a Tesseract runtime from `CODEX_WIDGET_OCR_RUNTIME_DIR`, `CODEX_WIDGET_TESSERACT_EXE`, or PATH, and installed helpers resolve `_up_/dist/ocr-runtime` before PATH OCR.
+  - Added bundled OCR runtime packaging: `npm run build:ocr-runtime` prepares `dist/ocr-runtime/ocr-runtime.json`, can copy a Tesseract runtime from `CODEX_WIDGET_OCR_RUNTIME_DIR`, `CODEX_WIDGET_TESSERACT_EXE`, PATH, `CODEX_WIDGET_TESSERACT_SEARCH_ROOTS`, or standard Windows install locations, and installed helpers resolve `_up_/dist/ocr-runtime` before PATH OCR.
   - Terminal/PTY mode executes explicit local commands (`/run`, `$`, `PS>`, `run:`, or fenced shell blocks), streams stdout/stderr as tool output, blocks dangerous command patterns by default, and returns a markdown terminal result.
 - Added a persistent command-session layer for Terminal/PTY mode:
   - `/pty start` starts a daemon-owned child shell in the configured Codex widget terminal workdir.
@@ -113,7 +113,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 
 ## Next Recommended Sprint
 
-`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with OCR runtime acquisition defaults, final browser store submission workflow, richer terminal key/mouse UX on top of the PTY viewport, and native packaging polish.
+`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with OCR language/model defaults, final browser store submission workflow, richer terminal key/mouse UX on top of the PTY viewport, and native packaging polish.
 
 ## Open Issues
 
@@ -122,9 +122,9 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - External OAuth provider/backend agent proxy support remains optional for non-Codex auth modes; this repo primarily implements the desktop widget/daemon client boundary.
 - OAuth refresh tokens are not persisted; users may need to sign in again when an access token expires.
 - Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge, local-only Options URL configuration, optional native messaging host, generated zip package, and store-readiness metadata; final browser store account submission remains manual.
-- Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, optional OCR command hook, bundled OCR runtime packaging, and direct app-server image input; release-operator acquisition of a high-quality OCR runtime/model is still configurable rather than automatic.
+- Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, optional OCR command hook, bundled OCR runtime packaging, standard Windows Tesseract discovery, and direct app-server image input; OCR language/model selection is still configurable rather than automatic.
 - Terminal/PTY provider now has a node-pty/ConPTY command/raw-input backend and a renderer PTY viewport, but richer key/mouse handling still needs product polish.
-- Final browser store account submission, higher-quality OCR runtime acquisition defaults, richer terminal key/mouse UX, and multi-hour/manual soak tests remain open for live-service readiness.
+- Final browser store account submission, OCR language/model selection defaults, richer terminal key/mouse UX, and multi-hour/manual soak tests remain open for live-service readiness.
 
 ## Verification
 
@@ -697,6 +697,16 @@ Completed after MSI release install smoke pass:
 - `npm run release:verify`
 - MSI smoke installs into `%TEMP%\codex-widget-msi-smoke`, launches the installed app hidden, verifies daemon WebSocket startup, uninstalls, and confirms no test install directory or port `4128` daemon remains.
 
+Completed after standard OCR runtime discovery pass:
+
+- `node --check scripts/prepare-ocr-runtime.mjs`
+- `node --check scripts/smoke-ocr-runtime.mjs`
+- `npm run smoke:ocr-runtime`
+- `npm run smoke:all`
+- `npm run build`
+- `npm run smoke:release-resources`
+- OCR runtime preparation now finds explicit runtime dirs, explicit executables, PATH `tesseract`, `CODEX_WIDGET_TESSERACT_SEARCH_ROOTS`, and standard Windows install layouts before writing the bundled `dist/ocr-runtime/ocr-runtime.json` manifest.
+
 Completed after renderer chat layout hardening:
 
 - `npm run lint`
@@ -785,6 +795,13 @@ Completed latest release build after renderer PTY viewport pass:
 - `src-tauri/target/release/codex-widget-for-desktop.exe` (10,314,752 bytes)
 - `src-tauri/target/release/bundle/msi/Codex Widget_0.1.0_x64_en-US.msi` (39,501,824 bytes)
 - `src-tauri/target/release/bundle/nsis/Codex Widget_0.1.0_x64-setup.exe` (26,764,420 bytes)
+
+Completed latest release build after standard OCR runtime discovery pass:
+
+- `npm run build`
+- `src-tauri/target/release/codex-widget-for-desktop.exe` (10,314,752 bytes)
+- `src-tauri/target/release/bundle/msi/Codex Widget_0.1.0_x64_en-US.msi` (39,505,920 bytes)
+- `src-tauri/target/release/bundle/nsis/Codex Widget_0.1.0_x64-setup.exe` (26,762,752 bytes)
 
 ## Restart Steps
 

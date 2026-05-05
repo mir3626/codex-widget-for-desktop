@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { cpSync, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { basename, dirname, join, relative, resolve } from "node:path";
+import { basename, delimiter, dirname, join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
@@ -37,7 +37,7 @@ if (source) {
     executable: null,
     tessdata: null,
     source: null,
-    reason: "No Tesseract runtime source found. Set CODEX_WIDGET_OCR_RUNTIME_DIR or CODEX_WIDGET_TESSERACT_EXE before build to bundle OCR.",
+    reason: "No Tesseract runtime source found. Set CODEX_WIDGET_OCR_RUNTIME_DIR, CODEX_WIDGET_TESSERACT_EXE, or CODEX_WIDGET_TESSERACT_SEARCH_ROOTS before build to bundle OCR; otherwise add tesseract to PATH or install Tesseract in a standard Windows location.",
     preparedAt: new Date().toISOString()
   };
   writeFileSync(join(outdir, "ocr-runtime.json"), JSON.stringify(manifest, null, 2));
@@ -64,6 +64,11 @@ function resolveOcrRuntimeSource() {
     return { dir: dirname(pathExe), source: "PATH" };
   }
 
+  const knownInstall = findKnownTesseractInstall();
+  if (knownInstall) {
+    return { dir: dirname(knownInstall.exe), source: knownInstall.source };
+  }
+
   return null;
 }
 
@@ -86,6 +91,57 @@ function findTesseractOnPath() {
     .map((line) => line.trim())
     .find(Boolean);
   return first && existsSync(first) ? resolve(first) : undefined;
+}
+
+function findKnownTesseractInstall() {
+  if (process.platform !== "win32") {
+    return undefined;
+  }
+
+  const candidates = [
+    ...knownSearchRootCandidates(process.env.CODEX_WIDGET_TESSERACT_SEARCH_ROOTS, "CODEX_WIDGET_TESSERACT_SEARCH_ROOTS"),
+    ...knownInstallCandidates(process.env.ProgramFiles, "ProgramFiles"),
+    ...knownInstallCandidates(process.env["ProgramFiles(x86)"], "ProgramFiles(x86)"),
+    ...knownInstallCandidates(process.env.LOCALAPPDATA, "LOCALAPPDATA", "Programs"),
+    ...knownInstallCandidates(process.env.ChocolateyInstall, "ChocolateyInstall", "lib", "tesseract", "tools"),
+    ...knownInstallCandidates(process.env.SCOOP, "SCOOP", "apps", "tesseract", "current"),
+    ...knownInstallCandidates(process.env.USERPROFILE, "USERPROFILE", "scoop", "apps", "tesseract", "current")
+  ];
+
+  return candidates.find((candidate) => existsSync(candidate.exe));
+}
+
+function knownSearchRootCandidates(value, label) {
+  if (!value?.trim()) {
+    return [];
+  }
+  return value
+    .split(delimiter)
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .flatMap((entry) => knownInstallCandidates(entry, label));
+}
+
+function knownInstallCandidates(base, label, ...segments) {
+  if (!base?.trim()) {
+    return [];
+  }
+
+  const root = resolve(base, ...segments);
+  return [
+    {
+      exe: join(root, "Tesseract-OCR", "tesseract.exe"),
+      source: `known:${label}/Tesseract-OCR`
+    },
+    {
+      exe: join(root, "tesseract.exe"),
+      source: `known:${label}`
+    },
+    {
+      exe: join(root, "bin", "tesseract.exe"),
+      source: `known:${label}/bin`
+    }
+  ];
 }
 
 function findTesseractExecutable(dir) {

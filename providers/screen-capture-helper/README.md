@@ -28,7 +28,7 @@ OCR lookup order:
 3. Bundled Tesseract runtime under `dist\ocr-runtime` or installed `_up_\dist\ocr-runtime`
 4. `tesseract` on `PATH`
 
-During release builds, `npm run build:ocr-runtime` prepares `dist\ocr-runtime\ocr-runtime.json`. Set `CODEX_WIDGET_OCR_RUNTIME_DIR` or `CODEX_WIDGET_TESSERACT_EXE` before building to copy a Tesseract runtime into that bundled resource directory.
+During release builds, `npm run build:ocr-runtime` prepares `dist\ocr-runtime\ocr-runtime.json`. Set `CODEX_WIDGET_OCR_RUNTIME_DIR` or `CODEX_WIDGET_TESSERACT_EXE` before building to copy a Tesseract runtime into that bundled resource directory. If neither is set, the build script searches `PATH`, `CODEX_WIDGET_TESSERACT_SEARCH_ROOTS`, and common Windows install locations such as `Program Files\Tesseract-OCR`, Chocolatey, Scoop, and per-user `LocalAppData\Programs` installs.
 
 The helper posts:
 
