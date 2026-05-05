@@ -23,6 +23,7 @@ The primary user is a developer who wants a persistent desktop companion similar
 - Terminal/PTY mode executes explicit local shell commands, supports a persistent `/pty` command session, and streams output as widget tool events.
 - Runtime health status is streamed from the daemon into the settings panel.
 - App-server diagnostics include start count and latest error in runtime status so resident failures are visible from the widget.
+- The chat renderer has a Playwright smoke for multi-turn layout, GFM tables, prompt resizing, and response action menu placement.
 - `npm run build` produces Windows MSI and NSIS installer bundles.
 - The daemon keeps `codex exec resume` as a fallback runtime and supports mock/OAuth proxy streaming for non-Codex auth modes.
 - DOM and Vision modes have snapshot ingress; DOM has an unpacked browser extension bridge; Vision has a Windows capture helper; Terminal has one-shot command execution plus a persistent command session. OCR/direct image model input, store extension packaging, and true raw interactive PTY are still open.

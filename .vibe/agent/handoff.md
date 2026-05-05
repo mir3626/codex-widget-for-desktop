@@ -63,7 +63,13 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
   - `/pty <command>` streams output and returns a markdown terminal-session result while preserving shell state between commands.
   - `/pty status` and `/pty stop` expose the session lifecycle.
   - The implementation is command-oriented and not yet raw ConPTY/full-screen interactive terminal support.
+- Hardened the renderer chat layout:
+  - Conversation messages now use explicit grid flow so user bubbles, assistant markdown, active streaming state, and skeletons stay in separate rows.
+  - GFM tables use fixed full-width layout on wide viewports and contained horizontal scrolling on narrow widget widths.
+  - Prompt resize clamps against the actual panel height so the composer cannot cover the conversation region.
+  - More action menus are aligned above the button with right edges matched.
 - Added `docs/providers/dom-snapshot-bookmarklet.js`, `docs/providers/screen-snapshot-example.json`, `npm run smoke:dom`, `npm run smoke:extension`, `npm run smoke:screen`, `npm run smoke:screen-capture:live`, `npm run smoke:screen-helper`, `npm run smoke:screen-helper:live`, and `npm run smoke:terminal`.
+- Added `npm run smoke:renderer-chat` for browser-level validation of multi-turn chat overlap, table width, prompt resize, and response action menu placement.
 
 ## Next Recommended Sprint
 
@@ -512,6 +518,13 @@ Completed after persistent terminal session pass:
 - `npm run build`
 - Added `npm run smoke:terminal-session` and included it in the serial readiness gate.
 
+Completed after renderer chat layout hardening:
+
+- `npm run lint`
+- `npm run smoke:renderer-chat`
+- `npm run smoke:all:live`
+- `npm run build`
+
 Completed latest release build after provider/runtime readiness passes:
 
 - `npm run build`
@@ -539,7 +552,7 @@ Completed latest release build after persistent terminal session pass:
 8. Run `node .vibe/harness/scripts/vibe-sprint-mode.mjs status` to confirm whether extended mode is still active.
 9. Use `npm run dev` for renderer HMR plus daemon restart-on-change; use `npm run dev:services` only when testing the service loop without launching Tauri.
 10. Run `npm run smoke:all` after follow-up TypeScript/widget/provider changes. Use `npm run smoke:all:live` when validating Windows desktop capture behavior.
-11. For renderer UI work, capture a `360x480` Playwright smoke against `http://127.0.0.1:5173/?daemonPort=4128` to check overlap in the fixed Tauri viewport. Model/reasoning selectors live between the status strip and mode tabs and persist to localStorage keys `codex-widget-model` and `codex-widget-reasoning-effort`.
+11. For renderer UI work, run `npm run smoke:renderer-chat` and capture a `360x480` Playwright smoke against `http://127.0.0.1:5173/?daemonPort=4128` when a visual screenshot is needed. Model/reasoning selectors live between the status strip and mode tabs and persist to localStorage keys `codex-widget-model` and `codex-widget-reasoning-effort`.
 12. Renderer visible chat persists under `codex-widget-chat-messages:v1`; use the titlebar New chat control or `session.reset` protocol event to clear both UI and daemon session state.
 13. The titlebar close button hides the widget to tray; use tray Quit to exit the resident app.
 14. Run `npm run smoke:resident` when resident lifecycle, daemon health, or resource behavior changes.

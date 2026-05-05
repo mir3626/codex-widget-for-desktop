@@ -78,3 +78,5 @@
 - 2026-05-05T14:58:01.821+09:00 [architecture][terminal-session] Added a persistent command-oriented `/pty` session provider for Terminal mode, with `/pty start`, `/pty <command>`, `/pty status`, and `/pty stop` while preserving the one-shot terminal provider path.
 - 2026-05-05T14:58:01.821+09:00 [verification][terminal-session] Passed `npm run lint`, `npm run smoke:terminal-session`, `npm run smoke:terminal`, and `npm run smoke:all:live`; the serial readiness gate now includes the terminal-session smoke.
 - 2026-05-05T14:59:30.000+09:00 [verification][release-build] `npm run build` passed after persistent terminal session work and produced release exe plus MSI/NSIS bundles.
+- 2026-05-05T15:12:00.000+09:00 [fix][renderer-chat-layout] Hardened conversation layout flow, fixed wide-table sizing, clamped prompt resize against actual panel height, and aligned More menus to the triggering button's top-right edge.
+- 2026-05-05T15:12:00.000+09:00 [verification][renderer-chat-layout] Added and passed `npm run smoke:renderer-chat`; also passed `npm run lint`, `npm run smoke:all:live`, and `npm run build`.

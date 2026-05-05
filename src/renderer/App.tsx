@@ -306,7 +306,7 @@ export function App() {
 
   useEffect(() => {
     function clampPromptForViewport() {
-      setPromptHeight((current) => clampPromptHeight(current, getPromptHeightLimit(maximized)));
+      setPromptHeight((current) => clampPromptHeight(current, readPromptHeightLimit()));
     }
 
     clampPromptForViewport();
@@ -1003,7 +1003,13 @@ export function App() {
 
     event.preventDefault();
     const deltaY = state.startClientY - event.clientY;
-    setPromptHeight(clampPromptHeight(state.startHeight + deltaY, getPromptHeightLimit(maximized)));
+    setPromptHeight(clampPromptHeight(state.startHeight + deltaY, readPromptHeightLimit()));
+  }
+
+  function readPromptHeightLimit(): number {
+    const panel = conversationRef.current?.closest(".widget-panel");
+    const panelHeight = panel instanceof HTMLElement ? panel.clientHeight : undefined;
+    return getPromptHeightLimit(maximized, panelHeight);
   }
 
   function finishPromptResize(event: PointerEvent<HTMLDivElement>) {
@@ -2046,11 +2052,11 @@ function clampPromptHeight(value: number, maxHeight = PROMPT_COMPOSER_MAX_HEIGHT
   return Math.min(maxHeight, Math.max(PROMPT_COMPOSER_MIN_HEIGHT, value));
 }
 
-function getPromptHeightLimit(isMaximized: boolean): number {
+function getPromptHeightLimit(isMaximized: boolean, panelHeight?: number): number {
   const mascotStage = isMaximized ? 0 : readCssPixelVariable("--mascot-stage", DEFAULT_MASCOT_STAGE_HEIGHT);
+  const effectivePanelHeight = panelHeight ?? window.innerHeight - mascotStage;
   const availableHeight =
-    window.innerHeight -
-    mascotStage -
+    effectivePanelHeight -
     PROMPT_COMPOSER_RESERVED_ROWS_HEIGHT -
     PROMPT_COMPOSER_MIN_CONVERSATION_HEIGHT;
   return Math.min(

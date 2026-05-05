@@ -25,6 +25,7 @@
     "smoke:screen-helper:live": "npm run build:daemon && node scripts/smoke-screen-helper-live.mjs",
     "smoke:terminal": "npm run build:daemon && node scripts/smoke-terminal.mjs",
     "smoke:terminal-session": "npm run build:daemon && node scripts/smoke-terminal-session.mjs",
+    "smoke:renderer-chat": "node scripts/smoke-renderer-chat-layout.mjs",
     "lint": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "vibe:build": "tsc -p .vibe/harness/tsconfig.json",
     "vibe:typecheck": "tsc -p .vibe/harness/tsconfig.harness.json --noEmit",

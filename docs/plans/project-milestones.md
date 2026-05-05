@@ -4,13 +4,14 @@
 
 Goal: keep a small Tauri desktop widget resident on Windows with reliable window controls, prompt/chat UX, streaming Codex responses, session reset, and recoverable daemon lifecycle.
 
-Current progress: 0.78
+Current progress: 0.8
 
 Evidence:
 - Tauri shell, borderless resize, pin, opacity, mascot drag, and model/reasoning controls are implemented.
 - Daemon WebSocket streaming works with Codex CLI auth.
 - Default runtime now uses daemon-owned `codex app-server` with `exec` fallback.
 - Visible chat history persists locally across renderer reloads after Iteration 2 kickoff.
+- Multi-turn chat layout, GFM tables, prompt resizing, and response action menu placement are covered by a Playwright renderer smoke.
 - The widget hides to tray, stays off the taskbar, and exposes resident settings.
 
 ## durable-codex-runtime
