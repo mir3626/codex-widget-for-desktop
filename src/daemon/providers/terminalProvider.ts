@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 import type { AgentRequest } from "../agent.js";
 import { resolveCodexExecutionContext, terminateProcessTree } from "../codexRuntime.js";
+import { maybeRunTerminalSessionProvider } from "./terminalSessionProvider.js";
 import type { ToolEmitter } from "../../shared/protocol.js";
 
 type TerminalCommand = {
@@ -19,6 +20,10 @@ export async function maybeRunTerminalProvider(
 ): Promise<boolean> {
   if (request.mode !== "terminal") {
     return false;
+  }
+
+  if (await maybeRunTerminalSessionProvider(request, emit, signal)) {
+    return true;
   }
 
   const parsed = extractTerminalCommand(request.text);

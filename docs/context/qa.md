@@ -55,5 +55,5 @@ npm run vibe:checkpoint
 - No automated screenshot assertion for the native transparent Tauri window.
 - Browser DOM provider is snapshot-based; an unpacked extension exists, but there is no store-packaged extension or native messaging bridge yet.
 - Screen/Vision provider is snapshot-based and has a Windows capture helper; OCR and direct image-to-model delivery are not implemented yet.
-- Terminal provider executes explicit commands but is not a fully interactive PTY session yet.
+- Terminal provider supports explicit one-shot commands and a persistent command session through `/pty`, but it is not a raw ConPTY/full-screen interactive terminal yet.
 - OAuth proxy live streaming requires an auth/proxy service and is not covered by CI-like smoke tests.

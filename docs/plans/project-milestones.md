@@ -17,7 +17,7 @@ Evidence:
 
 Goal: use a long-lived Codex runtime boundary instead of prompt-injected one-shot calls, while preserving fallback and safe process cleanup.
 
-Current progress: 0.68
+Current progress: 0.72
 
 Evidence:
 - `CodexAppServerBridge` owns process startup, WebSocket JSON-RPC initialization, thread creation, turn streaming, interrupt, and shutdown.
@@ -37,8 +37,8 @@ Evidence:
 - An unpacked Chrome/Edge extension can send active-tab DOM snapshots to the daemon.
 - Screen/Vision mode accepts live snapshots through the local daemon and injects description/OCR context into model requests.
 - A Windows PowerShell helper captures the virtual desktop as compressed JPEG data and posts it to the Screen/Vision endpoint; the widget can trigger that helper through the daemon protocol.
-- Terminal/PTY mode executes explicit shell commands and streams output as tool events.
-- OCR/direct image model input, store extension packaging, and deeper interactive PTY remain open.
+- Terminal/PTY mode executes explicit shell commands, supports a persistent `/pty` command session, and streams output as tool events.
+- OCR/direct image model input, store extension packaging, and true raw interactive PTY remain open.
 
 ## resident-desktop-readiness
 

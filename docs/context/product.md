@@ -20,12 +20,12 @@ The primary user is a developer who wants a persistent desktop companion similar
 - Mode tabs receive daemon-owned provider status, giving Agent, DOM, Vision, and PTY a stable contract before each provider becomes fully real.
 - DOM mode accepts live browser snapshots through `POST /providers/dom/snapshot` and injects that context into the model request. An unpacked Chrome/Edge extension can send active-tab snapshots into that endpoint.
 - Vision mode accepts screen snapshots through `POST /providers/screen/snapshot` and injects screen description/OCR context into the model request. The widget can ask the daemon to run a Windows PowerShell helper that captures the virtual desktop and posts a compressed image snapshot.
-- Terminal/PTY mode executes explicit local shell commands and streams output as widget tool events.
+- Terminal/PTY mode executes explicit local shell commands, supports a persistent `/pty` command session, and streams output as widget tool events.
 - Runtime health status is streamed from the daemon into the settings panel.
 - App-server diagnostics include start count and latest error in runtime status so resident failures are visible from the widget.
 - `npm run build` produces Windows MSI and NSIS installer bundles.
 - The daemon keeps `codex exec resume` as a fallback runtime and supports mock/OAuth proxy streaming for non-Codex auth modes.
-- DOM and Vision modes have snapshot ingress; DOM has an unpacked browser extension bridge; Vision has a Windows capture helper; Terminal has explicit command execution. OCR/direct image model input, store extension packaging, and deeper interactive PTY are still open.
+- DOM and Vision modes have snapshot ingress; DOM has an unpacked browser extension bridge; Vision has a Windows capture helper; Terminal has one-shot command execution plus a persistent command session. OCR/direct image model input, store extension packaging, and true raw interactive PTY are still open.
 - Windows Tauri prerequisites are documented and verified on the local machine.
 
 ## Product Goals

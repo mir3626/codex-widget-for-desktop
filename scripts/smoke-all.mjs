@@ -9,6 +9,7 @@ const steps = [
   ["DOM provider", process.execPath, ["scripts/smoke-dom-provider.mjs"]],
   ["Screen provider", process.execPath, ["scripts/smoke-screen-provider.mjs"]],
   ["Terminal provider", process.execPath, ["scripts/smoke-terminal.mjs"]],
+  ["Terminal session", process.execPath, ["scripts/smoke-terminal-session.mjs"]],
   ["Resident runtime", process.execPath, ["scripts/smoke-resident.mjs"]],
   ["Browser DOM extension", process.execPath, ["scripts/smoke-browser-extension.mjs"]],
   ["Screen capture helper", process.execPath, ["scripts/smoke-screen-helper.mjs"]]
