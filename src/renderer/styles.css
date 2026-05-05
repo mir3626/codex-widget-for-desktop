@@ -1931,6 +1931,73 @@ body.is-resizing-prompt * {
   background: rgba(190, 222, 217, 0.92);
 }
 
+.screen-crop-card {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 8px;
+  background: rgba(236, 241, 242, 0.72);
+}
+
+.screen-crop-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #3d4854;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.screen-crop-toggle input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.screen-crop-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.screen-crop-grid label {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 3px;
+  color: #6b7682;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.screen-crop-grid input {
+  width: 100%;
+  min-width: 0;
+  height: 22px;
+  border: 1px solid rgba(36, 42, 50, 0.12);
+  border-radius: 6px;
+  padding: 0 4px;
+  color: #2f3843;
+  background: rgba(255, 255, 255, 0.94);
+  font: inherit;
+}
+
+.screen-crop-grid input:disabled {
+  opacity: 0.48;
+}
+
+.screen-crop-grid input:focus {
+  outline: 0;
+  border-color: rgba(39, 119, 101, 0.45);
+  box-shadow: 0 0 0 2px rgba(39, 119, 101, 0.09);
+}
+
 .auth-panel label {
   min-width: 0;
   display: grid;

@@ -87,6 +87,13 @@ export type RuntimeStatus = {
   };
 };
 
+export type ScreenCrop = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export type BranchContextMessage = {
   role: "user" | "assistant";
   text: string;
@@ -126,6 +133,7 @@ export type ClientMessage =
   | {
       type: "provider.captureScreen";
       description?: string;
+      crop?: ScreenCrop;
     }
   | {
       type: "ping";

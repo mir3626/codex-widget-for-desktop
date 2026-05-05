@@ -60,6 +60,7 @@ import {
   type ReasoningEffort,
   type RuntimeInteraction,
   type RuntimeStatus,
+  type ScreenCrop,
   type ServerEvent,
   type WidgetMode
 } from "../shared/protocol.js";
@@ -109,6 +110,10 @@ type ChatMessage =
 
 type InteractionDrafts = Record<string, Record<string, string>>;
 
+type ScreenCropSettings = ScreenCrop & {
+  enabled: boolean;
+};
+
 const MODES: Array<{ mode: WidgetMode; label: string; icon: typeof Bot }> = [
   { mode: "agent", label: "Agent", icon: Bot },
   { mode: "browser", label: "DOM", icon: Globe2 },
@@ -120,6 +125,7 @@ const MODEL_STORAGE_KEY = "codex-widget-model";
 const REASONING_STORAGE_KEY = "codex-widget-reasoning-effort";
 const CHAT_STORAGE_KEY = "codex-widget-chat-messages:v1";
 const BRANCH_CONTEXT_STORAGE_KEY = "codex-widget-branch-context:v1";
+const SCREEN_CROP_STORAGE_KEY = "codex-widget-screen-crop:v1";
 const MIN_WINDOW_WIDTH = 320;
 const MIN_WINDOW_HEIGHT = 480;
 const PROMPT_COMPOSER_MIN_HEIGHT = 46;
@@ -195,6 +201,7 @@ export function App() {
   const [logLines, setLogLines] = useState<LogLine[]>([]);
   const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([]);
   const [terminalInput, setTerminalInput] = useState("");
+  const [screenCrop, setScreenCrop] = useState<ScreenCropSettings>(() => readStoredScreenCrop());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showTokenForm, setShowTokenForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -351,6 +358,10 @@ export function App() {
     branchContextRef.current = branchContext;
     persistBranchContext(branchContext);
   }, [branchContext]);
+
+  useEffect(() => {
+    persistScreenCrop(screenCrop);
+  }, [screenCrop]);
 
   useEffect(() => {
     restoreMessageBuffers(chatMessagesRef.current);
@@ -906,8 +917,16 @@ export function App() {
     setMode("screen");
     send({
       type: "provider.captureScreen",
-      description: input.trim() || undefined
+      description: input.trim() || undefined,
+      crop: buildScreenCrop(screenCrop)
     });
+  }
+
+  function updateScreenCropField(field: keyof ScreenCrop, value: string) {
+    setScreenCrop((current) => ({
+      ...current,
+      [field]: normalizeScreenCropField(field, Number.parseInt(value, 10))
+    }));
   }
 
   function runTerminalQuickAction(command: string) {
@@ -1667,6 +1686,31 @@ export function App() {
                   ) : null}
                 </div>
               ))}
+              <div className="screen-crop-card">
+                <label className="screen-crop-toggle">
+                  <input
+                    type="checkbox"
+                    checked={screenCrop.enabled}
+                    onChange={(event) => setScreenCrop((current) => ({ ...current, enabled: event.target.checked }))}
+                  />
+                  <span>Crop</span>
+                </label>
+                <div className="screen-crop-grid" aria-label="Screen crop rectangle">
+                  {(["x", "y", "width", "height"] as const).map((field) => (
+                    <label key={field}>
+                      <span>{field === "width" ? "W" : field === "height" ? "H" : field.toUpperCase()}</span>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        value={screenCrop[field]}
+                        min={field === "width" || field === "height" ? 0 : undefined}
+                        onChange={(event) => updateScreenCropField(field, event.target.value)}
+                        disabled={!screenCrop.enabled}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
           </section>
         ) : showTokenForm ? (
@@ -2578,6 +2622,52 @@ function readStoredModel(): ModelId {
 
 function readStoredReasoningEffort(): ReasoningEffort {
   return normalizeReasoningEffort(localStorage.getItem(REASONING_STORAGE_KEY));
+}
+
+function readStoredScreenCrop(): ScreenCropSettings {
+  const fallback: ScreenCropSettings = { enabled: false, x: 0, y: 0, width: 0, height: 0 };
+  const stored = localStorage.getItem(SCREEN_CROP_STORAGE_KEY);
+  if (!stored) {
+    return fallback;
+  }
+
+  try {
+    const parsed = JSON.parse(stored) as Partial<ScreenCropSettings>;
+    return {
+      enabled: parsed.enabled === true,
+      x: normalizeScreenCropField("x", parsed.x),
+      y: normalizeScreenCropField("y", parsed.y),
+      width: normalizeScreenCropField("width", parsed.width),
+      height: normalizeScreenCropField("height", parsed.height)
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function persistScreenCrop(crop: ScreenCropSettings): void {
+  localStorage.setItem(SCREEN_CROP_STORAGE_KEY, JSON.stringify(crop));
+}
+
+function buildScreenCrop(crop: ScreenCropSettings): ScreenCrop | undefined {
+  if (!crop.enabled || crop.width <= 0 || crop.height <= 0) {
+    return undefined;
+  }
+  return {
+    x: crop.x,
+    y: crop.y,
+    width: crop.width,
+    height: crop.height
+  };
+}
+
+function normalizeScreenCropField(field: keyof ScreenCrop, value: unknown): number {
+  const numeric = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
+  if (!Number.isFinite(numeric)) {
+    return 0;
+  }
+  const rounded = Math.trunc(numeric);
+  return field === "width" || field === "height" ? Math.max(0, rounded) : rounded;
 }
 
 function formatRuntimeAge(seconds: number): string {

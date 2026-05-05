@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { ScreenCrop } from "../../shared/protocol.js";
 
 export type ScreenCaptureResult = {
   output: string;
@@ -12,6 +13,7 @@ const DEFAULT_TIMEOUT_MS = 60_000;
 export async function captureScreenSnapshot(input: {
   daemonPort: number;
   description?: string;
+  crop?: ScreenCrop;
   timeoutMs?: number;
 }): Promise<ScreenCaptureResult> {
   if (process.platform !== "win32") {
@@ -36,10 +38,10 @@ export async function captureScreenSnapshot(input: {
     "-OcrMaxChars",
     process.env.CODEX_WIDGET_SCREEN_OCR_MAX_CHARS ?? "20000"
   ];
-  const cropX = process.env.CODEX_WIDGET_SCREEN_CROP_X?.trim();
-  const cropY = process.env.CODEX_WIDGET_SCREEN_CROP_Y?.trim();
-  const cropWidth = process.env.CODEX_WIDGET_SCREEN_CROP_WIDTH?.trim();
-  const cropHeight = process.env.CODEX_WIDGET_SCREEN_CROP_HEIGHT?.trim();
+  const cropX = readCropValue(input.crop?.x, process.env.CODEX_WIDGET_SCREEN_CROP_X);
+  const cropY = readCropValue(input.crop?.y, process.env.CODEX_WIDGET_SCREEN_CROP_Y);
+  const cropWidth = readCropValue(input.crop?.width, process.env.CODEX_WIDGET_SCREEN_CROP_WIDTH);
+  const cropHeight = readCropValue(input.crop?.height, process.env.CODEX_WIDGET_SCREEN_CROP_HEIGHT);
   if (cropX) {
     args.push("-CropX", cropX);
   }
@@ -197,6 +199,13 @@ function discoverTessdataLanguages(tessdata: string): Set<string> {
 
 function quoteCmdArgument(value: string): string {
   return `"${value.replace(/"/g, '\\"')}"`;
+}
+
+function readCropValue(value: number | undefined, fallback: string | undefined): string {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(Math.floor(value));
+  }
+  return fallback?.trim() ?? "";
 }
 
 function runPowerShell(args: string[], timeoutMs: number): Promise<string> {

@@ -7,7 +7,7 @@ import { OAuthSession } from "./oauth.js";
 import { captureScreenSnapshot } from "./providers/screenCaptureProvider.js";
 import { ProviderRegistry, type ScreenSnapshot } from "./providers/providerRegistry.js";
 import { getProviderStatuses } from "./tools.js";
-import type { ClientMessage, MessageSnapshotStatus, RuntimeStatus, ServerEvent } from "../shared/protocol.js";
+import type { ClientMessage, MessageSnapshotStatus, RuntimeStatus, ScreenCrop, ServerEvent } from "../shared/protocol.js";
 
 export type DaemonHandle = {
   port: number;
@@ -223,7 +223,7 @@ async function handleMessage(
   }
 
   if (message.type === "provider.captureScreen") {
-    void captureScreenFromHelper(message.description, clients, daemonPort);
+    void captureScreenFromHelper(message.description, message.crop, clients, daemonPort);
     return;
   }
 
@@ -261,6 +261,7 @@ async function handleMessage(
 
 async function captureScreenFromHelper(
   description: string | undefined,
+  crop: ScreenCrop | undefined,
   clients: Set<WebSocket>,
   daemonPort: number
 ): Promise<void> {
@@ -272,7 +273,7 @@ async function captureScreenFromHelper(
   });
 
   try {
-    const result = await captureScreenSnapshot({ daemonPort, description });
+    const result = await captureScreenSnapshot({ daemonPort, description, crop });
     broadcast(clients, {
       type: "provider.capture",
       mode: "screen",

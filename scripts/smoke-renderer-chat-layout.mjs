@@ -105,6 +105,29 @@ try {
   }
 
   await page.goto(`${baseUrl}?daemonPort=${daemonPort}`);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("checkbox", { name: "Crop" }).check();
+  const cropInputs = page.locator(".screen-crop-grid input");
+  await cropInputs.nth(0).fill("12");
+  await cropInputs.nth(1).fill("34");
+  await cropInputs.nth(2).fill("640");
+  await cropInputs.nth(3).fill("360");
+  await page.getByLabel("Capture screen").click();
+  await waitUntil(
+    () => clientMessages.some((message) => message.type === "provider.captureScreen"),
+    "Timed out waiting for screen capture request."
+  );
+  const captureRequest = clientMessages.find((message) => message.type === "provider.captureScreen");
+  if (
+    captureRequest?.crop?.x !== 12 ||
+    captureRequest.crop.y !== 34 ||
+    captureRequest.crop.width !== 640 ||
+    captureRequest.crop.height !== 360
+  ) {
+    throw new Error(`Capture request did not include configured crop: ${JSON.stringify(captureRequest)}`);
+  }
+  await page.getByRole("button", { name: "Settings" }).click();
+
   await page.getByLabel("Ask Codex").fill("나스닥 AI섹터 상위 10개종목 뉴스 정리해줘");
   await page.getByLabel("Send prompt").click();
   await page.waitForSelector(".markdown-table-scroll");
