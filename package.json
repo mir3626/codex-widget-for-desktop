@@ -29,6 +29,7 @@
     "smoke:screen": "npm run build:daemon && node scripts/smoke-screen-provider.mjs",
     "smoke:screen-capture:live": "npm run build:daemon && node scripts/smoke-screen-capture-request.mjs",
     "smoke:screen-helper": "node scripts/smoke-screen-helper.mjs",
+    "smoke:screen-helper:ocr": "node scripts/smoke-screen-helper-ocr.mjs",
     "smoke:screen-helper:live": "npm run build:daemon && node scripts/smoke-screen-helper-live.mjs",
     "smoke:tauri-supervisor": "cargo test --manifest-path src-tauri/Cargo.toml daemon_",
     "smoke:terminal": "npm run build:daemon && node scripts/smoke-terminal.mjs",

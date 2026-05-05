@@ -43,7 +43,7 @@ Evidence:
 - Browser DOM mode accepts live snapshots through the local daemon and injects them into model context.
 - An unpacked Chrome/Edge extension can send active-tab DOM snapshots to the daemon and `npm run package:extension` produces a zip package with icon assets.
 - Screen/Vision mode accepts live snapshots through the local daemon, injects description/OCR context into model requests, and attaches image data to app-server Vision turns.
-- A Windows PowerShell helper captures the virtual desktop as compressed JPEG data and posts it to the Screen/Vision endpoint; the widget can trigger that helper through the daemon protocol.
+- A Windows PowerShell helper captures the virtual desktop as compressed JPEG data, can run a local OCR command or auto-detected `tesseract`, and posts the result to the Screen/Vision endpoint; the widget can trigger that helper through the daemon protocol.
 - Terminal/PTY mode executes explicit shell commands, supports a persistent `/pty` command session, and streams output as tool events.
 - OCR, browser store submission/native messaging, and true raw interactive PTY remain open.
 
@@ -60,6 +60,7 @@ Evidence:
 - `npm run smoke:resident-soak` adds a short resident runtime sample, ping/pong health, and RSS growth gate.
 - `npm run smoke:all` provides a serial readiness gate that avoids parallel build races across provider smokes.
 - `npm run smoke:screen-capture:live` verifies the widget-protocol screen capture request path.
+- `npm run smoke:screen-helper:ocr` verifies the helper OCR command hook.
 - Runtime status exposes app-server start count and latest error in the widget settings panel.
 - `npm run smoke:tauri-supervisor` covers native supervisor restart backoff and actual child restart after exit.
 - `npm run smoke:node-runtime` verifies bundled Node can run the dependency-bundled daemon entry.

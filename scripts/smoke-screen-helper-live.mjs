@@ -28,7 +28,9 @@ try {
       "-MaxWidth",
       "320",
       "-JpegQuality",
-      "45"
+      "45",
+      "-OcrCommand",
+      "echo codex-widget-live-ocr & rem {image}"
     ],
   );
 
@@ -58,6 +60,7 @@ try {
   if (
     snapshot?.source !== "windows-screen-capture-helper" ||
     snapshot?.description !== "screen helper live smoke" ||
+    snapshot?.ocrText !== "codex-widget-live-ocr" ||
     snapshot?.imageDataUrlLength <= 0
   ) {
     throw new Error(`Unexpected screen helper snapshot: ${JSON.stringify(payload)}`);

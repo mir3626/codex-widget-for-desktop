@@ -32,8 +32,13 @@ export async function captureScreenSnapshot(input: {
     "-MaxWidth",
     process.env.CODEX_WIDGET_SCREEN_CAPTURE_MAX_WIDTH ?? "1600",
     "-JpegQuality",
-    process.env.CODEX_WIDGET_SCREEN_CAPTURE_JPEG_QUALITY ?? "72"
+    process.env.CODEX_WIDGET_SCREEN_CAPTURE_JPEG_QUALITY ?? "72",
+    "-OcrMaxChars",
+    process.env.CODEX_WIDGET_SCREEN_OCR_MAX_CHARS ?? "20000"
   ];
+  if (process.env.CODEX_WIDGET_SCREEN_OCR_DISABLE === "1") {
+    args.push("-DisableOcr");
+  }
 
   const output = await runPowerShell(args, input.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   return { output: output.trim() };

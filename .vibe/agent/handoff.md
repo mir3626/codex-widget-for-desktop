@@ -59,6 +59,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
   - `providers/screen-capture-helper/capture-screen.ps1` captures the Windows virtual desktop, compresses it to JPEG data URL, and posts it to the Vision snapshot endpoint.
   - The Vision-mode Capture action sends `provider.captureScreen` to the daemon, which runs the screen capture helper and refreshes provider status without requiring the user to run PowerShell manually.
   - Screen/Vision image data is now attached to Codex app-server Vision turns as image input instead of remaining daemon-only metadata.
+  - The Windows screen capture helper now supports optional OCR text through auto-detected `tesseract` or a `CODEX_WIDGET_SCREEN_OCR_COMMAND`/`-OcrCommand` template that receives `{image}`.
   - Terminal/PTY mode executes explicit local commands (`/run`, `$`, `PS>`, `run:`, or fenced shell blocks), streams stdout/stderr as tool output, blocks dangerous command patterns by default, and returns a markdown terminal result.
 - Added a persistent command-session layer for Terminal/PTY mode:
   - `/pty start` starts a daemon-owned child shell in the configured Codex widget terminal workdir.
@@ -96,7 +97,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - External OAuth provider/backend agent proxy support remains optional for non-Codex auth modes; this repo primarily implements the desktop widget/daemon client boundary.
 - OAuth refresh tokens are not persisted; users may need to sign in again when an access token expires.
 - Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge; no store-packaged extension or native messaging bridge yet.
-- Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper; OCR/direct image model input is still pending.
+- Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, optional OCR command hook, and direct app-server image input; bundled OCR engine packaging is still pending.
 - Terminal/PTY provider supports explicit one-shot commands and a persistent `/pty` command session, but it is not a raw ConPTY/full-screen interactive terminal yet.
 - Store-packaged browser extension, deeper interactive PTY, installed-app launch/crash observation, and longer soak tests remain open for live-service readiness.
 
@@ -523,6 +524,15 @@ Completed after daemon-triggered Vision capture pass:
 - `node --check scripts/smoke-screen-capture-request.mjs`
 - `node --check src/daemon/providers/screenCaptureProvider.ts`
 
+Completed after screen helper OCR hook pass:
+
+- `npm run lint`
+- `npm run smoke:screen-helper`
+- `npm run smoke:screen-helper:ocr`
+- `npm run smoke:screen-helper:live`
+- `npm run smoke:screen`
+- Screen helper live smoke now posts fake OCR output and asserts it reaches the daemon snapshot.
+
 Completed after persistent terminal session pass:
 
 - `npm run lint`
@@ -626,7 +636,7 @@ Completed latest release build after persistent terminal session pass:
 16. Run `npm run smoke:node-runtime` after daemon bundle, Node runtime resource, or Tauri resource packaging changes.
 17. Run `npm run smoke:release-resources` after `npm run build` when release bundle resources change.
 18. Run `npm run smoke:release-launch` after `npm run build` when native daemon startup, bundled runtime resolution, or release exe behavior changes.
-19. Run `npm run smoke:dom` after browser/DOM provider ingress changes, `npm run smoke:extension` after browser extension or packaging changes, `npm run smoke:screen` after Vision provider changes, `npm run smoke:screen-capture:live` after daemon-triggered capture changes, `npm run smoke:screen-helper` after screen helper changes, `npm run smoke:terminal` after one-shot terminal provider changes, and `npm run smoke:terminal-session` after `/pty` session changes.
+19. Run `npm run smoke:dom` after browser/DOM provider ingress changes, `npm run smoke:extension` after browser extension or packaging changes, `npm run smoke:screen` after Vision provider changes, `npm run smoke:screen-capture:live` after daemon-triggered capture changes, `npm run smoke:screen-helper` and `npm run smoke:screen-helper:ocr` after screen helper/OCR changes, `npm run smoke:terminal` after one-shot terminal provider changes, and `npm run smoke:terminal-session` after `/pty` session changes.
 20. DOM snapshot testing can use `providers/browser-dom-extension` as an unpacked Chrome/Edge extension or `docs/providers/dom-snapshot-bookmarklet.js` as a fallback against the local daemon on port `4128`.
 21. Screen snapshot testing can use `providers/screen-capture-helper/capture-screen.ps1` for live capture or `docs/providers/screen-snapshot-example.json` as the raw payload shape against `POST /providers/screen/snapshot`.
 22. Run `npm run build` before release checks; MSI/NSIS bundle creation is now part of the installability gate.

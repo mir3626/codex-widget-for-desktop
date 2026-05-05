@@ -73,6 +73,8 @@ For browser testing, load the unpacked Chrome/Edge extension in [providers/brows
 
 The Capture action asks the daemon to run the Windows screen capture helper directly. The helper is bundled as a Tauri resource for installed builds. Override its path with `CODEX_WIDGET_SCREEN_CAPTURE_HELPER`, or tune payload size with `CODEX_WIDGET_SCREEN_CAPTURE_MAX_WIDTH` and `CODEX_WIDGET_SCREEN_CAPTURE_JPEG_QUALITY`.
 
+Screen OCR is optional and local. If `tesseract` is available on `PATH`, the helper uses it automatically. Otherwise set `CODEX_WIDGET_SCREEN_OCR_COMMAND` to a command template that prints text to stdout and uses `{image}` for the captured JPEG path, for example `tesseract {image} stdout -l eng+kor`. Disable OCR with `CODEX_WIDGET_SCREEN_OCR_DISABLE=1`, or cap text with `CODEX_WIDGET_SCREEN_OCR_MAX_CHARS`.
+
 For backend OAuth proxy experiments, point the daemon at an OAuth provider and agent proxy before launch:
 
 ```powershell
@@ -118,6 +120,7 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run smoke:screen`: verify the local screen snapshot provider ingress
 - `npm run smoke:screen-capture:live`: verify the widget protocol can trigger a live screen capture through the daemon
 - `npm run smoke:screen-helper`: verify the Windows screen capture helper syntax and required APIs
+- `npm run smoke:screen-helper:ocr`: verify the screen helper OCR command hook in dry-run mode
 - `npm run smoke:screen-helper:live`: run the Windows screen capture helper against a live daemon
 - `npm run smoke:terminal`: verify explicit terminal command execution
 - `npm run smoke:terminal-session`: verify the persistent `/pty` terminal session path

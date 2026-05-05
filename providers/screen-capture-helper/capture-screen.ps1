@@ -3,6 +3,9 @@ param(
   [string]$Description = "",
   [int]$MaxWidth = 1600,
   [int]$JpegQuality = 72,
+  [string]$OcrCommand = "",
+  [int]$OcrMaxChars = 20000,
+  [switch]$DisableOcr,
   [switch]$DryRun
 )
 
@@ -61,6 +64,64 @@ function Resize-Bitmap {
   return $resized
 }
 
+function Quote-CmdArgument {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Value
+  )
+
+  return '"' + ($Value -replace '"', '\"') + '"'
+}
+
+function Resolve-OcrCommand {
+  if ($DisableOcr) {
+    return ""
+  }
+
+  if (-not [string]::IsNullOrWhiteSpace($OcrCommand)) {
+    return $OcrCommand.Trim()
+  }
+
+  if (-not [string]::IsNullOrWhiteSpace($env:CODEX_WIDGET_SCREEN_OCR_COMMAND)) {
+    return $env:CODEX_WIDGET_SCREEN_OCR_COMMAND.Trim()
+  }
+
+  $tesseract = Get-Command tesseract -ErrorAction SilentlyContinue
+  if ($tesseract) {
+    return "tesseract {image} stdout"
+  }
+
+  return ""
+}
+
+function Invoke-OcrCommand {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$CommandTemplate,
+    [Parameter(Mandatory = $true)]
+    [string]$ImagePath,
+    [int]$MaxChars
+  )
+
+  $quotedImage = Quote-CmdArgument -Value $ImagePath
+  if ($CommandTemplate.Contains("{image}")) {
+    $commandLine = $CommandTemplate.Replace("{image}", $quotedImage)
+  } else {
+    $commandLine = "$CommandTemplate $quotedImage"
+  }
+
+  $output = & cmd.exe /d /s /c $commandLine 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    throw "OCR command failed with exit code $LASTEXITCODE`: $($output -join "`n")"
+  }
+
+  $text = (($output | ForEach-Object { "$_" }) -join "`n").Trim()
+  if ($MaxChars -gt 0 -and $text.Length -gt $MaxChars) {
+    return $text.Substring(0, $MaxChars)
+  }
+  return $text
+}
+
 $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
 $bitmap = [System.Drawing.Bitmap]::new($bounds.Width, $bounds.Height)
 $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
@@ -72,6 +133,23 @@ try {
 
   $bitmap = Resize-Bitmap -Bitmap $bitmap -TargetWidth $MaxWidth
   $bytes = Save-JpegBytes -Bitmap $bitmap -Quality $JpegQuality
+  $ocrText = ""
+  $ocrCommandLine = Resolve-OcrCommand
+  if (-not [string]::IsNullOrWhiteSpace($ocrCommandLine)) {
+    $tempImagePath = [System.IO.Path]::ChangeExtension([System.IO.Path]::GetTempFileName(), ".jpg")
+    try {
+      [System.IO.File]::WriteAllBytes($tempImagePath, $bytes)
+      $ocrText = Invoke-OcrCommand -CommandTemplate $ocrCommandLine -ImagePath $tempImagePath -MaxChars $OcrMaxChars
+    } catch {
+      Write-Warning "screen OCR skipped: $($_.Exception.Message)"
+      $ocrText = ""
+    } finally {
+      if ($tempImagePath -and (Test-Path -LiteralPath $tempImagePath)) {
+        Remove-Item -LiteralPath $tempImagePath -Force -ErrorAction SilentlyContinue
+      }
+    }
+  }
+
   $imageDataUrl = "data:image/jpeg;base64,$([Convert]::ToBase64String($bytes))"
   $title = "Windows virtual screen $($bounds.Width)x$($bounds.Height)"
 
@@ -79,12 +157,12 @@ try {
     source = "windows-screen-capture-helper"
     title = $title
     description = $Description
-    ocrText = ""
+    ocrText = $ocrText
     imageDataUrl = $imageDataUrl
   } | ConvertTo-Json -Depth 4 -Compress
 
   if ($DryRun) {
-    Write-Output "screen snapshot dry run: $title ($($imageDataUrl.Length) image chars)"
+    Write-Output "screen snapshot dry run: $title ($($ocrText.Length) ocr chars, $($imageDataUrl.Length) image chars)"
     return
   }
 
@@ -109,7 +187,7 @@ try {
     }
 
     $result = $responseBody | ConvertFrom-Json
-    Write-Output "screen snapshot sent: $($result.snapshot.title) ($($result.snapshot.imageDataUrlLength) image chars)"
+    Write-Output "screen snapshot sent: $($result.snapshot.title) ($($ocrText.Length) ocr chars, $($result.snapshot.imageDataUrlLength) image chars)"
   } finally {
     if ($content) {
       $content.Dispose()

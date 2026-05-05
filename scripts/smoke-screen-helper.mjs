@@ -10,6 +10,9 @@ for (const marker of [
   "CopyFromScreen",
   "image/jpeg",
   "data:image/jpeg;base64",
+  "CODEX_WIDGET_SCREEN_OCR_COMMAND",
+  "Invoke-OcrCommand",
+  "ocrText = $ocrText",
   "/providers/screen/snapshot",
   "System.Net.Http.HttpClient",
   "screen snapshot sent"
