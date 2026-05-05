@@ -39,6 +39,7 @@ Run this after browser DOM extension, Options page, or package metadata changes:
 ```powershell
 npm run smoke:extension
 npm run smoke:browser-native-host
+npm run smoke:browser-store
 npm run smoke:dom
 ```
 
@@ -88,7 +89,7 @@ npm run vibe:checkpoint
 
 - No automated screenshot assertion for the native transparent Tauri window.
 - Renderer chat layout has a browser smoke, but native transparent-window screenshots are still manual.
-- Browser DOM provider is snapshot-based and has an unpacked extension, a generated zip package, and an optional Chrome/Edge native messaging host; browser store submission metadata is not implemented yet.
+- Browser DOM provider is snapshot-based and has an unpacked extension, a generated zip package, an optional Chrome/Edge native messaging host, and store submission metadata/readiness smoke; actual browser store account submission is still manual.
 - Screen/Vision provider is snapshot-based and has a Windows capture helper, optional local OCR command hook, and app-server image input; bundled OCR engine packaging is not implemented yet.
 - Terminal provider supports explicit one-shot commands and a persistent command session through `/pty`, but it is not a raw ConPTY/full-screen interactive terminal yet.
 - OAuth proxy live streaming requires an auth/proxy service and is not covered by CI-like smoke tests.

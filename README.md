@@ -120,6 +120,7 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run smoke:dom`: verify the local DOM snapshot provider ingress
 - `npm run smoke:extension`: verify the unpacked browser DOM extension manifest/service worker
 - `npm run smoke:browser-native-host`: verify the Chrome/Edge native messaging host framing and daemon POST path
+- `npm run smoke:browser-store`: verify browser store listing, privacy, review notes, permission rationales, and package readiness
 - `npm run smoke:screen`: verify the local screen snapshot provider ingress
 - `npm run smoke:screen-capture:live`: verify the widget protocol can trigger a live screen capture through the daemon
 - `npm run smoke:screen-helper`: verify the Windows screen capture helper syntax and required APIs

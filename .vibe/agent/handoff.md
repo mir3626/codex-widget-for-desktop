@@ -92,6 +92,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Strengthened `npm run smoke:release-install` to find the installed bundled daemon process, kill it, and verify the native supervisor restarts it with a new PID before uninstall cleanup.
 - Added a daemon parent watchdog through `CODEX_WIDGET_NATIVE_PARENT_PID`, so the installed daemon exits when the native app process disappears unexpectedly instead of surviving as an orphan.
 - Added `providers/browser-native-host`, an optional Chrome/Edge native messaging host that receives framed `domSnapshot` messages, validates local daemon URLs, and posts snapshots to the local daemon. The browser extension now tries native messaging first and falls back to direct local HTTP when the host is not registered.
+- Added browser extension store-readiness metadata: `store-listing.md`, `privacy.md`, `review-notes.md`, and `npm run smoke:browser-store` for permission rationale/privacy/package validation.
 
 ## Next Recommended Sprint
 
@@ -103,10 +104,10 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - App-server approval and tool-user-input requests now have renderer UI, but the exact Codex app-server protocol is still experimental and may require adapter changes as CLI releases evolve.
 - External OAuth provider/backend agent proxy support remains optional for non-Codex auth modes; this repo primarily implements the desktop widget/daemon client boundary.
 - OAuth refresh tokens are not persisted; users may need to sign in again when an access token expires.
-- Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge, local-only Options URL configuration, optional native messaging host, and generated zip package; browser store submission metadata/review prep remains open.
+- Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge, local-only Options URL configuration, optional native messaging host, generated zip package, and store-readiness metadata; final browser store account submission remains manual.
 - Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, optional OCR command hook, and direct app-server image input; bundled OCR engine packaging is still pending.
 - Terminal/PTY provider supports explicit one-shot commands and a persistent `/pty` command session, but it is not a raw ConPTY/full-screen interactive terminal yet.
-- Store-packaged browser extension metadata/review prep, deeper interactive PTY, MSI install/uninstall observation, and longer soak tests remain open for live-service readiness.
+- Final browser store account submission, deeper interactive PTY, MSI install/uninstall observation, and longer soak tests remain open for live-service readiness.
 
 ## Verification
 
@@ -587,6 +588,14 @@ Completed after browser native messaging host pass:
 - Native host smoke framed a DOM snapshot over stdio, verified the host posted it to a local daemon-compatible endpoint, and checked Chrome/Edge registry installer markers.
 - Release verification confirmed the native host provider files are bundled into MSI/NSIS resources and installed by the NSIS smoke.
 
+Completed after browser store-readiness pass:
+
+- `node --check scripts\smoke-browser-store-readiness.mjs`
+- `npm run smoke:browser-store`
+- `npm run release:verify`
+- Store readiness smoke verifies extension name/description length, icon files, permission rationales, host permissions, privacy/review notes, native messaging disclosure, no-remote-code statement, and generated package presence.
+- Release verification now includes browser store readiness through `smoke:all:live`.
+
 Completed after persistent terminal session pass:
 
 - `npm run lint`
@@ -691,7 +700,7 @@ Completed latest release build after persistent terminal session pass:
 17. Run `npm run smoke:release-resources` after `npm run build` when release bundle resources change.
 18. Run `npm run smoke:release-launch` after `npm run build` when native daemon startup, bundled runtime resolution, or release exe behavior changes.
 19. Run `npm run smoke:release-install` after `npm run build` when NSIS installability, bundled installed resources, or installer cleanup behavior changes. It refuses to run over existing install state unless `CODEX_WIDGET_RELEASE_INSTALL_SMOKE_ALLOW_EXISTING=1` is set for a controlled test machine.
-20. Run `npm run smoke:dom` after browser/DOM provider ingress changes, `npm run smoke:extension` after browser extension or packaging changes, `npm run smoke:browser-native-host` after native messaging host changes, `npm run smoke:screen` after Vision provider changes, `npm run smoke:screen-capture:live` after daemon-triggered capture changes, `npm run smoke:screen-helper` and `npm run smoke:screen-helper:ocr` after screen helper/OCR changes, `npm run smoke:terminal` after one-shot terminal provider changes, and `npm run smoke:terminal-session` after `/pty` session changes.
+20. Run `npm run smoke:dom` after browser/DOM provider ingress changes, `npm run smoke:extension` after browser extension or packaging changes, `npm run smoke:browser-native-host` after native messaging host changes, `npm run smoke:browser-store` after browser store metadata changes, `npm run smoke:screen` after Vision provider changes, `npm run smoke:screen-capture:live` after daemon-triggered capture changes, `npm run smoke:screen-helper` and `npm run smoke:screen-helper:ocr` after screen helper/OCR changes, `npm run smoke:terminal` after one-shot terminal provider changes, and `npm run smoke:terminal-session` after `/pty` session changes.
 21. DOM snapshot testing can use `providers/browser-dom-extension` as an unpacked Chrome/Edge extension or `docs/providers/dom-snapshot-bookmarklet.js` as a fallback against the local daemon on port `4128`.
 22. Screen snapshot testing can use `providers/screen-capture-helper/capture-screen.ps1` for live capture or `docs/providers/screen-snapshot-example.json` as the raw payload shape against `POST /providers/screen/snapshot`.
 23. Run `npm run release:verify` as the full live release gate before treating a build as releasable.

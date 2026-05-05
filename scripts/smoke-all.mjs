@@ -14,6 +14,7 @@ const steps = [
   ["Bundled Node runtime", process.execPath, ["scripts/smoke-node-runtime.mjs"]],
   ["Browser DOM extension", process.execPath, ["scripts/smoke-browser-extension.mjs"]],
   ["Browser native host", process.execPath, ["scripts/smoke-browser-native-host.mjs"]],
+  ["Browser store readiness", process.execPath, ["scripts/smoke-browser-store-readiness.mjs"]],
   ["Screen capture helper", process.execPath, ["scripts/smoke-screen-helper.mjs"]]
 ];
 
