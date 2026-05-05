@@ -1,4 +1,8 @@
-import { ProviderRegistry, renderDomSnapshotToolOutput } from "./providers/providerRegistry.js";
+import {
+  ProviderRegistry,
+  renderDomSnapshotToolOutput,
+  renderScreenSnapshotToolOutput
+} from "./providers/providerRegistry.js";
 import type { ProviderStatus, ToolEmitter, WidgetMode } from "../shared/protocol.js";
 
 export function getProviderStatuses(providers?: ProviderRegistry): ProviderStatus[] {
@@ -32,7 +36,7 @@ export async function emitModePreview(
     browser:
       renderDomSnapshotToolOutput(providers?.getDomSnapshot() ?? null),
     screen:
-      "Screen provider stub is ready. Next step: wire Windows Graphics Capture, crop/diff, and vision input.",
+      renderScreenSnapshotToolOutput(providers?.getScreenSnapshot() ?? null),
     terminal:
       "Terminal provider is ready. Use `/run <command>`, `$ <command>`, or a fenced shell block to execute an explicit command."
   };

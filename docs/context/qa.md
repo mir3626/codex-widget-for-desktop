@@ -10,6 +10,7 @@ npm run build:web
 npm run smoke
 npm run smoke:resident
 npm run smoke:dom
+npm run smoke:screen
 npm run smoke:terminal
 ```
 
@@ -52,6 +53,6 @@ npm run vibe:checkpoint
 
 - No automated screenshot assertion for the native transparent Tauri window.
 - Browser DOM provider is snapshot-based; no packaged browser extension yet.
-- No real screen capture/vision provider yet.
+- Screen/Vision provider is snapshot-based; no native packaged capture helper yet.
 - Terminal provider executes explicit commands but is not a fully interactive PTY session yet.
 - OAuth proxy live streaming requires an auth/proxy service and is not covered by CI-like smoke tests.

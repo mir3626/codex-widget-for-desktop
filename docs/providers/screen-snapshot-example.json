@@ -1,0 +1,7 @@
+{
+  "source": "windows-capture-helper",
+  "title": "Active desktop snapshot",
+  "description": "Short visual description from a local screen capture or OCR helper.",
+  "ocrText": "Visible text extracted from the screen.",
+  "imageDataUrl": "data:image/png;base64,..."
+}

@@ -62,3 +62,5 @@
 - 2026-05-05T13:27:48.676+09:00 [verification][resident-resource] Added `npm run smoke:resident` to validate idle daemon runtime health and RSS budget for resident mode.
 - 2026-05-05T13:40:26.991+09:00 [architecture][provider-shell] Added DOM snapshot ingress and explicit terminal command execution providers; DOM context now flows into model requests and terminal output streams through widget tool events.
 - 2026-05-05T13:40:26.991+09:00 [verification][provider-shell] Passed `npm run lint`, `npm run smoke`, `npm run smoke:dom`, `npm run smoke:terminal`, and `npm run smoke:resident`.
+- 2026-05-05T13:48:56.525+09:00 [architecture][screen-provider] Added Screen/Vision snapshot ingress at `POST /providers/screen/snapshot`; Vision mode now reports ready after a snapshot, emits screen tool output, and injects screen description/OCR context into model requests.
+- 2026-05-05T13:48:56.525+09:00 [verification][screen-provider] Passed `npm run lint`, `npm run smoke`, `npm run smoke:screen`, `npm run smoke:dom`, `npm run smoke:terminal`, `npm run smoke:resident`, and node syntax checks for the new screen smoke/server/provider files.

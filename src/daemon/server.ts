@@ -260,7 +260,7 @@ async function handleHttpRequest(
   }
 
   const url = new URL(request.url, `http://${request.headers.host ?? "127.0.0.1"}`);
-  if (request.method === "OPTIONS" && url.pathname === "/providers/dom/snapshot") {
+  if (request.method === "OPTIONS" && isProviderSnapshotPath(url.pathname)) {
     response
       .writeHead(204, {
         "Access-Control-Allow-Origin": "*",
@@ -294,7 +294,7 @@ async function handleHttpRequest(
 
   if (request.method === "POST" && url.pathname === "/providers/dom/snapshot") {
     try {
-      const snapshot = providers.setDomSnapshot(JSON.parse(await readRequestBody(request)));
+      const snapshot = providers.setDomSnapshot(JSON.parse(await readRequestBody(request, 128 * 1024)));
       writeJsonResponse(response, 200, { ok: true, snapshot });
       broadcast(clients, { type: "provider.status", providers: getProviderStatuses(providers) });
     } catch (error) {
@@ -308,6 +308,25 @@ async function handleHttpRequest(
 
   if (request.method === "GET" && url.pathname === "/providers/dom/snapshot") {
     writeJsonResponse(response, 200, { ok: true, snapshot: providers.getDomSnapshot() });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/providers/screen/snapshot") {
+    try {
+      const snapshot = providers.setScreenSnapshot(JSON.parse(await readRequestBody(request, 2 * 1024 * 1024)));
+      writeJsonResponse(response, 200, { ok: true, snapshot });
+      broadcast(clients, { type: "provider.status", providers: getProviderStatuses(providers) });
+    } catch (error) {
+      writeJsonResponse(response, 400, {
+        ok: false,
+        error: error instanceof Error ? error.message : "Invalid screen snapshot."
+      });
+    }
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/providers/screen/snapshot") {
+    writeJsonResponse(response, 200, { ok: true, snapshot: providers.getScreenSnapshot() });
     return;
   }
 
@@ -330,20 +349,24 @@ async function handleHttpRequest(
   }
 }
 
-async function readRequestBody(request: IncomingMessage): Promise<string> {
+async function readRequestBody(request: IncomingMessage, maxBytes = 64 * 1024): Promise<string> {
   const chunks: Buffer[] = [];
   let size = 0;
 
   for await (const chunk of request) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     size += buffer.length;
-    if (size > 64 * 1024) {
+    if (size > maxBytes) {
       throw new Error("Request body is too large.");
     }
     chunks.push(buffer);
   }
 
   return Buffer.concat(chunks).toString("utf8");
+}
+
+function isProviderSnapshotPath(pathname: string): boolean {
+  return pathname === "/providers/dom/snapshot" || pathname === "/providers/screen/snapshot";
 }
 
 function broadcast(clients: Set<WebSocket>, event: ServerEvent): void {

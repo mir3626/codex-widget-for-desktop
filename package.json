@@ -16,6 +16,7 @@
     "smoke": "npm run build:web && node scripts/smoke-daemon.mjs",
     "smoke:dom": "npm run build:daemon && node scripts/smoke-dom-provider.mjs",
     "smoke:resident": "npm run build:daemon && node scripts/smoke-resident.mjs",
+    "smoke:screen": "npm run build:daemon && node scripts/smoke-screen-provider.mjs",
     "smoke:terminal": "npm run build:daemon && node scripts/smoke-terminal.mjs",
     "lint": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "vibe:build": "tsc -p .vibe/harness/tsconfig.json",

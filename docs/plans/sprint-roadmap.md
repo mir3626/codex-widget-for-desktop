@@ -62,6 +62,8 @@ Dependencies: runtime protocol from sprint 01.
 
 Expected scope: provider interfaces, mode-specific state cards, PTY command lifecycle spike, browser/screen permission placeholders with testable events.
 
+Status: DOM snapshot ingress, Screen/Vision snapshot ingress, and explicit terminal command execution are implemented with smoke coverage. Remaining provider work is packaging and deeper native integrations.
+
 ### iter-2-sprint-03-resident-desktop-ops
 
 Goal: harden resident desktop behavior for daily use.

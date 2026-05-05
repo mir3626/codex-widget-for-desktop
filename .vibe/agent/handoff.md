@@ -51,12 +51,13 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Fixed production bundling by adding `icons/icon.ico` to the Tauri bundle icon list; `npm run build` now produces release exe, MSI, and NSIS installer artifacts.
 - Added real provider shell functionality for Iteration 2:
   - DOM mode accepts browser/page snapshots at `POST /providers/dom/snapshot`, updates provider readiness, emits DOM snapshot tool output, and injects the latest DOM context into model requests.
+  - Vision mode accepts screen snapshots at `POST /providers/screen/snapshot`, updates provider readiness, emits screen snapshot tool output, and injects screen description/OCR context into model requests.
   - Terminal/PTY mode executes explicit local commands (`/run`, `$`, `PS>`, `run:`, or fenced shell blocks), streams stdout/stderr as tool output, blocks dangerous command patterns by default, and returns a markdown terminal result.
-- Added `docs/providers/dom-snapshot-bookmarklet.js`, `npm run smoke:dom`, and `npm run smoke:terminal`.
+- Added `docs/providers/dom-snapshot-bookmarklet.js`, `docs/providers/screen-snapshot-example.json`, `npm run smoke:dom`, `npm run smoke:screen`, and `npm run smoke:terminal`.
 
 ## Next Recommended Sprint
 
-`sprint-02-browser-dom-bridge`: add the first real browser provider contract for active-tab DOM selection and element metadata.
+`iter-2-sprint-04-provider-packaging`: package the snapshot providers into user-facing helpers, starting with a browser extension for DOM snapshots and a Windows capture helper for screen snapshots.
 
 ## Open Issues
 
@@ -64,10 +65,10 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - App-server approval and tool-user-input requests now have renderer UI, but the exact Codex app-server protocol is still experimental and may require adapter changes as CLI releases evolve.
 - External OAuth provider/backend agent proxy support remains optional for non-Codex auth modes; this repo primarily implements the desktop widget/daemon client boundary.
 - OAuth refresh tokens are not persisted; users may need to sign in again when an access token expires.
-- Browser DOM provider is a stub.
-- Screen capture/vision provider is a stub.
-- Terminal PTY provider is a stub.
-- Screen/Vision provider, packaged browser extension, deeper interactive PTY, crash recovery polish, and longer soak tests remain open for live-service readiness.
+- Browser DOM provider is snapshot-based; no packaged browser extension yet.
+- Screen capture/vision provider is snapshot-based; no native Windows capture helper yet.
+- Terminal/PTY provider executes explicit commands but is not a fully interactive PTY session yet.
+- Packaged browser extension, native screen capture helper, deeper interactive PTY, crash recovery polish, and longer soak tests remain open for live-service readiness.
 
 ## Verification
 
@@ -443,6 +444,18 @@ Completed after DOM/Terminal provider shell pass:
 - `node --check src/daemon/providers/providerRegistry.ts`
 - `node --check src/daemon/providers/terminalProvider.ts`
 
+Completed after Screen/Vision snapshot provider pass:
+
+- `npm run lint`
+- `npm run smoke`
+- `npm run smoke:screen`
+- `npm run smoke:dom`
+- `npm run smoke:terminal`
+- `npm run smoke:resident`
+- `node --check scripts/smoke-screen-provider.mjs`
+- `node --check src/daemon/server.ts`
+- `node --check src/daemon/providers/providerRegistry.ts`
+
 ## Restart Steps
 
 1. Run `git status --short --untracked-files=all` and inspect the sync diff.
@@ -459,9 +472,10 @@ Completed after DOM/Terminal provider shell pass:
 12. Renderer visible chat persists under `codex-widget-chat-messages:v1`; use the titlebar New chat control or `session.reset` protocol event to clear both UI and daemon session state.
 13. The titlebar close button hides the widget to tray; use tray Quit to exit the resident app.
 14. Run `npm run smoke:resident` when resident lifecycle, daemon health, or resource behavior changes.
-15. Run `npm run smoke:dom` after browser/DOM provider changes and `npm run smoke:terminal` after terminal provider changes.
+15. Run `npm run smoke:dom` after browser/DOM provider changes, `npm run smoke:screen` after Vision provider changes, and `npm run smoke:terminal` after terminal provider changes.
 16. DOM snapshot testing can use `docs/providers/dom-snapshot-bookmarklet.js` against the local daemon on port `4128`.
-17. Run `npm run build` before release checks; MSI/NSIS bundle creation is now part of the installability gate.
-18. Run `npm run vibe:checkpoint` before ending any follow-up maintenance session.
+17. Screen snapshot testing can use `docs/providers/screen-snapshot-example.json` as the payload shape against `POST /providers/screen/snapshot`.
+18. Run `npm run build` before release checks; MSI/NSIS bundle creation is now part of the installability gate.
+19. Run `npm run vibe:checkpoint` before ending any follow-up maintenance session.
 
 Use `docs/context/qa.md` for routine follow-up commands.
