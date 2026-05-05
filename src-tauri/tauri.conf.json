@@ -41,6 +41,7 @@
     "resources": [
       "../dist/daemon-bundle",
       "../dist/node-runtime",
+      "../dist/ocr-runtime",
       "../providers/screen-capture-helper",
       "../providers/browser-dom-extension",
       "../providers/browser-native-host"

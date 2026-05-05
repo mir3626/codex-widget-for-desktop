@@ -106,6 +106,7 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run dev:auth-proxy`: start only the local development OAuth/proxy server on `127.0.0.1:8787`
 - `npm run build`: build the Tauri desktop app
 - `npm run build:web`: compile the daemon, create the bundled daemon entry, build the renderer, and prepare the bundled Node runtime
+- `npm run build:ocr-runtime`: prepare `dist/ocr-runtime`; set `CODEX_WIDGET_OCR_RUNTIME_DIR` or `CODEX_WIDGET_TESSERACT_EXE` to bundle a Tesseract runtime
 - `npm run package:extension`: create `dist/providers/codex-widget-dom-extension-0.1.0.zip`
 - `npm run smoke:all`: run the standard serial readiness gate without rebuilding daemon in parallel
 - `npm run smoke:daemon-reconnect`: verify an active daemon response survives renderer WebSocket reconnect and replays a snapshot
@@ -124,6 +125,7 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run smoke:extension`: verify the unpacked browser DOM extension manifest/service worker
 - `npm run smoke:browser-native-host`: verify the Chrome/Edge native messaging host framing and daemon POST path
 - `npm run smoke:browser-store`: verify browser store listing, privacy, review notes, permission rationales, and package readiness
+- `npm run smoke:ocr-runtime`: verify OCR runtime packaging and daemon-side bundled OCR command resolution
 - `npm run smoke:screen`: verify the local screen snapshot provider ingress
 - `npm run smoke:screen-capture:live`: verify the widget protocol can trigger a live screen capture through the daemon
 - `npm run smoke:screen-helper`: verify the Windows screen capture helper syntax and required APIs

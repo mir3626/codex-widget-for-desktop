@@ -40,16 +40,17 @@ Evidence:
 
 Goal: replace Agent/DOM/Vision/PTY stubs with real desktop/browser/terminal context providers that stream tool events through one widget protocol.
 
-Current progress: 0.85
+Current progress: 0.88
 
 Evidence:
 - Provider modes and tool-event rendering exist.
 - Browser DOM mode accepts live snapshots through the local daemon and injects them into model context.
 - An unpacked Chrome/Edge extension can send active-tab DOM snapshots to the daemon, exposes a local-only Options page for daemon URL changes, can use an optional Chrome/Edge native messaging host before falling back to HTTP, and `npm run package:extension` produces a zip package with icon assets. Store listing, privacy notes, review notes, permission rationales, and `npm run smoke:browser-store` are in place.
 - Screen/Vision mode accepts live snapshots through the local daemon, injects description/OCR context into model requests, and attaches image data to app-server Vision turns.
-- A Windows PowerShell helper captures the virtual desktop as compressed JPEG data, can run a local OCR command or auto-detected `tesseract`, and posts the result to the Screen/Vision endpoint; the widget can trigger that helper through the daemon protocol.
+- A Windows PowerShell helper captures the virtual desktop as compressed JPEG data, can run a local OCR command, bundled Tesseract runtime, or auto-detected `tesseract`, and posts the result to the Screen/Vision endpoint; the widget can trigger that helper through the daemon protocol.
+- `npm run build:ocr-runtime` and `npm run smoke:ocr-runtime` package and verify a Tesseract-compatible OCR runtime resource slot for installed builds.
 - Terminal/PTY mode executes explicit shell commands, supports a persistent `/pty` command session, and streams output as tool events.
-- Bundled OCR engine packaging, final browser store account submission, and true raw interactive PTY remain open.
+- Final browser store account submission, higher-quality OCR runtime acquisition defaults, and true raw interactive PTY remain open.
 
 ## resident-desktop-readiness
 
@@ -65,6 +66,7 @@ Evidence:
 - `npm run smoke:all` provides a serial readiness gate that avoids parallel build races across provider smokes.
 - `npm run smoke:screen-capture:live` verifies the widget-protocol screen capture request path.
 - `npm run smoke:screen-helper:ocr` verifies the helper OCR command hook.
+- `npm run smoke:ocr-runtime` verifies OCR runtime packaging and bundled OCR command resolution.
 - Runtime status exposes app-server start count and latest error in the widget settings panel.
 - `npm run smoke:tauri-supervisor` covers native supervisor restart backoff and actual child restart after exit.
 - `npm run smoke:node-runtime` verifies bundled Node can run the dependency-bundled daemon entry.

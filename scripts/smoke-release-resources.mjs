@@ -13,6 +13,7 @@ const requiredFragments = [
   "dist\\daemon-bundle\\standalone.js",
   "dist\\node-runtime\\node.exe",
   "dist\\node-runtime\\node-runtime.json",
+  "dist\\ocr-runtime\\ocr-runtime.json",
   "providers\\screen-capture-helper\\capture-screen.ps1",
   "providers\\browser-dom-extension\\manifest.json",
   "providers\\browser-native-host\\native-host.mjs",
@@ -31,7 +32,7 @@ for (const fragment of requiredFragments) {
   assertIncludes(nsisText, fragment, nsisScript);
 }
 
-console.log("release resources smoke ok: bundled daemon, node runtime, screen helper, DOM extension, and browser native host are in MSI/NSIS scripts");
+console.log("release resources smoke ok: bundled daemon, node runtime, OCR runtime manifest, screen helper, DOM extension, and browser native host are in MSI/NSIS scripts");
 
 function assertFile(path) {
   if (!existsSync(path)) {

@@ -86,9 +86,60 @@ function Resolve-OcrCommand {
     return $env:CODEX_WIDGET_SCREEN_OCR_COMMAND.Trim()
   }
 
+  $bundledOcrCommand = Resolve-BundledOcrCommand
+  if (-not [string]::IsNullOrWhiteSpace($bundledOcrCommand)) {
+    return $bundledOcrCommand
+  }
+
   $tesseract = Get-Command tesseract -ErrorAction SilentlyContinue
   if ($tesseract) {
     return "tesseract {image} stdout"
+  }
+
+  return ""
+}
+
+function Resolve-BundledOcrCommand {
+  $runtimeDir = Resolve-OcrRuntimeDirectory
+  if ([string]::IsNullOrWhiteSpace($runtimeDir)) {
+    return ""
+  }
+
+  $tesseractCandidates = @(
+    (Join-Path $runtimeDir "tesseract.exe"),
+    (Join-Path $runtimeDir "bin\tesseract.exe")
+  )
+  $tesseractPath = $tesseractCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+  if ([string]::IsNullOrWhiteSpace($tesseractPath)) {
+    return ""
+  }
+
+  $command = "$(Quote-CmdArgument -Value $tesseractPath) {image} stdout"
+  $tessdataCandidates = @(
+    (Join-Path $runtimeDir "tessdata"),
+    (Join-Path $runtimeDir "share\tessdata"),
+    (Join-Path $runtimeDir "share\tesseract-ocr\tessdata")
+  )
+  $tessdataPath = $tessdataCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Container } | Select-Object -First 1
+  if (-not [string]::IsNullOrWhiteSpace($tessdataPath)) {
+    $command = "$command --tessdata-dir $(Quote-CmdArgument -Value $tessdataPath)"
+  }
+
+  return $command
+}
+
+function Resolve-OcrRuntimeDirectory {
+  $candidates = @()
+  if (-not [string]::IsNullOrWhiteSpace($env:CODEX_WIDGET_SCREEN_OCR_RUNTIME_DIR)) {
+    $candidates += $env:CODEX_WIDGET_SCREEN_OCR_RUNTIME_DIR.Trim()
+  }
+  $candidates += (Join-Path $PSScriptRoot "..\..\dist\ocr-runtime")
+
+  foreach ($candidate in $candidates) {
+    $resolved = [System.IO.Path]::GetFullPath($candidate)
+    if (Test-Path -LiteralPath $resolved -PathType Container) {
+      return $resolved
+    }
   }
 
   return ""

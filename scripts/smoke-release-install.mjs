@@ -54,6 +54,7 @@ try {
   assertFile(uninstallExe, "Silent install did not create the uninstaller.");
   assertFile(join(installDir, "_up_", "dist", "daemon-bundle", "standalone.js"), "Missing bundled daemon after install.");
   assertFile(join(installDir, "_up_", "dist", "node-runtime", "node.exe"), "Missing bundled Node runtime after install.");
+  assertFile(join(installDir, "_up_", "dist", "ocr-runtime", "ocr-runtime.json"), "Missing OCR runtime manifest after install.");
   assertFile(
     join(installDir, "_up_", "providers", "browser-dom-extension", "options.html"),
     "Missing browser extension Options page after install."

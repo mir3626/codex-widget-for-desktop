@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export type ScreenCaptureResult = {
@@ -38,6 +38,11 @@ export async function captureScreenSnapshot(input: {
   ];
   if (process.env.CODEX_WIDGET_SCREEN_OCR_DISABLE === "1") {
     args.push("-DisableOcr");
+  } else if (!process.env.CODEX_WIDGET_SCREEN_OCR_COMMAND?.trim()) {
+    const bundledOcrCommand = resolveBundledOcrCommand();
+    if (bundledOcrCommand) {
+      args.push("-OcrCommand", bundledOcrCommand);
+    }
   }
 
   const output = await runPowerShell(args, input.timeoutMs ?? DEFAULT_TIMEOUT_MS);
@@ -61,6 +66,63 @@ export function resolveScreenCaptureHelper(): string {
   }
 
   throw new Error("Screen capture helper was not found. Set CODEX_WIDGET_SCREEN_CAPTURE_HELPER.");
+}
+
+export function resolveBundledOcrCommand(): string | undefined {
+  const runtimeDir = resolveOcrRuntimeDirectory();
+  if (!runtimeDir) {
+    return undefined;
+  }
+
+  const executable = findBundledTesseract(runtimeDir);
+  if (!executable) {
+    return undefined;
+  }
+
+  const tessdata = findBundledTessdata(runtimeDir);
+  const args = [quoteCmdArgument(executable), "{image}", "stdout"];
+  if (tessdata) {
+    args.push("--tessdata-dir", quoteCmdArgument(tessdata));
+  }
+  return args.join(" ");
+}
+
+function resolveOcrRuntimeDirectory(): string | undefined {
+  const candidates = [
+    process.env.CODEX_WIDGET_SCREEN_OCR_RUNTIME_DIR,
+    resolve(process.cwd(), "dist/ocr-runtime"),
+    resolve(process.cwd(), "_up_/dist/ocr-runtime"),
+    fileURLToPath(new URL("../../../_up_/dist/ocr-runtime", import.meta.url)),
+    fileURLToPath(new URL("../../../dist/ocr-runtime", import.meta.url))
+  ].filter((candidate): candidate is string => Boolean(candidate));
+
+  for (const candidate of candidates) {
+    const resolved = resolve(candidate);
+    if (existsSync(resolved)) {
+      return resolved;
+    }
+  }
+
+  return undefined;
+}
+
+function findBundledTesseract(runtimeDir: string): string | undefined {
+  return [
+    join(runtimeDir, "tesseract.exe"),
+    join(runtimeDir, "bin", "tesseract.exe")
+  ].find((candidate) => existsSync(candidate));
+}
+
+function findBundledTessdata(runtimeDir: string): string | undefined {
+  return [
+    join(runtimeDir, "tessdata"),
+    join(runtimeDir, "share", "tessdata"),
+    join(runtimeDir, "share", "tesseract-ocr", "tessdata")
+  ].find((candidate) => existsSync(candidate));
+}
+
+function quoteCmdArgument(value: string): string {
+  return `"${value.replace(/"/g, '\\"')}"`;
 }
 
 function runPowerShell(args: string[], timeoutMs: number): Promise<string> {

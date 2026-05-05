@@ -16,7 +16,19 @@ Optional parameters:
 - `-Description`: short user-provided note to attach to the screen snapshot
 - `-MaxWidth`: default `1600`, used to keep the payload small
 - `-JpegQuality`: default `72`, clamped to `1..100`
+- `-OcrCommand`: optional OCR command template. Use `{image}` where the captured JPEG path should be inserted.
+- `-OcrMaxChars`: default `20000`, caps OCR text included in the snapshot.
+- `-DisableOcr`: skip OCR even when a bundled or PATH Tesseract runtime is available.
 - `-DryRun`: capture and encode locally, but do not post to the daemon
+
+OCR lookup order:
+
+1. Explicit `-OcrCommand`
+2. `CODEX_WIDGET_SCREEN_OCR_COMMAND`
+3. Bundled Tesseract runtime under `dist\ocr-runtime` or installed `_up_\dist\ocr-runtime`
+4. `tesseract` on `PATH`
+
+During release builds, `npm run build:ocr-runtime` prepares `dist\ocr-runtime\ocr-runtime.json`. Set `CODEX_WIDGET_OCR_RUNTIME_DIR` or `CODEX_WIDGET_TESSERACT_EXE` before building to copy a Tesseract runtime into that bundled resource directory.
 
 The helper posts:
 
@@ -30,4 +42,4 @@ The helper posts:
 }
 ```
 
-The current daemon stores the image data with the latest snapshot and injects the title, description, and OCR text into the model request. Direct image-to-model delivery is a follow-up once the active Codex runtime exposes a stable image input path.
+The current daemon stores the image data with the latest snapshot, injects the title, description, and OCR text into the model request, and attaches image data to Vision-mode app-server turns.

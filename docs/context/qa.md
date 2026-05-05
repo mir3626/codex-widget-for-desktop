@@ -39,6 +39,7 @@ Run this after packaged daemon bundle/runtime resource changes:
 
 ```powershell
 npm run smoke:node-runtime
+npm run smoke:ocr-runtime
 ```
 
 Run this after browser DOM extension, Options page, or package metadata changes:
@@ -97,7 +98,7 @@ npm run vibe:checkpoint
 - No automated screenshot assertion for the native transparent Tauri window.
 - Renderer chat layout has a browser smoke, but native transparent-window screenshots are still manual.
 - Browser DOM provider is snapshot-based and has an unpacked extension, a generated zip package, an optional Chrome/Edge native messaging host, and store submission metadata/readiness smoke; actual browser store account submission is still manual.
-- Screen/Vision provider is snapshot-based and has a Windows capture helper, optional local OCR command hook, and app-server image input; bundled OCR engine packaging is not implemented yet.
+- Screen/Vision provider is snapshot-based and has a Windows capture helper, optional local OCR command hook, bundled OCR runtime packaging, and app-server image input; higher-quality OCR engine acquisition/model selection is still release-operator controlled.
 - Terminal provider supports explicit one-shot commands and a persistent command session through `/pty`, but it is not a raw ConPTY/full-screen interactive terminal yet.
 - OAuth proxy live streaming requires an auth/proxy service and is not covered by CI-like smoke tests.
 - Packaged daemon restart backoff and child restart have Rust tests; installed-app daemon restart and app-kill orphan cleanup are covered by the NSIS release install smoke.
