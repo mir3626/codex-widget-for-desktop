@@ -1,13 +1,15 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { resolve } from "node:path";
 import type { AgentRequest } from "../agent.js";
-import { resolveCodexExecutionContext, terminateProcessTree } from "../codexRuntime.js";
+import { resolveCodexExecutionContext } from "../codexRuntime.js";
+import { spawnTerminalRuntime, type TerminalRuntime } from "./ptyRuntime.js";
 import type { ToolEmitter } from "../../shared/protocol.js";
 
 type TerminalSessionCommand =
   | { type: "start" }
   | { type: "stop" }
   | { type: "status" }
+  | { type: "write"; data: string; label: string }
+  | { type: "resize"; cols: number; rows: number }
   | { type: "run"; command: string };
 
 type PendingCommand = {
@@ -26,35 +28,28 @@ const DEFAULT_SESSION_TIMEOUT_MS = 60_000;
 const DEFAULT_MAX_OUTPUT_CHARS = 32_000;
 
 class TerminalSession {
-  private child: ChildProcessWithoutNullStreams | undefined;
+  private child: TerminalRuntime | undefined;
   private cwd = "";
   private pending: PendingCommand | undefined;
 
   isRunning(): boolean {
-    return Boolean(this.child && this.child.exitCode === null && !this.child.killed);
+    return Boolean(this.child?.isRunning());
   }
 
   start(): string {
     if (this.isRunning()) {
-      return `Terminal session already running in ${this.cwd}.`;
+      return `Terminal session already running in ${this.cwd} (${this.child?.description ?? "unknown backend"}).`;
     }
 
     this.cwd = resolve(process.env.CODEX_WIDGET_TERMINAL_WORKDIR?.trim() || resolveCodexExecutionContext().workdir);
-    this.child = spawnSessionProcess(this.cwd);
-    this.child.stdout.setEncoding("utf8");
-    this.child.stderr.setEncoding("utf8");
-    this.child.stdout.on("data", (chunk) => this.handleOutput(chunk));
-    this.child.stderr.on("data", (chunk) => this.handleOutput(chunk));
-    this.child.on("exit", () => {
+    this.child = spawnTerminalRuntime(this.cwd);
+    this.child.onData((chunk) => this.handleOutput(chunk));
+    this.child.onExit(() => {
       this.rejectPending(new Error("Terminal session exited."));
       this.child = undefined;
     });
-    this.child.on("error", (error) => {
-      this.rejectPending(error);
-      this.child = undefined;
-    });
 
-    return `Terminal session started in ${this.cwd}.`;
+    return `Terminal session started in ${this.cwd} (${this.child.description}).`;
   }
 
   async run(command: string, request: AgentRequest, emit: ToolEmitter, signal: AbortSignal): Promise<{
@@ -100,7 +95,7 @@ class TerminalSession {
         timer
       };
       signal.addEventListener("abort", abort, { once: true });
-      this.child?.stdin.write(wrappedCommand);
+      this.child?.write(wrappedCommand);
     }).finally(() => {
       if (abort) {
         signal.removeEventListener("abort", abort);
@@ -111,18 +106,40 @@ class TerminalSession {
     return { ...result, cwd: this.cwd };
   }
 
+  write(data: string, label: string): string {
+    this.start();
+    if (!this.child || !this.isRunning()) {
+      throw new Error("Terminal session is not running.");
+    }
+
+    this.child.write(data);
+    return `Terminal input sent: ${label}`;
+  }
+
+  resize(cols: number, rows: number): string {
+    this.start();
+    if (!this.child || !this.isRunning()) {
+      throw new Error("Terminal session is not running.");
+    }
+
+    this.child.resize(cols, rows);
+    return `Terminal resized to ${cols}x${rows} (${this.child.description}).`;
+  }
+
   stop(): string {
     this.rejectPending(new Error("Terminal session stopped."));
     const child = this.child;
     this.child = undefined;
-    if (child && child.exitCode === null && !child.killed) {
-      terminateProcessTree(child.pid);
+    if (child?.isRunning()) {
+      child.kill();
     }
     return "Terminal session stopped.";
   }
 
   status(): string {
-    return this.isRunning() ? `Terminal session running in ${this.cwd}.` : "Terminal session is not running.";
+    return this.isRunning()
+      ? `Terminal session running in ${this.cwd} (${this.child?.description ?? "unknown backend"}).`
+      : "Terminal session is not running.";
   }
 
   private handleOutput(chunk: string): void {
@@ -206,21 +223,22 @@ export async function maybeRunTerminalSessionProvider(
     completeText(request.id, terminalSession.status(), emit);
     return true;
   }
+  if (parsed.type === "write") {
+    if (isDangerousTerminalSessionCommand(parsed.data) && process.env.CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE !== "1") {
+      completeText(request.id, renderBlockedCommand(parsed.data), emit);
+      return true;
+    }
+
+    completeText(request.id, terminalSession.write(parsed.data, parsed.label), emit);
+    return true;
+  }
+  if (parsed.type === "resize") {
+    completeText(request.id, terminalSession.resize(parsed.cols, parsed.rows), emit);
+    return true;
+  }
 
   if (isDangerousTerminalSessionCommand(parsed.command) && process.env.CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE !== "1") {
-    completeText(
-      request.id,
-      [
-        "Terminal session command was blocked before execution.",
-        "",
-        "The command looks destructive. Run it from the CLI, or set `CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE=1` only for a trusted local test.",
-        "",
-        "```text",
-        parsed.command,
-        "```"
-      ].join("\n"),
-      emit
-    );
+    completeText(request.id, renderBlockedCommand(parsed.command), emit);
     return true;
   }
 
@@ -245,6 +263,26 @@ function extractTerminalSessionCommand(text: string): TerminalSessionCommand | n
   if (/^status$/i.test(command)) {
     return { type: "status" };
   }
+  const resize = /^resize\s+(?<cols>\d{2,4})x(?<rows>\d{2,4})$/i.exec(command);
+  if (resize?.groups?.cols && resize.groups.rows) {
+    return {
+      type: "resize",
+      cols: clampTerminalDimension(Number(resize.groups.cols), 20, 400),
+      rows: clampTerminalDimension(Number(resize.groups.rows), 5, 200)
+    };
+  }
+  const key = /^key\s+(?<name>enter|tab|escape|esc|ctrl-c|ctrl-d|backspace)$/i.exec(command);
+  if (key?.groups?.name) {
+    return mapTerminalKey(key.groups.name);
+  }
+  const write = /^(?:write|input)\s+(?<data>[\s\S]+)$/i.exec(command);
+  if (write?.groups?.data) {
+    return {
+      type: "write",
+      data: decodeTerminalInput(write.groups.data),
+      label: write.groups.data
+    };
+  }
   return { type: "run", command };
 }
 
@@ -265,7 +303,7 @@ function renderSessionResponse(command: string, cwd: string, exitCode: number | 
     "",
     `\`${exitCode === 0 ? "completed" : `exited with ${exitCode ?? "unknown"}`}\` in \`${cwd}\``,
     "",
-    `\`\`\`${sessionShellLabel()}`,
+    `\`\`\`${terminalSessionShellLabel()}`,
     command,
     "```",
     "",
@@ -273,21 +311,6 @@ function renderSessionResponse(command: string, cwd: string, exitCode: number | 
       ? ["#### Output", "", "```text", safeOutput, "```"].join("\n")
       : "No output."
   ].join("\n");
-}
-
-function spawnSessionProcess(cwd: string): ChildProcessWithoutNullStreams {
-  if (process.platform === "win32") {
-    return spawn("cmd.exe", ["/Q", "/K"], {
-      cwd,
-      stdio: ["pipe", "pipe", "pipe"],
-      windowsHide: true
-    });
-  }
-
-  return spawn(process.env.SHELL || "/bin/sh", ["-i"], {
-    cwd,
-    stdio: ["pipe", "pipe", "pipe"]
-  });
 }
 
 function wrapSessionCommand(command: string, sentinel: string): string {
@@ -298,8 +321,52 @@ function wrapSessionCommand(command: string, sentinel: string): string {
   return `${command}\nprintf '\\n${sentinel}:%s\\n' "$?"\n`;
 }
 
-function sessionShellLabel(): string {
+function terminalSessionShellLabel(): string {
   return process.platform === "win32" ? "cmd" : "bash";
+}
+
+function renderBlockedCommand(command: string): string {
+  return [
+    "Terminal session command was blocked before execution.",
+    "",
+    "The command looks destructive. Run it from the CLI, or set `CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE=1` only for a trusted local test.",
+    "",
+    "```text",
+    command,
+    "```"
+  ].join("\n");
+}
+
+function mapTerminalKey(name: string): TerminalSessionCommand {
+  const normalized = name.toLowerCase();
+  const keys: Record<string, { data: string; label: string }> = {
+    enter: { data: process.platform === "win32" ? "\r" : "\n", label: "Enter" },
+    tab: { data: "\t", label: "Tab" },
+    escape: { data: "\x1b", label: "Escape" },
+    esc: { data: "\x1b", label: "Escape" },
+    "ctrl-c": { data: "\x03", label: "Ctrl+C" },
+    "ctrl-d": { data: "\x04", label: "Ctrl+D" },
+    backspace: { data: "\x7f", label: "Backspace" }
+  };
+  const key = keys[normalized] ?? keys.enter;
+  return { type: "write", ...key };
+}
+
+function decodeTerminalInput(data: string): string {
+  return data
+    .replace(/\\r/g, "\r")
+    .replace(/\\n/g, "\n")
+    .replace(/\\t/g, "\t")
+    .replace(/\\e/g, "\x1b")
+    .replace(/\\x03/g, "\x03")
+    .replace(/\\x04/g, "\x04");
+}
+
+function clampTerminalDimension(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+  return Math.min(max, Math.max(min, Math.floor(value)));
 }
 
 function isDangerousTerminalSessionCommand(command: string): boolean {

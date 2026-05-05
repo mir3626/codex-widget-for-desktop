@@ -98,8 +98,8 @@ export class ProviderRegistry {
         mode: "terminal",
         label: "PTY",
         state: "ready",
-        detail: "Terminal command provider",
-        capabilities: ["shell", "output", "cancel", "timeout"]
+        detail: "Terminal PTY provider",
+        capabilities: ["shell", "pty", "resize", "raw-input", "output", "cancel", "timeout"]
       }
     ];
   }

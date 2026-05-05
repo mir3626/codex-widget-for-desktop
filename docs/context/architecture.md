@@ -29,6 +29,7 @@ Local daemon
 Packaged daemon resources
   - dist/daemon-bundle/standalone.js
   - dist/node-runtime/node.exe on Windows builds
+  - dist/pty-runtime/node_modules/node-pty for native PTY support
   - copied into the Tauri resource tree under _up_/dist
 
 Shared protocol
@@ -93,14 +94,14 @@ Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only sta
 - DOM provider: external browser tooling can `POST /providers/dom/snapshot` to the local daemon with `{ url, title, selection, text }`. The latest snapshot is surfaced as a tool event in Browser/DOM mode and injected into the model request context. `providers/browser-dom-extension` packages the Chrome/Edge Manifest V3 bridge for active-tab snapshots, includes an Options page for local daemon URL changes, tries the optional `providers/browser-native-host` native messaging bridge first, and `npm run package:extension` writes a zip artifact for manual installation or store-prep review.
 - Screen/Vision provider: external capture tooling can `POST /providers/screen/snapshot` with `{ source, title, description, ocrText, imageDataUrl }`. The latest text/description/OCR snapshot is surfaced as a Vision mode tool event and injected into the model request context; base64 image data is retained in daemon state and attached to Codex app-server Vision turns as an image input. `providers/screen-capture-helper/capture-screen.ps1` is the first Windows helper for posting a compressed virtual-screen capture, and the renderer can ask the daemon to run it through `provider.captureScreen`. The helper supports optional local OCR through `tesseract` auto-detection or a `CODEX_WIDGET_SCREEN_OCR_COMMAND` command template that receives the captured JPEG path as `{image}`.
 - OCR runtime packaging: `npm run build:ocr-runtime` always creates `dist/ocr-runtime/ocr-runtime.json` and can copy a Tesseract runtime from `CODEX_WIDGET_OCR_RUNTIME_DIR`, `CODEX_WIDGET_TESSERACT_EXE`, or `PATH`. Tauri bundles `dist/ocr-runtime`; installed helpers resolve `_up_/dist/ocr-runtime` before falling back to PATH OCR.
-- Terminal provider: Terminal/PTY mode has two local command paths. One-shot commands use explicit prefixes (`/run`, `$`, `PS>`, `run:`, or fenced shell blocks), stream stdout/stderr as `tool.output`, and summarize the result into the assistant response. Persistent command sessions use `/pty start`, `/pty <command>`, `/pty status`, and `/pty stop` to keep shell state between commands in a daemon-owned child process. Both paths block destructive command patterns unless `CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE=1`. The persistent session is still command-oriented; raw interactive TTY/full-screen ConPTY behavior is not implemented yet.
+- Terminal provider: Terminal/PTY mode has two local command paths. One-shot commands use explicit prefixes (`/run`, `$`, `PS>`, `run:`, or fenced shell blocks), stream stdout/stderr as `tool.output`, and summarize the result into the assistant response. Persistent command sessions use `/pty start`, `/pty <command>`, `/pty resize 120x30`, `/pty write <input>`, `/pty key enter`, `/pty status`, and `/pty stop` to keep shell state in a daemon-owned node-pty/ConPTY process when available, falling back to a stdio shell only when `CODEX_WIDGET_TERMINAL_BACKEND=pipe` or node-pty is unavailable. Both paths block destructive command patterns unless `CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE=1`. A full terminal-emulator viewport is still future UI work.
 
 ## Resident Desktop Boundary
 
 - The native window is configured with `skipTaskbar: true`; tray Show/Hide/Quit is the resident control surface.
 - The titlebar close button hides the window to tray. The tray Quit item exits the app.
 - Windows start-at-login is implemented by setting the current executable in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` through native Tauri commands.
-- Packaged builds do not depend on a user-installed `node` command for the widget daemon. `npm run build:web` creates a dependency-bundled daemon entry at `dist/daemon-bundle/standalone.js` and copies the current build Node executable into `dist/node-runtime`; Tauri bundles both directories as resources. The native resolver checks Tauri's resource directory and the installed exe-adjacent `_up_` resource directory before falling back to development `dist` or system `node`.
+- Packaged builds do not depend on a user-installed `node` command for the widget daemon. `npm run build:web` creates a dependency-bundled daemon entry at `dist/daemon-bundle/standalone.js`, copies the current build Node executable into `dist/node-runtime`, and prepares native `node-pty` resources in `dist/pty-runtime`; Tauri bundles those directories as resources. The native resolver checks Tauri's resource directory and the installed exe-adjacent `_up_` resource directory before falling back to development `dist` or system `node`.
 - The native daemon supervisor resolves the bundled daemon and bundled Node runtime from the Tauri resource directory first, then falls back to system `node` only if the resource runtime is absent.
 - `npm run build` must produce both MSI and NSIS bundles before a release is considered installable on Windows.
 
@@ -109,7 +110,7 @@ Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only sta
 - Browser DOM provider: browser store submission metadata, accessible labels, and element highlighting on top of the packaged localhost/native-messaging extension bridge.
 - Controlled browser provider: Playwright/CDP for automation in a managed browser context.
 - Screen provider: crop/diff and higher-quality OCR model/runtime acquisition on top of the existing daemon-triggered Windows capture helper, bundled OCR runtime packaging, optional OCR command hook, and direct app-server image input.
-- Terminal provider: true ConPTY/node-pty process sessions for raw interactive terminal programs on top of the current command-oriented `/pty` session path.
+- Terminal provider: terminal-emulator viewport and richer key/mouse handling on top of the current node-pty/ConPTY session path.
 
 ## Verification Commands
 
@@ -117,6 +118,7 @@ Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only sta
 - `npm run build:web`: compile daemon and renderer without invoking Cargo.
 - `npm run smoke:node-runtime`: verify the bundled Node runtime can execute the bundled daemon without relying on repository `node_modules`.
 - `npm run smoke:ocr-runtime`: verify OCR runtime copy/manifest packaging and daemon bundled OCR command resolution.
+- `npm run smoke:pty-runtime`: verify native node-pty runtime packaging and daemon PTY runtime resolution.
 - `npm run smoke:release-launch`: launch the release exe hidden and verify the packaged daemon WebSocket responds on `127.0.0.1:4128`.
 - `npm run smoke:release-install`: run the NSIS installer silently, verify installed resources, launch the installed app hidden, verify the installed bundled daemon WebSocket, kill the bundled daemon to verify native supervisor restart, kill the app process to verify daemon parent-watchdog orphan cleanup, silently uninstall, and check cleanup.
 - `npm run release:verify`: run the full live release gate in sequence and report the release artifact sizes.

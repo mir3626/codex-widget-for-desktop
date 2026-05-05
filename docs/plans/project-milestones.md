@@ -40,7 +40,7 @@ Evidence:
 
 Goal: replace Agent/DOM/Vision/PTY stubs with real desktop/browser/terminal context providers that stream tool events through one widget protocol.
 
-Current progress: 0.88
+Current progress: 0.91
 
 Evidence:
 - Provider modes and tool-event rendering exist.
@@ -49,14 +49,14 @@ Evidence:
 - Screen/Vision mode accepts live snapshots through the local daemon, injects description/OCR context into model requests, and attaches image data to app-server Vision turns.
 - A Windows PowerShell helper captures the virtual desktop as compressed JPEG data, can run a local OCR command, bundled Tesseract runtime, or auto-detected `tesseract`, and posts the result to the Screen/Vision endpoint; the widget can trigger that helper through the daemon protocol.
 - `npm run build:ocr-runtime` and `npm run smoke:ocr-runtime` package and verify a Tesseract-compatible OCR runtime resource slot for installed builds.
-- Terminal/PTY mode executes explicit shell commands, supports a persistent `/pty` command session, and streams output as tool events.
-- Final browser store account submission, higher-quality OCR runtime acquisition defaults, and true raw interactive PTY remain open.
+- Terminal/PTY mode executes explicit shell commands, supports a persistent node-pty/ConPTY-backed `/pty` command/raw-input session, and streams output as tool events.
+- Final browser store account submission, higher-quality OCR runtime acquisition defaults, and a dedicated terminal-emulator viewport remain open.
 
 ## resident-desktop-readiness
 
 Goal: make the widget practical as a daily resident desktop utility: tray/autostart, resource budget, crash recovery, and install/release checklist.
 
-Current progress: 0.91
+Current progress: 0.92
 
 Evidence:
 - Dev hot services, daemon lifecycle, tray menu, and start-at-login toggle exist.
@@ -67,6 +67,7 @@ Evidence:
 - `npm run smoke:screen-capture:live` verifies the widget-protocol screen capture request path.
 - `npm run smoke:screen-helper:ocr` verifies the helper OCR command hook.
 - `npm run smoke:ocr-runtime` verifies OCR runtime packaging and bundled OCR command resolution.
+- `npm run smoke:pty-runtime` verifies native node-pty runtime packaging and daemon PTY runtime resolution.
 - Runtime status exposes app-server start count and latest error in the widget settings panel.
 - `npm run smoke:tauri-supervisor` covers native supervisor restart backoff and actual child restart after exit.
 - `npm run smoke:node-runtime` verifies bundled Node can run the dependency-bundled daemon entry.

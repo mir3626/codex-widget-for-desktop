@@ -55,6 +55,11 @@ try {
   assertFile(join(installDir, "_up_", "dist", "daemon-bundle", "standalone.js"), "Missing bundled daemon after install.");
   assertFile(join(installDir, "_up_", "dist", "node-runtime", "node.exe"), "Missing bundled Node runtime after install.");
   assertFile(join(installDir, "_up_", "dist", "ocr-runtime", "ocr-runtime.json"), "Missing OCR runtime manifest after install.");
+  assertFile(join(installDir, "_up_", "dist", "pty-runtime", "pty-runtime.json"), "Missing PTY runtime manifest after install.");
+  assertFile(
+    join(installDir, "_up_", "dist", "pty-runtime", "node_modules", "node-pty", "package.json"),
+    "Missing node-pty runtime after install."
+  );
   assertFile(
     join(installDir, "_up_", "providers", "browser-dom-extension", "options.html"),
     "Missing browser extension Options page after install."

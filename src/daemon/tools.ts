@@ -38,7 +38,7 @@ export async function emitModePreview(
     screen:
       renderScreenSnapshotToolOutput(providers?.getScreenSnapshot() ?? null),
     terminal:
-      "Terminal provider is ready. Use `/run <command>`, `$ <command>`, or a fenced shell block to execute an explicit command."
+      "Terminal provider is ready. Use `/run <command>` for one-shot commands, or `/pty start`, `/pty <command>`, `/pty resize 120x30`, and `/pty write <input>` for the resident PTY session."
   };
 
   const tool = toolNameByMode[mode];

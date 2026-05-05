@@ -22,17 +22,17 @@ The primary user is a developer who wants a persistent desktop companion similar
 - Mode tabs receive daemon-owned provider status, giving Agent, DOM, Vision, and PTY a stable contract before each provider becomes fully real.
 - DOM mode accepts live browser snapshots through `POST /providers/dom/snapshot` and injects that context into the model request. An unpacked Chrome/Edge extension can send active-tab snapshots through an optional native messaging host or direct local HTTP fallback, and has an Options page for local daemon URL changes.
 - Vision mode accepts screen snapshots through `POST /providers/screen/snapshot`, injects screen description/OCR context into the model request, and attaches captured image data as an app-server image input for Vision turns. The widget can ask the daemon to run a Windows PowerShell helper that captures the virtual desktop, uses explicit/PATH/bundled Tesseract OCR when available, and posts a compressed image snapshot.
-- Terminal/PTY mode executes explicit local shell commands, supports a persistent `/pty` command session, and streams output as widget tool events.
+- Terminal/PTY mode executes explicit local shell commands, supports a persistent node-pty/ConPTY-backed `/pty` session with resize/raw-input commands, and streams output as widget tool events.
 - Runtime health status is streamed from the daemon into the settings panel.
 - App-server diagnostics include start count and latest error in runtime status so resident failures are visible from the widget.
 - The daemon retains recent assistant response snapshots and replays them to reconnecting renderer clients, so WebSocket/WebView reconnects do not automatically abort an active response or lose the latest streamed text.
 - The chat renderer has a Playwright smoke for multi-turn layout, GFM tables, prompt resizing, and response action menu placement.
-- `npm run build` produces Windows MSI and NSIS installer bundles with a bundled daemon JS entry and bundled Node runtime, so the installed widget daemon does not require a user-installed `node` command.
+- `npm run build` produces Windows MSI and NSIS installer bundles with bundled daemon JS, Node runtime, OCR manifest, and PTY runtime resources, so the installed widget daemon does not require a user-installed `node` command.
 - Installed builds resolve the exe-adjacent `_up_` resource directory before falling back to development paths, so NSIS-installed apps use the bundled Node runtime and daemon bundle.
 - `npm run smoke:release-install` verifies the NSIS installer can silently install, launch the installed app with its bundled daemon, restart that daemon through native supervision after a forced kill, shut the daemon down after an app-process kill, and uninstall cleanly.
 - `npm run release:verify` runs the full live release gate and reports release artifact sizes.
 - The daemon keeps `codex exec resume` as a fallback runtime and supports mock/OAuth proxy streaming for non-Codex auth modes.
-- DOM and Vision modes have snapshot ingress; DOM has an unpacked browser extension bridge with icon assets, local-only Options URL configuration, optional Chrome/Edge native messaging host, generated zip package, store listing, privacy notes, review notes, and readiness smoke; Vision has a Windows capture helper, optional local OCR command hook, bundled OCR runtime packaging, and direct app-server image input; Terminal has one-shot command execution plus a persistent command session. Final browser store account submission, MSI install/uninstall observation, and true raw interactive PTY are still open.
+- DOM and Vision modes have snapshot ingress; DOM has an unpacked browser extension bridge with icon assets, local-only Options URL configuration, optional Chrome/Edge native messaging host, generated zip package, store listing, privacy notes, review notes, and readiness smoke; Vision has a Windows capture helper, optional local OCR command hook, bundled OCR runtime packaging, and direct app-server image input; Terminal has one-shot command execution plus a persistent node-pty command/raw-input session. Final browser store account submission, MSI install/uninstall observation, higher-quality OCR acquisition defaults, and a full terminal-emulator viewport are still open.
 - Windows Tauri prerequisites are documented and verified on the local machine.
 
 ## Product Goals
@@ -42,7 +42,7 @@ The primary user is a developer who wants a persistent desktop companion similar
 - Avoid prompt-injecting one-shot CLI calls as the core architecture. The local daemon owns session state and talks to a background Codex runtime over a structured protocol.
 - Keep the renderer-daemon protocol explicit enough that future DOM, screen, terminal, approval, and provider features can be added without patching ad hoc UI state.
 - Keep end-user auth in OAuth and keep OpenAI/API credentials behind a backend proxy.
-- Add real providers incrementally: controlled browser automation, screen capture/vision, and deeper interactive PTY.
+- Add real providers incrementally: controlled browser automation, screen capture/vision, and a richer terminal-emulator UI on top of PTY.
 
 ## Non-goals
 

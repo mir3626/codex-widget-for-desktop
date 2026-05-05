@@ -6,10 +6,12 @@ process.env.CODEX_WIDGET_AUTH_MODE = "mock";
 const daemon = await startDaemon({ port: 0 });
 const socket = new WebSocket(`ws://127.0.0.1:${daemon.port}`);
 const events = [];
+let success = false;
 
 try {
   await waitForConnection(socket, events);
   await askTerminal(socket, events, "terminal-session-start", "/pty start");
+  await askTerminal(socket, events, "terminal-session-resize", "/pty resize 100x30");
   await askTerminal(socket, events, "terminal-session-one", process.platform === "win32" ? "/pty echo pty-session-one" : "/pty printf pty-session-one");
   await askTerminal(socket, events, "terminal-session-two", process.platform === "win32" ? "/pty echo pty-session-two" : "/pty printf pty-session-two");
   await askTerminal(socket, events, "terminal-session-stop", "/pty stop");
@@ -24,11 +26,19 @@ try {
   if (!events.some((event) => event.type === "tool.started" && String(event.tool).startsWith("terminal-session:"))) {
     throw new Error("Terminal session provider did not emit tool.started.");
   }
+  if (process.env.CODEX_WIDGET_TERMINAL_BACKEND !== "pipe" && !output.includes("node-pty")) {
+    throw new Error(`Terminal session did not report the node-pty backend: ${output}`);
+  }
 
   console.log(`terminal session smoke ok on port ${daemon.port}`);
+  success = true;
 } finally {
   socket.close();
   await daemon.close();
+}
+
+if (success) {
+  process.exit(0);
 }
 
 function waitForConnection(socket, events) {

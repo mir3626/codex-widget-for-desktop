@@ -97,10 +97,15 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added `npm run release:soak`, a longer hidden release-exe soak that checks runtime samples, ping/pong health, daemon process presence, process-tree working set, and cleanup after the soak.
 - Made response Branch runtime-safe: Branch now sends `session.branch` to reset daemon-side proxy/app-server session state, stores the selected user/assistant pair as a one-shot `branchContext`, sends that seed with the next prompt only, and clears it after use so visible branch state does not keep running against hidden old app-server context.
 - Added daemon reconnect replay: active agent events are broadcast to connected clients, bounded assistant response snapshots are retained in the daemon, reconnecting renderers receive `message.snapshot`, and a WebSocket close no longer aborts every active request.
+- Added native PTY runtime packaging and a node-pty/ConPTY backend for Terminal/PTY mode:
+  - `node-pty@1.1.0` is now a runtime dependency.
+  - `npm run build:pty-runtime` prepares `dist/pty-runtime` with native node-pty resources, and Tauri bundles it for installed builds.
+  - `/pty` sessions prefer node-pty/ConPTY, keep the stdio shell fallback via `CODEX_WIDGET_TERMINAL_BACKEND=pipe`, and support `/pty resize`, `/pty write`, and `/pty key` raw-input commands in addition to command execution.
+  - `npm run smoke:pty-runtime` and the existing terminal-session smoke cover packaged native PTY loading and the node-pty backend.
 
 ## Next Recommended Sprint
 
-`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with OCR runtime acquisition defaults, final browser store submission workflow, and native packaging polish.
+`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with OCR runtime acquisition defaults, final browser store submission workflow, a dedicated terminal-emulator viewport on top of node-pty, and native packaging polish.
 
 ## Open Issues
 
@@ -110,8 +115,8 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - OAuth refresh tokens are not persisted; users may need to sign in again when an access token expires.
 - Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge, local-only Options URL configuration, optional native messaging host, generated zip package, and store-readiness metadata; final browser store account submission remains manual.
 - Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, optional OCR command hook, bundled OCR runtime packaging, and direct app-server image input; release-operator acquisition of a high-quality OCR runtime/model is still configurable rather than automatic.
-- Terminal/PTY provider supports explicit one-shot commands and a persistent `/pty` command session, but it is not a raw ConPTY/full-screen interactive terminal yet.
-- Final browser store account submission, deeper interactive PTY, MSI install/uninstall observation, and multi-hour/manual soak tests remain open for live-service readiness.
+- Terminal/PTY provider now has a node-pty/ConPTY command/raw-input backend, but the renderer still lacks a dedicated terminal-emulator viewport and richer key/mouse handling.
+- Final browser store account submission, higher-quality OCR runtime acquisition defaults, terminal-emulator UI, MSI install/uninstall observation, and multi-hour/manual soak tests remain open for live-service readiness.
 
 ## Verification
 
@@ -648,6 +653,22 @@ Completed after persistent terminal session pass:
 - `npm run build`
 - Added `npm run smoke:terminal-session` and included it in the serial readiness gate.
 
+Completed after native PTY runtime pass:
+
+- `node --check scripts/prepare-pty-runtime.mjs`
+- `node --check scripts/smoke-pty-runtime.mjs`
+- `npm run lint`
+- `npm run smoke:pty-runtime`
+- `npm run smoke:terminal-session`
+- `npm run build:web`
+- `npm run smoke:all`
+- `npm run build`
+- `npm run smoke:release-resources`
+- `npm run smoke:release-install`
+- PTY runtime smoke verifies `dist/pty-runtime` contains a loadable `node-pty` package, spawns a native PTY, and checks daemon PTY runtime resolution.
+- Terminal session smoke now verifies `/pty resize` and the node-pty backend when `CODEX_WIDGET_TERMINAL_BACKEND` is not forced to `pipe`.
+- Release resource/install smokes now verify `_up_/dist/pty-runtime/pty-runtime.json` and `_up_/dist/pty-runtime/node_modules/node-pty/package.json` are bundled and installed.
+
 Completed after renderer chat layout hardening:
 
 - `npm run lint`
@@ -722,6 +743,14 @@ Completed latest release build after persistent terminal session pass:
 - `src-tauri/target/release/bundle/msi/Codex Widget_0.1.0_x64_en-US.msi`
 - `src-tauri/target/release/bundle/nsis/Codex Widget_0.1.0_x64-setup.exe`
 
+Completed latest release build after native PTY runtime pass:
+
+- `npm run build`
+- `src-tauri/target/release/codex-widget-for-desktop.exe` (10,312,704 bytes)
+- `src-tauri/target/release/bundle/msi/Codex Widget_0.1.0_x64_en-US.msi` (39,497,728 bytes)
+- `src-tauri/target/release/bundle/nsis/Codex Widget_0.1.0_x64-setup.exe` (26,760,198 bytes)
+- Release bundles include `_up_/dist/pty-runtime/pty-runtime.json` and `_up_/dist/pty-runtime/node_modules/node-pty/package.json`.
+
 ## Restart Steps
 
 1. Run `git status --short --untracked-files=all` and inspect the sync diff.
@@ -739,11 +768,11 @@ Completed latest release build after persistent terminal session pass:
 13. The titlebar close button hides the widget to tray; use tray Quit to exit the resident app.
 14. Run `npm run smoke:resident` when resident lifecycle, daemon health, or resource behavior changes.
 15. Run `npm run smoke:tauri-supervisor` after Tauri/Rust daemon lifecycle changes.
-16. Run `npm run smoke:node-runtime` after daemon bundle, Node runtime resource, or Tauri resource packaging changes.
+16. Run `npm run smoke:node-runtime` after daemon bundle, Node runtime resource, or Tauri resource packaging changes; run `npm run smoke:pty-runtime` after PTY runtime packaging changes.
 17. Run `npm run smoke:release-resources` after `npm run build` when release bundle resources change.
 18. Run `npm run smoke:release-launch` after `npm run build` when native daemon startup, bundled runtime resolution, or release exe behavior changes.
 19. Run `npm run smoke:release-install` after `npm run build` when NSIS installability, bundled installed resources, or installer cleanup behavior changes. It refuses to run over existing install state unless `CODEX_WIDGET_RELEASE_INSTALL_SMOKE_ALLOW_EXISTING=1` is set for a controlled test machine.
-20. Run `npm run smoke:dom` after browser/DOM provider ingress changes, `npm run smoke:extension` after browser extension or packaging changes, `npm run smoke:browser-native-host` after native messaging host changes, `npm run smoke:browser-store` after browser store metadata changes, `npm run smoke:screen` after Vision provider changes, `npm run smoke:screen-capture:live` after daemon-triggered capture changes, `npm run smoke:screen-helper`, `npm run smoke:screen-helper:ocr`, and `npm run smoke:ocr-runtime` after screen helper/OCR changes, `npm run smoke:terminal` after one-shot terminal provider changes, and `npm run smoke:terminal-session` after `/pty` session changes.
+20. Run `npm run smoke:dom` after browser/DOM provider ingress changes, `npm run smoke:extension` after browser extension or packaging changes, `npm run smoke:browser-native-host` after native messaging host changes, `npm run smoke:browser-store` after browser store metadata changes, `npm run smoke:screen` after Vision provider changes, `npm run smoke:screen-capture:live` after daemon-triggered capture changes, `npm run smoke:screen-helper`, `npm run smoke:screen-helper:ocr`, and `npm run smoke:ocr-runtime` after screen helper/OCR changes, `npm run smoke:terminal` after one-shot terminal provider changes, and `npm run smoke:terminal-session` plus `npm run smoke:pty-runtime` after `/pty` session changes.
 21. DOM snapshot testing can use `providers/browser-dom-extension` as an unpacked Chrome/Edge extension or `docs/providers/dom-snapshot-bookmarklet.js` as a fallback against the local daemon on port `4128`.
 22. Screen snapshot testing can use `providers/screen-capture-helper/capture-screen.ps1` for live capture or `docs/providers/screen-snapshot-example.json` as the raw payload shape against `POST /providers/screen/snapshot`.
 23. Run `npm run release:verify` as the full live release gate before treating a build as releasable.

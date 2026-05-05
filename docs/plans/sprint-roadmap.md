@@ -64,7 +64,7 @@ Dependencies: runtime protocol from sprint 01.
 
 Expected scope: provider interfaces, mode-specific state cards, PTY command lifecycle spike, browser/screen permission placeholders with testable events.
 
-Status: DOM snapshot ingress, an unpacked browser DOM extension with local-only Options URL configuration, optional Chrome/Edge native messaging host, store listing/privacy/review metadata, Screen/Vision snapshot ingress, direct app-server image input, daemon-triggered Windows screen capture with optional OCR command support, bundled OCR runtime packaging, and explicit terminal command execution are implemented with smoke coverage. Remaining provider work is final browser store account submission, higher-quality OCR runtime acquisition defaults, and deeper native integrations.
+Status: DOM snapshot ingress, an unpacked browser DOM extension with local-only Options URL configuration, optional Chrome/Edge native messaging host, store listing/privacy/review metadata, Screen/Vision snapshot ingress, direct app-server image input, daemon-triggered Windows screen capture with optional OCR command support, bundled OCR runtime packaging, explicit terminal command execution, and a node-pty/ConPTY-backed `/pty` command/raw-input session are implemented with smoke coverage. Remaining provider work is final browser store account submission, higher-quality OCR runtime acquisition defaults, a dedicated terminal-emulator viewport, and deeper native integrations.
 
 ### iter-2-sprint-03-resident-desktop-ops
 
@@ -74,4 +74,4 @@ Dependencies: stable runtime lifecycle.
 
 Expected scope: tray/autostart settings, resource budget checks, crash/reconnect recovery, process cleanup verification, report/checkpoint refresh.
 
-Status: tray/autostart, runtime status, installer builds, native daemon restart supervision, renderer-visible native daemon diagnostics, daemon parent watchdog cleanup, bundled daemon/Node runtime resources, installed `_up_` resource resolution, resident resource smoke, resident soak smoke, release exe longer soak, bundled runtime smoke, release exe launch smoke, NSIS install/uninstall plus daemon/app crash cleanup smoke, and a one-command `release:verify` gate are implemented. Remaining desktop-readiness work is MSI install/uninstall observation, multi-hour/manual soak coverage, and release checklist polish.
+Status: tray/autostart, runtime status, installer builds, native daemon restart supervision, renderer-visible native daemon diagnostics, daemon parent watchdog cleanup, bundled daemon/Node/PTY runtime resources, installed `_up_` resource resolution, resident resource smoke, resident soak smoke, release exe longer soak, bundled runtime smoke, release exe launch smoke, NSIS install/uninstall plus daemon/app crash cleanup smoke, and a one-command `release:verify` gate are implemented. Remaining desktop-readiness work is MSI install/uninstall observation, multi-hour/manual soak coverage, and release checklist polish.

@@ -55,7 +55,7 @@ The renderer keeps the visible chat timeline in localStorage, and the titlebar N
 
 For resident use, the widget hides to tray from the titlebar close button and can be restored or quit from the tray menu. The Settings button exposes Start at login, provider status, and daemon runtime health. On Windows, Start at login writes the current executable to the current user's `Run` registry key.
 
-Installed builds do not require the user to install Node.js just to run the widget daemon. The release build creates `dist/daemon-bundle/standalone.js`, copies the build machine's Node executable into `dist/node-runtime`, and bundles both into the Tauri app resources. The native shell prefers those bundled resources and falls back to a system `node` command only when the bundled runtime is absent.
+Installed builds do not require the user to install Node.js just to run the widget daemon. The release build creates `dist/daemon-bundle/standalone.js`, copies the build machine's Node executable into `dist/node-runtime`, prepares native `node-pty` resources in `dist/pty-runtime`, and bundles them into the Tauri app resources. The native shell prefers those bundled resources and falls back to a system `node` command only when the bundled runtime is absent.
 
 DOM mode can receive the current browser page through the local daemon endpoint:
 
@@ -69,7 +69,7 @@ Vision mode can receive a screen snapshot through the same local daemon boundary
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:4128/providers/screen/snapshot -ContentType application/json -Body '{"source":"windows-capture-helper","title":"Active desktop","description":"A settings dialog is open.","ocrText":"Visible screen text"}'
 ```
 
-For browser testing, load the unpacked Chrome/Edge extension in [providers/browser-dom-extension](providers/browser-dom-extension), or use [docs/providers/dom-snapshot-bookmarklet.js](docs/providers/dom-snapshot-bookmarklet.js) as a fallback bookmarklet. The extension has an Options page for changing the local daemon snapshot URL when the widget is not on port `4128`; it only accepts local `127.0.0.1` or `localhost` snapshot URLs. It also supports an optional Chrome/Edge native messaging host in [providers/browser-native-host](providers/browser-native-host), trying that installed bridge before falling back to direct local HTTP. For screen capture, use the Vision-mode Capture action, run [providers/screen-capture-helper/capture-screen.ps1](providers/screen-capture-helper/capture-screen.ps1), or see [docs/providers/screen-snapshot-example.json](docs/providers/screen-snapshot-example.json) for the raw payload shape. Terminal mode executes only explicit one-shot commands, such as `/run Get-ChildItem`, `$ pwd`, or a fenced shell block. It also supports a daemon-owned persistent command session with `/pty start`, `/pty <command>`, `/pty status`, and `/pty stop`; this keeps shell state between commands but is not yet a full raw ConPTY terminal. Destructive command patterns are blocked unless `CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE=1` is set.
+For browser testing, load the unpacked Chrome/Edge extension in [providers/browser-dom-extension](providers/browser-dom-extension), or use [docs/providers/dom-snapshot-bookmarklet.js](docs/providers/dom-snapshot-bookmarklet.js) as a fallback bookmarklet. The extension has an Options page for changing the local daemon snapshot URL when the widget is not on port `4128`; it only accepts local `127.0.0.1` or `localhost` snapshot URLs. It also supports an optional Chrome/Edge native messaging host in [providers/browser-native-host](providers/browser-native-host), trying that installed bridge before falling back to direct local HTTP. For screen capture, use the Vision-mode Capture action, run [providers/screen-capture-helper/capture-screen.ps1](providers/screen-capture-helper/capture-screen.ps1), or see [docs/providers/screen-snapshot-example.json](docs/providers/screen-snapshot-example.json) for the raw payload shape. Terminal mode executes explicit one-shot commands, such as `/run Get-ChildItem`, `$ pwd`, or a fenced shell block. It also supports a daemon-owned persistent node-pty/ConPTY session with `/pty start`, `/pty <command>`, `/pty resize 120x30`, `/pty write <input>`, `/pty key enter`, `/pty status`, and `/pty stop`; this keeps shell state and supports raw input, though the renderer still lacks a dedicated terminal-emulator viewport. Destructive command patterns are blocked unless `CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE=1` is set.
 
 The Capture action asks the daemon to run the Windows screen capture helper directly. The helper is bundled as a Tauri resource for installed builds. Override its path with `CODEX_WIDGET_SCREEN_CAPTURE_HELPER`, or tune payload size with `CODEX_WIDGET_SCREEN_CAPTURE_MAX_WIDTH` and `CODEX_WIDGET_SCREEN_CAPTURE_JPEG_QUALITY`.
 
@@ -105,15 +105,16 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run dev:services`: start renderer HMR, daemon TypeScript watch, and daemon restart loop without launching Tauri
 - `npm run dev:auth-proxy`: start only the local development OAuth/proxy server on `127.0.0.1:8787`
 - `npm run build`: build the Tauri desktop app
-- `npm run build:web`: compile the daemon, create the bundled daemon entry, build the renderer, and prepare the bundled Node runtime
+- `npm run build:web`: compile the daemon, create the bundled daemon entry, build the renderer, and prepare bundled Node/OCR/PTY runtime resources
 - `npm run build:ocr-runtime`: prepare `dist/ocr-runtime`; set `CODEX_WIDGET_OCR_RUNTIME_DIR` or `CODEX_WIDGET_TESSERACT_EXE` to bundle a Tesseract runtime
+- `npm run build:pty-runtime`: prepare `dist/pty-runtime` with the native `node-pty` runtime used by installed builds
 - `npm run package:extension`: create `dist/providers/codex-widget-dom-extension-0.1.0.zip`
 - `npm run smoke:all`: run the standard serial readiness gate without rebuilding daemon in parallel
 - `npm run smoke:daemon-reconnect`: verify an active daemon response survives renderer WebSocket reconnect and replays a snapshot
 - `npm run smoke:all:live`: run the serial readiness gate plus the live Windows screen capture helper
 - `npm run smoke:resident`: run the idle resident daemon health/resource smoke
 - `npm run smoke:resident-soak`: run a short resident daemon soak with runtime samples, ping/pong health checks, and RSS growth limits
-- `npm run smoke:release-resources`: verify the latest MSI/NSIS build scripts include the bundled daemon, Node runtime, screen helper, and DOM extension resources
+- `npm run smoke:release-resources`: verify the latest MSI/NSIS build scripts include the bundled daemon, Node runtime, PTY runtime, screen helper, and DOM extension resources
 - `npm run smoke:release-launch`: launch the latest release exe hidden, verify its daemon WebSocket on `127.0.0.1:4128`, then clean up the process tree
 - `npm run smoke:release-install`: run a Windows NSIS silent install, launch the installed app hidden, verify the bundled daemon, kill it to verify native restart supervision, kill the app process to verify daemon orphan cleanup, then silently uninstall and check cleanup
 - `npm run release:verify`: run the full live release gate (`smoke:all:live`, build, release resource/launch/install smokes) and print artifact sizes
@@ -126,13 +127,14 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run smoke:browser-native-host`: verify the Chrome/Edge native messaging host framing and daemon POST path
 - `npm run smoke:browser-store`: verify browser store listing, privacy, review notes, permission rationales, and package readiness
 - `npm run smoke:ocr-runtime`: verify OCR runtime packaging and daemon-side bundled OCR command resolution
+- `npm run smoke:pty-runtime`: verify PTY runtime packaging and native `node-pty` loading
 - `npm run smoke:screen`: verify the local screen snapshot provider ingress
 - `npm run smoke:screen-capture:live`: verify the widget protocol can trigger a live screen capture through the daemon
 - `npm run smoke:screen-helper`: verify the Windows screen capture helper syntax and required APIs
 - `npm run smoke:screen-helper:ocr`: verify the screen helper OCR command hook in dry-run mode
 - `npm run smoke:screen-helper:live`: run the Windows screen capture helper against a live daemon
 - `npm run smoke:terminal`: verify explicit terminal command execution
-- `npm run smoke:terminal-session`: verify the persistent `/pty` terminal session path
+- `npm run smoke:terminal-session`: verify the persistent `/pty` terminal session path, including the node-pty backend when available
 - Production build output is written under `src-tauri/target/release/bundle/` as MSI and NSIS installer artifacts.
 - `npm run smoke`: build and verify the daemon WebSocket stream
 - `npm run lint`: TypeScript checks
@@ -157,7 +159,7 @@ Future Tool Providers
   - store-packaged browser extension provider for active tab DOM
   - Playwright/CDP provider for controlled browser use
   - OCR and direct image input on top of the native screen capture helper
-  - true ConPTY/node-pty support for raw interactive terminal sessions
+  - a dedicated terminal-emulator viewport on top of the node-pty session
 ```
 
 The daemon is the session authority. The widget is a client, so browser pages, terminal views, and future desktop tools can attach to the same session without prompt-injecting an external CLI.
