@@ -72,4 +72,4 @@ Dependencies: stable runtime lifecycle.
 
 Expected scope: tray/autostart settings, resource budget checks, crash/reconnect recovery, process cleanup verification, report/checkpoint refresh.
 
-Status: tray/autostart, runtime status, installer builds, native daemon restart supervision, renderer-visible native daemon diagnostics, bundled daemon/Node runtime resources, resident resource smoke, resident soak smoke, bundled runtime smoke, release exe launch smoke, and NSIS install/uninstall smoke are implemented. Remaining desktop-readiness work is MSI install/uninstall observation, longer soak coverage, and release checklist polish.
+Status: tray/autostart, runtime status, installer builds, native daemon restart supervision, renderer-visible native daemon diagnostics, bundled daemon/Node runtime resources, resident resource smoke, resident soak smoke, bundled runtime smoke, release exe launch smoke, NSIS install/uninstall smoke, and a one-command `release:verify` gate are implemented. Remaining desktop-readiness work is MSI install/uninstall observation, longer soak coverage, and release checklist polish.

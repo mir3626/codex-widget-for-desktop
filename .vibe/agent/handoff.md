@@ -87,6 +87,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added `npm run smoke:release-launch` to launch the release exe hidden, verify the packaged daemon WebSocket on `127.0.0.1:4128`, and clean up the process tree.
 - Added a browser DOM extension Options page backed by `chrome.storage.sync`, so users can point the extension at another local daemon port without editing extension code. The extension only accepts local `http://127.0.0.1/...` or `http://localhost/...` snapshot URLs ending in `/providers/dom/snapshot`.
 - Added `npm run smoke:release-install` for NSIS silent install/uninstall observation: it refuses to overwrite existing install state, launches the installed app hidden, verifies the daemon WebSocket, uninstalls, and checks install directory, uninstall registry entry, product install key, and desktop shortcut cleanup.
+- Added `npm run release:verify` as the one-command live release gate. It runs `smoke:all:live`, `build`, release resource smoke, release exe launch smoke, NSIS install smoke, and prints release artifact sizes.
 
 ## Next Recommended Sprint
 
@@ -554,6 +555,12 @@ Completed after NSIS release install smoke pass:
 - `npm run smoke:release-install`
 - Post-smoke checks confirmed no `Codex Widget` install directory under `%LOCALAPPDATA%`, no uninstall registry entry, no `Software\mir3626\Codex Widget` product install key, and no desktop shortcut remained.
 
+Completed after release verification gate pass:
+
+- `node --check scripts\release-verify.mjs`
+- `npm run release:verify`
+- Release verification ran the live smoke gate, Tauri release build, release resource smoke, release exe launch smoke, and NSIS install smoke, then reported release exe/MSI/NSIS artifact sizes.
+
 Completed after persistent terminal session pass:
 
 - `npm run lint`
@@ -661,7 +668,8 @@ Completed latest release build after persistent terminal session pass:
 20. Run `npm run smoke:dom` after browser/DOM provider ingress changes, `npm run smoke:extension` after browser extension or packaging changes, `npm run smoke:screen` after Vision provider changes, `npm run smoke:screen-capture:live` after daemon-triggered capture changes, `npm run smoke:screen-helper` and `npm run smoke:screen-helper:ocr` after screen helper/OCR changes, `npm run smoke:terminal` after one-shot terminal provider changes, and `npm run smoke:terminal-session` after `/pty` session changes.
 21. DOM snapshot testing can use `providers/browser-dom-extension` as an unpacked Chrome/Edge extension or `docs/providers/dom-snapshot-bookmarklet.js` as a fallback against the local daemon on port `4128`.
 22. Screen snapshot testing can use `providers/screen-capture-helper/capture-screen.ps1` for live capture or `docs/providers/screen-snapshot-example.json` as the raw payload shape against `POST /providers/screen/snapshot`.
-23. Run `npm run build` before release checks; MSI/NSIS bundle creation is now part of the installability gate.
-24. Run `npm run vibe:checkpoint` before ending any follow-up maintenance session.
+23. Run `npm run release:verify` as the full live release gate before treating a build as releasable.
+24. Run `npm run build` before individual release checks when not using `release:verify`; MSI/NSIS bundle creation is now part of the installability gate.
+25. Run `npm run vibe:checkpoint` before ending any follow-up maintenance session.
 
 Use `docs/context/qa.md` for routine follow-up commands.

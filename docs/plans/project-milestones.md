@@ -67,4 +67,5 @@ Evidence:
 - `npm run smoke:release-resources` verifies generated MSI/NSIS scripts include the bundled daemon/runtime and provider helper resources.
 - `npm run smoke:release-launch` verifies the release exe can start hidden and expose the daemon WebSocket on `127.0.0.1:4128`.
 - `npm run smoke:release-install` verifies the NSIS installer can silently install, launch the installed app with its bundled daemon, silently uninstall, and leave no install directory, uninstall entry, product install key, or desktop shortcut.
+- `npm run release:verify` runs the full live release gate and reports release artifact sizes.
 - Native crash-recovery UX is surfaced through renderer diagnostics; MSI install/uninstall observation and longer soak tests remain open.
