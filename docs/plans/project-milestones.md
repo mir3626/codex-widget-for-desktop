@@ -4,7 +4,7 @@
 
 Goal: keep a small Tauri desktop widget resident on Windows with reliable window controls, prompt/chat UX, streaming Codex responses, session reset, and recoverable daemon lifecycle.
 
-Current progress: 0.82
+Current progress: 0.84
 
 Evidence:
 - Tauri shell, borderless resize, pin, opacity, mascot drag, and model/reasoning controls are implemented.
@@ -68,4 +68,5 @@ Evidence:
 - `npm run smoke:release-launch` verifies the release exe can start hidden and expose the daemon WebSocket on `127.0.0.1:4128`.
 - `npm run smoke:release-install` verifies the NSIS installer can silently install, launch the installed app with its bundled daemon, force-kill the bundled daemon and observe native restart supervision, force-kill the app process and observe daemon orphan cleanup, silently uninstall, and leave no install directory, uninstall entry, product install key, or desktop shortcut.
 - `npm run release:verify` runs the full live release gate and reports release artifact sizes.
-- Native crash-recovery UX is surfaced through renderer diagnostics; MSI install/uninstall observation and longer soak tests remain open.
+- `npm run release:soak` builds the release app and runs a longer hidden release-exe soak with runtime samples, ping/pong health checks, daemon process detection, and process-tree working-set limits.
+- Native crash-recovery UX is surfaced through renderer diagnostics; MSI install/uninstall observation and multi-hour/manual soak tests remain open.

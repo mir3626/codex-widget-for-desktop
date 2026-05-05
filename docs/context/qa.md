@@ -26,7 +26,10 @@ Run this after resident daemon lifecycle, runtime status, or resource-budget cha
 
 ```powershell
 npm run smoke:resident-soak
+npm run release:soak
 ```
+
+Use `npm run smoke:release-soak` instead when the release build is already current and only the hidden release-exe soak needs to be rerun.
 
 Run this after packaged daemon bundle/runtime resource changes:
 
@@ -100,3 +103,4 @@ npm run vibe:checkpoint
 - `npm run smoke:release-launch` starts the release exe hidden and verifies the daemon WebSocket on port `4128`.
 - `npm run smoke:release-install` performs a Windows NSIS silent install, launches the installed app hidden, verifies the installed bundled daemon on port `4128`, kills that daemon to verify native supervisor restart, kills the app process to verify daemon orphan cleanup, silently uninstalls, and checks cleanup; MSI install/uninstall is still manual.
 - `npm run release:verify` is the single full release gate and runs the live provider/resident smokes, Tauri build, release resource smoke, release exe launch smoke, and NSIS install smoke.
+- `npm run release:soak` is the longer hidden release-exe soak. It defaults to 60 seconds and can be tuned with `CODEX_WIDGET_RELEASE_SOAK_MS`, `CODEX_WIDGET_RELEASE_SOAK_MAX_WORKING_SET_MB`, and `CODEX_WIDGET_RELEASE_SOAK_MAX_GROWTH_MB`.

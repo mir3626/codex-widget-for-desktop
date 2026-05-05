@@ -115,6 +115,8 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run smoke:release-launch`: launch the latest release exe hidden, verify its daemon WebSocket on `127.0.0.1:4128`, then clean up the process tree
 - `npm run smoke:release-install`: run a Windows NSIS silent install, launch the installed app hidden, verify the bundled daemon, kill it to verify native restart supervision, kill the app process to verify daemon orphan cleanup, then silently uninstall and check cleanup
 - `npm run release:verify`: run the full live release gate (`smoke:all:live`, build, release resource/launch/install smokes) and print artifact sizes
+- `npm run release:soak`: build the release app and run a longer hidden release-exe soak with runtime samples, ping/pong checks, daemon process detection, and process-tree working-set limits
+- `npm run smoke:release-soak`: run the same release-exe soak against an already-built release app
 - `npm run smoke:node-runtime`: verify the bundled Node runtime can run the bundled daemon without repository `node_modules`
 - `npm run smoke:renderer-chat`: run a Playwright layout smoke for multi-turn chat, tables, prompt resizing, and More-menu placement
 - `npm run smoke:dom`: verify the local DOM snapshot provider ingress
