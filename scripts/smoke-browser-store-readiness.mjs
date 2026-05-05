@@ -10,6 +10,7 @@ const listingPath = path.join(extensionDir, "store-listing.md");
 const privacyPath = path.join(extensionDir, "privacy.md");
 const reviewNotesPath = path.join(extensionDir, "review-notes.md");
 const packagePath = path.resolve("dist/providers/codex-widget-dom-extension-0.1.0.zip");
+const submissionManifestPath = path.resolve("dist/browser-store-submission/codex-widget-dom-extension-0.1.0/submission-manifest.json");
 
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 const listing = await readFile(listingPath, "utf8");
@@ -21,6 +22,12 @@ const packageRun = spawnSync(process.execPath, ["scripts/package-browser-extensi
 });
 if (packageRun.status !== 0) {
   throw new Error([packageRun.stdout, packageRun.stderr].filter(Boolean).join("\n"));
+}
+const packetRun = spawnSync(process.execPath, ["scripts/prepare-browser-store-submission.mjs"], {
+  encoding: "utf8"
+});
+if (packetRun.status !== 0) {
+  throw new Error([packetRun.stdout, packetRun.stderr].filter(Boolean).join("\n"));
 }
 
 assertText(manifest.name, 45, "manifest.name");
@@ -51,6 +58,7 @@ for (const marker of [
 }
 
 assertFile(packagePath, "packaged extension zip");
+assertFile(submissionManifestPath, "browser store submission manifest");
 
 console.log("browser store readiness smoke ok");
 

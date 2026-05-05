@@ -9,6 +9,7 @@ const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
 const version = packageJson.version;
 const strictManualGates = process.argv.includes("--require-manual-gates") || process.env.CODEX_WIDGET_RELEASE_REQUIRE_MANUAL_GATES === "1";
 const minSoakMs = normalizePositiveNumber(process.env.CODEX_WIDGET_RELEASE_READINESS_MIN_SOAK_MS, 60_000);
+const multiHourSoakMs = normalizePositiveNumber(process.env.CODEX_WIDGET_RELEASE_MULTI_HOUR_SOAK_MS, 2 * 60 * 60 * 1000);
 const reportPath = resolve(
   process.env.CODEX_WIDGET_RELEASE_SOAK_REPORT?.trim() || join(root, "dist", "reports", "release-soak-latest.json")
 );
@@ -20,6 +21,7 @@ const checks = [];
 const blockers = [];
 
 runCheck("browser-store-readiness", process.execPath, ["scripts/smoke-browser-store-readiness.mjs"]);
+runCheck("browser-store-submission-packet", process.execPath, ["scripts/prepare-browser-store-submission.mjs"]);
 runCheck("release-resources", process.execPath, ["scripts/smoke-release-resources.mjs"]);
 
 const artifacts = [
@@ -53,8 +55,8 @@ if (soakReport) {
 manualGate("browser-store-submission", process.env.CODEX_WIDGET_BROWSER_STORE_SUBMITTED === "1", "Browser store account submission has not been confirmed.");
 manualGate(
   "multi-hour-soak",
-  process.env.CODEX_WIDGET_RELEASE_MULTI_HOUR_SOAK_ACCEPTED === "1" || Number(soakReport?.durationMs ?? 0) >= 60 * 60 * 1000,
-  "A true multi-hour soak has not been confirmed."
+  process.env.CODEX_WIDGET_RELEASE_MULTI_HOUR_SOAK_ACCEPTED === "1" || Number(soakReport?.durationMs ?? 0) >= multiHourSoakMs,
+  `A true multi-hour soak has not been confirmed. Required duration is ${Math.round(multiHourSoakMs / 60 / 1000)} minutes.`
 );
 
 const automatedFailed = checks.some((check) => check.status === "fail");
@@ -64,6 +66,7 @@ const summary = {
   version,
   strictManualGates,
   minSoakMs,
+  multiHourSoakMs,
   checks,
   blockers,
   status: automatedFailed ? "fail" : manualBlocked ? "manual-blocked" : "pass"

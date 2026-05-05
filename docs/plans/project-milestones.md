@@ -47,13 +47,13 @@ Current progress: 0.98
 Evidence:
 - Provider modes and tool-event rendering exist.
 - Browser DOM mode accepts live snapshots through the local daemon and injects them into model context.
-- An unpacked Chrome/Edge extension can send active-tab DOM snapshots to the daemon, exposes a local-only Options page for daemon URL changes, can use an optional Chrome/Edge native messaging host before falling back to HTTP, and `npm run package:extension` produces a zip package with icon assets. Store listing, privacy notes, review notes, permission rationales, and `npm run smoke:browser-store` are in place.
+- An unpacked Chrome/Edge extension can send active-tab DOM snapshots to the daemon, exposes a local-only Options page for daemon URL changes, can use an optional Chrome/Edge native messaging host before falling back to HTTP, and `npm run package:extension` produces a zip package with icon assets. Store listing, privacy notes, review notes, permission rationales, `npm run release:browser-store-packet`, and `npm run smoke:browser-store` are in place.
 - Screen/Vision mode accepts live snapshots through the local daemon, injects description/OCR context into model requests, and attaches image data to app-server Vision turns.
 - A Windows PowerShell helper captures the virtual desktop or Settings/env/visual-drag configured crop rectangles as compressed JPEG data, can run a local OCR command, bundled Tesseract runtime, or auto-detected `tesseract` against an OCR-only upscaled PNG, and posts the result to the Screen/Vision endpoint; the widget can trigger that helper through the daemon protocol.
 - The Screen/Vision registry computes image hash/change/diff metadata with configurable thresholding so repeated and below-threshold captures can be treated as unchanged context.
 - `npm run build:ocr-runtime`, `npm run ocr:fetch-languages`, and `npm run smoke:ocr-runtime` package and verify a Tesseract-compatible OCR runtime resource slot for installed builds, including standard Windows install discovery, `CODEX_WIDGET_TESSERACT_SEARCH_ROOTS`, tessdata language acquisition/manifesting, and bundled `eng+kor` auto-selection when both language packs exist.
 - Terminal/PTY mode executes explicit shell commands, supports a persistent node-pty/ConPTY-backed `/pty` command/raw-input session, drains output after raw input/key writes, streams output as tool events, displays terminal output in a dedicated renderer viewport with direct input controls, and forwards live text/key/mouse input through direct `terminal.input` protocol messages.
-- Final browser store account submission and true multi-hour soak remain open.
+- Final browser store account submission and two-hour soak evidence remain open.
 
 ## resident-desktop-readiness
 
@@ -79,6 +79,6 @@ Evidence:
 - `npm run smoke:release-install` verifies the NSIS installer can silently install, launch the installed app with its bundled daemon, force-kill the bundled daemon and observe native restart supervision, force-kill the app process and observe daemon orphan cleanup, silently uninstall, and leave no install directory, uninstall entry, product install key, or desktop shortcut.
 - `npm run smoke:release-msi-install` verifies the MSI installer can silently install into a per-user test directory, launch the installed app with its bundled daemon, silently uninstall, and leave no install directory, uninstall entry, or desktop shortcut.
 - `npm run release:verify` runs the full live release gate and reports release artifact sizes.
-- `npm run release:readiness` audits current release artifacts, browser store metadata/package readiness, latest soak report evidence, and manual release blockers.
+- `npm run release:readiness` audits current release artifacts, browser store metadata/package/submission packet readiness, latest soak report evidence, and manual release blockers.
 - `npm run release:soak` builds the release app and runs a longer hidden release-exe soak with runtime samples, ping/pong health checks, daemon process detection, process-tree working-set limits, and JSON evidence report output for manual/multi-hour runs.
-- Native crash-recovery UX is surfaced through renderer diagnostics; a true multi-hour soak run remains open before final release.
+- Native crash-recovery UX is surfaced through renderer diagnostics; a two-hour soak run remains open before final release.

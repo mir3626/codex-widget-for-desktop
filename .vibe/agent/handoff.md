@@ -93,12 +93,12 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added a browser DOM extension Options page backed by `chrome.storage.sync`, so users can point the extension at another local daemon port without editing extension code. The extension only accepts local `http://127.0.0.1/...` or `http://localhost/...` snapshot URLs ending in `/providers/dom/snapshot`.
 - Added `npm run smoke:release-install` for NSIS silent install/uninstall observation: it refuses to overwrite existing install state, launches the installed app hidden, verifies the daemon WebSocket, uninstalls, and checks install directory, uninstall registry entry, product install key, and desktop shortcut cleanup.
 - Added `npm run release:verify` as the one-command live release gate. It runs `smoke:all:live`, `build`, release resource smoke, release exe launch smoke, NSIS install smoke, MSI install smoke, and prints release artifact sizes.
-- Added `npm run release:readiness` as a release-candidate audit. It validates current release artifacts, browser store metadata/package readiness, latest release soak evidence, and reports manual blockers for browser store submission and true multi-hour soak.
+- Added `npm run release:readiness` as a release-candidate audit. It validates current release artifacts, browser store metadata/package/submission packet readiness, latest release soak evidence, and reports manual blockers for browser store submission and the default two-hour soak.
 - Fixed installed-build daemon resource resolution. The native shell now checks the installed exe-adjacent `_up_` resource directory for `dist/daemon-bundle/standalone.js` and `dist/node-runtime/node.exe` before falling back to development paths or system `node`.
 - Strengthened `npm run smoke:release-install` to find the installed bundled daemon process, kill it, and verify the native supervisor restarts it with a new PID before uninstall cleanup.
 - Added a daemon parent watchdog through `CODEX_WIDGET_NATIVE_PARENT_PID`, so the installed daemon exits when the native app process disappears unexpectedly instead of surviving as an orphan.
 - Added `providers/browser-native-host`, an optional Chrome/Edge native messaging host that receives framed `domSnapshot` messages, validates local daemon URLs, and posts snapshots to the local daemon. The browser extension now tries native messaging first and falls back to direct local HTTP when the host is not registered.
-- Added browser extension store-readiness metadata: `store-listing.md`, `privacy.md`, `review-notes.md`, and `npm run smoke:browser-store` for permission rationale/privacy/package validation.
+- Added browser extension store-readiness metadata: `store-listing.md`, `privacy.md`, `review-notes.md`, `npm run release:browser-store-packet`, and `npm run smoke:browser-store` for permission rationale/privacy/package/submission packet validation.
 - Added `npm run release:soak`, a longer hidden release-exe soak that checks runtime samples, ping/pong health, daemon process presence, process-tree working set, and cleanup after the soak.
 - Release soak now writes a JSON evidence report under `dist/reports/release-soak-latest.json` by default, with `CODEX_WIDGET_RELEASE_SOAK_REPORT` available for named manual/multi-hour runs.
 - Made response Branch runtime-safe: Branch now sends `session.branch` to reset daemon-side proxy/app-server session state, stores the selected user/assistant pair as a one-shot `branchContext`, sends that seed with the next prompt only, and clears it after use so visible branch state does not keep running against hidden old app-server context.
@@ -118,10 +118,14 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
   - The smoke performs a silent MSI install into a per-user temp directory using `ALLUSERS=2 MSIINSTALLPERUSER=1`.
   - It verifies installed bundled daemon/Node/OCR/PTY resources, launches the installed app hidden, confirms the daemon WebSocket, silently uninstalls, and checks cleanup.
   - `npm run release:verify` now runs the MSI smoke after the existing NSIS install smoke.
+- Added `npm run release:browser-store-packet`:
+  - It generates `dist/browser-store-submission/codex-widget-dom-extension-<version>` with the extension zip, store listing, privacy disclosure, review notes, native host notes, icons, and SHA-256 checksums.
+  - `npm run smoke:browser-store` and `npm run release:readiness` now verify the submission packet exists and can be regenerated.
+  - `release:readiness` now treats the unconfirmed soak blocker as a default 120-minute evidence requirement unless `CODEX_WIDGET_RELEASE_MULTI_HOUR_SOAK_MS` or the explicit manual-acceptance env flag is used.
 
 ## Next Recommended Sprint
 
-`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with final browser store submission workflow, an actual multi-hour soak run, and native packaging polish.
+`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with final browser store account submission, an actual two-hour soak run, and native packaging polish.
 
 ## Open Issues
 
@@ -129,10 +133,10 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - App-server approval and tool-user-input requests now have renderer UI, but the exact Codex app-server protocol is still experimental and may require adapter changes as CLI releases evolve.
 - External OAuth provider/backend agent proxy support remains optional for non-Codex auth modes; this repo primarily implements the desktop widget/daemon client boundary.
 - OAuth refresh tokens are not persisted; users may need to sign in again when an access token expires.
-- Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge, local-only Options URL configuration, optional native messaging host, generated zip package, and store-readiness metadata; final browser store account submission remains manual.
+- Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge, local-only Options URL configuration, optional native messaging host, generated zip package, store-readiness metadata, and generated submission packet; final browser store account submission remains manual.
 - Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, Settings/env/visual-drag configured crop, optional OCR command hook, bundled OCR runtime packaging, standard Windows Tesseract discovery, bundled tessdata language acquisition/defaults, OCR-only PNG preprocessing, image hash/change/diff metadata with configurable thresholding, and direct app-server image input.
 - Terminal/PTY provider now has a node-pty/ConPTY command/raw-input backend, short raw-input output drain, direct `terminal.input` text/key/mouse input, idle PTY output broadcast, and a renderer PTY viewport with direct input controls.
-- Final browser store account submission and an actual multi-hour/manual soak run remain open for live-service readiness.
+- Final browser store account submission and an actual two-hour/manual soak run remain open for live-service readiness.
 
 ## Verification
 
@@ -952,11 +956,11 @@ Completed latest release build after PTY direct input pass:
 17. Run `npm run smoke:release-resources` after `npm run build` when release bundle resources change.
 18. Run `npm run smoke:release-launch` after `npm run build` when native daemon startup, bundled runtime resolution, or release exe behavior changes.
 19. Run `npm run smoke:release-install` after `npm run build` when NSIS installability, bundled installed resources, or installer cleanup behavior changes. Run `npm run smoke:release-msi-install` after MSI installability, WiX, or release verification changes. Both refuse to run over existing install state unless `CODEX_WIDGET_RELEASE_INSTALL_SMOKE_ALLOW_EXISTING=1` is set for a controlled test machine.
-20. Run `npm run smoke:dom` after browser/DOM provider ingress changes, `npm run smoke:extension` after browser extension or packaging changes, `npm run smoke:browser-native-host` after native messaging host changes, `npm run smoke:browser-store` after browser store metadata changes, `npm run smoke:screen` after Vision provider changes, `npm run smoke:screen-capture:live` after daemon-triggered capture changes, `npm run smoke:screen-helper`, `npm run smoke:screen-helper:ocr`, and `npm run smoke:ocr-runtime` after screen helper/OCR changes, `npm run smoke:terminal` after one-shot terminal provider changes, and `npm run smoke:terminal-session` plus `npm run smoke:pty-runtime` after `/pty` session changes.
+20. Run `npm run smoke:dom` after browser/DOM provider ingress changes, `npm run smoke:extension` after browser extension or packaging changes, `npm run smoke:browser-native-host` after native messaging host changes, `npm run smoke:browser-store` and `npm run release:browser-store-packet` after browser store metadata/submission packet changes, `npm run smoke:screen` after Vision provider changes, `npm run smoke:screen-capture:live` after daemon-triggered capture changes, `npm run smoke:screen-helper`, `npm run smoke:screen-helper:ocr`, and `npm run smoke:ocr-runtime` after screen helper/OCR changes, `npm run smoke:terminal` after one-shot terminal provider changes, and `npm run smoke:terminal-session` plus `npm run smoke:pty-runtime` after `/pty` session changes.
 21. DOM snapshot testing can use `providers/browser-dom-extension` as an unpacked Chrome/Edge extension or `docs/providers/dom-snapshot-bookmarklet.js` as a fallback against the local daemon on port `4128`.
 22. Screen snapshot testing can use `providers/screen-capture-helper/capture-screen.ps1` for live capture or `docs/providers/screen-snapshot-example.json` as the raw payload shape against `POST /providers/screen/snapshot`.
 23. Run `npm run release:verify` as the full live release gate before treating a build as releasable; it includes NSIS and MSI install smokes.
-24. Run `npm run release:soak` for longer release-exe resident validation before manual release candidates or resident lifecycle changes.
+24. Run `npm run release:soak` for longer release-exe resident validation before manual release candidates or resident lifecycle changes. Use `CODEX_WIDGET_RELEASE_SOAK_MS=7200000` and a named `CODEX_WIDGET_RELEASE_SOAK_REPORT` for the default two-hour release-candidate evidence run.
 25. Run `npm run build` before individual release checks when not using `release:verify`; MSI/NSIS bundle creation is now part of the installability gate.
 26. Run `npm run vibe:checkpoint` before ending any follow-up maintenance session.
 
