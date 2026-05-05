@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawn as defaultSpawn } from 'node:child_process';
 
+const OPEN_DEDUP_WINDOW_MS = 30_000;
 const META_SPRINT_PATTERNS = [/^sprint-M\d+/, /^self-evolution-/, /^harness-/, /^v\d+\./];
 const META_SESSION_TAGS = ['[harness-review]', '[meta-sprint-complete]', '[sprint-complete]'];
 const META_COMMIT_PREFIXES = [
@@ -18,6 +21,7 @@ const META_COMMIT_PREFIXES = [
 
 function parseArgs(argv) {
   const flags = {
+    forceOpen: false,
     noOpen: false,
     output: path.join('docs', 'reports', 'project-report.html'),
     verbose: false,
@@ -27,6 +31,10 @@ function parseArgs(argv) {
     const token = argv[index];
     if (token === '--no-open') {
       flags.noOpen = true;
+      continue;
+    }
+    if (token === '--force-open') {
+      flags.forceOpen = true;
       continue;
     }
     if (token === '--verbose') {
@@ -418,7 +426,7 @@ function renderMetricCards(model) {
   const passed = sprints.filter((entry) => entry.status === 'passed' || entry.status === 'complete');
   const loc = sumLoc(sprints);
   const openRisks = Array.isArray(model.status?.pendingRisks)
-    ? model.status.pendingRisks.filter((risk) => risk?.status !== 'resolved').length
+    ? model.status.pendingRisks.filter((risk) => risk?.status === 'open').length
     : 0;
   const current = model.iterationHistory.currentIteration ?? 'no active iteration';
   const cards = [
@@ -666,7 +674,7 @@ function renderNextSteps(status, roadmapIds, history) {
   const passed = new Set((Array.isArray(status?.sprints) ? status.sprints : []).filter((entry) => entry.status === 'passed').map((entry) => entry.id));
   const next = roadmapIds.find((id) => !passed.has(id));
   const openRisks = Array.isArray(status?.pendingRisks)
-    ? status.pendingRisks.filter((risk) => risk?.status !== 'resolved').length
+    ? status.pendingRisks.filter((risk) => risk?.status === 'open').length
     : 0;
   const steps = [];
   if (history.currentIteration) {
@@ -1011,6 +1019,48 @@ function warnOpenFailure(target, error, stderr = process.stderr) {
   stderr.write(`Warning: could not open ${target}: ${message}\n`);
 }
 
+function reportOpenMarkerPath(root, outPath) {
+  const hash = createHash('sha256')
+    .update(path.resolve(root))
+    .update('\0')
+    .update(path.resolve(outPath))
+    .digest('hex')
+    .slice(0, 24);
+  return path.join(tmpdir(), 'vibe-doctor', `project-report-open-${hash}.json`);
+}
+
+async function shouldOpenReport(root, outPath, flags, nowMs) {
+  if (flags.forceOpen) {
+    return true;
+  }
+
+  try {
+    const marker = JSON.parse(await readFile(reportOpenMarkerPath(root, outPath), 'utf8'));
+    const openedAtMs =
+      typeof marker?.openedAtMs === 'number'
+        ? marker.openedAtMs
+        : Date.parse(String(marker?.openedAt ?? ''));
+    const ageMs = nowMs - openedAtMs;
+    return !(Number.isFinite(ageMs) && ageMs >= 0 && ageMs < OPEN_DEDUP_WINDOW_MS);
+  } catch {
+    return true;
+  }
+}
+
+async function recordReportOpen(root, outPath, nowMs) {
+  try {
+    const markerPath = reportOpenMarkerPath(root, outPath);
+    await mkdir(path.dirname(markerPath), { recursive: true });
+    await writeFile(
+      markerPath,
+      `${JSON.stringify({ openedAt: new Date(nowMs).toISOString(), openedAtMs: nowMs }, null, 2)}\n`,
+      'utf8',
+    );
+  } catch {
+    // Best-effort browser-open dedupe. Report generation must not fail because of marker I/O.
+  }
+}
+
 function openReport(outPath, spawnFn, platform, stderr = process.stderr) {
   const argsByPlatform =
     platform === 'win32'
@@ -1029,8 +1079,10 @@ function openReport(outPath, spawnFn, platform, stderr = process.stderr) {
     if (typeof child?.unref === 'function') {
       child.unref();
     }
+    return true;
   } catch (error) {
     warnOpenFailure('project report', error, stderr);
+    return false;
   }
 }
 
@@ -1038,6 +1090,7 @@ export async function runProjectReportCli(argv = process.argv.slice(2), options 
   const root = path.resolve(options.root ?? process.cwd());
   const flags = parseArgs(argv);
   const outPath = path.resolve(root, flags.output);
+  const nowMs = Number.isFinite(options.nowMs) ? options.nowMs : Date.now();
   const model = await buildModel(root);
   const html = renderHtml(model);
 
@@ -1051,8 +1104,11 @@ export async function runProjectReportCli(argv = process.argv.slice(2), options 
     );
   }
 
-  if (!flags.noOpen) {
-    openReport(outPath, options.spawn ?? defaultSpawn, options.platform ?? process.platform, options.stderr ?? process.stderr);
+  if (!flags.noOpen && await shouldOpenReport(root, outPath, flags, nowMs)) {
+    const opened = openReport(outPath, options.spawn ?? defaultSpawn, options.platform ?? process.platform, options.stderr ?? process.stderr);
+    if (opened) {
+      await recordReportOpen(root, outPath, nowMs);
+    }
   }
 
   const stdout = options.stdout ?? process.stdout;

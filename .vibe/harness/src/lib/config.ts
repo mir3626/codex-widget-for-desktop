@@ -28,10 +28,15 @@ export interface SprintConfig {
 
 export interface BundleConfig {
   enabled: boolean;
+  policy?: 'automatic' | 'custom' | 'off';
   dir: string;
   path?: string;
   limitGzipKB: number;
   excludeExt: string[];
+  rationale?: string;
+  replacementEvidence?: string;
+  resolvedBy?: 'user' | 'agent';
+  resolvedAt?: string;
 }
 
 export interface BrowserSmokeConfig {
@@ -85,14 +90,34 @@ function resolveBundleConfig(
   override: Partial<BundleConfig> | undefined,
 ): BundleConfig {
   const dir = override?.dir ?? base?.dir ?? 'dist';
-
-  return {
+  const resolved: BundleConfig = {
     enabled: override?.enabled ?? base?.enabled ?? false,
     dir,
     path: override?.path ?? base?.path ?? dir,
     limitGzipKB: override?.limitGzipKB ?? base?.limitGzipKB ?? 80,
     excludeExt: override?.excludeExt ?? base?.excludeExt ?? ['.map'],
   };
+  const policy = override?.policy ?? base?.policy;
+  const rationale = override?.rationale ?? base?.rationale;
+  const replacementEvidence = override?.replacementEvidence ?? base?.replacementEvidence;
+  const resolvedBy = override?.resolvedBy ?? base?.resolvedBy;
+  const resolvedAt = override?.resolvedAt ?? base?.resolvedAt;
+  if (policy !== undefined) {
+    resolved.policy = policy;
+  }
+  if (rationale !== undefined) {
+    resolved.rationale = rationale;
+  }
+  if (replacementEvidence !== undefined) {
+    resolved.replacementEvidence = replacementEvidence;
+  }
+  if (resolvedBy !== undefined) {
+    resolved.resolvedBy = resolvedBy;
+  }
+  if (resolvedAt !== undefined) {
+    resolved.resolvedAt = resolvedAt;
+  }
+  return resolved;
 }
 
 function resolveBrowserSmokeConfig(

@@ -47,9 +47,11 @@ operating charter 로 채택** 한다. 이 섹션들의 Must 조건은 **모두 
 4. Codex Generator 위임은 상수 — `Bash("cat docs/prompts/sprint-<id>-*.md |
    ./.vibe/harness/scripts/run-codex.sh -")` 형식 유지. Agent 도구로 코드 위임 금지.
 5. 각 Sprint self-QA 1 회 통과 후 `node .vibe/harness/scripts/vibe-sprint-commit.mjs <sprintId> passed`.
-6. Evaluator 는 `sprintsSinceLastAudit >= audit.everyN (기본 5)` 도달 시에만 소환.
-   프로토타입 면제 조건 (LOC < 2000 + self-QA pass) 충족 시 Should 트리거 면제.
-7. 모든 Sprint 완료 후 `node .vibe/harness/scripts/vibe-project-report.mjs` 실행 → 브라우저 오픈.
+6. Evaluator 는 `sprintsSinceLastAudit >= audit.everyN (기본 5)`, self-QA 실패, 비-executable AC, 또는 경험형 제품의 screenshot/playthrough/identity evidence 확인이 필요할 때 소환.
+   프로토타입 면제 조건 (LOC < 2000 + self-QA pass) 충족 시 Should 트리거는 면제할 수 있지만, frontend/game/visual/canvas/WebGL/Three.js/editor/dashboard identity/payoff evidence 누락은 면제하지 않는다.
+7. 모든 Sprint 완료 후 별도 `vibe-project-report.mjs` 재실행 금지. 마지막 `vibe-sprint-commit.mjs`
+   이 내부적으로 report 를 생성하고 브라우저를 1회 오픈한다. 이미 열린 탭이 있는데
+   report 만 다시 생성해야 하면 `node .vibe/harness/scripts/vibe-project-report.mjs --no-open` 사용.
 
 ## 제약 (Must)
 

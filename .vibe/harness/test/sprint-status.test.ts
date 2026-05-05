@@ -14,6 +14,7 @@ import {
   resolvePendingRisk,
   saveSprintStatus,
   touchStateUpdated,
+  updatePendingRiskStatus,
   withDefaults,
   type SprintStatus,
 } from '../src/lib/sprint-status.js';
@@ -177,6 +178,53 @@ describe('sprint-status', () => {
     const resolved = await resolvePendingRisk('resolve-me', root);
     assert.equal(resolved?.status, 'resolved');
     assert.equal(Number.isNaN(Date.parse(resolved?.resolvedAt ?? '')), false);
+    assert.equal(Number.isNaN(Date.parse(resolved?.statusUpdatedAt ?? '')), false);
+  });
+
+  it('updatePendingRiskStatus supports accepted, deferred, and closed-by-scope lifecycle states', async () => {
+    const root = await makeTempDir('sprint-status-lifecycle-');
+    await writeLegacyStatus(root);
+
+    for (const id of ['accept-me', 'defer-me', 'close-me']) {
+      await appendPendingRisk(
+        {
+          id,
+          raisedBy: 'test',
+          targetSprint: '*',
+          text: id,
+        },
+        root,
+      );
+    }
+
+    const accepted = await updatePendingRiskStatus(
+      'accept-me',
+      'accepted',
+      { reason: 'known tradeoff', now: '2026-04-04T00:00:00.000Z' },
+      root,
+    );
+    const deferred = await updatePendingRiskStatus(
+      'defer-me',
+      'deferred',
+      {
+        reason: 'later sprint',
+        deferredUntil: 'sprint-03-hardening',
+        now: '2026-04-04T00:01:00.000Z',
+      },
+      root,
+    );
+    const closed = await updatePendingRiskStatus(
+      'close-me',
+      'closed-by-scope',
+      { reason: 'outside current scope', now: '2026-04-04T00:02:00.000Z' },
+      root,
+    );
+
+    assert.equal(accepted?.acceptedAt, '2026-04-04T00:00:00.000Z');
+    assert.equal(accepted?.statusReason, 'known tradeoff');
+    assert.equal(deferred?.deferredAt, '2026-04-04T00:01:00.000Z');
+    assert.equal(deferred?.deferredUntil, 'sprint-03-hardening');
+    assert.equal(closed?.closedAt, '2026-04-04T00:02:00.000Z');
   });
 
   it('resolvePendingRisksByPrefix resolves open matching entries only and returns the count', async () => {

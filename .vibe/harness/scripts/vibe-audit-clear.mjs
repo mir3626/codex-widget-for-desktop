@@ -58,7 +58,9 @@ function resolvePendingRisksByPrefix(status, prefix) {
     }
 
     risk.status = 'resolved';
-    risk.resolvedAt = new Date().toISOString();
+    const nowIso = new Date().toISOString();
+    risk.resolvedAt = nowIso;
+    risk.statusUpdatedAt = nowIso;
     resolvedCount += 1;
   }
 

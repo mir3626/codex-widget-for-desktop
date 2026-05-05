@@ -255,10 +255,35 @@
                 "enum": [
                   "open",
                   "acknowledged",
+                  "accepted",
+                  "deferred",
+                  "closed-by-scope",
                   "resolved"
                 ]
               },
               "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "statusReason": {
+                "type": "string"
+              },
+              "statusUpdatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "acceptedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "deferredAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "deferredUntil": {
+                "type": "string"
+              },
+              "closedAt": {
                 "type": "string",
                 "format": "date-time"
               },

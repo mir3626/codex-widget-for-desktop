@@ -421,7 +421,7 @@ function main() {
 
   if (initialBlockedRisks.length > 0) {
     process.stderr.write(
-      `Refusing to commit: ${initialBlockedRisks.length} open pendingRisk(s) target this sprint. Resolve via resolvePendingRisk() or acknowledge first:\n`,
+      `Refusing to commit: ${initialBlockedRisks.length} open pendingRisk(s) target this sprint. Resolve it or move it to an accepted/deferred/closed-by-scope lifecycle status first:\n`,
     );
     for (const risk of initialBlockedRisks) {
       process.stderr.write(`- ${risk.id}: ${risk.text}\n`);
@@ -455,7 +455,7 @@ function main() {
   const blockedRisks = collectTargetedPendingRisks(sprintStatus, sprintId);
   if (blockedRisks.length > 0) {
     process.stderr.write(
-      `Refusing to commit: ${blockedRisks.length} open pendingRisk(s) target this sprint. Resolve via resolvePendingRisk() or acknowledge first:\n`,
+      `Refusing to commit: ${blockedRisks.length} open pendingRisk(s) target this sprint. Resolve it or move it to an accepted/deferred/closed-by-scope lifecycle status first:\n`,
     );
     for (const risk of blockedRisks) {
       process.stderr.write(`- ${risk.id}: ${risk.text}\n`);

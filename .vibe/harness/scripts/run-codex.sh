@@ -35,6 +35,9 @@
 # sprint calls, `vibe:run-agent --provider codex`, and manual debugging
 # all route through this script by piping a prompt file into
 # `run-codex.sh -` (or passing the prompt as a positional arg).
+# When a stdin prompt explicitly references allowed rule/context Markdown,
+# the wrapper injects that Markdown body so "read this file" rules are not
+# silently skipped.
 # See docs/context/codex-execution.md for the full rationale.
 
 set -euo pipefail
@@ -429,6 +432,88 @@ trim_section_body() {
   '
 }
 
+normalize_md_path() {
+  local md_path
+
+  md_path="$1"
+  md_path="${md_path//\\//}"
+  md_path="${md_path#./}"
+  printf '%s' "$md_path"
+}
+
+is_autoinjectable_md_path() {
+  local md_path
+
+  md_path="$1"
+  case "$md_path" in
+    CLAUDE.md|AGENTS.md|GEMINI.md)
+      return 0
+      ;;
+    docs/context/codex-execution.md|docs/context/conventions.md|docs/context/harness-gaps.md|docs/context/orchestration.md|docs/context/qa.md|docs/context/secrets.md|docs/context/tokens.md)
+      return 0
+      ;;
+    .claude/agents/*.md|.claude/skills/*.md|.codex/skills/*.md)
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+extract_referenced_md_paths() {
+  printf '%s\n' "$1" |
+    grep -Eo '(\.?[A-Za-z0-9_.-]+[\\/][A-Za-z0-9_./\\-]+\.md|[A-Z][A-Z0-9_.-]+\.md)' |
+    sort -u || true
+}
+
+inject_referenced_md_context() {
+  local scan_prompt full_prompt referenced_path md_path seen_paths context injected_count content
+
+  scan_prompt="$1"
+  full_prompt="$2"
+  if [[ "${VIBE_DISABLE_MD_CONTEXT_INJECTION:-}" == "1" || -z "$scan_prompt" ]]; then
+    printf '%s' "$full_prompt"
+    return 0
+  fi
+
+  seen_paths=" "
+  context=""
+  injected_count=0
+
+  while IFS= read -r referenced_path; do
+    [[ -n "$referenced_path" ]] || continue
+    md_path="$(normalize_md_path "$referenced_path")"
+
+    if [[ "$md_path" == *..* || "$md_path" = /* || "$md_path" == "$RULES_FILE" ]]; then
+      continue
+    fi
+    if [[ " $seen_paths " == *" $md_path "* ]]; then
+      continue
+    fi
+    seen_paths="${seen_paths}${md_path} "
+
+    if ! is_autoinjectable_md_path "$md_path"; then
+      continue
+    fi
+    if [[ ! -f "$md_path" ]]; then
+      echo "[run-codex] referenced MD context missing: $md_path" >&2
+      continue
+    fi
+
+    content="$(cat "$md_path")"
+    context="$(printf '%s\n\n## Source: `%s`\n\n%s\n' "$context" "$md_path" "$content")"
+    injected_count=$((injected_count + 1))
+  done < <(extract_referenced_md_paths "$scan_prompt")
+
+  if [[ "$injected_count" -eq 0 ]]; then
+    printf '%s' "$full_prompt"
+    return 0
+  fi
+
+  echo "[run-codex] injected referenced MD context count=$injected_count" >&2
+  printf '# Referenced MD Context (auto-injected)\n\n%s\n---\n\n%s' "$context" "$full_prompt"
+}
+
 emit_sandbox_only_summary() {
   local section normalized first_nonempty item_count preview
 
@@ -527,6 +612,7 @@ stdin_buf=""
 if [[ ! -t 0 ]]; then
   stdin_buf=$(cat)
 fi
+raw_stdin_buf="$stdin_buf"
 
 # ---------- 4b. Inject common rules into prompt ----------
 RULES_FILE=".vibe/agent/_common-rules.md"
@@ -538,6 +624,9 @@ if [[ -n "$stdin_buf" && -f "$RULES_FILE" ]]; then
   fi
   stdin_buf="$(printf '%s\n\n---\n\n%s' "$rules_content" "$stdin_buf")"
   echo "[run-codex] injected common rules from $RULES_FILE" >&2
+fi
+if [[ -n "$stdin_buf" ]]; then
+  stdin_buf="$(inject_referenced_md_context "$raw_stdin_buf" "$stdin_buf")"
 fi
 
 # ---------- 5. Retry loop ----------

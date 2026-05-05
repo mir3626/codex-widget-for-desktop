@@ -17,6 +17,7 @@ interface ProjectReportModule {
       stdout?: { write: (value: string) => void };
       stderr?: { write: (value: string) => void };
       platform?: NodeJS.Platform;
+      nowMs?: number;
     },
   ) => Promise<{ outPath: string; html: string }>;
   isMetaProject: (input: {
@@ -233,6 +234,70 @@ describe('project report', () => {
     assert.equal(result.html.includes('data-sprint-id="project-01-engine"'), true);
   });
 
+  it('counts only open pending risks as open in report metrics and next steps', async () => {
+    const root = await makeTempDir('project-report-risk-lifecycle-');
+    const { runProjectReportCli } = await loadReportModule();
+    await scaffoldReportProject(root);
+    await writeJson(path.join(root, '.vibe', 'agent', 'sprint-status.json'), {
+      schemaVersion: '0.1',
+      project: {
+        name: 'Demo Project',
+        createdAt: '2026-04-01T00:00:00.000Z',
+      },
+      sprints: [],
+      verificationCommands: [],
+      pendingRisks: [
+        {
+          id: 'risk-open',
+          raisedBy: 'test',
+          targetSprint: '*',
+          text: 'open',
+          status: 'open',
+          createdAt: '2026-04-01T00:00:00.000Z',
+        },
+        {
+          id: 'risk-accepted',
+          raisedBy: 'test',
+          targetSprint: '*',
+          text: 'accepted',
+          status: 'accepted',
+          createdAt: '2026-04-01T00:00:00.000Z',
+          acceptedAt: '2026-04-02T00:00:00.000Z',
+        },
+        {
+          id: 'risk-deferred',
+          raisedBy: 'test',
+          targetSprint: '*',
+          text: 'deferred',
+          status: 'deferred',
+          createdAt: '2026-04-01T00:00:00.000Z',
+          deferredUntil: 'sprint-hardening',
+        },
+        {
+          id: 'risk-closed',
+          raisedBy: 'test',
+          targetSprint: '*',
+          text: 'closed',
+          status: 'closed-by-scope',
+          createdAt: '2026-04-01T00:00:00.000Z',
+          closedAt: '2026-04-02T00:00:00.000Z',
+        },
+      ],
+      lastSprintScope: [],
+      lastSprintScopeGlob: [],
+      sprintsSinceLastAudit: 0,
+      stateUpdatedAt: '2026-04-16T01:00:00.000Z',
+    });
+
+    const result = await runProjectReportCli(['--no-open'], {
+      root,
+      stdout: { write: () => undefined },
+    });
+
+    assert.match(result.html, /<p>OPEN RISKS<\/p>\s*<strong>1<\/strong>/);
+    assert.match(result.html, /Triage 1 open risk\./);
+  });
+
   it('--no-open skips browser spawn', async () => {
     const root = await makeTempDir('project-report-no-open-');
     const { runProjectReportCli } = await loadReportModule();
@@ -249,6 +314,38 @@ describe('project report', () => {
     });
 
     assert.equal(spawnCount, 0);
+  });
+
+  it('deduplicates repeated browser opens in the same completion window', async () => {
+    const root = await makeTempDir('project-report-open-dedupe-');
+    const { runProjectReportCli } = await loadReportModule();
+    let spawnCount = 0;
+    const spawn = () => {
+      spawnCount += 1;
+      return {};
+    };
+    await scaffoldReportProject(root);
+
+    await runProjectReportCli([], {
+      root,
+      spawn,
+      stdout: { write: () => undefined },
+      nowMs: 1_000,
+    });
+    await runProjectReportCli([], {
+      root,
+      spawn,
+      stdout: { write: () => undefined },
+      nowMs: 1_500,
+    });
+    await runProjectReportCli(['--force-open'], {
+      root,
+      spawn,
+      stdout: { write: () => undefined },
+      nowMs: 2_000,
+    });
+
+    assert.equal(spawnCount, 2);
   });
 
   it('browser open errors are warnings and do not fail report generation', async () => {

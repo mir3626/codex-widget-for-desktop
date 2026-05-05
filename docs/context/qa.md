@@ -26,6 +26,8 @@ Run this to launch the widget locally:
 npm run dev
 ```
 
+`npm run dev` starts renderer HMR and a daemon restart loop through `scripts/dev-hot.mjs`. Renderer changes hot-reload in the Tauri WebView; daemon TypeScript changes rebuild and restart the daemon. Rust/Tauri shell changes still use the normal Tauri dev rebuild cycle.
+
 ## Harness Checks
 
 After vibe-doctor setup or sync:
@@ -49,4 +51,4 @@ npm run vibe:checkpoint
 - No real browser DOM provider yet.
 - No real screen capture/vision provider yet.
 - No real PTY provider yet.
-- OpenAI live streaming path requires local credentials and is not covered by CI-like smoke tests.
+- OAuth proxy live streaming requires an auth/proxy service and is not covered by CI-like smoke tests.

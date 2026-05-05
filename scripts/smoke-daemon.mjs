@@ -1,6 +1,8 @@
 import WebSocket from "ws";
 import { startDaemon } from "../dist/daemon/server.js";
 
+process.env.CODEX_WIDGET_AUTH_MODE = "mock";
+
 const daemon = await startDaemon({ port: 0 });
 const events = [];
 const socket = new WebSocket(`ws://127.0.0.1:${daemon.port}`);

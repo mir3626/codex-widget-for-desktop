@@ -3,6 +3,7 @@ import { readJson, writeJson } from './fs.js';
 import { paths } from './paths.js';
 import {
   PendingRiskSchema,
+  type PendingRiskStatus,
   SprintStatusSchema,
   type ActualLoc,
   type HandoffBlock,
@@ -17,10 +18,38 @@ export type {
   ActualLoc,
   HandoffBlock,
   PendingRisk,
+  PendingRiskStatus,
   SandboxNote,
   SprintEntry,
   VerificationCommand,
 };
+
+export const PENDING_RISK_OPEN_STATUSES = ['open'] as const;
+export const PENDING_RISK_NON_BLOCKING_STATUSES = [
+  'acknowledged',
+  'accepted',
+  'deferred',
+  'closed-by-scope',
+  'resolved',
+] as const;
+
+export function isOpenPendingRisk(risk: Pick<PendingRisk, 'status'> | null | undefined): boolean {
+  return risk?.status === 'open';
+}
+
+export function isTerminalPendingRisk(risk: Pick<PendingRisk, 'status'> | null | undefined): boolean {
+  return risk?.status === 'resolved' || risk?.status === 'accepted' || risk?.status === 'closed-by-scope';
+}
+
+export function isVisiblePendingRisk(risk: Pick<PendingRisk, 'status'> | null | undefined): boolean {
+  return risk !== null && risk !== undefined && !isTerminalPendingRisk(risk);
+}
+
+export interface PendingRiskStatusUpdate {
+  reason?: string;
+  deferredUntil?: string;
+  now?: string;
+}
 
 export type SprintStatus = ParsedSprintStatus & {
   pendingRisks: PendingRisk[];
@@ -160,14 +189,42 @@ export async function appendPendingRisk(
 }
 
 export async function resolvePendingRisk(id: string, root?: string): Promise<PendingRisk | null> {
+  return updatePendingRiskStatus(id, 'resolved', {}, root);
+}
+
+export async function updatePendingRiskStatus(
+  id: string,
+  nextStatus: PendingRiskStatus,
+  update: PendingRiskStatusUpdate = {},
+  root?: string,
+): Promise<PendingRisk | null> {
   const status = await loadStatusForMutation(root);
   const risk = status.pendingRisks.find((entry) => entry.id === id);
   if (!risk) {
     return null;
   }
 
-  risk.status = 'resolved';
-  risk.resolvedAt = new Date().toISOString();
+  const nowIso = update.now ?? new Date().toISOString();
+  risk.status = nextStatus;
+  risk.statusUpdatedAt = nowIso;
+  if (update.reason) {
+    risk.statusReason = update.reason;
+  }
+  if (nextStatus === 'resolved') {
+    risk.resolvedAt = nowIso;
+  }
+  if (nextStatus === 'accepted') {
+    risk.acceptedAt = nowIso;
+  }
+  if (nextStatus === 'deferred') {
+    risk.deferredAt = nowIso;
+    if (update.deferredUntil) {
+      risk.deferredUntil = update.deferredUntil;
+    }
+  }
+  if (nextStatus === 'closed-by-scope') {
+    risk.closedAt = nowIso;
+  }
   await saveSprintStatus(status, root);
   return cloneJson(risk);
 }
@@ -180,12 +237,14 @@ export async function resolvePendingRisksByPrefix(
   let resolvedCount = 0;
 
   for (const risk of status.pendingRisks) {
-    if (!risk.id.startsWith(prefix) || risk.status !== 'open') {
+    if (!risk.id.startsWith(prefix) || !isOpenPendingRisk(risk)) {
       continue;
     }
 
     risk.status = 'resolved';
-    risk.resolvedAt = new Date().toISOString();
+    const nowIso = new Date().toISOString();
+    risk.resolvedAt = nowIso;
+    risk.statusUpdatedAt = nowIso;
     resolvedCount += 1;
   }
 

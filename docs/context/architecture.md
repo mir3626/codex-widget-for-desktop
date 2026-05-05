@@ -18,7 +18,9 @@ Local daemon
   - src/daemon/
   - WebSocket server
   - session/event protocol
-  - OpenAI Responses streaming or mock streaming fallback
+  - Codex app-server bridge for resident Codex sessions
+  - codex exec resume fallback for app-server startup failures or explicit exec mode
+  - OAuth proxy streaming or mock streaming fallback for non-Codex auth modes
   - provider stubs for browser, screen, and terminal
 
 Shared protocol
@@ -35,15 +37,40 @@ Shared protocol
 - `docs/context/**` and `.vibe/agent/**`: vibe-doctor project state and operating memory.
 - `.vibe/harness/**`, `.claude/**`, `.codex/**`: synced vibe-doctor harness files.
 
+## Orchestration Boundary
+
+This downstream project uses Codex as the main Orchestrator. The default role assignments in `.vibe/config.json` are:
+
+- `orchestrator`: `codex`
+- `sprintRoles.planner`: `codex`
+- `sprintRoles.generator`: `codex`
+- `sprintRoles.evaluator`: `codex`
+
+Claude-specific harness assets remain in the repo for upstream compatibility, but they are not part of the default role path unless the user explicitly changes provider settings.
+
 ## Authentication Boundary
 
-The renderer never receives a long-lived OpenAI API key. Current MVP behavior is:
+The renderer never receives a long-lived OpenAI/API key. Current behavior is:
 
-- renderer -> local daemon: local WebSocket, no OpenAI credential.
-- daemon -> OpenAI Platform: API key only if `OPENAI_API_KEY` is set in the daemon environment.
-- no key: daemon uses deterministic mock streaming for local UI development.
+- renderer -> local daemon: local WebSocket, no model credential.
+- daemon -> local Codex app-server: background `codex app-server --listen ws://127.0.0.1:0` child process when `CODEX_WIDGET_AUTH_MODE=codex`.
+- daemon -> Codex app-server WebSocket: JSON-RPC `thread/start`, `turn/start`, `turn/interrupt`, and streaming notifications such as `item/agentMessage/delta`.
+- daemon -> OAuth provider: authorization-code + PKCE login, with callback on `/oauth/callback`.
+- daemon -> backend agent proxy: `Authorization: Bearer <OAuth access token>` to `CODEX_WIDGET_AGENT_PROXY_URL`.
+- backend agent proxy -> OpenAI Platform or another model runtime: server-side credentials only.
+- no OAuth config or no sign-in: daemon uses deterministic mock streaming for local UI development.
 
-Future OAuth-ready architecture should put OAuth login and OpenAI API key storage behind a backend/proxy. The widget may use a short-lived local/backend-issued token, but it should not store long-lived platform credentials.
+OAuth access tokens are held in memory by the daemon for the current session. Refresh tokens are not persisted in project files.
+
+Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only starts and supervises the local app-server process; it does not expose Codex auth tokens to the renderer.
+
+## Codex Runtime Boundary
+
+- Default runtime: `CODEX_WIDGET_CODEX_RUNTIME=app-server`.
+- App-server process ownership: daemon starts the child process, parses its loopback WebSocket URL, initializes the protocol, and terminates the child process on daemon shutdown or sign-out.
+- Session model: one widget daemon keeps one Codex `threadId` alive and sends each prompt as a new `turn/start`.
+- Fallback: set `CODEX_WIDGET_CODEX_RUNTIME=exec` to force the older `codex exec` / `codex exec resume` runtime.
+- Policy injection: widget-specific file-operation and protected-source-root rules are sent once as app-server thread developer instructions instead of being appended as conversation history.
 
 ## Provider Roadmap
 

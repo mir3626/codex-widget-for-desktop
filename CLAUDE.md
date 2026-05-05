@@ -24,7 +24,7 @@ Sub-agent는 specialization이 아니라 context checkpoint 메커니즘이다. 
 ## Trigger matrix (Must only)
 
 - Planner: 매 Sprint 시작 전 Must. trivial 예외 3조건과 기록 방식은 `.vibe/agent/_common-rules.md` §10 및 Extensions를 따른다.
-- Evaluator: Orchestrator self-QA 실패 / context pressure 높음 / 비-executable AC 존재 / >5 files 또는 >500 LOC이면 Must.
+- Evaluator: Orchestrator self-QA 실패 / context pressure 높음 / 비-executable AC 존재 / 경험형 제품의 screenshot·playthrough·identity evidence 확인 필요 / >5 files 또는 >500 LOC이면 Must.
 ## Role call mechanics
 
 <!-- BEGIN:SPRINT_ROLES (vibe-init 자동 업데이트 영역) -->
@@ -134,7 +134,7 @@ Orchestrator는 Phase 0 네이티브 인터뷰 (`.vibe/harness/scripts/vibe-inte
 | 시점 | 스크립트 | 역할 |
 |------|---------|------|
 | Sprint 시작 전 | `node .vibe/harness/scripts/vibe-preflight.mjs` | git·deps·provider·product.md·handoff 체크 |
-| Generator 호출 시 | `./.vibe/harness/scripts/run-codex.sh` | `_common-rules.md` 자동 prepend + UTF-8 + 재시도 |
+| Generator 호출 시 | `./.vibe/harness/scripts/run-codex.sh` | `_common-rules.md` 자동 prepend + 명시 참조된 rule/context MD 자동 주입 + UTF-8 + 재시도 |
 | Sprint 완료 시 | `node .vibe/harness/scripts/vibe-sprint-complete.mjs` | sprint-status·handoff·session-log 자동 갱신 |
 | Context 압축 전 | `node .vibe/harness/scripts/vibe-checkpoint.mjs` | handoff/session-log freshness 검증 |
 | 세션 시작 시 | `node .vibe/harness/scripts/vibe-version-check.mjs` | 하네스 버전 업데이트 알림 |
@@ -215,7 +215,7 @@ Orchestrator는 Phase 0 네이티브 인터뷰 (`.vibe/harness/scripts/vibe-inte
 6. (트리거 시) Evaluator 소환
 7. `node .vibe/harness/scripts/vibe-sprint-complete.mjs <sprintId> <passed|failed>` → sprint-status.json + handoff.md + session-log.md 자동 갱신 (**파일만 업데이트, 자동 커밋 X**)
 8. **단일 커밋 원칙 (v1.1.1+)**: `node .vibe/harness/scripts/vibe-sprint-commit.mjs <sprintId> passed [--scope <glob>]` 래퍼가 Generator 산출 파일 + 3종 state 파일(`.vibe/agent/sprint-status.json`, `handoff.md`, `session-log.md`) + 아카이브 prompts 를 **한 git commit** 에 묶어 생성. pending risk 가 열려있으면 거부. LOC 자동 계산.
-9. 다음 Sprint → (1)로 반복. **로드맵 마지막 sprint 완료 시 자동**: `.vibe/harness/scripts/vibe-sprint-complete.mjs` 가 `.vibe/harness/scripts/vibe-project-report.mjs` 호출 → `docs/reports/project-report.html` 생성 + 브라우저 자동 오픈. 이후 추가 개선은 `/vibe-iterate` 로 다음 iteration 진입 (차등 인터뷰 + carryover + iteration-history.json 갱신).
+9. 다음 Sprint → (1)로 반복. **로드맵 마지막 sprint 완료 시 자동**: `.vibe/harness/scripts/vibe-sprint-complete.mjs` 가 `.vibe/harness/scripts/vibe-project-report.mjs` 호출 → `docs/reports/project-report.html` 생성 + 브라우저 1회 오픈(짧은 시간 내 중복 오픈은 suppress). 이후 추가 개선은 `/vibe-iterate` 로 다음 iteration 진입 (차등 인터뷰 + carryover + iteration-history.json 갱신). `/vibe-iterate` 종료 단계에서 같은 report 명령을 다시 실행하지 않는다.
 
 > Planner / Generator / Evaluator는 Sprint 내에서만 존재하고 Sprint 간 context를 공유하지 않는다. Sprint 간 상태는 `.vibe/agent/sprint-status.json` + `handoff.md` + `session-log.md` 3종으로만 전달하고, **context 압축 직후**에는 작업 전에 먼저 이 세 파일 + 관련 memory shard를 읽어 상태를 복원한다.
 
@@ -228,7 +228,7 @@ Sprint 프롬프트 **본문은 Planner가 작성**한다 (매 Sprint 소환 시
   - ❌ 구체적 hex 코드(`#2C3E50`), 함수 시그니처, 내부 변수명
 - **타입 정의와 API 시그니처는 Planner의 fresh context에서 도출한다.** Orchestrator가 이전
   프로젝트 경험에서 가져온 구현 세부사항을 주입하면 재현성이 깨진다.
-- **체크리스트 항목은 검증 가능해야 한다.** 기계 검증 가능한 항목은 "npx tsc --noEmit 통과"처럼 명시하고, 제품 정체성·사용감·시각/상호작용 품질처럼 자동화하기 어려운 항목은 inspection/demo AC 로 분리해 Evaluator 또는 사용자 확인 대상으로 둔다. 자동화가 어렵다는 이유로 중요한 품질 기준을 버리지 않는다.
+- **체크리스트 항목은 검증 가능해야 한다.** 기계 검증 가능한 항목은 "npx tsc --noEmit 통과"처럼 명시하고, 제품 정체성·사용감·시각/상호작용 품질처럼 자동화하기 어려운 항목은 inspection/demo AC 로 분리해 Evaluator 또는 사용자 확인 대상으로 둔다. 자동화가 어렵다는 이유로 중요한 품질 기준을 버리지 않는다. frontend/game/visual/canvas/WebGL/Three.js/editor/dashboard Sprint는 screenshot, Playwright trace, browser-smoke output, 또는 playthrough note를 product identity/payoff와 연결한 evidence item 없이 pass 처리하지 않는다.
 
 ## Agent 오케스트레이션 레이어 (`.vibe/agent/`)
 

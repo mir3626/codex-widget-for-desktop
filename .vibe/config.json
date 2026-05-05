@@ -1,16 +1,16 @@
 {
-  "harnessVersion": "1.7.2",
-  "harnessVersionInstalled": "1.7.2",
+  "harnessVersion": "1.7.4",
+  "harnessVersionInstalled": "1.7.4",
   "upstream": {
     "type": "git",
     "url": "https://github.com/mir3626/vibe-doctor",
-    "ref": "^v1.7.0"
+    "ref": "^v1.7.4"
   },
-  "orchestrator": "claude-opus",
+  "orchestrator": "codex",
   "sprintRoles": {
-    "planner": "claude-opus",
+    "planner": "codex",
     "generator": "codex",
-    "evaluator": "claude-opus"
+    "evaluator": "codex"
   },
   "sprint": {
     "unit": "feature",
@@ -18,14 +18,6 @@
     "freshContextPerSprint": true
   },
   "providers": {
-    "claude-opus": {
-      "command": "claude",
-      "args": [
-        "-p",
-        "{prompt}"
-      ],
-      "env": {}
-    },
     "codex": {
       "command": ".\\.vibe\\harness\\scripts\\run-codex.cmd",
       "args": [
@@ -36,9 +28,10 @@
   },
   "qa": {
     "preferScripts": [
-      "smoke",
+      "test:unit",
+      "test",
+      "typecheck",
       "lint",
-      "build:web",
       "build"
     ]
   },
@@ -48,7 +41,9 @@
     "limitGzipKB": 120,
     "excludeExt": [
       ".map"
-    ]
+    ],
+    "policy": "automatic",
+    "rationale": "automatic bundle policy added by harness migration"
   },
   "browserSmoke": {
     "enabled": false,

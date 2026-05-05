@@ -403,6 +403,23 @@ describe('run-codex.sh wrapper', { skip: bashCommand === null }, () => {
 
     assert.equal(child.status, 0);
     assert.match(child.stdout, /## §15 Scope discipline/);
+    assert.doesNotMatch(child.stdout, /# Referenced MD Context \(auto-injected\)/);
+  });
+
+  it('auto-injects referenced rule markdown context into stdin prompts', async () => {
+    const binDir = await createShellStubBin('stdin');
+    const child = spawnSync(bashCommand ?? 'bash', [bashScriptPath, '-'], {
+      env: shellEnv(binDir, { VIBE_SPRINT_ID: '' }),
+      input: 'Use docs/context/qa.md while planning verification.',
+      encoding: 'utf8',
+    });
+
+    assert.equal(child.status, 0);
+    assert.match(child.stderr, /injected referenced MD context/);
+    assert.match(child.stdout, /# Referenced MD Context \(auto-injected\)/);
+    assert.match(child.stdout, /## Source: `docs\/context\/qa\.md`/);
+    assert.match(child.stdout, /# QA policy/);
+    assert.match(child.stdout, /Use docs\/context\/qa\.md while planning verification\./);
   });
 
   it('emits a dashboard attention event after successful Codex execution when enabled', async () => {

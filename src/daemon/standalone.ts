@@ -1,4 +1,7 @@
+import { loadLocalEnv } from "./env.js";
 import { startDaemon } from "./server.js";
+
+loadLocalEnv();
 
 const daemon = await startDaemon({
   port: Number(process.env.CODEX_WIDGET_PORT ?? 4128)

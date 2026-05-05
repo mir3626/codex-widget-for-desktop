@@ -9,5 +9,5 @@
 ## Model/Cost Notes
 
 - Mock streaming should remain available so UI and daemon work can proceed without model spend.
-- Live OpenAI calls should be opt-in through environment configuration.
+- Live model calls should be opt-in through OAuth proxy environment configuration.
 - Provider additions should stream compact tool events rather than large raw dumps unless the user requests detail.

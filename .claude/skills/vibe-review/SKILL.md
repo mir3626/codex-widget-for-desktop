@@ -39,7 +39,8 @@ Primary metric: dogfood friction incident count per sprint plus delivered produc
 - Polish: friction 0 but UX/docs improvement needed
 - Structural: future maintenance risk or architectural drift
 
-Use uncovered rules and open harness gaps as secondary signals. If `openHarnessGapCount > 0`, include at least one finding connected to the ledger state.
+Use uncovered rules and harness-gap ledger state as secondary signals. If `openHarnessGapCount > 0`, `uncoveredHarnessGaps.length > 0`, or `deadlineHarnessGaps.length > 0`, include at least one finding connected to the ledger state.
+Use `pendingRiskRollups[]` to describe repeated open lightweight-audit risks as one consolidated process signal. Persisted pendingRisk lifecycle statuses are `open`, `acknowledged`, `accepted`, `deferred`, `closed-by-scope`, and `resolved`; only `open` is blocking/actionable by default.
 
 ## Findings Format
 
@@ -67,10 +68,13 @@ Each finding is a Markdown heading followed by this YAML block and short evidenc
   - `proposal: '<title>' restoration decision needed (tier=<tier>, reason=<reason>, source=<file>)`
   - `estimated_loc: 0`
   - `proposed_sprint: 'backlog'`
-- If `.vibe/config.json.bundle.enabled === false` and explicit platform/review-signals indicate frontend web/browser, seed a Friction finding for missing bundle-size gate.
+- If `.vibe/config.json.bundle.enabled === false` and explicit platform/review-signals indicate frontend web/browser, seed a Friction finding for missing bundle-size gate unless recent Phase 3 utility policy explicitly covers the decision.
 - If `.vibe/config.json.browserSmoke.enabled === false` and the same platform condition holds, seed a Friction finding for missing browser smoke gate.
-- If recent session-log entries contain `[decision][phase3-utility-opt-in]`, skip those two utility opt-in findings.
-- Count `status=open` entries in `docs/context/harness-gaps.md`; if nonzero, include at least one finding tied to ledger evidence.
+- If recent session-log entries contain `[decision][phase3-utility-opt-in]` or `[decision] [phase3-utility-opt-in]`, skip the old default opt-in findings, but still flag explicit `bundle=false` / `browserSmoke=false` decisions that lack both rationale and replacement evidence.
+- If `.vibe/config.json.bundle.policy === "automatic"` remains unresolved for a frontend/browser project, seed a Friction finding that the agent did not materialize the automatic bundle policy.
+- Read `openHarnessGapCount`, `uncoveredHarnessGaps[]`, and `deadlineHarnessGaps[]` from `vibe-review-inputs`. The helper parses the current six-column `docs/context/harness-gaps.md` ledger and treats `status in open|partial|under-review` or `script-gate != covered` as uncovered review evidence. If any of these fields are non-empty/non-zero, include at least one finding tied to ledger evidence.
+- If `uncoveredHarnessGaps[]` includes `gap-context-overhead-policy`, review recent dogfood for repeated handoff/session-log overhead, unsafe prompt/capsule reduction attempts, retrieval-only one-shot prompts, or missing durable-event markers. Do not recommend capsule/router prompt reduction until warning-only context coverage observability and fail-closed safeguards have dogfood evidence.
+- If `pendingRiskRollups.length > 0`, summarize repeated open risks by rollup instead of repeating each old pendingRisk as separate background noise.
 - If `wiringDriftFindings.length > 0`, auto-seed one Blocker finding per entry:
   - `id: review-wiring-drift-<artifact basename>`
   - `proposal: '<artifactPath>' was created but is missing runtime reference or sync manifest wiring.`

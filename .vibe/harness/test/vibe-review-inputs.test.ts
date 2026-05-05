@@ -134,10 +134,13 @@ async function scaffoldRepo(root: string): Promise<void> {
     path.join(root, 'docs', 'context', 'harness-gaps.md'),
     [
       '## Entries',
-      '| id | symptom | covered_by | status |',
-      '|---|---|---|---|',
-      '| gap-a | example | hook | open |',
-      '| gap-b | example | hook | covered |',
+      '| id | symptom | covered_by | status | script-gate | migration-deadline |',
+      '|---|---|---|---|---|---|',
+      '| gap-a | example | hook | open | pending | O3 |',
+      '| gap-b | example | hook | covered | covered | — |',
+      '| gap-c | example | hook | partial | partial | +2 sprints |',
+      '| gap-d | example | hook | under-review | partial | — |',
+      '| gap-e | example | hook | covered | pending | O4 |',
     ].join('\n'),
   );
   await writeText(path.join(root, 'docs', 'reports', 'review-1-2026-04-15.md'), '# review\n');
@@ -164,10 +167,95 @@ describe('review inputs', () => {
     assert.equal(inputs.decisions[0]?.decision, 'keep-audit');
     assert.equal(inputs.passedSprintCount, 1);
     assert.equal(inputs.openHarnessGapCount, 1);
+    assert.deepEqual(
+      inputs.uncoveredHarnessGaps.map((gap) => gap.id),
+      ['gap-a', 'gap-c', 'gap-d', 'gap-e'],
+    );
+    assert.deepEqual(
+      inputs.deadlineHarnessGaps.map((gap) => gap.id),
+      ['gap-a', 'gap-c', 'gap-e'],
+    );
     assert.deepEqual(inputs.pendingRestorations, []);
     assert.deepEqual(inputs.wiringDriftFindings, []);
+    assert.deepEqual(inputs.pendingRiskRollups, []);
     assert.equal(inputs.gitLogMode, 'since-last-review');
     assert.equal(inputs.gitLog.length >= 1, true);
+  });
+
+  it('collectReviewInputs rolls up repeated open pending risks without changing persisted statuses', async () => {
+    const root = await makeTempDir('review-pending-risk-rollups-');
+    await scaffoldRepo(root);
+    await writeJson(path.join(root, '.vibe', 'agent', 'sprint-status.json'), {
+      schemaVersion: '0.1',
+      project: {
+        name: 'review-project',
+        createdAt: '2026-04-01T00:00:00.000Z',
+      },
+      sprints: [],
+      verificationCommands: [],
+      pendingRisks: [
+        {
+          id: 'risk-loc-a',
+          raisedBy: 'vibe-audit-lightweight',
+          targetSprint: '*',
+          text: 'app LOC 3268 > 2000 across 13 files',
+          code: 'LOC_THRESHOLD_BREACH',
+          message: 'app LOC 3268 > 2000 across 13 files',
+          status: 'open',
+          createdAt: '2026-04-16T00:00:00.000Z',
+        },
+        {
+          id: 'risk-loc-b',
+          raisedBy: 'vibe-audit-lightweight',
+          targetSprint: '*',
+          text: 'app LOC 3400 > 2000 across 14 files',
+          code: 'LOC_THRESHOLD_BREACH',
+          message: 'app LOC 3400 > 2000 across 14 files',
+          status: 'open',
+          createdAt: '2026-04-17T00:00:00.000Z',
+        },
+        {
+          id: 'risk-test-a',
+          raisedBy: 'vibe-audit-lightweight',
+          targetSprint: '*',
+          text: 'src/main.ts has no test/main.test.ts',
+          status: 'open',
+          createdAt: '2026-04-18T00:00:00.000Z',
+        },
+        {
+          id: 'risk-test-b',
+          raisedBy: 'vibe-audit-lightweight',
+          targetSprint: '*',
+          text: 'src/main.ts has no test/main.test.ts',
+          status: 'open',
+          createdAt: '2026-04-19T00:00:00.000Z',
+        },
+        {
+          id: 'risk-resolved',
+          raisedBy: 'vibe-audit-lightweight',
+          targetSprint: '*',
+          text: 'src/main.ts has no test/main.test.ts',
+          status: 'resolved',
+          createdAt: '2026-04-20T00:00:00.000Z',
+          resolvedAt: '2026-04-20T01:00:00.000Z',
+        },
+      ],
+      lastSprintScope: [],
+      lastSprintScopeGlob: [],
+      sprintsSinceLastAudit: 0,
+      stateUpdatedAt: '2026-04-19T00:00:00.000Z',
+    });
+
+    const inputs = await collectReviewInputs(root);
+
+    assert.deepEqual(
+      inputs.pendingRiskRollups.map((rollup) => rollup.key),
+      ['code:LOC_THRESHOLD_BREACH', 'text:src/main.ts has no test/main.test.ts'],
+    );
+    assert.equal(inputs.pendingRiskRollups[0]?.count, 2);
+    assert.equal(inputs.pendingRiskRollups[0]?.latestCreatedAt, '2026-04-17T00:00:00.000Z');
+    assert.deepEqual(inputs.pendingRiskRollups[0]?.riskIds, ['risk-loc-a', 'risk-loc-b']);
+    assert.equal(inputs.openPendingRisks.length, 4);
   });
 
   it('collectPendingRestorationDecisions parses pending entries from audit ledgers', async () => {
@@ -290,7 +378,24 @@ describe('review inputs', () => {
     );
   });
 
-  it('detectOptInGaps skips friction entries when a recent phase3 utility opt-in decision exists', () => {
+  it('detectOptInGaps skips friction entries when a recent phase3 utility opt-out has replacement evidence', () => {
+    const issues = detectOptInGaps(
+      {
+        bundle: { enabled: false },
+        browserSmoke: { enabled: false },
+      },
+      {
+        productText: 'Platform: browser app',
+        sessionLogRecent: [
+          '- 2026-04-16T00:00:00.000Z [decision][phase3-utility-opt-in] bundle=false browserSmoke=false rationale=intentional replacement=manual-playwright-smoke',
+        ],
+      },
+    );
+
+    assert.deepEqual(issues, []);
+  });
+
+  it('detectOptInGaps reports explicit utility opt-outs that lack replacement evidence', () => {
     const issues = detectOptInGaps(
       {
         bundle: { enabled: false },
@@ -304,7 +409,42 @@ describe('review inputs', () => {
       },
     );
 
+    assert.deepEqual(
+      issues.map((issue) => issue.id),
+      ['review-bundle-opt-out-missing-evidence', 'review-browser-smoke-opt-out-missing-evidence'],
+    );
+  });
+
+  it('detectOptInGaps accepts the spaced phase3 utility opt-in tag emitted by session logs', () => {
+    const issues = detectOptInGaps(
+      {
+        bundle: { enabled: false },
+        browserSmoke: { enabled: false },
+      },
+      {
+        productText: 'Platform: browser app',
+        sessionLogRecent: [
+          '- 2026-04-16T00:00:00.000Z [decision] [phase3-utility-opt-in] bundle=false browserSmoke=false rationale=explicit replacement=manual-smoke',
+        ],
+      },
+    );
+
     assert.deepEqual(issues, []);
+  });
+
+  it('detectOptInGaps reports unresolved automatic bundle policy for frontend projects', () => {
+    const issues = detectOptInGaps(
+      {
+        bundle: { enabled: false, policy: 'automatic' },
+        browserSmoke: { enabled: true },
+      },
+      {
+        productText: 'Platform: web application',
+        sessionLogRecent: [],
+      },
+    );
+
+    assert.deepEqual(issues.map((issue) => issue.id), ['review-bundle-policy-unresolved']);
   });
 
   it('detectOptInGaps skips non-web platforms', () => {

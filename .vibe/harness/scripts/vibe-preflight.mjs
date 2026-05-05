@@ -30,21 +30,73 @@ function shFile(command, args, opts = {}) {
   return execFileSync(command, args, { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', ...opts }).trim();
 }
 
+function resolveCommandPath(command) {
+  if (typeof command !== 'string' || command.length === 0) {
+    return null;
+  }
+  if (path.isAbsolute(command)) {
+    return command;
+  }
+  if (command.startsWith('.') || command.includes('/') || command.includes('\\')) {
+    return resolve(command);
+  }
+  return null;
+}
+
+function addWrapperCandidate(candidates, seen, wrapperPath, isWin) {
+  if (!wrapperPath || seen.has(wrapperPath) || !existsSync(wrapperPath)) {
+    return;
+  }
+
+  const extension = path.extname(wrapperPath).toLowerCase();
+  if (isWin) {
+    if (extension !== '.cmd') {
+      return;
+    }
+    candidates.push({
+      command: process.env.ComSpec ?? 'cmd.exe',
+      args: ['/d', '/c', wrapperPath, '--health'],
+    });
+  } else {
+    if (extension !== '.sh') {
+      return;
+    }
+    candidates.push({ command: wrapperPath, args: ['--health'] });
+  }
+  seen.add(wrapperPath);
+}
+
+function providerWrapperPaths(name, provider, isWin) {
+  const commandPath = resolveCommandPath(provider.command);
+  if (!commandPath) {
+    return [];
+  }
+
+  const baseName = path.basename(commandPath).toLowerCase();
+  if (baseName !== `run-${name}.sh` && baseName !== `run-${name}.cmd`) {
+    return [];
+  }
+
+  if (isWin && baseName.endsWith('.sh')) {
+    return [commandPath.replace(/\.sh$/i, '.cmd')];
+  }
+  return [commandPath];
+}
+
 function checkProviderHealth(name, provider) {
   const isWin = process.platform === 'win32';
   const ext = isWin ? 'cmd' : 'sh';
-  const wrapperPath = resolve('scripts', `run-${name}.${ext}`);
+  const legacyWrapperPath = resolve('scripts', `run-${name}.${ext}`);
+  const harnessWrapperPath = resolve('.vibe', 'harness', 'scripts', `run-${name}.${ext}`);
   const candidateWrappers = [];
+  const seenWrappers = new Set();
 
-  if (existsSync(wrapperPath)) {
-    if (isWin) {
-      candidateWrappers.push({
-        command: process.env.ComSpec ?? 'cmd.exe',
-        args: ['/d', '/c', wrapperPath, '--health'],
-      });
-    } else {
-      candidateWrappers.push({ command: wrapperPath, args: ['--health'] });
-    }
+  for (const wrapperPath of [
+    ...providerWrapperPaths(name, provider, isWin),
+    harnessWrapperPath,
+    legacyWrapperPath,
+  ]) {
+    addWrapperCandidate(candidateWrappers, seenWrappers, wrapperPath, isWin);
   }
 
   for (const wrapper of candidateWrappers) {
@@ -63,8 +115,13 @@ function checkProviderHealth(name, provider) {
   }
 
   try {
-    const v = sh(`${provider.command} --version`);
-    const hasWrapper = existsSync(wrapperPath);
+    const providerCommandPath = resolveCommandPath(provider.command);
+    const providerCommandIsWrapper =
+      providerCommandPath !== null &&
+      /^run-[^.]+\.(?:sh|cmd)$/i.test(path.basename(providerCommandPath));
+    const directCommand = providerCommandIsWrapper ? name : provider.command;
+    const v = sh(`${directCommand} --version`);
+    const hasWrapper = candidateWrappers.length > 0 || existsSync(harnessWrapperPath) || existsSync(legacyWrapperPath);
     return {
       ok: true,
       detail: hasWrapper ? `${v.split('\n')[0]} (direct; wrapper not used)` : v.split('\n')[0],

@@ -123,6 +123,46 @@ describe('vibe-preflight audit gate', () => {
     assert.match(result.stdout, /\[FAIL\] audit\.overdue/);
   });
 
+  it('does not fail for non-blocking audit pendingRisk lifecycle statuses', async () => {
+    const root = await makeTempDir('preflight-audit-risk-lifecycle-');
+    await scaffoldRepo(root, {
+      pendingRisks: [
+        {
+          id: 'audit-accepted',
+          raisedBy: 'test',
+          targetSprint: '*',
+          text: 'accepted risk',
+          status: 'accepted',
+          createdAt: '2026-04-01T00:00:00.000Z',
+          acceptedAt: '2026-04-02T00:00:00.000Z',
+        },
+        {
+          id: 'audit-deferred',
+          raisedBy: 'test',
+          targetSprint: '*',
+          text: 'deferred risk',
+          status: 'deferred',
+          createdAt: '2026-04-01T00:00:00.000Z',
+          deferredUntil: 'sprint-hardening',
+        },
+        {
+          id: 'audit-closed',
+          raisedBy: 'test',
+          targetSprint: '*',
+          text: 'closed risk',
+          status: 'closed-by-scope',
+          createdAt: '2026-04-01T00:00:00.000Z',
+          closedAt: '2026-04-02T00:00:00.000Z',
+        },
+      ],
+    });
+
+    const result = runPreflight(root);
+
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.match(result.stdout, /\[OK \] audit\.overdue/);
+  });
+
   it('allows explicit audit acknowledgement and appends a decision log entry', async () => {
     const root = await makeTempDir('preflight-audit-ack-');
     await scaffoldRepo(root, { sprintsSinceLastAudit: 10 });

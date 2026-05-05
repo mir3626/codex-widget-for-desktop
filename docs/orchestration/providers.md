@@ -6,18 +6,18 @@
 
 ## 기본 Provider 구성
 
-> 아래는 기본값 예시이다. 실제 역할 배정은 `/vibe-init` 또는 `.vibe/config.json` → `sprintRoles`에서 사용자가 자유롭게 설정한다.
+> 이 downstream 프로젝트의 현재 기본 역할 배정은 모두 `codex`다. Claude 계열 provider는 upstream harness 호환 및 명시적 fallback 후보로만 남긴다.
 
 | Provider | 호출 방법 | 비고 |
 |----------|-----------|------|
-| `claude-opus` | Agent 도구 (model: opus) | Claude 계열 — Planner/Evaluator 후보 (트리거 해당 시에만 소환) |
+| `claude-opus` | Agent 도구 (model: opus) | Claude 계열 — 현재 기본 역할 경로에서는 사용하지 않음 |
 | `claude-sonnet` | Agent 도구 (model: sonnet) | Claude 계열 |
-| `codex` | `Bash("... \| ./.vibe/harness/scripts/run-codex.sh -")` | **Codex CLI** (run-codex.sh wrapper 경유 — UTF-8 safety + 자동 재시도). 인증: OAuth (`codex auth login`, 기본) 또는 API 키 (`OPENAI_API_KEY`). 상세: `docs/context/codex-execution.md` |
+| `codex` | Windows: `.\.vibe\harness\scripts\run-codex.cmd`; POSIX: `./.vibe/harness/scripts/run-codex.sh -` | **Codex CLI** (wrapper 경유 — UTF-8 safety + 자동 재시도). 인증: OAuth (`codex auth login`, 기본) 또는 API 키 (`OPENAI_API_KEY`). 상세: `docs/context/codex-execution.md` |
 | `gemini` | Bash 도구 (`gemini "{prompt}"`) | CLI 직접 실행 |
 
 > **⚠️ Provider 호출 규칙**:
 > - **Claude 계열** provider → Claude Code의 **Agent 도구** 사용 (model 파라미터 지정)
-> - **Codex** → **`Bash("... | ./.vibe/harness/scripts/run-codex.sh -")` 로 wrapper 경유 CLI 호출**. Agent 도구는 Claude만 지원하므로 Codex에 사용 금지. raw `codex exec` 직접 호출은 Korean Windows 환경에서 mojibake 위험이 있으므로 금지.
+> - **Codex** → Windows에서는 `.\.vibe\harness\scripts\run-codex.cmd`, POSIX에서는 `./.vibe/harness/scripts/run-codex.sh -` wrapper를 경유한다. `npm run vibe:run-agent -- --provider codex --role <role> ...`도 같은 provider 설정을 사용한다. Agent 도구는 Claude만 지원하므로 Codex에 사용 금지. raw `codex exec` 직접 호출은 Korean Windows 환경에서 mojibake 위험이 있으므로 금지.
 > - **기타 비-Claude 계열** provider → **Bash 도구**로 CLI/API 명령 실행
 >
 > `codex:rescue` 플러그인은 잠정 보류 (Windows 환경에서 불안정·속도 저하 이슈).

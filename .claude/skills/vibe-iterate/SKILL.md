@@ -76,14 +76,20 @@ This is iter-<N> sprint-NN.
 
 ## Phase 5 - Refresh Project Report
 
-After every Sprint in the iteration is complete, run:
+After every Sprint in the iteration is complete, ensure the project report is
+fresh. The final `vibe-sprint-complete` / `vibe-sprint-commit` path already
+invokes the report generator when the current roadmap or iteration is complete,
+so do not run the same command again just to satisfy this phase.
+
+If the automatic report was skipped or the report is stale, run:
 
 ```bash
 node .vibe/harness/scripts/vibe-project-report.mjs
 ```
 
 The regenerated `docs/reports/project-report.html` should render the cumulative
-iteration timeline and milestone progress. Open the report in the browser.
+iteration timeline and milestone progress. For a silent refresh when a browser
+tab is already open, use `--no-open`.
 
 ## User Follow-Up
 

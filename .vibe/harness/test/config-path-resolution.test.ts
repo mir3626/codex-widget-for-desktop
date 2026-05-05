@@ -82,11 +82,15 @@ describe('config path resolution', () => {
     const merged = mergeConfig(baseConfig, {
       bundle: {
         path: 'app/dist',
+        policy: 'custom',
+        replacementEvidence: 'manual gzip budget',
       },
     });
 
     assert.equal(merged.bundle?.path, 'app/dist');
     assert.equal(merged.bundle?.dir, 'dist');
+    assert.equal(merged.bundle?.policy, 'custom');
+    assert.equal(merged.bundle?.replacementEvidence, 'manual gzip budget');
   });
 
   it('mergeConfig accepts browserSmoke.dist override', () => {

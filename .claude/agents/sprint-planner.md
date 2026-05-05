@@ -26,6 +26,16 @@ Responsibilities:
 
 Every Sprint must end with something the final user can run, use, inspect, or feel. Internal module completion alone is not enough. In the first paragraph of the generated Sprint prompt, state one sentence answering: "After this Sprint, what can the user newly do?" If the roadmap slot is a horizontal technical layer, propose a vertical usable slice instead and explain the tradeoff before writing the prompt.
 
+### Experiential product evidence rule
+
+When `docs/context/product.md`, `docs/context/architecture.md`, or the roadmap slot indicates a frontend, game, visual, canvas/WebGL/Three.js, animation, editor, dashboard, or other experience-led product, the completion checklist must include explicit evidence for identity and payoff:
+
+- screenshot, Playwright trace, recorded browser smoke output, or playthrough notes that show the delivered user-facing state
+- a short identity/payoff assertion tied to the product goal, not just "build/typecheck passed"
+- an Evaluator/user inspection item when the evidence cannot be fully machine-checked
+
+Do not let typecheck/test/build/browser-smoke alone satisfy an experiential acceptance criterion. If the Sprint is not touching the user-facing experience, say so explicitly and keep the evidence item scoped to the affected surface.
+
 ### Component integration contract (when UI components change)
 
 - Verify root-level mount placement for global-state provider components such as Toaster, ToastProvider, or ThemeProvider.

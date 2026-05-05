@@ -584,6 +584,78 @@ ${extra.length > 0 ? '\n## 추가 규칙\n' + extra.map(e => `- ${e}`).join('\n'
   logger.info('docs/context/conventions.md 작성 완료');
 }
 
+function parseBundlePolicyAnswer(answer: string): 'automatic' | 'custom' | 'off' {
+  const normalized = answer.trim().toLowerCase();
+  if (
+    normalized === '' ||
+    ['auto', 'automatic', '자동', '기본', 'default', '모름', '미정', '추천', '추천해줘'].includes(normalized)
+  ) {
+    return 'automatic';
+  }
+  if (['custom', '직접', '수동', 'budget', '예산'].includes(normalized)) {
+    return 'custom';
+  }
+  if (['off', 'disable', 'disabled', '끄기', '꺼줘', '비활성', 'no', 'n'].includes(normalized)) {
+    return 'off';
+  }
+  return 'automatic';
+}
+
+function parseBudgetKb(answer: string): number | null {
+  const match = answer.trim().match(/(\d+)/);
+  if (!match?.[1]) {
+    return null;
+  }
+  const budget = Number(match[1]);
+  return Number.isInteger(budget) && budget > 0 ? budget : null;
+}
+
+async function customizeUtilityPolicy(rl: readline.Interface): Promise<void> {
+  hr();
+  console.log('\n🧪 Step 4/4 — 검증 정책\n');
+  console.log('  잘 모르면 엔터만 누르세요. 인터뷰 이후 AI가 프로젝트 유형에 맞춰 결정합니다.\n');
+
+  const policyAnswer = await ask(
+    rl,
+    '  번들 크기 검증 정책을 선택해주세요. [automatic]\n  선택지: automatic / custom / off\n  > ',
+  );
+  const policy = parseBundlePolicyAnswer(policyAnswer);
+  const sharedConfig = (await fileExists(paths.sharedConfig))
+    ? await readJson<Record<string, unknown>>(paths.sharedConfig)
+    : {};
+  const previousBundle = isRecord(sharedConfig.bundle) ? sharedConfig.bundle : {};
+  const nextBundle: Record<string, unknown> = {
+    ...previousBundle,
+    policy,
+    enabled: policy === 'custom',
+    dir: typeof previousBundle.dir === 'string' ? previousBundle.dir : 'dist',
+    limitGzipKB: typeof previousBundle.limitGzipKB === 'number' ? previousBundle.limitGzipKB : 80,
+    excludeExt: Array.isArray(previousBundle.excludeExt) ? previousBundle.excludeExt : ['.map'],
+    resolvedBy: 'user',
+    resolvedAt: new Date().toISOString(),
+  };
+
+  if (policy === 'custom') {
+    const budgetAnswer = await ask(rl, '\n  gzip budget KB를 입력해주세요. [80]\n  예) 250KB\n  > ');
+    nextBundle.limitGzipKB = parseBudgetKb(budgetAnswer) ?? 80;
+    nextBundle.rationale = 'user-provided custom bundle budget';
+  } else if (policy === 'off') {
+    const rationale = await ask(rl, '\n  번들 검증을 끄는 이유와 대체 검증 근거를 적어주세요. (비워두면 review finding 대상)\n  > ');
+    nextBundle.enabled = false;
+    nextBundle.rationale = rationale || 'user disabled bundle gate without rationale';
+    if (rationale) {
+      nextBundle.replacementEvidence = rationale;
+    }
+  } else {
+    nextBundle.enabled = false;
+    nextBundle.rationale = 'automatic bundle policy deferred to post-interview project classification';
+  }
+
+  sharedConfig.bundle = nextBundle;
+  await writeJson(paths.sharedConfig, sharedConfig);
+  logger.info(`.vibe/config.json bundle policy set to ${policy}`);
+}
+
 // ─── main ──────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
@@ -677,13 +749,15 @@ async function main(): Promise<void> {
     await customizeProduct(rl);
     await customizeArchitecture(rl);
     await customizeConventions(rl);
+    await customizeUtilityPolicy(rl);
 
     hr();
     console.log('\n✅ 프로젝트 맞춤 설정 완료!\n');
     console.log('  작성된 파일:');
     console.log('    - docs/context/product.md      (프로젝트 목표)');
     console.log('    - docs/context/architecture.md  (기술 스택)');
-    console.log('    - docs/context/conventions.md   (코드 규칙)\n');
+    console.log('    - docs/context/conventions.md   (코드 규칙)');
+    console.log('    - .vibe/config.json             (검증 정책)\n');
     console.log('  이제 AI에게 목표를 말하면 바로 작업을 시작할 수 있습니다.');
     console.log('  예) "Goal: 로그인 페이지를 만들어줘"\n');
   } finally {

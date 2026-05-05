@@ -845,6 +845,7 @@ describe('sync manifest', () => {
     assert.equal(manifest.files.project.includes('.vibe/archive/README.md'), true);
     assert.equal(manifest.migrations['1.1.0'], '.vibe/harness/migrations/1.1.0.mjs');
     assert.equal(manifest.migrations['1.7.0'], '.vibe/harness/migrations/1.7.0.mjs');
+    assert.equal(manifest.migrations['1.7.3'], '.vibe/harness/migrations/1.7.3.mjs');
   });
 });
 
@@ -877,5 +878,64 @@ describe('v1.7.0 migration', () => {
     assert.equal(pkg.scripts['test:ui'], 'npm run vibe:test-ui');
     assert.equal(await readFile(bridgePath, 'utf8'), 'bridge\n');
     await assert.rejects(readFile(oldScriptPath, 'utf8'), /ENOENT/);
+  });
+});
+
+describe('v1.7.3 migration', () => {
+  it('normalizes pendingRisk lifecycle statuses and adds bundle policy defaults', async () => {
+    const root = await makeTempDir('vibe-migration-173-');
+    await writeJson(path.join(root, '.vibe', 'config.json'), {
+      bundle: {
+        enabled: false,
+        dir: 'dist',
+        limitGzipKB: 80,
+        excludeExt: ['.map'],
+      },
+    });
+    await writeJson(path.join(root, '.vibe', 'agent', 'sprint-status.json'), {
+      schemaVersion: '0.1',
+      project: { name: 'demo', createdAt: '2026-04-01T00:00:00.000Z' },
+      sprints: [],
+      verificationCommands: [],
+      pendingRisks: [
+        {
+          id: 'risk-deferred',
+          raisedBy: 'test',
+          targetSprint: '*',
+          text: 'defer',
+          status: 'deferred-until',
+          createdAt: '2026-04-02T00:00:00.000Z',
+          deferredUntilSprint: 'sprint-hardening',
+        },
+        {
+          id: 'risk-closed',
+          raisedBy: 'test',
+          targetSprint: '*',
+          text: 'close',
+          status: 'closed_by_scope',
+          createdAt: '2026-04-03T00:00:00.000Z',
+        },
+      ],
+      lastSprintScope: [],
+      lastSprintScopeGlob: [],
+      sprintsSinceLastAudit: 0,
+      stateUpdatedAt: '2026-04-01T00:00:00.000Z',
+    });
+
+    await execFile(process.execPath, [path.join(process.cwd(), '.vibe', 'harness', 'migrations', '1.7.3.mjs'), root]);
+
+    const config = JSON.parse(await readFile(path.join(root, '.vibe', 'config.json'), 'utf8')) as {
+      bundle?: { policy?: string };
+    };
+    const status = JSON.parse(await readFile(path.join(root, '.vibe', 'agent', 'sprint-status.json'), 'utf8')) as {
+      pendingRisks: Array<{ status: string; deferredUntil?: string; statusUpdatedAt?: string }>;
+    };
+
+    assert.equal(config.bundle?.policy, 'automatic');
+    assert.equal(status.pendingRisks[0]?.status, 'deferred');
+    assert.equal(status.pendingRisks[0]?.deferredUntil, 'sprint-hardening');
+    assert.equal(typeof status.pendingRisks[0]?.statusUpdatedAt, 'string');
+    assert.equal(status.pendingRisks[1]?.status, 'closed-by-scope');
+    assert.equal(typeof status.pendingRisks[1]?.statusUpdatedAt, 'string');
   });
 });

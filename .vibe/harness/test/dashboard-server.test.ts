@@ -179,6 +179,64 @@ test('/api/state hides copied template sprint state before vibe-init', async () 
   }
 });
 
+test('/api/state exposes only open pending risks', async () => {
+  const root = await tempRoot();
+  await writeFile(
+    path.join(root, '.vibe', 'agent', 'sprint-status.json'),
+    JSON.stringify({
+      schemaVersion: '0.1',
+      project: { name: 'test', createdAt: '2026-04-16T00:00:00.000Z' },
+      sprints: [{ id: 'sprint-1', name: 'Sprint 1', status: 'in_progress' }],
+      verificationCommands: [],
+      handoff: {
+        currentSprintId: 'sprint-1',
+        lastActionSummary: 'testing',
+        orchestratorContextBudget: 'high',
+        preferencesActive: [],
+      },
+      pendingRisks: [
+        {
+          id: 'risk-open',
+          raisedBy: 'test',
+          targetSprint: '*',
+          text: 'open',
+          status: 'open',
+          createdAt: '2026-04-16T00:00:00.000Z',
+        },
+        {
+          id: 'risk-accepted',
+          raisedBy: 'test',
+          targetSprint: '*',
+          text: 'accepted',
+          status: 'accepted',
+          createdAt: '2026-04-16T00:00:00.000Z',
+        },
+        {
+          id: 'risk-deferred',
+          raisedBy: 'test',
+          targetSprint: '*',
+          text: 'deferred',
+          status: 'deferred',
+          createdAt: '2026-04-16T00:00:00.000Z',
+        },
+      ],
+      lastSprintScope: [],
+      lastSprintScopeGlob: [],
+      sprintsSinceLastAudit: 0,
+      stateUpdatedAt: '2026-04-16T00:00:00.000Z',
+    }),
+    'utf8',
+  );
+  const port = await freePort();
+  const { child, url } = await startDashboard(root, port);
+  try {
+    const state = await getJson<{ risks: Array<{ id: string }> }>(`${url}/api/state`);
+    assert.deepEqual(state.risks.map((risk) => risk.id), ['risk-open']);
+  } finally {
+    child.kill('SIGTERM');
+  }
+});
+
 test('/api/daily rejects traversal and invalid dates', async () => {
   const root = await tempRoot();
   const port = await freePort();

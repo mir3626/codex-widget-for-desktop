@@ -33,12 +33,12 @@ Sub-agent는 **specialization이 아니라 context checkpoint 메커니즘**이�
 
 | 역할 | 모델 / 도구 | 상주 여부 | 컨텍스트 특성 | 책임 |
 |---|---|---|---|---|
-| **Orchestrator** | Claude Opus (메인 대화) | 상주 | 세션 전체 누적 | Phase 생명주기, 인터뷰 진행, Sprint 로드맵, 상태 유지, sub-agent 소환, 사용자 소통 |
-| **Planner** | Claude Opus (Agent 도구, model: "opus") | Sprint 내 | **매 Sprint fresh** | Sprint 기술 사양(타입·시그니처·파일 구조) + 프롬프트 초안 + 완료 체크리스트 |
+| **Orchestrator** | Codex (메인 대화) | 상주 | 세션 전체 누적 | Phase 생명주기, 인터뷰 진행, Sprint 로드맵, 상태 유지, provider-neutral agent 호출, 사용자 소통 |
+| **Planner** | Codex CLI (`npm run vibe:run-agent -- --provider codex --role planner ...`) | Sprint 내 | **매 Sprint fresh** | Sprint 기술 사양(타입·시그니처·파일 구조) + 프롬프트 초안 + 완료 체크리스트 |
 | **Generator** | Codex CLI (`./.vibe/harness/scripts/run-codex.sh -`) | Sprint 내 | **매 호출 fresh** | 모든 소스코드 작성/수정 (.ts/.tsx/.py/.js/.mjs/.sh/.css 등) |
-| **Evaluator** | Claude Opus (Agent 도구, model: "opus") | Sprint 내 (트리거 시) | **매 소환 fresh** | 체크리스트 기반 합격/불합격 + 사유 리포트 |
+| **Evaluator** | Codex CLI (`npm run vibe:run-agent -- --provider codex --role evaluator ...`) | Sprint 내 (트리거 시) | **매 호출 fresh** | 체크리스트 기반 합격/불합격 + 사유 리포트 |
 
-이 표는 기본 운영 모드인 **Claude Orchestrator + Codex Generator** 계약이다. 사용자가 Codex와 직접 대화하며 업스트림 하네스 유지보수를 요청하면 Codex는 main Orchestrator maintenance mode로 동작할 수 있다. 그 모드에서는 Claude 전용 Agent 호출을 그대로 전제하지 말고, 사용자 지시 범위에서 수동 리뷰 또는 provider-neutral fallback을 사용하며, 장기 상태는 `maintain-context` workflow로 보존한다. Sprint prompt가 Codex에 투입되면 다시 Generator 계약이 우선한다.
+이 downstream 프로젝트의 기본 운영 모드는 **Codex Orchestrator + Codex Planner/Generator/Evaluator** 계약이다. Claude 전용 Agent 호출을 그대로 전제하지 말고, 사용자 지시 범위에서 provider-neutral fallback을 사용하며, 장기 상태는 `maintain-context` workflow로 보존한다. Sprint prompt가 Codex에 투입되면 해당 호출은 Generator 계약을 우선한다.
 
 ## 3. Phase × 역할 매트릭스
 
@@ -131,6 +131,8 @@ Orchestrator 단독 작성. 각 entry 필드:
 요구 산출:
 1. 기술 사양 — 이 Sprint가 건드리는 타입/함수 시그니처/파일 목록
 2. 완료 체크리스트 — 기계 검증 항목과 inspection/demo 항목을 분리. 기계 검증은 `tsc`, test, grep 등으로 확인하고, 제품 정체성·사용감·시각/상호작용 품질처럼 자동화하기 어려운 항목은 Evaluator 또는 사용자 inspection 대상으로 명시
+   - frontend/game/visual/canvas/WebGL/Three.js/editor/dashboard 등 경험형 제품이면 screenshot, Playwright trace, browser-smoke output, 또는 playthrough note 중 하나 이상의 evidence item을 반드시 포함한다.
+   - 해당 evidence item은 "무엇이 보이고/조작되고/느껴져야 하는가"를 product identity/payoff와 연결해야 하며, typecheck/test/build/browser-smoke 통과만으로 대체할 수 없다.
 3. Sprint 프롬프트 본문 — Generator에 바로 투입 가능한 자기완결 형식
    - 공용 규칙은 `.vibe/agent/_common-rules.md` 준수 선언
    - Files Generator may touch 목록 (체크리스트 항목 완전 커버리지 고려)
@@ -163,6 +165,7 @@ self-QA 통과 후 `vibe-sprint-complete` 실행 → 업데이트된 state 파�
 - CLAUDE.md 트리거 매트릭스의 Must / Should 조건 평가
 - 프로토타입 예외 적용 가능 여부 판단
 - `LOC_THRESHOLD_BREACH` pendingRisk가 열려 있으면 프로토타입 예외 무효 처리
+- frontend/game/visual/canvas/WebGL/Three.js/editor/dashboard 등 경험형 Sprint는 screenshot/playthrough/inspection evidence가 없으면 pass 금지. 기계 검증이 모두 통과해도 identity/payoff evidence 누락은 불합격 또는 scope 재정의 사유다.
 - 소환 시 입력: 프롬프트 + 산출 diff + self-QA 결과
 - 산출: 합격/불합격 + 사유 리포트 → 불합격 시 스펙/구현 문제 분류
 

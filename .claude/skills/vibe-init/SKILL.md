@@ -487,22 +487,34 @@ Treat the project as a web/frontend candidate when either condition matches:
 
 Decision flow:
 
-- PO-proxy mode: infer `bundle.enabled` and `browserSmoke.enabled` from the detected platform/domain signals without asking the user
+- PO-proxy mode: use `bundle.policy = "automatic"` by default, then resolve it after interview context is available:
+  - browser/frontend app: set `bundle.enabled = true` with an agent-selected budget.
+  - canvas/WebGL/Three.js/game or other asset-heavy frontend: either set a project-appropriate custom budget or set `bundle.enabled = false` only with rationale and replacement evidence.
+  - non-frontend project: leave `bundle.enabled = false` with rationale that bundle gate is not applicable.
 - Manual mode: ask exactly these questions
 
 ```
-1) 번들 크기 제약이 있나요? (예: 모바일 웹, 첫 페인트 budget) [y/N]
-2) 브라우저 UI 가 있어 smoke 검증을 활성화할까요? [y/N]
+1) 번들 크기 검증 정책을 어떻게 둘까요? [automatic]
+   choices: automatic / custom / off
+   - automatic: 인터뷰 이후 에이전트가 프로젝트 유형에 따라 켜거나 끄고 rationale을 남김
+   - custom: 사용자가 gzip budget을 입력
+   - off: 끄되 rationale + replacement evidence 필요
+2) custom이면 gzip budget KB를 입력해주세요. 예: 250KB [80]
+3) 브라우저 UI 가 있어 smoke 검증을 활성화할까요? [y/N]
 ```
+
+If the user answer is unclear, missing, "모름", "미정", "추천해줘", "default", or equivalent, record `bundle.policy = "automatic"`.
 
 Apply the result by patching `.vibe/config.json`:
 
 ```json
 "bundle": {
   "enabled": false,
+  "policy": "automatic",
   "dir": "dist",
   "limitGzipKB": 80,
-  "excludeExt": [".map"]
+  "excludeExt": [".map"],
+  "rationale": "automatic bundle policy deferred to post-interview project classification"
 },
 "browserSmoke": {
   "enabled": false,
@@ -510,12 +522,22 @@ Apply the result by patching `.vibe/config.json`:
 }
 ```
 
+When `bundle.policy = "custom"`, set `bundle.enabled = true`, `bundle.limitGzipKB` to the user-provided number, and `bundle.rationale` to the user/agent budget reason.
+When `bundle.policy = "off"` or the agent resolves automatic to `bundle.enabled = false` for a frontend/browser project, include both:
+
+```json
+"rationale": "<why the bundle gate is not the right check>",
+"replacementEvidence": "<manual smoke, Lighthouse run, screenshot/playthrough evidence, or other calibrated replacement>"
+```
+
+Do not treat `off` as silent success. `/vibe-review` will suppress the old default opt-in warning for explicit decisions, but it may raise a replacement-evidence finding when rationale or replacement evidence is missing.
+
 If the product build output uses a custom path such as `app/dist`, set `.vibe/config.json` `bundle.path` and `browserSmoke.dist` to that path (default: `dist`).
 
-Always append one session log entry with the rationale:
+Always append one session log entry with the rationale and, when a frontend/browser gate is disabled, replacement evidence:
 
 ```md
-- 2026-04-16T00:00:00.000Z [decision][phase3-utility-opt-in] bundle=true browserSmoke=false rationale=...
+- 2026-04-16T00:00:00.000Z [decision][phase3-utility-opt-in] bundle=false browserSmoke=false rationale=... replacement=...
 ```
 
 If `browserSmoke.enabled` becomes `true`, create `.vibe/smoke.config.js` only when it does not already exist. Use this skeleton:

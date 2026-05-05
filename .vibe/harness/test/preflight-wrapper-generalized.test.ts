@@ -41,22 +41,25 @@ async function initGitRepo(root: string): Promise<void> {
 
 async function scaffoldRepo(
   root: string,
-  options: { includeWrapper: boolean; includeShim: boolean },
+  options: { includeWrapper: boolean; includeShim: boolean; providerCommand?: string; providerName?: string },
 ): Promise<void> {
   const scriptsDir = path.join(root, 'scripts');
+  const harnessScriptsDir = path.join(root, '.vibe', 'harness', 'scripts');
   const binDir = path.join(root, 'bin');
+  const providerName = options.providerName ?? 'gemini';
 
   await mkdir(path.join(root, '.vibe', 'agent'), { recursive: true });
   await mkdir(path.join(root, 'docs', 'context'), { recursive: true });
   await mkdir(scriptsDir, { recursive: true });
+  await mkdir(harnessScriptsDir, { recursive: true });
 
   await writeJson(path.join(root, '.vibe', 'config.json'), {
     harnessVersion: '1.1.1',
     harnessVersionInstalled: '1.1.1',
     sprintRoles: {
-      planner: 'gemini',
-      generator: 'gemini',
-      evaluator: 'gemini',
+      planner: providerName,
+      generator: providerName,
+      evaluator: providerName,
     },
     sprint: {
       unit: 'feature',
@@ -64,8 +67,8 @@ async function scaffoldRepo(
       freshContextPerSprint: true,
     },
     providers: {
-      gemini: {
-        command: 'gemini',
+      [providerName]: {
+        command: options.providerCommand ?? providerName,
         args: [],
       },
     },
@@ -103,8 +106,8 @@ async function scaffoldRepo(
 
   if (options.includeShim) {
     await mkdir(binDir, { recursive: true });
-    const shimPath = path.join(binDir, `gemini${isWin ? '.cmd' : ''}`);
-    const shimBody = isWin ? '@echo off\r\necho gemini 1.0\r\n' : '#!/bin/sh\necho gemini 1.0\n';
+    const shimPath = path.join(binDir, `${providerName}${isWin ? '.cmd' : ''}`);
+    const shimBody = isWin ? `@echo off\r\necho ${providerName} 1.0\r\n` : `#!/bin/sh\necho ${providerName} 1.0\n`;
     await writeFile(shimPath, shimBody, 'utf8');
     if (!isWin) {
       await chmod(shimPath, 0o755);
@@ -142,6 +145,37 @@ describe('vibe-preflight provider wrapper detection', () => {
     assert.equal(record.ok, true);
     assert.equal(record.level, 'ok');
     assert.match(record.detail, /gemini 1\.0/);
+  });
+
+  it('uses provider.command harness wrapper paths after the v1.7 runtime move', async () => {
+    const root = await makeTempDir('preflight-harness-wrapper-');
+    await scaffoldRepo(root, {
+      includeWrapper: false,
+      includeShim: false,
+      providerName: 'codex',
+      providerCommand: './.vibe/harness/scripts/run-codex.sh',
+    });
+    const harnessScriptsDir = path.join(root, '.vibe', 'harness', 'scripts');
+    await writeFile(
+      path.join(harnessScriptsDir, 'run-codex.sh'),
+      '#!/bin/sh\necho codex-cli 0.128.0\n',
+      'utf8',
+    );
+    await chmod(path.join(harnessScriptsDir, 'run-codex.sh'), 0o755);
+    await writeFile(
+      path.join(harnessScriptsDir, 'run-codex.cmd'),
+      '@echo off\r\necho codex-cli 0.128.0\r\n',
+      'utf8',
+    );
+    await initGitRepo(root);
+
+    const records = await runPreflightJson(root);
+    const record = records.find((entry) => entry.id === 'provider.codex');
+
+    assert.ok(record);
+    assert.equal(record.ok, true);
+    assert.equal(record.level, 'ok');
+    assert.match(record.detail, /codex-cli 0\.128\.0/);
   });
 
   it('falls back to direct provider --version without a wrapper', async () => {

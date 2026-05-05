@@ -73,6 +73,12 @@ wrapper가 자동 설정하는 항목:
 | `shell_environment_policy.inherit=all` + `set.*` | `-c` 옵션 | **codex가 자식으로도 UTF-8 전파** |
 | `CODEX_RETRY` (기본 3) | exponential backoff | 일시 오류 자동 회복 |
 
+프롬프트가 허용된 rule/context Markdown 파일을 명시적으로 참조하면 wrapper가 해당
+본문을 `Referenced MD Context` 블록으로 자동 주입한다. 이는 agent가 "파일을 읽어야
+한다"는 MD 지시를 놓쳐서 skip하는 것을 막기 위한 비차단 guard다. 자동 주입 대상은
+`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `docs/context/*`의 규칙 shard, `.claude/agents/*.md`,
+`.claude/skills/**/*.md`, `.codex/skills/**/*.md` 범위로 제한한다.
+
 ### 3.3 방어층 3 — `~/.codex/config.toml` 권장
 
 ```toml
@@ -185,5 +191,7 @@ Codex does not expose the same `SessionStart` and `PreCompact` hooks as Claude C
 - Sprint Generator invocations are short-lived and normally do not need context-threshold checkpoint automation; they hand state back through the completion report and Orchestrator-owned sprint scripts.
 - Codex used as the main Orchestrator runs in Orchestrator maintenance mode, not Sprint Generator mode. It is the risky path because it can accumulate decisions outside the `run-codex.sh` wrapper. Use the `maintain-context` skill at work boundaries: after meaningful decisions, reviews, releases, tags, pushes, syncs, or before final handoff.
 - The portable checkpoint sequence is: update `.vibe/agent/handoff.md`, append a concise `.vibe/agent/session-log.md` entry, then run `npm run vibe:checkpoint` or `node .vibe/harness/scripts/vibe-checkpoint.mjs`.
+- `vibe-checkpoint` freshness is not semantic completeness. It confirms that durable state files exist and are fresh enough to resume, but it cannot know whether every durable decision was written. Durable events still require a short session-log marker; handoff rewrites are required when restart state changes.
+- Approved context-overhead policy: do not ship capsule/router/prompt-reduction work until warning-only context coverage observability and later fail-closed safeguards have been dogfooded. One-shot orchestrator prompts can be terse only when they directly reference MD that `run-codex.sh` injects; retrieval-only is not a safe substitute.
 
 This is not a true Codex `PreCompact` hook and it cannot fire at a real 80% context threshold. It is the portable fallback that works for Codex and other CLI providers without Claude-specific hook support.

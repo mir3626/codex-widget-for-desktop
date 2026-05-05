@@ -24,3 +24,16 @@ Thumbs.db
 .vibe/agent/attention.jsonl
 .vibe/agent/codex-unavailable.flag
 .claude/settings.local.json
+
+.vscode/
+!.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+secrets/
+config/credentials.json
+# legacy ouroboros sessions (no longer written)
+.ouroboros/
+scripts/tmp-*.ts
+scripts/tmp-*.mjs
+# dashboard runtime artifacts (M14-B)
+# run-codex.sh unavailable signal (runtime artifact, auto-cleared on next success)

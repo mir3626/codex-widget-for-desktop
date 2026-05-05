@@ -78,7 +78,12 @@ export function renderTable(entries: BundleEntry[], limitGzipKB: number): string
   ].join('\n');
 }
 
-export type ResolvedBundleConfig = Required<Omit<BundleConfig, 'path'>> & { path: string };
+export type ResolvedBundleConfig = Required<
+  Omit<
+    BundleConfig,
+    'path' | 'policy' | 'rationale' | 'replacementEvidence' | 'resolvedBy' | 'resolvedAt'
+  >
+> & { path: string };
 
 export function resolveBundleConfig(bundle: Partial<BundleConfig> | undefined): ResolvedBundleConfig {
   const resolvedPath = bundle?.path ?? bundle?.dir ?? 'dist';

@@ -481,6 +481,53 @@ describe('vibe-sprint-commit', () => {
     assert.equal(after, before);
   });
 
+  it('allows commit when targeted pending risks are accepted, deferred, or closed by scope', async () => {
+    const root = await makeTempDir('sprint-commit-risk-lifecycle-');
+    await scaffoldRepo(root, {
+      pendingRisks: [
+        {
+          id: 'risk-accepted',
+          raisedBy: 'test',
+          targetSprint: 'test-sprint',
+          text: 'accepted risk',
+          status: 'accepted',
+          createdAt: '2026-04-15T00:00:00.000Z',
+          acceptedAt: '2026-04-15T01:00:00.000Z',
+        },
+        {
+          id: 'risk-deferred',
+          raisedBy: 'test',
+          targetSprint: 'test-sprint',
+          text: 'deferred risk',
+          status: 'deferred',
+          createdAt: '2026-04-15T00:00:00.000Z',
+          deferredUntil: 'sprint-hardening',
+        },
+        {
+          id: 'risk-closed',
+          raisedBy: 'test',
+          targetSprint: 'test-sprint',
+          text: 'closed risk',
+          status: 'closed-by-scope',
+          createdAt: '2026-04-15T00:00:00.000Z',
+          closedAt: '2026-04-15T01:00:00.000Z',
+        },
+      ],
+    });
+    await writeText(path.join(root, 'src', 'foo.ts'), 'export const foo = 1;\n');
+    await execFile('git', ['add', 'src/foo.ts'], { cwd: root });
+
+    const { stdout } = await runSprintCommit(root, [
+      'test-sprint',
+      'passed',
+      '--scope',
+      'src/foo.ts',
+      '--dry-run',
+    ]);
+
+    assert.match(stdout, /would commit: sprint=test-sprint/);
+  });
+
   it('filters LOC totals to configured code extensions while counting all changed files', async () => {
     const root = await makeTempDir('sprint-commit-loc-');
     await scaffoldRepo(root, { locExtensions: ['.ts'] });

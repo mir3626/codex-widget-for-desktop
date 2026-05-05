@@ -52,6 +52,15 @@ function normalizeLegacySprintStatus(value: unknown): unknown {
   };
 }
 
+export const PendingRiskStatusSchema = z.enum([
+  'open',
+  'acknowledged',
+  'accepted',
+  'deferred',
+  'closed-by-scope',
+  'resolved',
+]);
+
 export const PendingRiskSchema = z.object({
   id: z.string(),
   raisedBy: z.string(),
@@ -60,8 +69,14 @@ export const PendingRiskSchema = z.object({
   level: z.enum(['INFO', 'WARN', 'ERROR']).optional(),
   code: z.string().optional(),
   message: z.string().optional(),
-  status: z.enum(['open', 'acknowledged', 'resolved']),
+  status: PendingRiskStatusSchema,
   createdAt: z.string().datetime(),
+  statusReason: z.string().optional(),
+  statusUpdatedAt: z.string().datetime().optional(),
+  acceptedAt: z.string().datetime().optional(),
+  deferredAt: z.string().datetime().optional(),
+  deferredUntil: z.string().optional(),
+  closedAt: z.string().datetime().optional(),
   resolvedAt: z.string().datetime().optional(),
 });
 
@@ -145,6 +160,7 @@ export const SprintStatusSchema = z.preprocess(
 
 export type SprintStatus = z.infer<typeof SprintStatusSchema>;
 export type PendingRisk = z.infer<typeof PendingRiskSchema>;
+export type PendingRiskStatus = z.infer<typeof PendingRiskStatusSchema>;
 export type VerificationCommand = z.infer<typeof VerificationCommandSchema>;
 export type ActualLoc = z.infer<typeof ActualLocSchema>;
 export type SprintEntry = z.infer<typeof SprintEntrySchema>;
