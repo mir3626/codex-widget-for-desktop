@@ -3,6 +3,11 @@ import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFile
 import { basename, delimiter, dirname, join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import {
+  DEFAULT_TESSDATA_BASE_URL,
+  fetchTessdataLanguages,
+  parseTessdataLanguages
+} from "./lib/tessdata-fetch.mjs";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const outdir = resolve(process.env.CODEX_WIDGET_OCR_RUNTIME_OUT_DIR?.trim() || join(root, "dist", "ocr-runtime"));
@@ -20,6 +25,7 @@ if (source) {
     throw new Error(`OCR runtime source did not contain tesseract.exe: ${source.dir}`);
   }
 
+  await maybeFetchConfiguredTessdata(outdir);
   const tessdata = findTessdataDirectory(outdir);
   const manifest = {
     engine: "tesseract",
@@ -33,12 +39,14 @@ if (source) {
   writeFileSync(join(outdir, "ocr-runtime.json"), JSON.stringify(manifest, null, 2));
   console.log(`ocr runtime prepared at ${outdir} from ${source.source}`);
 } else {
+  await maybeFetchConfiguredTessdata(outdir);
+  const tessdata = findTessdataDirectory(outdir);
   const manifest = {
     engine: "tesseract",
     available: false,
     executable: null,
-    tessdata: null,
-    languages: [],
+    tessdata,
+    languages: findTessdataLanguages(outdir, tessdata),
     source: null,
     reason: "No Tesseract runtime source found. Set CODEX_WIDGET_OCR_RUNTIME_DIR, CODEX_WIDGET_TESSERACT_EXE, or CODEX_WIDGET_TESSERACT_SEARCH_ROOTS before build to bundle OCR; otherwise add tesseract to PATH or install Tesseract in a standard Windows location.",
     preparedAt: new Date().toISOString()
@@ -180,6 +188,30 @@ function findTessdataLanguages(dir, tessdata) {
     .map((entry) => entry.slice(0, -".traineddata".length))
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b));
+}
+
+async function maybeFetchConfiguredTessdata(runtimeDir) {
+  const languages = parseTessdataLanguages([
+    process.env.CODEX_WIDGET_TESSDATA_LANGUAGES,
+    process.env.CODEX_WIDGET_OCR_FETCH_LANGUAGES
+  ]);
+  if (languages.length === 0) {
+    return;
+  }
+
+  await fetchTessdataLanguages({
+    languages,
+    outDir: join(runtimeDir, "tessdata"),
+    baseUrl: process.env.CODEX_WIDGET_TESSDATA_BASE_URL?.trim() || DEFAULT_TESSDATA_BASE_URL,
+    force: process.env.CODEX_WIDGET_TESSDATA_FORCE === "1",
+    minBytes: readPositiveInt(process.env.CODEX_WIDGET_TESSDATA_MIN_BYTES, 1024),
+    log: (line) => console.log(line)
+  });
+}
+
+function readPositiveInt(value, fallback) {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function assertSafeOutputDirectory(dir) {

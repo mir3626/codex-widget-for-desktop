@@ -15,6 +15,7 @@
     "build:daemon-bundle": "node scripts/build-daemon-bundle.mjs",
     "build:node-runtime": "node scripts/prepare-node-runtime.mjs",
     "build:ocr-runtime": "node scripts/prepare-ocr-runtime.mjs",
+    "ocr:fetch-languages": "node scripts/fetch-ocr-languages.mjs",
     "build:pty-runtime": "node scripts/prepare-pty-runtime.mjs",
     "build:renderer": "vite build",
     "package:extension": "node scripts/package-browser-extension.mjs",

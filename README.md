@@ -73,7 +73,7 @@ For browser testing, load the unpacked Chrome/Edge extension in [providers/brows
 
 The Capture action asks the daemon to run the Windows screen capture helper directly. The helper is bundled as a Tauri resource for installed builds. The Settings panel has compact Vision crop controls and a drag selector for per-capture regions. Override the helper path with `CODEX_WIDGET_SCREEN_CAPTURE_HELPER`, tune payload size with `CODEX_WIDGET_SCREEN_CAPTURE_MAX_WIDTH` and `CODEX_WIDGET_SCREEN_CAPTURE_JPEG_QUALITY`, or set default crop values with `CODEX_WIDGET_SCREEN_CROP_X`, `CODEX_WIDGET_SCREEN_CROP_Y`, `CODEX_WIDGET_SCREEN_CROP_WIDTH`, and `CODEX_WIDGET_SCREEN_CROP_HEIGHT`. The daemon compares consecutive image payloads and marks meaningful visual changes using `CODEX_WIDGET_SCREEN_DIFF_THRESHOLD` (default `0.01`).
 
-Screen OCR is optional and local. Installed builds first use a bundled Tesseract runtime when one was available during build. At runtime, if `tesseract` is available on `PATH`, the helper uses it automatically. Bundled OCR auto-selects `eng+kor` when both `eng.traineddata` and `kor.traineddata` are present, falling back to whichever of those languages exists. OCR input is preprocessed as an upscaled PNG by default while the screen payload remains compressed JPEG; tune it with `CODEX_WIDGET_SCREEN_OCR_SCALE` and `CODEX_WIDGET_SCREEN_OCR_MAX_WIDTH`, or disable preprocessing with `CODEX_WIDGET_SCREEN_OCR_DISABLE_PREPROCESS=1`. Override language with `CODEX_WIDGET_SCREEN_OCR_LANGUAGE`, set `CODEX_WIDGET_SCREEN_OCR_COMMAND` to a full command template that prints text to stdout and uses `{image}` for the captured image path, disable OCR with `CODEX_WIDGET_SCREEN_OCR_DISABLE=1`, or cap text with `CODEX_WIDGET_SCREEN_OCR_MAX_CHARS`. The daemon computes hash/change/diff metadata for each screen image so repeated captures can be distinguished from unchanged or below-threshold context. `CODEX_WIDGET_SCREEN_DIFF_THRESHOLD` defaults to `0.01`.
+Screen OCR is optional and local. Installed builds first use a bundled Tesseract runtime when one was available during build. At runtime, if `tesseract` is available on `PATH`, the helper uses it automatically. Bundled OCR auto-selects `eng+kor` when both `eng.traineddata` and `kor.traineddata` are present, falling back to whichever of those languages exists. Build-time tessdata acquisition is available by setting `$env:CODEX_WIDGET_TESSDATA_LANGUAGES='eng,kor'` before `npm run build:ocr-runtime`, and ad hoc downloads use `npm run ocr:fetch-languages -- eng kor`; override the source with `CODEX_WIDGET_TESSDATA_BASE_URL`. OCR input is preprocessed as an upscaled PNG by default while the screen payload remains compressed JPEG; tune it with `CODEX_WIDGET_SCREEN_OCR_SCALE` and `CODEX_WIDGET_SCREEN_OCR_MAX_WIDTH`, or disable preprocessing with `CODEX_WIDGET_SCREEN_OCR_DISABLE_PREPROCESS=1`. Override language with `CODEX_WIDGET_SCREEN_OCR_LANGUAGE`, set `CODEX_WIDGET_SCREEN_OCR_COMMAND` to a full command template that prints text to stdout and uses `{image}` for the captured image path, disable OCR with `CODEX_WIDGET_SCREEN_OCR_DISABLE=1`, or cap text with `CODEX_WIDGET_SCREEN_OCR_MAX_CHARS`. The daemon computes hash/change/diff metadata for each screen image so repeated captures can be distinguished from unchanged or below-threshold context. `CODEX_WIDGET_SCREEN_DIFF_THRESHOLD` defaults to `0.01`.
 
 For backend OAuth proxy experiments, point the daemon at an OAuth provider and agent proxy before launch:
 
@@ -106,7 +106,8 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run dev:auth-proxy`: start only the local development OAuth/proxy server on `127.0.0.1:8787`
 - `npm run build`: build the Tauri desktop app
 - `npm run build:web`: compile the daemon, create the bundled daemon entry, build the renderer, and prepare bundled Node/OCR/PTY runtime resources
-- `npm run build:ocr-runtime`: prepare `dist/ocr-runtime`; set `CODEX_WIDGET_OCR_RUNTIME_DIR` or `CODEX_WIDGET_TESSERACT_EXE` to bundle a Tesseract runtime, or let the script find `tesseract` on `PATH`, `CODEX_WIDGET_TESSERACT_SEARCH_ROOTS`, or standard Windows install locations
+- `npm run build:ocr-runtime`: prepare `dist/ocr-runtime`; set `CODEX_WIDGET_OCR_RUNTIME_DIR` or `CODEX_WIDGET_TESSERACT_EXE` to bundle a Tesseract runtime, let the script find `tesseract` on `PATH`, `CODEX_WIDGET_TESSERACT_SEARCH_ROOTS`, or standard Windows install locations, and optionally set `CODEX_WIDGET_TESSDATA_LANGUAGES=eng,kor` to fetch traineddata during the build
+- `npm run ocr:fetch-languages -- eng kor`: download tessdata language packs into `dist/ocr-runtime/tessdata`; set `CODEX_WIDGET_TESSDATA_OUT_DIR` or `CODEX_WIDGET_TESSDATA_BASE_URL` for custom destinations/sources
 - `npm run build:pty-runtime`: prepare `dist/pty-runtime` with the native `node-pty` runtime used by installed builds
 - `npm run package:extension`: create `dist/providers/codex-widget-dom-extension-0.1.0.zip`
 - `npm run smoke:all`: run the standard serial readiness gate without rebuilding daemon in parallel
@@ -130,7 +131,7 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run smoke:extension`: verify the unpacked browser DOM extension manifest/service worker
 - `npm run smoke:browser-native-host`: verify the Chrome/Edge native messaging host framing and daemon POST path
 - `npm run smoke:browser-store`: verify browser store listing, privacy, review notes, permission rationales, and package readiness
-- `npm run smoke:ocr-runtime`: verify OCR runtime packaging, standard Windows install discovery, tessdata language manifesting, and daemon-side bundled OCR command resolution
+- `npm run smoke:ocr-runtime`: verify OCR runtime packaging, standard Windows install discovery, tessdata language acquisition/manifesting, and daemon-side bundled OCR command resolution
 - `npm run smoke:pty-runtime`: verify PTY runtime packaging and native `node-pty` loading
 - `npm run smoke:screen`: verify the local screen snapshot provider ingress
 - `npm run smoke:screen-capture:live`: verify the widget protocol can trigger a live screen capture through the daemon
@@ -162,7 +163,6 @@ Local Daemon
 Future Tool Providers
   - store-packaged browser extension provider for active tab DOM
   - Playwright/CDP provider for controlled browser use
-  - richer OCR language-pack acquisition on top of bundled/PATH Tesseract discovery
   - richer full-screen key/mouse handling on top of the node-pty PTY viewport
 ```
 
