@@ -17,6 +17,9 @@ export type ScreenSnapshot = {
   imageDataUrl: string;
   imageHash: string;
   imageChanged: boolean;
+  imageDiffRatio: number;
+  imageDiffThreshold: number;
+  imageMeaningfullyChanged: boolean;
   capturedAt: string;
 };
 
@@ -55,6 +58,8 @@ export class ProviderRegistry {
     const record = readRecord(input);
     const imageDataUrl = trimField(record?.imageDataUrl ?? record?.image_data_url, MAX_SCREEN_IMAGE_LENGTH);
     const imageHash = hashScreenImageDataUrl(imageDataUrl);
+    const imageDiffRatio = diffScreenImageDataUrl(this.screenSnapshot?.imageDataUrl, imageDataUrl);
+    const imageDiffThreshold = resolveScreenDiffThreshold();
     const snapshot: ScreenSnapshot = {
       source: trimField(record?.source, MAX_PROVIDER_FIELD_LENGTH),
       title: trimField(record?.title, MAX_PROVIDER_FIELD_LENGTH),
@@ -63,6 +68,9 @@ export class ProviderRegistry {
       imageDataUrl,
       imageHash,
       imageChanged: imageHash ? imageHash !== this.screenSnapshot?.imageHash : true,
+      imageDiffRatio,
+      imageDiffThreshold,
+      imageMeaningfullyChanged: imageHash ? imageDiffRatio >= imageDiffThreshold : true,
       capturedAt: new Date().toISOString()
     };
 
@@ -140,6 +148,7 @@ export function augmentRequestWithProviderContext<T extends {
         screenSnapshot.description ? `Description:\n${screenSnapshot.description}` : "",
         screenSnapshot.ocrText ? `OCR text:\n${screenSnapshot.ocrText}` : "",
         screenSnapshot.imageHash ? `Image changed since previous capture: ${screenSnapshot.imageChanged ? "yes" : "no"}` : "",
+        screenSnapshot.imageHash ? `Image diff ratio: ${formatScreenDiffRatio(screenSnapshot.imageDiffRatio)} (threshold ${formatScreenDiffRatio(screenSnapshot.imageDiffThreshold)}; meaningful ${screenSnapshot.imageMeaningfullyChanged ? "yes" : "no"})` : "",
         screenSnapshot.imageDataUrl ? "Image input is attached to this Vision turn." : "",
         "",
         "User request:",
@@ -184,6 +193,7 @@ export function renderScreenSnapshotToolOutput(snapshot: ScreenSnapshot | null):
     snapshot.description ? `Description:\n${snapshot.description}` : "",
     snapshot.ocrText ? `OCR text:\n${snapshot.ocrText.slice(0, 3000)}` : "",
     snapshot.imageHash ? `Image changed since previous capture: ${snapshot.imageChanged ? "yes" : "no"}` : "",
+    snapshot.imageHash ? `Image diff ratio: ${formatScreenDiffRatio(snapshot.imageDiffRatio)} (threshold ${formatScreenDiffRatio(snapshot.imageDiffThreshold)}; meaningful ${snapshot.imageMeaningfullyChanged ? "yes" : "no"})` : "",
     snapshot.imageDataUrl ? `Image data URL: ${snapshot.imageDataUrl.length} characters attached` : ""
   ]
     .filter(Boolean)
@@ -246,4 +256,52 @@ function hashScreenImageDataUrl(value: string): string {
     return "";
   }
   return createHash("sha256").update(value).digest("hex");
+}
+
+function diffScreenImageDataUrl(previous: string | undefined, current: string): number {
+  if (!current) {
+    return 0;
+  }
+  if (!previous) {
+    return 1;
+  }
+
+  const previousBytes = readImagePayloadBytes(previous);
+  const currentBytes = readImagePayloadBytes(current);
+  const maxLength = Math.max(previousBytes.length, currentBytes.length);
+  if (maxLength === 0) {
+    return 0;
+  }
+
+  let changed = Math.abs(previousBytes.length - currentBytes.length);
+  const sharedLength = Math.min(previousBytes.length, currentBytes.length);
+  for (let index = 0; index < sharedLength; index += 1) {
+    if (previousBytes[index] !== currentBytes[index]) {
+      changed += 1;
+    }
+  }
+
+  return changed / maxLength;
+}
+
+function readImagePayloadBytes(value: string): Buffer {
+  const commaIndex = value.indexOf(",");
+  const payload = commaIndex >= 0 ? value.slice(commaIndex + 1) : value;
+  try {
+    return Buffer.from(payload, "base64");
+  } catch {
+    return Buffer.from(value, "utf8");
+  }
+}
+
+function resolveScreenDiffThreshold(): number {
+  const configured = Number.parseFloat(process.env.CODEX_WIDGET_SCREEN_DIFF_THRESHOLD ?? "");
+  if (!Number.isFinite(configured)) {
+    return 0.01;
+  }
+  return Math.min(1, Math.max(0, configured));
+}
+
+function formatScreenDiffRatio(value: number): string {
+  return value.toFixed(4);
 }

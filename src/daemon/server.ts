@@ -454,6 +454,9 @@ function summarizeScreenSnapshot(snapshot: ScreenSnapshot): Omit<ScreenSnapshot,
     ocrText: snapshot.ocrText,
     imageHash: snapshot.imageHash,
     imageChanged: snapshot.imageChanged,
+    imageDiffRatio: snapshot.imageDiffRatio,
+    imageDiffThreshold: snapshot.imageDiffThreshold,
+    imageMeaningfullyChanged: snapshot.imageMeaningfullyChanged,
     imageDataUrlLength: snapshot.imageDataUrl.length,
     capturedAt: snapshot.capturedAt
   };

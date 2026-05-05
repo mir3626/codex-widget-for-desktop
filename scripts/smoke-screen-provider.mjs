@@ -33,6 +33,9 @@ if (typeof posted.snapshot?.imageHash !== "string" || posted.snapshot.imageHash.
 if (posted.snapshot.imageChanged !== true) {
   throw new Error(`First screen snapshot should be marked changed: ${JSON.stringify(posted)}`);
 }
+if (posted.snapshot.imageDiffRatio !== 1 || posted.snapshot.imageMeaningfullyChanged !== true) {
+  throw new Error(`First screen snapshot should be meaningfully changed: ${JSON.stringify(posted)}`);
+}
 
 const repeatedResponse = await fetch(`http://127.0.0.1:${daemon.port}/providers/screen/snapshot`, {
   method: "POST",
@@ -43,9 +46,45 @@ const repeated = await repeatedResponse.json();
 if (repeated.snapshot?.imageChanged !== false || repeated.snapshot?.imageHash !== posted.snapshot.imageHash) {
   throw new Error(`Repeated screen snapshot should be marked unchanged: ${JSON.stringify(repeated)}`);
 }
+if (repeated.snapshot.imageDiffRatio !== 0 || repeated.snapshot.imageMeaningfullyChanged !== false) {
+  throw new Error(`Repeated screen snapshot should not be meaningfully changed: ${JSON.stringify(repeated)}`);
+}
+
+const changedPayload = {
+  ...screenPayload,
+  imageDataUrl: `data:image/jpeg;base64,${Buffer.from("screen-changed").toString("base64")}`
+};
+const changedResponse = await fetch(`http://127.0.0.1:${daemon.port}/providers/screen/snapshot`, {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify(changedPayload)
+});
+const changed = await changedResponse.json();
+if (changed.snapshot?.imageChanged !== true || changed.snapshot?.imageMeaningfullyChanged !== true) {
+  throw new Error(`Changed screen snapshot should be meaningfully changed: ${JSON.stringify(changed)}`);
+}
+if (!(changed.snapshot.imageDiffRatio > 0.01) || changed.snapshot.imageDiffThreshold !== 0.01) {
+  throw new Error(`Changed screen snapshot should include diff ratio and threshold: ${JSON.stringify(changed)}`);
+}
 
 const registry = new ProviderRegistry();
 registry.setScreenSnapshot(screenPayload);
+const originalDiffThreshold = process.env.CODEX_WIDGET_SCREEN_DIFF_THRESHOLD;
+process.env.CODEX_WIDGET_SCREEN_DIFF_THRESHOLD = "1";
+try {
+  const thresholdRegistry = new ProviderRegistry();
+  thresholdRegistry.setScreenSnapshot(screenPayload);
+  const belowThresholdSnapshot = thresholdRegistry.setScreenSnapshot(changedPayload);
+  if (belowThresholdSnapshot.imageDiffThreshold !== 1 || belowThresholdSnapshot.imageMeaningfullyChanged !== false) {
+    throw new Error(`Screen diff threshold override was not applied: ${JSON.stringify(belowThresholdSnapshot)}`);
+  }
+} finally {
+  if (originalDiffThreshold === undefined) {
+    delete process.env.CODEX_WIDGET_SCREEN_DIFF_THRESHOLD;
+  } else {
+    process.env.CODEX_WIDGET_SCREEN_DIFF_THRESHOLD = originalDiffThreshold;
+  }
+}
 const augmented = augmentRequestWithProviderContext(
   {
     id: "screen-augment-smoke",
