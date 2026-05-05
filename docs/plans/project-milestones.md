@@ -64,4 +64,5 @@ Evidence:
 - `npm run smoke:tauri-supervisor` covers native supervisor restart backoff and actual child restart after exit.
 - `npm run smoke:node-runtime` verifies bundled Node can run the dependency-bundled daemon entry.
 - `npm run smoke:release-resources` verifies generated MSI/NSIS scripts include the bundled daemon/runtime and provider helper resources.
-- Native crash-recovery UX is surfaced through renderer diagnostics; installed-app observation and longer soak tests remain open.
+- `npm run smoke:release-launch` verifies the release exe can start hidden and expose the daemon WebSocket on `127.0.0.1:4128`.
+- Native crash-recovery UX is surfaced through renderer diagnostics; full install/uninstall observation and longer soak tests remain open.

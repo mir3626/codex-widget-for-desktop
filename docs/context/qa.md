@@ -38,6 +38,7 @@ Run this after a release build when bundle resource wiring changes:
 ```powershell
 npm run build
 npm run smoke:release-resources
+npm run smoke:release-launch
 ```
 
 Run this after Tauri/Rust/native shell changes:
@@ -88,3 +89,4 @@ npm run vibe:checkpoint
 - Renderer-visible native daemon diagnostics are covered by type/build checks; installed-app restart UX screenshots are still manual.
 - Bundled Node runtime smoke verifies local daemon startup without repository `node_modules`; installed MSI/NSIS launch observation is still manual.
 - `npm run smoke:release-resources` verifies generated MSI/NSIS scripts include bundled daemon/runtime/provider resources, but it does not install and launch the artifacts.
+- `npm run smoke:release-launch` starts the release exe hidden and verifies the daemon WebSocket on port `4128`, but it still does not perform a full MSI/NSIS install/uninstall cycle.

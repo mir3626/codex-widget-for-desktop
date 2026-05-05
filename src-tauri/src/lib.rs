@@ -274,6 +274,9 @@ pub fn run() {
                 let _ = window.set_shadow(false);
                 let _ = window.set_resizable(true);
                 remove_native_window_frame(&window);
+                if std::env::var("CODEX_WIDGET_START_HIDDEN").as_deref() == Ok("1") {
+                    let _ = window.hide();
+                }
             }
 
             let show_item = MenuItem::with_id(app, "show", "Show widget", true, None::<&str>)?;

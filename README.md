@@ -110,6 +110,7 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run smoke:resident`: run the idle resident daemon health/resource smoke
 - `npm run smoke:resident-soak`: run a short resident daemon soak with runtime samples, ping/pong health checks, and RSS growth limits
 - `npm run smoke:release-resources`: verify the latest MSI/NSIS build scripts include the bundled daemon, Node runtime, screen helper, and DOM extension resources
+- `npm run smoke:release-launch`: launch the latest release exe hidden, verify its daemon WebSocket on `127.0.0.1:4128`, then clean up the process tree
 - `npm run smoke:node-runtime`: verify the bundled Node runtime can run the bundled daemon without repository `node_modules`
 - `npm run smoke:renderer-chat`: run a Playwright layout smoke for multi-turn chat, tables, prompt resizing, and More-menu placement
 - `npm run smoke:dom`: verify the local DOM snapshot provider ingress
