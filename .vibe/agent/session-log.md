@@ -71,3 +71,4 @@
 - 2026-05-05T14:15:58.648+09:00 [verification][smoke-gate] Added and passed `npm run smoke:all:live`, a serial readiness gate that runs lint, one web build, daemon/provider/resident smokes, extension smoke, screen helper parse smoke, and live Windows screen helper smoke without parallel dist rebuild races.
 - 2026-05-05T14:22:38.162+09:00 [architecture][runtime-diagnostics] Added app-server runtime diagnostics to `runtime.status`: start count, last started/exited timestamps, and latest error; Settings now surfaces starts and latest error.
 - 2026-05-05T14:22:38.162+09:00 [verification][runtime-diagnostics] Passed `npm run lint`, `npm run smoke:resident`, `npm run smoke:all:live`, and `node --check src/daemon/codexAppServer.ts`.
+- 2026-05-05T14:27:21.172+09:00 [verification][release-build] Latest `npm run build` passed after provider/runtime readiness work and produced release exe (10,307,072 bytes), MSI (4,161,536 bytes), and NSIS setup exe (3,063,170 bytes).

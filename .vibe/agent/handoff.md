@@ -489,6 +489,13 @@ Completed after app-server diagnostics pass:
 - `npm run smoke:all:live`
 - `node --check src/daemon/codexAppServer.ts`
 
+Completed latest release build after provider/runtime readiness passes:
+
+- `npm run build`
+- `src-tauri/target/release/codex-widget-for-desktop.exe` (10,307,072 bytes)
+- `src-tauri/target/release/bundle/msi/Codex Widget_0.1.0_x64_en-US.msi` (4,161,536 bytes)
+- `src-tauri/target/release/bundle/nsis/Codex Widget_0.1.0_x64-setup.exe` (3,063,170 bytes)
+
 ## Restart Steps
 
 1. Run `git status --short --untracked-files=all` and inspect the sync diff.
