@@ -14,6 +14,8 @@
     "build:daemon": "tsc -p tsconfig.node.json",
     "build:renderer": "vite build",
     "smoke": "npm run build:web && node scripts/smoke-daemon.mjs",
+    "smoke:all": "node scripts/smoke-all.mjs",
+    "smoke:all:live": "node scripts/smoke-all.mjs --include-live",
     "smoke:dom": "npm run build:daemon && node scripts/smoke-dom-provider.mjs",
     "smoke:extension": "node scripts/smoke-browser-extension.mjs",
     "smoke:resident": "npm run build:daemon && node scripts/smoke-resident.mjs",

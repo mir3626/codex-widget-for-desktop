@@ -17,7 +17,7 @@ Evidence:
 
 Goal: use a long-lived Codex runtime boundary instead of prompt-injected one-shot calls, while preserving fallback and safe process cleanup.
 
-Current progress: 0.62
+Current progress: 0.66
 
 Evidence:
 - `CodexAppServerBridge` owns process startup, WebSocket JSON-RPC initialization, thread creation, turn streaming, interrupt, and shutdown.
@@ -50,4 +50,5 @@ Evidence:
 - Dev hot services, daemon lifecycle, tray menu, and start-at-login toggle exist.
 - `npm run build` produces release exe plus MSI and NSIS installer bundles.
 - `npm run smoke:resident` verifies idle runtime health and RSS budget.
+- `npm run smoke:all` provides a serial readiness gate that avoids parallel build races across provider smokes.
 - Crash-recovery polish and longer soak tests remain open.

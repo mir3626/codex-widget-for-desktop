@@ -49,6 +49,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added resident desktop operations: runtime health events, Settings panel, Windows start-at-login toggle, skip-taskbar native config, hide-to-tray close behavior, and a strengthened smoke gate for provider/runtime events.
 - Added `npm run smoke:resident` for idle daemon health and RSS budget checks.
 - Fixed production bundling by adding `icons/icon.ico` to the Tauri bundle icon list; `npm run build` now produces release exe, MSI, and NSIS installer artifacts.
+- Added `npm run smoke:all` and `npm run smoke:all:live` as serial readiness gates so provider smokes do not race by rebuilding `dist` in parallel.
 - Added real provider shell functionality for Iteration 2:
   - DOM mode accepts browser/page snapshots at `POST /providers/dom/snapshot`, updates provider readiness, emits DOM snapshot tool output, and injects the latest DOM context into model requests.
   - `providers/browser-dom-extension` adds an unpacked Chrome/Edge Manifest V3 extension that captures the active tab and posts a DOM snapshot to the daemon.
@@ -474,8 +475,10 @@ Completed after Windows screen capture helper pass:
 - `npm run smoke:screen-helper:live`
 - `npm run smoke:terminal`
 - `npm run smoke:resident`
+- `npm run smoke:all:live`
 - `node --check scripts/smoke-screen-helper.mjs`
 - `node --check scripts/smoke-screen-helper-live.mjs`
+- `node --check scripts/smoke-all.mjs`
 - `node --check src/daemon/server.ts`
 
 ## Restart Steps
@@ -489,7 +492,7 @@ Completed after Windows screen capture helper pass:
 7. For token-mode fallback responses, set `CODEX_WIDGET_AUTH_MODE=token`, press Sign in in the widget, and use the inline token form to save the OAuth access token and backend proxy URL into gitignored `.env`.
 8. Run `node .vibe/harness/scripts/vibe-sprint-mode.mjs status` to confirm whether extended mode is still active.
 9. Use `npm run dev` for renderer HMR plus daemon restart-on-change; use `npm run dev:services` only when testing the service loop without launching Tauri.
-10. Run `npm run lint && npm run smoke` after follow-up TypeScript/widget changes.
+10. Run `npm run smoke:all` after follow-up TypeScript/widget/provider changes. Use `npm run smoke:all:live` when validating Windows desktop capture behavior.
 11. For renderer UI work, capture a `360x480` Playwright smoke against `http://127.0.0.1:5173/?daemonPort=4128` to check overlap in the fixed Tauri viewport. Model/reasoning selectors live between the status strip and mode tabs and persist to localStorage keys `codex-widget-model` and `codex-widget-reasoning-effort`.
 12. Renderer visible chat persists under `codex-widget-chat-messages:v1`; use the titlebar New chat control or `session.reset` protocol event to clear both UI and daemon session state.
 13. The titlebar close button hides the widget to tray; use tray Quit to exit the resident app.

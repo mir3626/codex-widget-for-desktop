@@ -5,21 +5,13 @@
 Run these after ordinary TypeScript/daemon/renderer changes:
 
 ```powershell
-npm run lint
-npm run build:web
-npm run smoke
-npm run smoke:resident
-npm run smoke:dom
-npm run smoke:extension
-npm run smoke:screen
-npm run smoke:screen-helper
-npm run smoke:terminal
+npm run smoke:all
 ```
 
 Run this when changing the Windows screen capture helper and a desktop session is available:
 
 ```powershell
-npm run smoke:screen-helper:live
+npm run smoke:all:live
 ```
 
 Run this after Tauri/Rust/native shell changes:
