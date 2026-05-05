@@ -19,6 +19,7 @@
     "build:renderer": "vite build",
     "package:extension": "node scripts/package-browser-extension.mjs",
     "release:verify": "node scripts/release-verify.mjs",
+    "release:readiness": "node scripts/release-readiness.mjs",
     "release:soak": "npm run build && node scripts/smoke-release-soak.mjs",
     "smoke": "npm run build:web && node scripts/smoke-daemon.mjs",
     "smoke:all": "node scripts/smoke-all.mjs",

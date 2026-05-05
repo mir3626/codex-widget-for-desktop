@@ -76,5 +76,6 @@ Evidence:
 - `npm run smoke:release-install` verifies the NSIS installer can silently install, launch the installed app with its bundled daemon, force-kill the bundled daemon and observe native restart supervision, force-kill the app process and observe daemon orphan cleanup, silently uninstall, and leave no install directory, uninstall entry, product install key, or desktop shortcut.
 - `npm run smoke:release-msi-install` verifies the MSI installer can silently install into a per-user test directory, launch the installed app with its bundled daemon, silently uninstall, and leave no install directory, uninstall entry, or desktop shortcut.
 - `npm run release:verify` runs the full live release gate and reports release artifact sizes.
+- `npm run release:readiness` audits current release artifacts, browser store metadata/package readiness, latest soak report evidence, and manual release blockers.
 - `npm run release:soak` builds the release app and runs a longer hidden release-exe soak with runtime samples, ping/pong health checks, daemon process detection, process-tree working-set limits, and JSON evidence report output for manual/multi-hour runs.
 - Native crash-recovery UX is surfaced through renderer diagnostics; a true multi-hour soak run remains open before final release.

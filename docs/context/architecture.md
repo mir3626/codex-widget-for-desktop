@@ -123,5 +123,6 @@ Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only sta
 - `npm run smoke:release-install`: run the NSIS installer silently, verify installed resources, launch the installed app hidden, verify the installed bundled daemon WebSocket, kill the bundled daemon to verify native supervisor restart, kill the app process to verify daemon parent-watchdog orphan cleanup, silently uninstall, and check cleanup.
 - `npm run smoke:release-msi-install`: run the MSI installer silently into a per-user test directory, verify installed resources, launch the installed app hidden, verify the bundled daemon WebSocket, silently uninstall, and check cleanup.
 - `npm run release:verify`: run the full live release gate in sequence and report the release artifact sizes.
+- `npm run release:readiness`: audit existing release artifacts, browser store package/readiness metadata, latest soak evidence, and manual release blockers. Strict mode fails until browser store submission and true multi-hour soak are confirmed.
 - `npm run smoke`: build web/daemon and verify WebSocket streaming.
 - `powershell -NoProfile -ExecutionPolicy Bypass -Command ". .\scripts\use-msvc-env.ps1; Push-Location src-tauri; cargo check --no-default-features; Pop-Location"`: native shell compile check on Windows.

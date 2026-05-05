@@ -90,6 +90,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added a browser DOM extension Options page backed by `chrome.storage.sync`, so users can point the extension at another local daemon port without editing extension code. The extension only accepts local `http://127.0.0.1/...` or `http://localhost/...` snapshot URLs ending in `/providers/dom/snapshot`.
 - Added `npm run smoke:release-install` for NSIS silent install/uninstall observation: it refuses to overwrite existing install state, launches the installed app hidden, verifies the daemon WebSocket, uninstalls, and checks install directory, uninstall registry entry, product install key, and desktop shortcut cleanup.
 - Added `npm run release:verify` as the one-command live release gate. It runs `smoke:all:live`, `build`, release resource smoke, release exe launch smoke, NSIS install smoke, MSI install smoke, and prints release artifact sizes.
+- Added `npm run release:readiness` as a release-candidate audit. It validates current release artifacts, browser store metadata/package readiness, latest release soak evidence, and reports manual blockers for browser store submission and true multi-hour soak.
 - Fixed installed-build daemon resource resolution. The native shell now checks the installed exe-adjacent `_up_` resource directory for `dist/daemon-bundle/standalone.js` and `dist/node-runtime/node.exe` before falling back to development paths or system `node`.
 - Strengthened `npm run smoke:release-install` to find the installed bundled daemon process, kill it, and verify the native supervisor restarts it with a new PID before uninstall cleanup.
 - Added a daemon parent watchdog through `CODEX_WIDGET_NATIVE_PARENT_PID`, so the installed daemon exits when the native app process disappears unexpectedly instead of surviving as an orphan.
@@ -743,6 +744,13 @@ Completed after release soak report pass:
 - `npm run smoke:release-soak`
 - The short release soak produced 13 runtime samples, 29 pong responses, 411.1MB process-tree working set across 9 processes, and `dist/reports/release-soak-latest.json`.
 - Release soak now writes a JSON report with duration, runtime sample count, pong count, latest runtime status, process-tree memory, thresholds, and process details for later manual/multi-hour evidence review.
+
+Completed after release readiness audit pass:
+
+- `node --check scripts/release-readiness.mjs`
+- `npm run release:readiness`
+- `node scripts/release-readiness.mjs --require-manual-gates` was run intentionally and failed as expected because browser store submission and a true multi-hour soak have not been confirmed.
+- Default readiness audit passed all automated checks and reported manual blockers for browser store submission and multi-hour soak.
 
 Completed after renderer chat layout hardening:
 

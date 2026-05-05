@@ -58,6 +58,14 @@ Run this after a release build when bundle resource wiring changes:
 npm run release:verify
 ```
 
+Run this after `release:verify` and `release:soak` when preparing a release candidate:
+
+```powershell
+npm run release:readiness
+```
+
+Use `node scripts/release-readiness.mjs --require-manual-gates` only when browser store submission and true multi-hour soak have been explicitly confirmed with the corresponding environment flags.
+
 Run this after Tauri/Rust/native shell changes:
 
 ```powershell
@@ -110,4 +118,5 @@ npm run vibe:checkpoint
 - `npm run smoke:release-install` performs a Windows NSIS silent install, launches the installed app hidden, verifies the installed bundled daemon on port `4128`, kills that daemon to verify native supervisor restart, kills the app process to verify daemon orphan cleanup, silently uninstalls, and checks cleanup.
 - `npm run smoke:release-msi-install` performs a Windows MSI silent install into a per-user test directory, launches the installed app hidden, verifies the installed bundled daemon on port `4128`, silently uninstalls, and checks cleanup.
 - `npm run release:verify` is the single full release gate and runs the live provider/resident smokes, Tauri build, release resource smoke, release exe launch smoke, NSIS install smoke, and MSI install smoke.
+- `npm run release:readiness` audits the current release artifacts, browser store readiness metadata/package, latest release soak JSON report, and manual release blockers; strict mode fails until browser store submission and true multi-hour soak are confirmed.
 - `npm run release:soak` is the longer hidden release-exe soak. It defaults to 60 seconds and can be tuned with `CODEX_WIDGET_RELEASE_SOAK_MS`, `CODEX_WIDGET_RELEASE_SOAK_MAX_WORKING_SET_MB`, and `CODEX_WIDGET_RELEASE_SOAK_MAX_GROWTH_MB`. It writes a JSON evidence report to `dist/reports/release-soak-latest.json` by default; set `CODEX_WIDGET_RELEASE_SOAK_REPORT` when running a named multi-hour/manual soak.
