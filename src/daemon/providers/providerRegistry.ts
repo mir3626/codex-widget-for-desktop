@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { ProviderStatus, WidgetMode } from "../../shared/protocol.js";
 
 export type DomSnapshot = {
@@ -14,6 +15,8 @@ export type ScreenSnapshot = {
   description: string;
   ocrText: string;
   imageDataUrl: string;
+  imageHash: string;
+  imageChanged: boolean;
   capturedAt: string;
 };
 
@@ -50,12 +53,16 @@ export class ProviderRegistry {
 
   setScreenSnapshot(input: unknown): ScreenSnapshot {
     const record = readRecord(input);
+    const imageDataUrl = trimField(record?.imageDataUrl ?? record?.image_data_url, MAX_SCREEN_IMAGE_LENGTH);
+    const imageHash = hashScreenImageDataUrl(imageDataUrl);
     const snapshot: ScreenSnapshot = {
       source: trimField(record?.source, MAX_PROVIDER_FIELD_LENGTH),
       title: trimField(record?.title, MAX_PROVIDER_FIELD_LENGTH),
       description: trimField(record?.description, MAX_SCREEN_TEXT_LENGTH),
       ocrText: trimField(record?.ocrText ?? record?.ocr_text, MAX_SCREEN_TEXT_LENGTH),
-      imageDataUrl: trimField(record?.imageDataUrl ?? record?.image_data_url, MAX_SCREEN_IMAGE_LENGTH),
+      imageDataUrl,
+      imageHash,
+      imageChanged: imageHash ? imageHash !== this.screenSnapshot?.imageHash : true,
       capturedAt: new Date().toISOString()
     };
 
@@ -132,6 +139,7 @@ export function augmentRequestWithProviderContext<T extends {
         `Captured: ${screenSnapshot.capturedAt}`,
         screenSnapshot.description ? `Description:\n${screenSnapshot.description}` : "",
         screenSnapshot.ocrText ? `OCR text:\n${screenSnapshot.ocrText}` : "",
+        screenSnapshot.imageHash ? `Image changed since previous capture: ${screenSnapshot.imageChanged ? "yes" : "no"}` : "",
         screenSnapshot.imageDataUrl ? "Image input is attached to this Vision turn." : "",
         "",
         "User request:",
@@ -175,6 +183,7 @@ export function renderScreenSnapshotToolOutput(snapshot: ScreenSnapshot | null):
     `Captured: ${snapshot.capturedAt}`,
     snapshot.description ? `Description:\n${snapshot.description}` : "",
     snapshot.ocrText ? `OCR text:\n${snapshot.ocrText.slice(0, 3000)}` : "",
+    snapshot.imageHash ? `Image changed since previous capture: ${snapshot.imageChanged ? "yes" : "no"}` : "",
     snapshot.imageDataUrl ? `Image data URL: ${snapshot.imageDataUrl.length} characters attached` : ""
   ]
     .filter(Boolean)
@@ -230,4 +239,11 @@ function readRecord(value: unknown): Record<string, unknown> | undefined {
 
 function trimField(value: unknown, maxLength: number): string {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+function hashScreenImageDataUrl(value: string): string {
+  if (!value) {
+    return "";
+  }
+  return createHash("sha256").update(value).digest("hex");
 }

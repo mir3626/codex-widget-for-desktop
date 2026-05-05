@@ -3,6 +3,10 @@ param(
   [string]$Description = "",
   [int]$MaxWidth = 1600,
   [int]$JpegQuality = 72,
+  [int]$CropX = 0,
+  [int]$CropY = 0,
+  [int]$CropWidth = 0,
+  [int]$CropHeight = 0,
   [string]$OcrCommand = "",
   [string]$OcrLanguage = "",
   [int]$OcrScale = 2,
@@ -66,6 +70,29 @@ function Resize-Bitmap {
 
   $Bitmap.Dispose()
   return $resized
+}
+
+function Select-CropRectangle {
+  param(
+    [Parameter(Mandatory = $true)]
+    [System.Drawing.Rectangle]$Bounds,
+    [int]$X,
+    [int]$Y,
+    [int]$Width,
+    [int]$Height
+  )
+
+  if ($Width -le 0 -or $Height -le 0) {
+    return [System.Drawing.Rectangle]::new($Bounds.Left, $Bounds.Top, $Bounds.Width, $Bounds.Height)
+  }
+
+  $requested = [System.Drawing.Rectangle]::new($X, $Y, $Width, $Height)
+  $crop = [System.Drawing.Rectangle]::Intersect($Bounds, $requested)
+  if ($crop.Width -le 0 -or $crop.Height -le 0) {
+    throw "Crop rectangle $X,$Y ${Width}x${Height} is outside virtual screen bounds $($Bounds.Left),$($Bounds.Top) $($Bounds.Width)x$($Bounds.Height)."
+  }
+
+  return $crop
 }
 
 function New-OcrBitmap {
@@ -267,11 +294,12 @@ function Invoke-OcrCommand {
 }
 
 $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
-$bitmap = [System.Drawing.Bitmap]::new($bounds.Width, $bounds.Height)
+$captureBounds = Select-CropRectangle -Bounds $bounds -X $CropX -Y $CropY -Width $CropWidth -Height $CropHeight
+$bitmap = [System.Drawing.Bitmap]::new($captureBounds.Width, $captureBounds.Height)
 $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
 
 try {
-  $graphics.CopyFromScreen($bounds.Left, $bounds.Top, 0, 0, $bounds.Size)
+  $graphics.CopyFromScreen($captureBounds.Left, $captureBounds.Top, 0, 0, $captureBounds.Size)
   $graphics.Dispose()
   $graphics = $null
 
@@ -307,7 +335,11 @@ try {
   }
 
   $imageDataUrl = "data:image/jpeg;base64,$([Convert]::ToBase64String($bytes))"
-  $title = "Windows virtual screen $($bounds.Width)x$($bounds.Height)"
+  $title = if ($captureBounds.Width -eq $bounds.Width -and $captureBounds.Height -eq $bounds.Height -and $captureBounds.Left -eq $bounds.Left -and $captureBounds.Top -eq $bounds.Top) {
+    "Windows virtual screen $($bounds.Width)x$($bounds.Height)"
+  } else {
+    "Windows screen crop $($captureBounds.Width)x$($captureBounds.Height) at $($captureBounds.Left),$($captureBounds.Top) from virtual $($bounds.Width)x$($bounds.Height)"
+  }
 
   $payload = @{
     source = "windows-screen-capture-helper"

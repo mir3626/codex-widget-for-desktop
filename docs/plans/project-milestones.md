@@ -41,17 +41,18 @@ Evidence:
 
 Goal: replace Agent/DOM/Vision/PTY stubs with real desktop/browser/terminal context providers that stream tool events through one widget protocol.
 
-Current progress: 0.94
+Current progress: 0.98
 
 Evidence:
 - Provider modes and tool-event rendering exist.
 - Browser DOM mode accepts live snapshots through the local daemon and injects them into model context.
 - An unpacked Chrome/Edge extension can send active-tab DOM snapshots to the daemon, exposes a local-only Options page for daemon URL changes, can use an optional Chrome/Edge native messaging host before falling back to HTTP, and `npm run package:extension` produces a zip package with icon assets. Store listing, privacy notes, review notes, permission rationales, and `npm run smoke:browser-store` are in place.
 - Screen/Vision mode accepts live snapshots through the local daemon, injects description/OCR context into model requests, and attaches image data to app-server Vision turns.
-- A Windows PowerShell helper captures the virtual desktop as compressed JPEG data, can run a local OCR command, bundled Tesseract runtime, or auto-detected `tesseract` against an OCR-only upscaled PNG, and posts the result to the Screen/Vision endpoint; the widget can trigger that helper through the daemon protocol.
+- A Windows PowerShell helper captures the virtual desktop or env-configured crop rectangles as compressed JPEG data, can run a local OCR command, bundled Tesseract runtime, or auto-detected `tesseract` against an OCR-only upscaled PNG, and posts the result to the Screen/Vision endpoint; the widget can trigger that helper through the daemon protocol.
+- The Screen/Vision registry computes image hash/change metadata so repeated captures can be treated as unchanged context.
 - `npm run build:ocr-runtime` and `npm run smoke:ocr-runtime` package and verify a Tesseract-compatible OCR runtime resource slot for installed builds, including standard Windows install discovery, `CODEX_WIDGET_TESSERACT_SEARCH_ROOTS`, tessdata language manifesting, and bundled `eng+kor` auto-selection when both language packs exist.
 - Terminal/PTY mode executes explicit shell commands, supports a persistent node-pty/ConPTY-backed `/pty` command/raw-input session, drains output after raw input/key writes, streams output as tool events, and displays terminal output in a dedicated renderer viewport with direct input controls.
-- Final browser store account submission, richer full-screen terminal mouse UX, and crop/diff tuning remain open.
+- Final browser store account submission, richer full-screen terminal mouse UX, region-selection UI, and image-diff thresholds remain open.
 
 ## resident-desktop-readiness
 

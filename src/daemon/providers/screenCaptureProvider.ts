@@ -36,6 +36,22 @@ export async function captureScreenSnapshot(input: {
     "-OcrMaxChars",
     process.env.CODEX_WIDGET_SCREEN_OCR_MAX_CHARS ?? "20000"
   ];
+  const cropX = process.env.CODEX_WIDGET_SCREEN_CROP_X?.trim();
+  const cropY = process.env.CODEX_WIDGET_SCREEN_CROP_Y?.trim();
+  const cropWidth = process.env.CODEX_WIDGET_SCREEN_CROP_WIDTH?.trim();
+  const cropHeight = process.env.CODEX_WIDGET_SCREEN_CROP_HEIGHT?.trim();
+  if (cropX) {
+    args.push("-CropX", cropX);
+  }
+  if (cropY) {
+    args.push("-CropY", cropY);
+  }
+  if (cropWidth) {
+    args.push("-CropWidth", cropWidth);
+  }
+  if (cropHeight) {
+    args.push("-CropHeight", cropHeight);
+  }
   const ocrScale = process.env.CODEX_WIDGET_SCREEN_OCR_SCALE?.trim();
   if (ocrScale) {
     args.push("-OcrScale", ocrScale);

@@ -14,6 +14,7 @@ Optional parameters:
 
 - `-DaemonUrl`: defaults to `http://127.0.0.1:4128`
 - `-Description`: short user-provided note to attach to the screen snapshot
+- `-CropX`, `-CropY`, `-CropWidth`, `-CropHeight`: optional virtual-screen crop rectangle. Width/height `0` keeps the full virtual desktop.
 - `-MaxWidth`: default `1600`, used to keep the payload small
 - `-JpegQuality`: default `72`, clamped to `1..100`
 - `-OcrCommand`: optional OCR command template. Use `{image}` where the captured JPEG path should be inserted.
@@ -38,6 +39,8 @@ Bundled OCR commands choose `eng+kor` automatically when the bundled tessdata di
 
 By default the helper creates an OCR-only PNG from the resized capture and upscales it before running OCR. This improves small UI text recognition without increasing the JSON snapshot image payload.
 
+When crop parameters are supplied, the helper captures only the clamped virtual-screen rectangle before resizing, OCR, and upload. This is useful for full-screen monitors where only one app region should be sent to Vision mode.
+
 The helper posts:
 
 ```json
@@ -50,4 +53,4 @@ The helper posts:
 }
 ```
 
-The current daemon stores the image data with the latest snapshot, injects the title, description, and OCR text into the model request, and attaches image data to Vision-mode app-server turns.
+The current daemon stores the image data with the latest snapshot, computes an image hash/change flag for repeated-capture diff awareness, injects the title, description, and OCR text into the model request, and attaches image data to Vision-mode app-server turns.

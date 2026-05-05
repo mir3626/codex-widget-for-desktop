@@ -10,6 +10,8 @@ for (const marker of [
   "CopyFromScreen",
   "image/jpeg",
   "data:image/jpeg;base64",
+  "CropWidth",
+  "Select-CropRectangle",
   "CODEX_WIDGET_SCREEN_OCR_COMMAND",
   "CODEX_WIDGET_SCREEN_OCR_LANGUAGE",
   "DisableOcrPreprocess",

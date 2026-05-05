@@ -27,6 +27,22 @@ const posted = await response.json();
 if (posted.snapshot?.imageDataUrl || posted.snapshot?.imageDataUrlLength <= 0) {
   throw new Error(`Screen snapshot response should redact image data: ${JSON.stringify(posted)}`);
 }
+if (typeof posted.snapshot?.imageHash !== "string" || posted.snapshot.imageHash.length !== 64) {
+  throw new Error(`Screen snapshot response should include an image hash: ${JSON.stringify(posted)}`);
+}
+if (posted.snapshot.imageChanged !== true) {
+  throw new Error(`First screen snapshot should be marked changed: ${JSON.stringify(posted)}`);
+}
+
+const repeatedResponse = await fetch(`http://127.0.0.1:${daemon.port}/providers/screen/snapshot`, {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify(screenPayload)
+});
+const repeated = await repeatedResponse.json();
+if (repeated.snapshot?.imageChanged !== false || repeated.snapshot?.imageHash !== posted.snapshot.imageHash) {
+  throw new Error(`Repeated screen snapshot should be marked unchanged: ${JSON.stringify(repeated)}`);
+}
 
 const registry = new ProviderRegistry();
 registry.setScreenSnapshot(screenPayload);

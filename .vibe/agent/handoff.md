@@ -64,6 +64,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
   - Added bundled OCR runtime packaging: `npm run build:ocr-runtime` prepares `dist/ocr-runtime/ocr-runtime.json`, can copy a Tesseract runtime from `CODEX_WIDGET_OCR_RUNTIME_DIR`, `CODEX_WIDGET_TESSERACT_EXE`, PATH, `CODEX_WIDGET_TESSERACT_SEARCH_ROOTS`, or standard Windows install locations, records bundled tessdata languages, and installed helpers resolve `_up_/dist/ocr-runtime` before PATH OCR.
   - Added OCR language selection defaults: auto-generated bundled Tesseract commands choose `eng+kor` when both bundled language packs exist, fall back to available `eng`/`kor`, and allow `CODEX_WIDGET_SCREEN_OCR_LANGUAGE`/`-OcrLanguage` overrides.
   - Added OCR-only image preprocessing: helper OCR now receives an upscaled PNG temp image by default while the snapshot payload remains compressed JPEG; `CODEX_WIDGET_SCREEN_OCR_DISABLE_PREPROCESS=1` restores the older JPEG OCR input path.
+  - Added env-configured Vision crop parameters plus daemon-computed screen image hash/change metadata so repeated captures can be distinguished from changed context.
   - Terminal/PTY mode executes explicit local commands (`/run`, `$`, `PS>`, `run:`, or fenced shell blocks), streams stdout/stderr as tool output, blocks dangerous command patterns by default, and returns a markdown terminal result.
 - Added a persistent command-session layer for Terminal/PTY mode:
   - `/pty start` starts a daemon-owned child shell in the configured Codex widget terminal workdir.
@@ -779,6 +780,19 @@ Completed after fake app-server protocol smoke pass:
 - `npm run smoke:app-server`
 - `npm run smoke:all`
 - `smoke:all` now includes fake Codex app-server coverage for thread reuse, streaming deltas, approval interaction forwarding, and regenerate rollback.
+
+Completed after Vision crop/diff metadata pass:
+
+- `node --check scripts/smoke-screen-provider.mjs`
+- `node --check scripts/smoke-screen-helper.mjs`
+- `npm run smoke:screen`
+- `npm run smoke:screen-helper`
+- `npm run lint`
+- `npm run smoke:all`
+- `npm run build`
+- `npm run smoke:release-resources`
+- Screen helper now accepts virtual-screen crop parameters, and screen snapshot responses include `imageHash` plus `imageChanged` metadata for repeated-capture diff awareness.
+- Latest release artifacts after this pass: exe 10,315,264 bytes, MSI 39,510,016 bytes, NSIS 26,769,067 bytes.
 
 Completed after renderer chat layout hardening:
 
