@@ -4,7 +4,7 @@
 
 Goal: keep a small Tauri desktop widget resident on Windows with reliable window controls, prompt/chat UX, streaming Codex responses, session reset, and recoverable daemon lifecycle.
 
-Current progress: 0.86
+Current progress: 0.88
 
 Evidence:
 - Tauri shell, borderless resize, pin, opacity, mascot drag, and model/reasoning controls are implemented.
@@ -28,8 +28,9 @@ Current progress: 0.86
 Evidence:
 - `CodexAppServerBridge` owns process startup, WebSocket JSON-RPC initialization, thread creation, turn streaming, interrupt, and shutdown.
 - `CODEX_WIDGET_CODEX_RUNTIME=app-server` is the default with `exec` fallback.
-- Approval and user-input request plumbing is being promoted to first-class widget UI.
+- Approval and user-input request plumbing is first-class widget UI.
 - The daemon emits runtime health status for clients, active requests, and app-server state.
+- `npm run smoke:app-server` verifies fake app-server thread reuse, streaming deltas, approval forwarding, and rollback behavior.
 - The native Tauri shell supervises the daemon process with capped restart backoff and shutdown cleanup.
 - Renderer code can read native daemon state while WebSocket reconnect is in progress.
 - The native shell resolves bundled daemon/runtime resources before falling back to a system `node` command.

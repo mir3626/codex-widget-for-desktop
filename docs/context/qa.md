@@ -8,7 +8,7 @@ Run these after ordinary TypeScript/daemon/renderer changes:
 npm run smoke:all
 ```
 
-`smoke:all` includes daemon reconnect replay coverage through `npm run smoke:daemon-reconnect`.
+`smoke:all` includes daemon reconnect replay coverage through `npm run smoke:daemon-reconnect` and fake Codex app-server protocol coverage through `npm run smoke:app-server`.
 
 Run this after conversation layout, markdown/table rendering, prompt composer, or response action menu changes:
 

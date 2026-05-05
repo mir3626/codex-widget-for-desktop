@@ -51,6 +51,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added `npm run smoke:resident` for idle daemon health and RSS budget checks.
 - Fixed production bundling by adding `icons/icon.ico` to the Tauri bundle icon list; `npm run build` now produces release exe, MSI, and NSIS installer artifacts.
 - Added `npm run smoke:all` and `npm run smoke:all:live` as serial readiness gates so provider smokes do not race by rebuilding `dist` in parallel.
+- Added `npm run smoke:app-server` and included it in `smoke:all`; the smoke uses a fake Codex app-server to verify resident thread context, streaming deltas, approval forwarding, and rollback behavior without a live Codex account.
 - Added real provider shell functionality for Iteration 2:
   - DOM mode accepts browser/page snapshots at `POST /providers/dom/snapshot`, updates provider readiness, emits DOM snapshot tool output, and injects the latest DOM context into model requests.
   - `providers/browser-dom-extension` adds an unpacked Chrome/Edge Manifest V3 extension that captures the active tab and posts a DOM snapshot to the daemon.
@@ -772,6 +773,13 @@ Completed latest release build after OCR preprocessing pass:
 - `src-tauri/target/release/bundle/msi/Codex Widget_0.1.0_x64_en-US.msi` (39,505,920 bytes)
 - `src-tauri/target/release/bundle/nsis/Codex Widget_0.1.0_x64-setup.exe` (26,766,904 bytes)
 
+Completed after fake app-server protocol smoke pass:
+
+- `node --check scripts/smoke-codex-app-server.mjs`
+- `npm run smoke:app-server`
+- `npm run smoke:all`
+- `smoke:all` now includes fake Codex app-server coverage for thread reuse, streaming deltas, approval interaction forwarding, and regenerate rollback.
+
 Completed after renderer chat layout hardening:
 
 - `npm run lint`
@@ -893,7 +901,7 @@ Completed latest release build after PTY direct input pass:
 7. For token-mode fallback responses, set `CODEX_WIDGET_AUTH_MODE=token`, press Sign in in the widget, and use the inline token form to save the OAuth access token and backend proxy URL into gitignored `.env`.
 8. Run `node .vibe/harness/scripts/vibe-sprint-mode.mjs status` to confirm whether extended mode is still active.
 9. Use `npm run dev` for renderer HMR plus daemon restart-on-change; use `npm run dev:services` only when testing the service loop without launching Tauri.
-10. Run `npm run smoke:all` after follow-up TypeScript/widget/provider changes. Use `npm run smoke:all:live` when validating Windows desktop capture behavior.
+10. Run `npm run smoke:all` after follow-up TypeScript/widget/provider changes; it includes fake Codex app-server thread/approval/rollback coverage. Use `npm run smoke:all:live` when validating Windows desktop capture behavior.
 11. For renderer UI work, run `npm run smoke:renderer-chat` and capture a `360x480` Playwright smoke against `http://127.0.0.1:5173/?daemonPort=4128` when a visual screenshot is needed. Model/reasoning selectors live between the status strip and mode tabs and persist to localStorage keys `codex-widget-model` and `codex-widget-reasoning-effort`.
 12. Renderer visible chat persists under `codex-widget-chat-messages:v1`; use the titlebar New chat control or `session.reset` protocol event to clear both UI and daemon session state.
 13. The titlebar close button hides the widget to tray; use tray Quit to exit the resident app.

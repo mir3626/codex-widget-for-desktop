@@ -117,6 +117,7 @@ Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only sta
 - `npm run lint`: TypeScript checks for renderer, shared, and daemon code.
 - `npm run build:web`: compile daemon and renderer without invoking Cargo.
 - `npm run smoke:node-runtime`: verify the bundled Node runtime can execute the bundled daemon without relying on repository `node_modules`.
+- `npm run smoke:app-server`: verify daemon-owned Codex app-server thread reuse, streaming deltas, approval interaction forwarding, and `thread/rollback` without requiring a live Codex account.
 - `npm run smoke:ocr-runtime`: verify OCR runtime copy/manifest packaging, standard Windows install discovery, tessdata language selection, and daemon bundled OCR command resolution.
 - `npm run smoke:pty-runtime`: verify native node-pty runtime packaging and daemon PTY runtime resolution.
 - `npm run smoke:release-launch`: launch the release exe hidden and verify the packaged daemon WebSocket responds on `127.0.0.1:4128`.
