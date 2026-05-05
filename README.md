@@ -119,8 +119,8 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run smoke:release-install`: run a Windows NSIS silent install, launch the installed app hidden, verify the bundled daemon, kill it to verify native restart supervision, kill the app process to verify daemon orphan cleanup, then silently uninstall and check cleanup
 - `npm run smoke:release-msi-install`: run a Windows MSI silent install with a per-user test directory, launch the installed app hidden, verify the bundled daemon, silently uninstall, and check cleanup
 - `npm run release:verify`: run the full live release gate (`smoke:all:live`, build, release resource/launch/NSIS/MSI install smokes) and print artifact sizes
-- `npm run release:soak`: build the release app and run a longer hidden release-exe soak with runtime samples, ping/pong checks, daemon process detection, and process-tree working-set limits
-- `npm run smoke:release-soak`: run the same release-exe soak against an already-built release app
+- `npm run release:soak`: build the release app and run a longer hidden release-exe soak with runtime samples, ping/pong checks, daemon process detection, process-tree working-set limits, and a JSON report under `dist/reports`
+- `npm run smoke:release-soak`: run the same release-exe soak against an already-built release app; set `CODEX_WIDGET_RELEASE_SOAK_MS` and `CODEX_WIDGET_RELEASE_SOAK_REPORT` for multi-hour/manual evidence runs
 - `npm run smoke:node-runtime`: verify the bundled Node runtime can run the bundled daemon without repository `node_modules`
 - `npm run smoke:renderer-chat`: run a Playwright layout smoke for multi-turn chat, tables, prompt resizing, More-menu placement, and Terminal viewport direct input controls
 - `npm run smoke:dom`: verify the local DOM snapshot provider ingress

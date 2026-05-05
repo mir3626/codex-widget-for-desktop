@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import WebSocket from "ws";
 
@@ -11,6 +11,9 @@ const daemonPort = 4128;
 const SOAK_MS = Number(process.env.CODEX_WIDGET_RELEASE_SOAK_MS ?? 60_000);
 const MAX_WORKING_SET_MB = Number(process.env.CODEX_WIDGET_RELEASE_SOAK_MAX_WORKING_SET_MB ?? 1024);
 const MAX_GROWTH_MB = Number(process.env.CODEX_WIDGET_RELEASE_SOAK_MAX_GROWTH_MB ?? 256);
+const REPORT_PATH = resolve(
+  process.env.CODEX_WIDGET_RELEASE_SOAK_REPORT?.trim() || join(root, "dist", "reports", "release-soak-latest.json")
+);
 
 if (process.platform !== "win32") {
   console.log("release soak skipped: Windows release exe soak is Windows-only");
@@ -67,13 +70,52 @@ try {
 
   const endStats = readProcessTreeStats(app.pid);
   assertSoakHealth(endStats, startStats);
+  const report = writeSoakReport({ appPid: app.pid, startStats, endStats });
 
   console.log(
-    `release soak ok: duration=${Math.round(SOAK_MS / 1000)}s samples=${runtimeEvents.length} pongs=${pongCount} workingSet=${endStats.totalWorkingSetMb.toFixed(1)}MB processes=${endStats.processes.length}`
+    `release soak ok: duration=${Math.round(SOAK_MS / 1000)}s samples=${runtimeEvents.length} pongs=${pongCount} workingSet=${endStats.totalWorkingSetMb.toFixed(1)}MB processes=${endStats.processes.length} report=${report.path}`
   );
 } finally {
   cleanupProcessTree(app.pid);
   await waitUntilPortClosed();
+}
+
+function writeSoakReport({ appPid, startStats, endStats }) {
+  const growthMb = endStats.totalWorkingSetMb - startStats.totalWorkingSetMb;
+  const latest = runtimeEvents.at(-1) ?? null;
+  const report = {
+    generatedAt: new Date().toISOString(),
+    durationMs: SOAK_MS,
+    releaseExe,
+    appPid,
+    thresholds: {
+      maxWorkingSetMb: MAX_WORKING_SET_MB,
+      maxGrowthMb: MAX_GROWTH_MB
+    },
+    health: {
+      runtimeSamples: runtimeEvents.length,
+      pongCount,
+      latestRuntimeStatus: latest,
+      activeRequests: latest?.activeRequests ?? null,
+      hasRootProcess: endStats.hasRootProcess,
+      hasDaemonProcess: endStats.hasDaemonProcess
+    },
+    memory: {
+      startWorkingSetMb: roundOneDecimal(startStats.totalWorkingSetMb),
+      endWorkingSetMb: roundOneDecimal(endStats.totalWorkingSetMb),
+      growthMb: roundOneDecimal(growthMb),
+      processCount: endStats.processes.length
+    },
+    processes: endStats.processes
+  };
+
+  mkdirSync(dirname(REPORT_PATH), { recursive: true });
+  writeFileSync(REPORT_PATH, `${JSON.stringify(report, null, 2)}\n`);
+  return { path: REPORT_PATH, report };
+}
+
+function roundOneDecimal(value) {
+  return Math.round(value * 10) / 10;
 }
 
 function waitForDaemon(appProcess) {

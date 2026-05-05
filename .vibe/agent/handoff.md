@@ -96,6 +96,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added `providers/browser-native-host`, an optional Chrome/Edge native messaging host that receives framed `domSnapshot` messages, validates local daemon URLs, and posts snapshots to the local daemon. The browser extension now tries native messaging first and falls back to direct local HTTP when the host is not registered.
 - Added browser extension store-readiness metadata: `store-listing.md`, `privacy.md`, `review-notes.md`, and `npm run smoke:browser-store` for permission rationale/privacy/package validation.
 - Added `npm run release:soak`, a longer hidden release-exe soak that checks runtime samples, ping/pong health, daemon process presence, process-tree working set, and cleanup after the soak.
+- Release soak now writes a JSON evidence report under `dist/reports/release-soak-latest.json` by default, with `CODEX_WIDGET_RELEASE_SOAK_REPORT` available for named manual/multi-hour runs.
 - Made response Branch runtime-safe: Branch now sends `session.branch` to reset daemon-side proxy/app-server session state, stores the selected user/assistant pair as a one-shot `branchContext`, sends that seed with the next prompt only, and clears it after use so visible branch state does not keep running against hidden old app-server context.
 - Added daemon reconnect replay: active agent events are broadcast to connected clients, bounded assistant response snapshots are retained in the daemon, reconnecting renderers receive `message.snapshot`, and a WebSocket close no longer aborts every active request.
 - Added native PTY runtime packaging and a node-pty/ConPTY backend for Terminal/PTY mode:
@@ -115,7 +116,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 
 ## Next Recommended Sprint
 
-`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with final browser store submission workflow, richer full-screen terminal mouse UX on top of the PTY viewport, OCR quality tuning, and native packaging polish.
+`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with final browser store submission workflow, richer full-screen terminal mouse UX on top of the PTY viewport, OCR quality tuning, an actual multi-hour soak run, and native packaging polish.
 
 ## Open Issues
 
@@ -126,7 +127,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge, local-only Options URL configuration, optional native messaging host, generated zip package, and store-readiness metadata; final browser store account submission remains manual.
 - Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, optional OCR command hook, bundled OCR runtime packaging, standard Windows Tesseract discovery, bundled tessdata language defaults, and direct app-server image input; OCR quality tuning and richer language-pack acquisition remain configurable.
 - Terminal/PTY provider now has a node-pty/ConPTY command/raw-input backend, short raw-input output drain, and a renderer PTY viewport with direct input controls, but richer full-screen mouse handling still needs product polish.
-- Final browser store account submission, richer full-screen terminal mouse UX, OCR quality tuning, and multi-hour/manual soak tests remain open for live-service readiness.
+- Final browser store account submission, richer full-screen terminal mouse UX, OCR quality tuning, and an actual multi-hour/manual soak run remain open for live-service readiness.
 
 ## Verification
 
@@ -735,6 +736,13 @@ Completed after PTY direct input pass:
 - `npm run build`
 - `npm run smoke:release-resources`
 - Terminal session smoke now verifies raw `/pty write` output drain, and renderer chat smoke verifies the Terminal viewport input row sends `/pty write` plus Ctrl+C key requests.
+
+Completed after release soak report pass:
+
+- `node --check scripts/smoke-release-soak.mjs`
+- `npm run smoke:release-soak`
+- The short release soak produced 13 runtime samples, 29 pong responses, 411.1MB process-tree working set across 9 processes, and `dist/reports/release-soak-latest.json`.
+- Release soak now writes a JSON report with duration, runtime sample count, pong count, latest runtime status, process-tree memory, thresholds, and process details for later manual/multi-hour evidence review.
 
 Completed after renderer chat layout hardening:
 
