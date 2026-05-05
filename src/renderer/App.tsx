@@ -7,8 +7,10 @@ import {
   CircleDot,
   CircleStop,
   Copy,
+  CornerDownLeft,
   Eye,
   Globe2,
+  Keyboard,
   LogIn,
   LogOut,
   MessageSquarePlus,
@@ -192,6 +194,7 @@ export function App() {
   const [branchContext, setBranchContext] = useState<BranchContextMessage[] | null>(() => readStoredBranchContext());
   const [logLines, setLogLines] = useState<LogLine[]>([]);
   const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([]);
+  const [terminalInput, setTerminalInput] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showTokenForm, setShowTokenForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -910,6 +913,24 @@ export function App() {
   function runTerminalQuickAction(command: string) {
     setMode("terminal");
     startAsk(command, "terminal");
+  }
+
+  function sendTerminalInput() {
+    const text = terminalInput.trimEnd();
+    if (!text || activeId) {
+      return;
+    }
+
+    if (startAsk(`/pty write ${encodeTerminalInput(text)}\\r`, "terminal")) {
+      setTerminalInput("");
+    }
+  }
+
+  function sendTerminalKey(name: "enter" | "tab" | "escape" | "ctrl-c") {
+    if (activeId) {
+      return;
+    }
+    runTerminalQuickAction(`/pty key ${name}`);
   }
 
   function copyMessage(id: string, fallbackText: string) {
@@ -1695,6 +1716,10 @@ export function App() {
                 onStatus={() => runTerminalQuickAction("/pty status")}
                 onStop={() => runTerminalQuickAction("/pty stop")}
                 onClear={clearTerminalViewport}
+                inputValue={terminalInput}
+                onInputChange={setTerminalInput}
+                onInputSubmit={sendTerminalInput}
+                onKeySend={sendTerminalKey}
               />
             ) : null}
             {chatMessages.length === 0 && interactions.length === 0 && mode !== "terminal" ? (
@@ -1944,9 +1969,25 @@ type TerminalViewportProps = {
   onStatus: () => void;
   onStop: () => void;
   onClear: () => void;
+  inputValue: string;
+  onInputChange: (value: string) => void;
+  onInputSubmit: () => void;
+  onKeySend: (name: "enter" | "tab" | "escape" | "ctrl-c") => void;
 };
 
-function TerminalViewport({ lines, providerStatus, busy, onStart, onStatus, onStop, onClear }: TerminalViewportProps) {
+function TerminalViewport({
+  lines,
+  providerStatus,
+  busy,
+  onStart,
+  onStatus,
+  onStop,
+  onClear,
+  inputValue,
+  onInputChange,
+  onInputSubmit,
+  onKeySend
+}: TerminalViewportProps) {
   const outputRef = useRef<HTMLDivElement | null>(null);
   const providerState = providerStatus?.state ?? "unavailable";
   const providerDetail = providerStatus?.detail ?? "waiting";
@@ -1958,6 +1999,20 @@ function TerminalViewport({ lines, providerStatus, busy, onStart, onStatus, onSt
     }
     output.scrollTop = output.scrollHeight;
   }, [lines, busy]);
+
+  function submitInput(event: FormEvent) {
+    event.preventDefault();
+    onInputSubmit();
+  }
+
+  function submitInputFromKey(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter" || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) {
+      return;
+    }
+
+    event.preventDefault();
+    onInputSubmit();
+  }
 
   return (
     <section className={busy ? "terminal-viewport is-live" : "terminal-viewport"} aria-label="Terminal viewport">
@@ -2007,6 +2062,32 @@ function TerminalViewport({ lines, providerStatus, busy, onStart, onStatus, onSt
           </div>
         ) : null}
       </div>
+      <form className="terminal-input-row" aria-label="PTY raw input" onSubmit={submitInput}>
+        <Keyboard size={13} aria-hidden="true" />
+        <input
+          value={inputValue}
+          placeholder="Send PTY input"
+          aria-label="PTY text input"
+          disabled={busy}
+          onChange={(event) => onInputChange(event.target.value)}
+          onKeyDown={submitInputFromKey}
+        />
+        <button type="button" title="Tab" aria-label="Send Tab key" disabled={busy} onClick={() => onKeySend("tab")}>
+          Tab
+        </button>
+        <button type="button" title="Escape" aria-label="Send Escape key" disabled={busy} onClick={() => onKeySend("escape")}>
+          Esc
+        </button>
+        <button type="button" title="Ctrl+C" aria-label="Send Ctrl+C" disabled={busy} onClick={() => onKeySend("ctrl-c")}>
+          <Ban size={12} />
+        </button>
+        <button type="button" title="Enter" aria-label="Send Enter key" disabled={busy} onClick={() => onKeySend("enter")}>
+          <CornerDownLeft size={12} />
+        </button>
+        <button type="submit" title="Send input" aria-label="Send PTY text" disabled={busy || !inputValue.trim()}>
+          <Send size={12} />
+        </button>
+      </form>
     </section>
   );
 }
@@ -2157,6 +2238,17 @@ function terminalLinePrefix(kind: TerminalLine["kind"]): string {
     return "*";
   }
   return "|";
+}
+
+function encodeTerminalInput(text: string): string {
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/\x1b/g, "\\e")
+    .replace(/\x03/g, "\\x03")
+    .replace(/\x04/g, "\\x04")
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n")
+    .replace(/\t/g, "\\t");
 }
 
 function normalizeTerminalText(text: string): string {

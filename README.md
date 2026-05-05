@@ -69,7 +69,7 @@ Vision mode can receive a screen snapshot through the same local daemon boundary
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:4128/providers/screen/snapshot -ContentType application/json -Body '{"source":"windows-capture-helper","title":"Active desktop","description":"A settings dialog is open.","ocrText":"Visible screen text"}'
 ```
 
-For browser testing, load the unpacked Chrome/Edge extension in [providers/browser-dom-extension](providers/browser-dom-extension), or use [docs/providers/dom-snapshot-bookmarklet.js](docs/providers/dom-snapshot-bookmarklet.js) as a fallback bookmarklet. The extension has an Options page for changing the local daemon snapshot URL when the widget is not on port `4128`; it only accepts local `127.0.0.1` or `localhost` snapshot URLs. It also supports an optional Chrome/Edge native messaging host in [providers/browser-native-host](providers/browser-native-host), trying that installed bridge before falling back to direct local HTTP. For screen capture, use the Vision-mode Capture action, run [providers/screen-capture-helper/capture-screen.ps1](providers/screen-capture-helper/capture-screen.ps1), or see [docs/providers/screen-snapshot-example.json](docs/providers/screen-snapshot-example.json) for the raw payload shape. Terminal mode executes explicit one-shot commands, such as `/run Get-ChildItem`, `$ pwd`, or a fenced shell block. It also supports a daemon-owned persistent node-pty/ConPTY session with `/pty start`, `/pty <command>`, `/pty resize 120x30`, `/pty write <input>`, `/pty key enter`, `/pty status`, and `/pty stop`; this keeps shell state, supports raw input, and renders terminal tool output in the Terminal tab's PTY viewport. Destructive command patterns are blocked unless `CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE=1` is set.
+For browser testing, load the unpacked Chrome/Edge extension in [providers/browser-dom-extension](providers/browser-dom-extension), or use [docs/providers/dom-snapshot-bookmarklet.js](docs/providers/dom-snapshot-bookmarklet.js) as a fallback bookmarklet. The extension has an Options page for changing the local daemon snapshot URL when the widget is not on port `4128`; it only accepts local `127.0.0.1` or `localhost` snapshot URLs. It also supports an optional Chrome/Edge native messaging host in [providers/browser-native-host](providers/browser-native-host), trying that installed bridge before falling back to direct local HTTP. For screen capture, use the Vision-mode Capture action, run [providers/screen-capture-helper/capture-screen.ps1](providers/screen-capture-helper/capture-screen.ps1), or see [docs/providers/screen-snapshot-example.json](docs/providers/screen-snapshot-example.json) for the raw payload shape. Terminal mode executes explicit one-shot commands, such as `/run Get-ChildItem`, `$ pwd`, or a fenced shell block. It also supports a daemon-owned persistent node-pty/ConPTY session with `/pty start`, `/pty <command>`, `/pty resize 120x30`, `/pty write <input>`, `/pty key enter`, `/pty status`, and `/pty stop`; this keeps shell state, supports raw input, drains output after raw key/input writes, and renders terminal tool output in the Terminal tab's PTY viewport with direct PTY input controls. Destructive command patterns are blocked unless `CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE=1` is set.
 
 The Capture action asks the daemon to run the Windows screen capture helper directly. The helper is bundled as a Tauri resource for installed builds. Override its path with `CODEX_WIDGET_SCREEN_CAPTURE_HELPER`, or tune payload size with `CODEX_WIDGET_SCREEN_CAPTURE_MAX_WIDTH` and `CODEX_WIDGET_SCREEN_CAPTURE_JPEG_QUALITY`.
 
@@ -122,7 +122,7 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run release:soak`: build the release app and run a longer hidden release-exe soak with runtime samples, ping/pong checks, daemon process detection, and process-tree working-set limits
 - `npm run smoke:release-soak`: run the same release-exe soak against an already-built release app
 - `npm run smoke:node-runtime`: verify the bundled Node runtime can run the bundled daemon without repository `node_modules`
-- `npm run smoke:renderer-chat`: run a Playwright layout smoke for multi-turn chat, tables, prompt resizing, and More-menu placement
+- `npm run smoke:renderer-chat`: run a Playwright layout smoke for multi-turn chat, tables, prompt resizing, More-menu placement, and Terminal viewport direct input controls
 - `npm run smoke:dom`: verify the local DOM snapshot provider ingress
 - `npm run smoke:extension`: verify the unpacked browser DOM extension manifest/service worker
 - `npm run smoke:browser-native-host`: verify the Chrome/Edge native messaging host framing and daemon POST path
@@ -160,7 +160,7 @@ Future Tool Providers
   - store-packaged browser extension provider for active tab DOM
   - Playwright/CDP provider for controlled browser use
   - OCR quality tuning and direct image input on top of the native screen capture helper
-  - richer key/mouse handling on top of the node-pty PTY viewport
+  - richer full-screen key/mouse handling on top of the node-pty PTY viewport
 ```
 
 The daemon is the session authority. The widget is a client, so browser pages, terminal views, and future desktop tools can attach to the same session without prompt-injecting an external CLI.

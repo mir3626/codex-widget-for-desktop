@@ -179,6 +179,19 @@ try {
   await assertTerminalViewportStable(page);
   await assertPromptDoesNotCoverConversation(page);
 
+  await page.getByLabel("PTY text input").fill("echo direct-input");
+  await page.getByLabel("PTY text input").press("Enter");
+  await waitUntil(
+    () => askMessages.some((message) => message.mode === "terminal" && message.text === "/pty write echo direct-input\\r"),
+    "Timed out waiting for terminal viewport raw input."
+  );
+  await page.waitForFunction(() => document.querySelector(".terminal-viewport")?.textContent?.includes("echo direct-input"));
+  await page.getByLabel("Send Ctrl+C").click();
+  await waitUntil(
+    () => askMessages.some((message) => message.mode === "terminal" && message.text === "/pty key ctrl-c"),
+    "Timed out waiting for terminal viewport Ctrl+C key input."
+  );
+
   console.log(`renderer chat layout smoke ok on vite ${baseUrl} daemon ${daemonPort}`);
 } finally {
   await browser.close();

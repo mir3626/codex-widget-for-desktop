@@ -106,6 +106,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added a dedicated renderer PTY viewport for Terminal mode:
   - Terminal tool events now accumulate in a sticky, scrollable PTY surface instead of only appearing in the small Activity log.
   - PTY mode exposes icon-only quick actions for `/pty start`, `/pty status`, `/pty stop`, and local viewport clear.
+  - PTY raw input/key requests now drain output for a short quiet window, and the Terminal viewport includes direct input controls for text, Enter, Tab, Escape, and Ctrl+C.
   - Renderer chat smoke now verifies the PTY tab, terminal quick action request, terminal output rendering, viewport containment, and prompt/conversation separation.
 - Added `npm run smoke:release-msi-install` for MSI install/uninstall observation:
   - The smoke performs a silent MSI install into a per-user temp directory using `ALLUSERS=2 MSIINSTALLPERUSER=1`.
@@ -114,7 +115,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 
 ## Next Recommended Sprint
 
-`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with final browser store submission workflow, richer terminal key/mouse UX on top of the PTY viewport, OCR quality tuning, and native packaging polish.
+`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with final browser store submission workflow, richer full-screen terminal mouse UX on top of the PTY viewport, OCR quality tuning, and native packaging polish.
 
 ## Open Issues
 
@@ -124,8 +125,8 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - OAuth refresh tokens are not persisted; users may need to sign in again when an access token expires.
 - Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge, local-only Options URL configuration, optional native messaging host, generated zip package, and store-readiness metadata; final browser store account submission remains manual.
 - Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, optional OCR command hook, bundled OCR runtime packaging, standard Windows Tesseract discovery, bundled tessdata language defaults, and direct app-server image input; OCR quality tuning and richer language-pack acquisition remain configurable.
-- Terminal/PTY provider now has a node-pty/ConPTY command/raw-input backend and a renderer PTY viewport, but richer key/mouse handling still needs product polish.
-- Final browser store account submission, richer terminal key/mouse UX, OCR quality tuning, and multi-hour/manual soak tests remain open for live-service readiness.
+- Terminal/PTY provider now has a node-pty/ConPTY command/raw-input backend, short raw-input output drain, and a renderer PTY viewport with direct input controls, but richer full-screen mouse handling still needs product polish.
+- Final browser store account submission, richer full-screen terminal mouse UX, OCR quality tuning, and multi-hour/manual soak tests remain open for live-service readiness.
 
 ## Verification
 
@@ -723,6 +724,18 @@ Completed after OCR language defaults pass:
 - `npm run smoke:release-resources`
 - OCR runtime manifests now include bundled `.traineddata` languages, and bundled OCR command resolution auto-selects `eng+kor` when `eng` and `kor` language packs are both present.
 
+Completed after PTY direct input pass:
+
+- `node --check scripts/smoke-renderer-chat-layout.mjs`
+- `node --check scripts/smoke-terminal-session.mjs`
+- `npm run lint`
+- `npm run smoke:terminal-session`
+- `npm run smoke:renderer-chat`
+- `npm run smoke:all`
+- `npm run build`
+- `npm run smoke:release-resources`
+- Terminal session smoke now verifies raw `/pty write` output drain, and renderer chat smoke verifies the Terminal viewport input row sends `/pty write` plus Ctrl+C key requests.
+
 Completed after renderer chat layout hardening:
 
 - `npm run lint`
@@ -825,6 +838,13 @@ Completed latest release build after OCR language defaults pass:
 - `src-tauri/target/release/codex-widget-for-desktop.exe` (10,314,752 bytes)
 - `src-tauri/target/release/bundle/msi/Codex Widget_0.1.0_x64_en-US.msi` (39,505,920 bytes)
 - `src-tauri/target/release/bundle/nsis/Codex Widget_0.1.0_x64-setup.exe` (26,758,248 bytes)
+
+Completed latest release build after PTY direct input pass:
+
+- `npm run build`
+- `src-tauri/target/release/codex-widget-for-desktop.exe` (10,315,264 bytes)
+- `src-tauri/target/release/bundle/msi/Codex Widget_0.1.0_x64_en-US.msi` (39,501,824 bytes)
+- `src-tauri/target/release/bundle/nsis/Codex Widget_0.1.0_x64-setup.exe` (26,773,974 bytes)
 
 ## Restart Steps
 

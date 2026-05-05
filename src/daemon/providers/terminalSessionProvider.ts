@@ -26,11 +26,14 @@ type PendingCommand = {
 
 const DEFAULT_SESSION_TIMEOUT_MS = 60_000;
 const DEFAULT_MAX_OUTPUT_CHARS = 32_000;
+const DEFAULT_RAW_INPUT_DRAIN_MS = 1_200;
+const DEFAULT_RAW_INPUT_QUIET_MS = 160;
 
 class TerminalSession {
   private child: TerminalRuntime | undefined;
   private cwd = "";
   private pending: PendingCommand | undefined;
+  private idleOutput: ((chunk: string) => void) | undefined;
 
   isRunning(): boolean {
     return Boolean(this.child?.isRunning());
@@ -63,6 +66,9 @@ class TerminalSession {
     }
     if (this.pending) {
       throw new Error("Terminal session is already running a command.");
+    }
+    if (this.idleOutput) {
+      throw new Error("Terminal session is already handling raw input.");
     }
 
     const tool = `terminal-session:${request.id}`;
@@ -116,6 +122,69 @@ class TerminalSession {
     return `Terminal input sent: ${label}`;
   }
 
+  async writeAndDrain(data: string, label: string, request: AgentRequest, emit: ToolEmitter, signal: AbortSignal): Promise<string> {
+    this.start();
+    if (!this.child || !this.isRunning()) {
+      throw new Error("Terminal session is not running.");
+    }
+    if (this.pending) {
+      throw new Error("Terminal session is already running a command.");
+    }
+
+    const tool = `terminal-session:${request.id}`;
+    const maxDrainMs = normalizePositiveNumber(process.env.CODEX_WIDGET_TERMINAL_RAW_INPUT_DRAIN_MS, DEFAULT_RAW_INPUT_DRAIN_MS);
+    const quietMs = normalizePositiveNumber(process.env.CODEX_WIDGET_TERMINAL_RAW_INPUT_QUIET_MS, DEFAULT_RAW_INPUT_QUIET_MS);
+
+    emit({ type: "tool.started", id: request.id, tool, label });
+
+    await new Promise<void>((resolveDrain, reject) => {
+      let settled = false;
+      let quietTimer: NodeJS.Timeout | undefined;
+      let maxTimer: NodeJS.Timeout | undefined;
+
+      const finish = (error?: Error) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        this.idleOutput = undefined;
+        if (quietTimer) {
+          clearTimeout(quietTimer);
+        }
+        if (maxTimer) {
+          clearTimeout(maxTimer);
+        }
+        signal.removeEventListener("abort", abort);
+        if (error) {
+          reject(error);
+        } else {
+          resolveDrain();
+        }
+      };
+
+      const armQuietTimer = () => {
+        if (quietTimer) {
+          clearTimeout(quietTimer);
+        }
+        quietTimer = setTimeout(() => finish(), quietMs);
+      };
+
+      const abort = () => finish(new DOMException("Aborted", "AbortError"));
+      this.idleOutput = (chunk) => {
+        emit({ type: "tool.output", id: request.id, tool, chunk });
+        armQuietTimer();
+      };
+
+      signal.addEventListener("abort", abort, { once: true });
+      maxTimer = setTimeout(() => finish(), maxDrainMs);
+      armQuietTimer();
+      this.child?.write(data);
+    });
+
+    emit({ type: "tool.completed", id: request.id, tool });
+    return `Terminal input sent: ${label}`;
+  }
+
   resize(cols: number, rows: number): string {
     this.start();
     if (!this.child || !this.isRunning()) {
@@ -145,6 +214,7 @@ class TerminalSession {
   private handleOutput(chunk: string): void {
     const pending = this.pending;
     if (!pending) {
+      this.idleOutput?.(chunk);
       return;
     }
 
@@ -229,7 +299,7 @@ export async function maybeRunTerminalSessionProvider(
       return true;
     }
 
-    completeText(request.id, terminalSession.write(parsed.data, parsed.label), emit);
+    completeText(request.id, await terminalSession.writeAndDrain(parsed.data, parsed.label, request, emit, signal), emit);
     return true;
   }
   if (parsed.type === "resize") {
@@ -353,13 +423,16 @@ function mapTerminalKey(name: string): TerminalSessionCommand {
 }
 
 function decodeTerminalInput(data: string): string {
+  const literalSlash = "\0CODEX_WIDGET_LITERAL_SLASH\0";
   return data
+    .replace(/\\\\/g, literalSlash)
     .replace(/\\r/g, "\r")
     .replace(/\\n/g, "\n")
     .replace(/\\t/g, "\t")
     .replace(/\\e/g, "\x1b")
     .replace(/\\x03/g, "\x03")
-    .replace(/\\x04/g, "\x04");
+    .replace(/\\x04/g, "\x04")
+    .replaceAll(literalSlash, "\\");
 }
 
 function clampTerminalDimension(value: number, min: number, max: number): number {

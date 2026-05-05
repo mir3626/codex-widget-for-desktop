@@ -34,12 +34,12 @@
   ],
   "handoff": {
     "currentSprintId": "idle",
-    "lastActionSummary": "Iteration 2 runtime/provider work is active: app-server runtime, DOM/Vision ingress, OCR runtime packaging with standard Windows discovery and tessdata language defaults, node-pty PTY sessions, bundled runtime resources, and the renderer PTY viewport are implemented with smoke/release-install coverage.",
+    "lastActionSummary": "Iteration 2 runtime/provider work is active: app-server runtime, DOM/Vision ingress, OCR runtime packaging with standard Windows discovery and tessdata language defaults, node-pty PTY sessions with raw-input drain, bundled runtime resources, and the renderer PTY viewport/direct input controls are implemented with smoke/release-install coverage.",
     "openIssues": [
       "Codex app-server protocol remains experimental; keep exec fallback.",
       "Final browser store account submission remains manual.",
       "OCR quality tuning and richer language-pack acquisition remain operator-configured.",
-      "Richer terminal key/mouse UX and multi-hour/manual soak coverage remain open."
+      "Richer full-screen terminal mouse UX and multi-hour/manual soak coverage remain open."
     ],
     "orchestratorContextBudget": "medium",
     "preferencesActive": [
@@ -48,12 +48,12 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-05T22:40:00.000+09:00"
+    "updatedAt": "2026-05-05T23:05:00.000+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-05T22:40:00.000+09:00",
-  "verifiedAt": "2026-05-05T22:40:00.000+09:00"
+  "stateUpdatedAt": "2026-05-05T23:05:00.000+09:00",
+  "verifiedAt": "2026-05-05T23:05:00.000+09:00"
 }

@@ -13,6 +13,7 @@ try {
   await askTerminal(socket, events, "terminal-session-start", "/pty start");
   await askTerminal(socket, events, "terminal-session-resize", "/pty resize 100x30");
   await askTerminal(socket, events, "terminal-session-one", process.platform === "win32" ? "/pty echo pty-session-one" : "/pty printf pty-session-one");
+  await askTerminal(socket, events, "terminal-session-raw", process.platform === "win32" ? "/pty write echo pty-raw-drain\\r" : "/pty write printf pty-raw-drain\\n");
   await askTerminal(socket, events, "terminal-session-two", process.platform === "win32" ? "/pty echo pty-session-two" : "/pty printf pty-session-two");
   await askTerminal(socket, events, "terminal-session-stop", "/pty stop");
 
@@ -20,7 +21,7 @@ try {
     .filter((event) => event.type === "tool.output" || event.type === "message.completed")
     .map((event) => event.chunk ?? event.text ?? "")
     .join("\n");
-  if (!output.includes("pty-session-one") || !output.includes("pty-session-two")) {
+  if (!output.includes("pty-session-one") || !output.includes("pty-raw-drain") || !output.includes("pty-session-two")) {
     throw new Error(`Terminal session output was missing markers: ${output}`);
   }
   if (!events.some((event) => event.type === "tool.started" && String(event.tool).startsWith("terminal-session:"))) {
