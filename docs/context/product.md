@@ -19,7 +19,7 @@ The primary user is a developer who wants a persistent desktop companion similar
 - Visible chat history is persisted locally across renderer reloads and can be cleared with an explicit New chat reset that also resets daemon session state.
 - Mode tabs receive daemon-owned provider status, giving Agent, DOM, Vision, and PTY a stable contract before each provider becomes fully real.
 - DOM mode accepts live browser snapshots through `POST /providers/dom/snapshot` and injects that context into the model request. An unpacked Chrome/Edge extension can send active-tab snapshots into that endpoint.
-- Vision mode accepts screen snapshots through `POST /providers/screen/snapshot` and injects screen description/OCR context into the model request. A Windows PowerShell helper can capture the virtual desktop and post a compressed image snapshot.
+- Vision mode accepts screen snapshots through `POST /providers/screen/snapshot` and injects screen description/OCR context into the model request. The widget can ask the daemon to run a Windows PowerShell helper that captures the virtual desktop and posts a compressed image snapshot.
 - Terminal/PTY mode executes explicit local shell commands and streams output as widget tool events.
 - Runtime health status is streamed from the daemon into the settings panel.
 - App-server diagnostics include start count and latest error in runtime status so resident failures are visible from the widget.

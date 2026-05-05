@@ -110,6 +110,10 @@ export type ClientMessage =
       answers?: Record<string, string>;
     }
   | {
+      type: "provider.captureScreen";
+      description?: string;
+    }
+  | {
       type: "ping";
     }
   | {
@@ -191,6 +195,12 @@ export type ServerEvent =
   | {
       type: "provider.status";
       providers: ProviderStatus[];
+    }
+  | {
+      type: "provider.capture";
+      mode: "screen";
+      state: "started" | "completed" | "error";
+      message: string;
     }
   | {
       type: "runtime.status";

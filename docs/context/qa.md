@@ -12,6 +12,7 @@ Run this when changing the Windows screen capture helper and a desktop session i
 
 ```powershell
 npm run smoke:all:live
+npm run smoke:screen-capture:live
 ```
 
 Run this after Tauri/Rust/native shell changes:

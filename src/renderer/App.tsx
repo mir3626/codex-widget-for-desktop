@@ -2,6 +2,7 @@ import {
   Activity,
   Ban,
   Bot,
+  Camera,
   Check,
   CircleDot,
   CircleStop,
@@ -439,6 +440,11 @@ export function App() {
       return;
     }
 
+    if (event.type === "provider.capture") {
+      appendLog(event.message, event.state === "error" ? "error" : "tool");
+      return;
+    }
+
     if (event.type === "runtime.status") {
       setRuntimeStatus(event.status);
       return;
@@ -669,6 +675,14 @@ export function App() {
     send({ type: "cancel", id: activeId });
     markAssistantMessage(activeId, "cancelled");
     setActiveId(null);
+  }
+
+  function captureScreen() {
+    setMode("screen");
+    send({
+      type: "provider.captureScreen",
+      description: input.trim() || undefined
+    });
   }
 
   function copyMessage(id: string, fallbackText: string) {
@@ -1361,10 +1375,15 @@ export function App() {
                 <span>{providerStatuses.length} modes</span>
               </div>
               {providerStatuses.map((provider) => (
-                <div key={provider.mode} className="provider-row">
+                <div key={provider.mode} className={provider.mode === "screen" ? "provider-row has-action" : "provider-row"}>
                   <span className={`mode-status-dot ${provider.state}`} aria-hidden="true" />
                   <strong>{provider.label}</strong>
                   <span>{provider.detail}</span>
+                  {provider.mode === "screen" ? (
+                    <button type="button" className="provider-action" title="Capture screen" aria-label="Capture screen" onClick={captureScreen}>
+                      <Camera size={12} />
+                    </button>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -1414,6 +1433,12 @@ export function App() {
                 </span>
                 <strong>{auth.authenticated ? "Ready" : "Sign in required"}</strong>
                 <span>{activeProviderStatus?.state === "stub" ? "Provider pending" : activeMode.label}</span>
+                {mode === "screen" ? (
+                  <button type="button" className="empty-action" onClick={captureScreen}>
+                    <Camera size={13} />
+                    <span>Capture</span>
+                  </button>
+                ) : null}
               </div>
             ) : (
               <>

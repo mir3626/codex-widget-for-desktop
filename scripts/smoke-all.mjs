@@ -16,6 +16,7 @@ const steps = [
 
 if (includeLive) {
   steps.push(["Screen capture helper live", process.execPath, ["scripts/smoke-screen-helper-live.mjs"]]);
+  steps.push(["Screen capture request live", process.execPath, ["scripts/smoke-screen-capture-request.mjs"]]);
 }
 
 for (const [label, command, args] of steps) {

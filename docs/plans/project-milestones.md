@@ -29,14 +29,14 @@ Evidence:
 
 Goal: replace Agent/DOM/Vision/PTY stubs with real desktop/browser/terminal context providers that stream tool events through one widget protocol.
 
-Current progress: 0.64
+Current progress: 0.68
 
 Evidence:
 - Provider modes and tool-event rendering exist.
 - Browser DOM mode accepts live snapshots through the local daemon and injects them into model context.
 - An unpacked Chrome/Edge extension can send active-tab DOM snapshots to the daemon.
 - Screen/Vision mode accepts live snapshots through the local daemon and injects description/OCR context into model requests.
-- A Windows PowerShell helper captures the virtual desktop as compressed JPEG data and posts it to the Screen/Vision endpoint.
+- A Windows PowerShell helper captures the virtual desktop as compressed JPEG data and posts it to the Screen/Vision endpoint; the widget can trigger that helper through the daemon protocol.
 - Terminal/PTY mode executes explicit shell commands and streams output as tool events.
 - OCR/direct image model input, store extension packaging, and deeper interactive PTY remain open.
 
@@ -44,12 +44,13 @@ Evidence:
 
 Goal: make the widget practical as a daily resident desktop utility: tray/autostart, resource budget, crash recovery, and install/release checklist.
 
-Current progress: 0.62
+Current progress: 0.7
 
 Evidence:
 - Dev hot services, daemon lifecycle, tray menu, and start-at-login toggle exist.
 - `npm run build` produces release exe plus MSI and NSIS installer bundles.
 - `npm run smoke:resident` verifies idle runtime health and RSS budget.
 - `npm run smoke:all` provides a serial readiness gate that avoids parallel build races across provider smokes.
+- `npm run smoke:screen-capture:live` verifies the widget-protocol screen capture request path.
 - Runtime status exposes app-server start count and latest error in the widget settings panel.
 - Crash-recovery polish and longer soak tests remain open.

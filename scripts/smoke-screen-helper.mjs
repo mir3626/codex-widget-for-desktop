@@ -11,7 +11,8 @@ for (const marker of [
   "image/jpeg",
   "data:image/jpeg;base64",
   "/providers/screen/snapshot",
-  "System.Net.Http.HttpClient"
+  "System.Net.Http.HttpClient",
+  "screen snapshot sent"
 ]) {
   if (!helper.includes(marker)) {
     throw new Error(`Screen helper is missing marker: ${marker}`);

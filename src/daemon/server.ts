@@ -4,6 +4,7 @@ import { daemonInfo, runAgentStream, type AgentSessionState } from "./agent.js";
 import { CodexAppServerBridge } from "./codexAppServer.js";
 import { resolveCodexExecutionContext } from "./codexRuntime.js";
 import { OAuthSession } from "./oauth.js";
+import { captureScreenSnapshot } from "./providers/screenCaptureProvider.js";
 import { ProviderRegistry, type ScreenSnapshot } from "./providers/providerRegistry.js";
 import { getProviderStatuses } from "./tools.js";
 import type { ClientMessage, RuntimeStatus, ServerEvent } from "../shared/protocol.js";
@@ -46,7 +47,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     send(socket, { type: "session.state", state: "idle" });
 
     socket.on("message", (raw) => {
-      void handleMessage(raw.toString(), socket, controllers, auth, clients, agentSession, codexAppServer, providers);
+      void handleMessage(raw.toString(), socket, controllers, auth, clients, agentSession, codexAppServer, providers, getServerPort(server));
     });
 
     socket.on("close", () => {
@@ -106,7 +107,8 @@ async function handleMessage(
   clients: Set<WebSocket>,
   agentSession: AgentSessionState,
   codexAppServer: CodexAppServerBridge,
-  providers: ProviderRegistry
+  providers: ProviderRegistry,
+  daemonPort: number
 ): Promise<void> {
   let message: ClientMessage;
   try {
@@ -200,6 +202,11 @@ async function handleMessage(
     return;
   }
 
+  if (message.type === "provider.captureScreen") {
+    void captureScreenFromHelper(message.description, clients, daemonPort);
+    return;
+  }
+
   if (message.type !== "ask") {
     send(socket, { type: "error", message: "Unsupported daemon message." });
     return;
@@ -228,6 +235,36 @@ async function handleMessage(
     send(socket, { type: "session.state", state: "error", id: message.id });
   } finally {
     controllers.delete(message.id);
+  }
+}
+
+async function captureScreenFromHelper(
+  description: string | undefined,
+  clients: Set<WebSocket>,
+  daemonPort: number
+): Promise<void> {
+  broadcast(clients, {
+    type: "provider.capture",
+    mode: "screen",
+    state: "started",
+    message: "screen capture started"
+  });
+
+  try {
+    const result = await captureScreenSnapshot({ daemonPort, description });
+    broadcast(clients, {
+      type: "provider.capture",
+      mode: "screen",
+      state: "completed",
+      message: result.output || "screen capture completed"
+    });
+  } catch (error) {
+    broadcast(clients, {
+      type: "provider.capture",
+      mode: "screen",
+      state: "error",
+      message: error instanceof Error ? error.message : "Screen capture failed."
+    });
   }
 }
 
