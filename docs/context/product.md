@@ -26,8 +26,9 @@ The primary user is a developer who wants a persistent desktop companion similar
 - App-server diagnostics include start count and latest error in runtime status so resident failures are visible from the widget.
 - The chat renderer has a Playwright smoke for multi-turn layout, GFM tables, prompt resizing, and response action menu placement.
 - `npm run build` produces Windows MSI and NSIS installer bundles with a bundled daemon JS entry and bundled Node runtime, so the installed widget daemon does not require a user-installed `node` command.
+- `npm run smoke:release-install` verifies the NSIS installer can silently install, launch the installed app with its bundled daemon, and uninstall cleanly.
 - The daemon keeps `codex exec resume` as a fallback runtime and supports mock/OAuth proxy streaming for non-Codex auth modes.
-- DOM and Vision modes have snapshot ingress; DOM has an unpacked browser extension bridge with icon assets, local-only Options URL configuration, and a generated zip package; Vision has a Windows capture helper, optional local OCR command hook, and direct app-server image input; Terminal has one-shot command execution plus a persistent command session. Bundled OCR engine packaging, browser store submission/native messaging, and true raw interactive PTY are still open.
+- DOM and Vision modes have snapshot ingress; DOM has an unpacked browser extension bridge with icon assets, local-only Options URL configuration, and a generated zip package; Vision has a Windows capture helper, optional local OCR command hook, and direct app-server image input; Terminal has one-shot command execution plus a persistent command session. Bundled OCR engine packaging, browser store submission/native messaging, MSI install/uninstall observation, and true raw interactive PTY are still open.
 - Windows Tauri prerequisites are documented and verified on the local machine.
 
 ## Product Goals

@@ -86,6 +86,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added `npm run smoke:release-resources` to verify generated MSI/NSIS build scripts include the bundled daemon, Node runtime, screen helper, and DOM extension resources.
 - Added `npm run smoke:release-launch` to launch the release exe hidden, verify the packaged daemon WebSocket on `127.0.0.1:4128`, and clean up the process tree.
 - Added a browser DOM extension Options page backed by `chrome.storage.sync`, so users can point the extension at another local daemon port without editing extension code. The extension only accepts local `http://127.0.0.1/...` or `http://localhost/...` snapshot URLs ending in `/providers/dom/snapshot`.
+- Added `npm run smoke:release-install` for NSIS silent install/uninstall observation: it refuses to overwrite existing install state, launches the installed app hidden, verifies the daemon WebSocket, uninstalls, and checks install directory, uninstall registry entry, product install key, and desktop shortcut cleanup.
 
 ## Next Recommended Sprint
 
@@ -100,7 +101,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge with local-only Options URL configuration; no store-packaged extension or native messaging bridge yet.
 - Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, optional OCR command hook, and direct app-server image input; bundled OCR engine packaging is still pending.
 - Terminal/PTY provider supports explicit one-shot commands and a persistent `/pty` command session, but it is not a raw ConPTY/full-screen interactive terminal yet.
-- Store-packaged browser extension, deeper interactive PTY, installed-app launch/crash observation, and longer soak tests remain open for live-service readiness.
+- Store-packaged browser extension, deeper interactive PTY, MSI install/uninstall observation, installed-app crash observation, and longer soak tests remain open for live-service readiness.
 
 ## Verification
 
@@ -547,6 +548,12 @@ Completed after browser DOM extension Options pass:
 - `npm run smoke:release-launch`
 - Extension smoke now verifies the Options page, storage permission, local-only host permissions, Options script syntax, and packaged zip entries.
 
+Completed after NSIS release install smoke pass:
+
+- `node --check scripts\smoke-release-install.mjs`
+- `npm run smoke:release-install`
+- Post-smoke checks confirmed no `Codex Widget` install directory under `%LOCALAPPDATA%`, no uninstall registry entry, no `Software\mir3626\Codex Widget` product install key, and no desktop shortcut remained.
+
 Completed after persistent terminal session pass:
 
 - `npm run lint`
@@ -650,10 +657,11 @@ Completed latest release build after persistent terminal session pass:
 16. Run `npm run smoke:node-runtime` after daemon bundle, Node runtime resource, or Tauri resource packaging changes.
 17. Run `npm run smoke:release-resources` after `npm run build` when release bundle resources change.
 18. Run `npm run smoke:release-launch` after `npm run build` when native daemon startup, bundled runtime resolution, or release exe behavior changes.
-19. Run `npm run smoke:dom` after browser/DOM provider ingress changes, `npm run smoke:extension` after browser extension or packaging changes, `npm run smoke:screen` after Vision provider changes, `npm run smoke:screen-capture:live` after daemon-triggered capture changes, `npm run smoke:screen-helper` and `npm run smoke:screen-helper:ocr` after screen helper/OCR changes, `npm run smoke:terminal` after one-shot terminal provider changes, and `npm run smoke:terminal-session` after `/pty` session changes.
-20. DOM snapshot testing can use `providers/browser-dom-extension` as an unpacked Chrome/Edge extension or `docs/providers/dom-snapshot-bookmarklet.js` as a fallback against the local daemon on port `4128`.
-21. Screen snapshot testing can use `providers/screen-capture-helper/capture-screen.ps1` for live capture or `docs/providers/screen-snapshot-example.json` as the raw payload shape against `POST /providers/screen/snapshot`.
-22. Run `npm run build` before release checks; MSI/NSIS bundle creation is now part of the installability gate.
-23. Run `npm run vibe:checkpoint` before ending any follow-up maintenance session.
+19. Run `npm run smoke:release-install` after `npm run build` when NSIS installability, bundled installed resources, or installer cleanup behavior changes. It refuses to run over existing install state unless `CODEX_WIDGET_RELEASE_INSTALL_SMOKE_ALLOW_EXISTING=1` is set for a controlled test machine.
+20. Run `npm run smoke:dom` after browser/DOM provider ingress changes, `npm run smoke:extension` after browser extension or packaging changes, `npm run smoke:screen` after Vision provider changes, `npm run smoke:screen-capture:live` after daemon-triggered capture changes, `npm run smoke:screen-helper` and `npm run smoke:screen-helper:ocr` after screen helper/OCR changes, `npm run smoke:terminal` after one-shot terminal provider changes, and `npm run smoke:terminal-session` after `/pty` session changes.
+21. DOM snapshot testing can use `providers/browser-dom-extension` as an unpacked Chrome/Edge extension or `docs/providers/dom-snapshot-bookmarklet.js` as a fallback against the local daemon on port `4128`.
+22. Screen snapshot testing can use `providers/screen-capture-helper/capture-screen.ps1` for live capture or `docs/providers/screen-snapshot-example.json` as the raw payload shape against `POST /providers/screen/snapshot`.
+23. Run `npm run build` before release checks; MSI/NSIS bundle creation is now part of the installability gate.
+24. Run `npm run vibe:checkpoint` before ending any follow-up maintenance session.
 
 Use `docs/context/qa.md` for routine follow-up commands.

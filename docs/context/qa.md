@@ -47,6 +47,7 @@ Run this after a release build when bundle resource wiring changes:
 npm run build
 npm run smoke:release-resources
 npm run smoke:release-launch
+npm run smoke:release-install
 ```
 
 Run this after Tauri/Rust/native shell changes:
@@ -95,6 +96,7 @@ npm run vibe:checkpoint
 - OAuth proxy live streaming requires an auth/proxy service and is not covered by CI-like smoke tests.
 - Packaged daemon restart backoff and child restart have Rust tests; end-to-end native crash/restart observation in an installed app is still manual.
 - Renderer-visible native daemon diagnostics are covered by type/build checks; installed-app restart UX screenshots are still manual.
-- Bundled Node runtime smoke verifies local daemon startup without repository `node_modules`; installed MSI/NSIS launch observation is still manual.
+- Bundled Node runtime smoke verifies local daemon startup without repository `node_modules`; installed MSI launch observation is still manual.
 - `npm run smoke:release-resources` verifies generated MSI/NSIS scripts include bundled daemon/runtime/provider resources, but it does not install and launch the artifacts.
-- `npm run smoke:release-launch` starts the release exe hidden and verifies the daemon WebSocket on port `4128`, but it still does not perform a full MSI/NSIS install/uninstall cycle.
+- `npm run smoke:release-launch` starts the release exe hidden and verifies the daemon WebSocket on port `4128`.
+- `npm run smoke:release-install` performs a Windows NSIS silent install, launches the installed app hidden, verifies the bundled daemon on port `4128`, silently uninstalls, and checks cleanup; MSI install/uninstall is still manual.

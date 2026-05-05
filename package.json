@@ -25,6 +25,7 @@
     "smoke:resident-soak": "npm run build:daemon && node scripts/smoke-resident-soak.mjs",
     "smoke:release-resources": "node scripts/smoke-release-resources.mjs",
     "smoke:release-launch": "node scripts/smoke-release-launch.mjs",
+    "smoke:release-install": "node scripts/smoke-release-install.mjs",
     "smoke:node-runtime": "npm run build:daemon-bundle && npm run build:node-runtime && node scripts/smoke-node-runtime.mjs",
     "smoke:screen": "npm run build:daemon && node scripts/smoke-screen-provider.mjs",
     "smoke:screen-capture:live": "npm run build:daemon && node scripts/smoke-screen-capture-request.mjs",
