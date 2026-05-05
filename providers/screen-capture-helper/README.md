@@ -17,6 +17,7 @@ Optional parameters:
 - `-MaxWidth`: default `1600`, used to keep the payload small
 - `-JpegQuality`: default `72`, clamped to `1..100`
 - `-OcrCommand`: optional OCR command template. Use `{image}` where the captured JPEG path should be inserted.
+- `-OcrLanguage`: optional Tesseract language string for auto-generated bundled/PATH commands, for example `eng+kor`.
 - `-OcrMaxChars`: default `20000`, caps OCR text included in the snapshot.
 - `-DisableOcr`: skip OCR even when a bundled or PATH Tesseract runtime is available.
 - `-DryRun`: capture and encode locally, but do not post to the daemon
@@ -29,6 +30,8 @@ OCR lookup order:
 4. `tesseract` on `PATH`
 
 During release builds, `npm run build:ocr-runtime` prepares `dist\ocr-runtime\ocr-runtime.json`. Set `CODEX_WIDGET_OCR_RUNTIME_DIR` or `CODEX_WIDGET_TESSERACT_EXE` before building to copy a Tesseract runtime into that bundled resource directory. If neither is set, the build script searches `PATH`, `CODEX_WIDGET_TESSERACT_SEARCH_ROOTS`, and common Windows install locations such as `Program Files\Tesseract-OCR`, Chocolatey, Scoop, and per-user `LocalAppData\Programs` installs.
+
+Bundled OCR commands choose `eng+kor` automatically when the bundled tessdata directory contains both `eng.traineddata` and `kor.traineddata`. Set `CODEX_WIDGET_SCREEN_OCR_LANGUAGE` or `-OcrLanguage` to override the auto-selected language for bundled/PATH Tesseract commands.
 
 The helper posts:
 

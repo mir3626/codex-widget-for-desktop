@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -36,6 +36,10 @@ export async function captureScreenSnapshot(input: {
     "-OcrMaxChars",
     process.env.CODEX_WIDGET_SCREEN_OCR_MAX_CHARS ?? "20000"
   ];
+  const configuredOcrLanguage = process.env.CODEX_WIDGET_SCREEN_OCR_LANGUAGE?.trim();
+  if (configuredOcrLanguage) {
+    args.push("-OcrLanguage", configuredOcrLanguage);
+  }
   if (process.env.CODEX_WIDGET_SCREEN_OCR_DISABLE === "1") {
     args.push("-DisableOcr");
   } else if (!process.env.CODEX_WIDGET_SCREEN_OCR_COMMAND?.trim()) {
@@ -80,7 +84,11 @@ export function resolveBundledOcrCommand(): string | undefined {
   }
 
   const tessdata = findBundledTessdata(runtimeDir);
+  const language = resolveOcrLanguage(tessdata);
   const args = [quoteCmdArgument(executable), "{image}", "stdout"];
+  if (language) {
+    args.push("-l", quoteCmdArgument(language));
+  }
   if (tessdata) {
     args.push("--tessdata-dir", quoteCmdArgument(tessdata));
   }
@@ -119,6 +127,43 @@ function findBundledTessdata(runtimeDir: string): string | undefined {
     join(runtimeDir, "share", "tessdata"),
     join(runtimeDir, "share", "tesseract-ocr", "tessdata")
   ].find((candidate) => existsSync(candidate));
+}
+
+function resolveOcrLanguage(tessdata: string | undefined): string | undefined {
+  const configured = process.env.CODEX_WIDGET_SCREEN_OCR_LANGUAGE?.trim();
+  if (configured) {
+    return configured;
+  }
+
+  if (!tessdata) {
+    return undefined;
+  }
+
+  const languages = discoverTessdataLanguages(tessdata);
+  if (languages.has("eng") && languages.has("kor")) {
+    return "eng+kor";
+  }
+  if (languages.has("eng")) {
+    return "eng";
+  }
+  if (languages.has("kor")) {
+    return "kor";
+  }
+
+  return undefined;
+}
+
+function discoverTessdataLanguages(tessdata: string): Set<string> {
+  try {
+    return new Set(
+      readdirSync(tessdata)
+        .filter((entry) => entry.toLowerCase().endsWith(".traineddata"))
+        .map((entry) => entry.slice(0, -".traineddata".length))
+        .filter(Boolean)
+    );
+  } catch {
+    return new Set();
+  }
 }
 
 function quoteCmdArgument(value: string): string {

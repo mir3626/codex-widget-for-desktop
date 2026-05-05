@@ -4,6 +4,7 @@ param(
   [int]$MaxWidth = 1600,
   [int]$JpegQuality = 72,
   [string]$OcrCommand = "",
+  [string]$OcrLanguage = "",
   [int]$OcrMaxChars = 20000,
   [switch]$DisableOcr,
   [switch]$DryRun
@@ -93,7 +94,50 @@ function Resolve-OcrCommand {
 
   $tesseract = Get-Command tesseract -ErrorAction SilentlyContinue
   if ($tesseract) {
-    return "tesseract {image} stdout"
+    $command = "tesseract {image} stdout"
+    $language = Resolve-OcrLanguage
+    if (-not [string]::IsNullOrWhiteSpace($language)) {
+      $command = "$command -l $(Quote-CmdArgument -Value $language)"
+    }
+    return $command
+  }
+
+  return ""
+}
+
+function Resolve-OcrLanguage {
+  param(
+    [string]$TessdataPath = ""
+  )
+
+  if (-not [string]::IsNullOrWhiteSpace($OcrLanguage)) {
+    return $OcrLanguage.Trim()
+  }
+
+  if (-not [string]::IsNullOrWhiteSpace($env:CODEX_WIDGET_SCREEN_OCR_LANGUAGE)) {
+    return $env:CODEX_WIDGET_SCREEN_OCR_LANGUAGE.Trim()
+  }
+
+  if ([string]::IsNullOrWhiteSpace($TessdataPath) -or -not (Test-Path -LiteralPath $TessdataPath -PathType Container)) {
+    return ""
+  }
+
+  $languages = @{}
+  Get-ChildItem -LiteralPath $TessdataPath -Filter "*.traineddata" -File -ErrorAction SilentlyContinue | ForEach-Object {
+    $name = [System.IO.Path]::GetFileNameWithoutExtension($_.Name)
+    if (-not [string]::IsNullOrWhiteSpace($name)) {
+      $languages[$name] = $true
+    }
+  }
+
+  if ($languages.ContainsKey("eng") -and $languages.ContainsKey("kor")) {
+    return "eng+kor"
+  }
+  if ($languages.ContainsKey("eng")) {
+    return "eng"
+  }
+  if ($languages.ContainsKey("kor")) {
+    return "kor"
   }
 
   return ""
@@ -123,6 +167,10 @@ function Resolve-BundledOcrCommand {
   $tessdataPath = $tessdataCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Container } | Select-Object -First 1
   if (-not [string]::IsNullOrWhiteSpace($tessdataPath)) {
     $command = "$command --tessdata-dir $(Quote-CmdArgument -Value $tessdataPath)"
+  }
+  $language = Resolve-OcrLanguage -TessdataPath $tessdataPath
+  if (-not [string]::IsNullOrWhiteSpace($language)) {
+    $command = "$command -l $(Quote-CmdArgument -Value $language)"
   }
 
   return $command

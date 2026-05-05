@@ -18,8 +18,10 @@ try {
   mkdirp(knownTessdataDir);
   writeFileSync(join(sourceDir, "tesseract.exe"), "mock tesseract binary");
   writeFileSync(join(tessdataDir, "eng.traineddata"), "mock trained data");
+  writeFileSync(join(tessdataDir, "kor.traineddata"), "mock trained data");
   writeFileSync(join(knownSourceDir, "tesseract.exe"), "mock known tesseract binary");
   writeFileSync(join(knownTessdataDir, "eng.traineddata"), "mock known trained data");
+  writeFileSync(join(knownTessdataDir, "kor.traineddata"), "mock known trained data");
   mkdirp(outDir);
   writeFileSync(join(outDir, "tesseract.exe"), "mock unsafe source");
 
@@ -54,7 +56,13 @@ try {
   }
 
   const manifest = JSON.parse(readFileSync(join(outDir, "ocr-runtime.json"), "utf8"));
-  if (manifest.available !== true || manifest.executable !== "tesseract.exe" || manifest.tessdata !== "tessdata") {
+  if (
+    manifest.available !== true ||
+    manifest.executable !== "tesseract.exe" ||
+    manifest.tessdata !== "tessdata" ||
+    !Array.isArray(manifest.languages) ||
+    manifest.languages.join(",") !== "eng,kor"
+  ) {
     throw new Error(`Unexpected OCR runtime manifest: ${JSON.stringify(manifest)}`);
   }
 
@@ -86,6 +94,7 @@ try {
       knownManifest.available !== true ||
       knownManifest.executable !== "tesseract.exe" ||
       knownManifest.tessdata !== "tessdata" ||
+      knownManifest.languages?.join(",") !== "eng,kor" ||
       knownManifest.source !== "known:CODEX_WIDGET_TESSERACT_SEARCH_ROOTS/Tesseract-OCR"
     ) {
       throw new Error(`Unexpected known OCR runtime manifest: ${JSON.stringify(knownManifest)}`);
@@ -95,7 +104,7 @@ try {
   process.env.CODEX_WIDGET_SCREEN_OCR_RUNTIME_DIR = outDir;
   const { resolveBundledOcrCommand } = await import("../dist/daemon/providers/screenCaptureProvider.js");
   const command = resolveBundledOcrCommand();
-  if (!command?.includes("tesseract.exe") || !command.includes("--tessdata-dir")) {
+  if (!command?.includes("tesseract.exe") || !command.includes("--tessdata-dir") || !command.includes("-l \"eng+kor\"")) {
     throw new Error(`Bundled OCR command was not resolved from the prepared runtime: ${command}`);
   }
 

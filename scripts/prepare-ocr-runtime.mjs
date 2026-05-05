@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { cpSync, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, delimiter, dirname, join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -20,11 +20,13 @@ if (source) {
     throw new Error(`OCR runtime source did not contain tesseract.exe: ${source.dir}`);
   }
 
+  const tessdata = findTessdataDirectory(outdir);
   const manifest = {
     engine: "tesseract",
     available: true,
     executable: normalizeRelativePath(relative(outdir, executable)),
-    tessdata: findTessdataDirectory(outdir),
+    tessdata,
+    languages: findTessdataLanguages(outdir, tessdata),
     source: source.source,
     preparedAt: new Date().toISOString()
   };
@@ -36,6 +38,7 @@ if (source) {
     available: false,
     executable: null,
     tessdata: null,
+    languages: [],
     source: null,
     reason: "No Tesseract runtime source found. Set CODEX_WIDGET_OCR_RUNTIME_DIR, CODEX_WIDGET_TESSERACT_EXE, or CODEX_WIDGET_TESSERACT_SEARCH_ROOTS before build to bundle OCR; otherwise add tesseract to PATH or install Tesseract in a standard Windows location.",
     preparedAt: new Date().toISOString()
@@ -160,6 +163,23 @@ function findTessdataDirectory(dir) {
   ];
   const found = candidates.find((candidate) => existsSync(candidate));
   return found ? normalizeRelativePath(relative(dir, found)) : null;
+}
+
+function findTessdataLanguages(dir, tessdata) {
+  if (!tessdata) {
+    return [];
+  }
+
+  const tessdataPath = resolve(dir, tessdata);
+  if (!existsSync(tessdataPath)) {
+    return [];
+  }
+
+  return readdirSync(tessdataPath)
+    .filter((entry) => entry.toLowerCase().endsWith(".traineddata"))
+    .map((entry) => entry.slice(0, -".traineddata".length))
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
 }
 
 function assertSafeOutputDirectory(dir) {

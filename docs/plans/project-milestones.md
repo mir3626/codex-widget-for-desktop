@@ -40,7 +40,7 @@ Evidence:
 
 Goal: replace Agent/DOM/Vision/PTY stubs with real desktop/browser/terminal context providers that stream tool events through one widget protocol.
 
-Current progress: 0.92
+Current progress: 0.93
 
 Evidence:
 - Provider modes and tool-event rendering exist.
@@ -48,9 +48,9 @@ Evidence:
 - An unpacked Chrome/Edge extension can send active-tab DOM snapshots to the daemon, exposes a local-only Options page for daemon URL changes, can use an optional Chrome/Edge native messaging host before falling back to HTTP, and `npm run package:extension` produces a zip package with icon assets. Store listing, privacy notes, review notes, permission rationales, and `npm run smoke:browser-store` are in place.
 - Screen/Vision mode accepts live snapshots through the local daemon, injects description/OCR context into model requests, and attaches image data to app-server Vision turns.
 - A Windows PowerShell helper captures the virtual desktop as compressed JPEG data, can run a local OCR command, bundled Tesseract runtime, or auto-detected `tesseract`, and posts the result to the Screen/Vision endpoint; the widget can trigger that helper through the daemon protocol.
-- `npm run build:ocr-runtime` and `npm run smoke:ocr-runtime` package and verify a Tesseract-compatible OCR runtime resource slot for installed builds, including standard Windows install discovery and `CODEX_WIDGET_TESSERACT_SEARCH_ROOTS`.
+- `npm run build:ocr-runtime` and `npm run smoke:ocr-runtime` package and verify a Tesseract-compatible OCR runtime resource slot for installed builds, including standard Windows install discovery, `CODEX_WIDGET_TESSERACT_SEARCH_ROOTS`, tessdata language manifesting, and bundled `eng+kor` auto-selection when both language packs exist.
 - Terminal/PTY mode executes explicit shell commands, supports a persistent node-pty/ConPTY-backed `/pty` command/raw-input session, streams output as tool events, and displays terminal output in a dedicated renderer viewport.
-- Final browser store account submission, OCR language/model selection defaults, and richer terminal key/mouse UX remain open.
+- Final browser store account submission, richer terminal key/mouse UX, and OCR quality tuning remain open.
 
 ## resident-desktop-readiness
 

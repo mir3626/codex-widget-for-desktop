@@ -73,7 +73,7 @@ For browser testing, load the unpacked Chrome/Edge extension in [providers/brows
 
 The Capture action asks the daemon to run the Windows screen capture helper directly. The helper is bundled as a Tauri resource for installed builds. Override its path with `CODEX_WIDGET_SCREEN_CAPTURE_HELPER`, or tune payload size with `CODEX_WIDGET_SCREEN_CAPTURE_MAX_WIDTH` and `CODEX_WIDGET_SCREEN_CAPTURE_JPEG_QUALITY`.
 
-Screen OCR is optional and local. Installed builds first use a bundled Tesseract runtime when one was available during build. At runtime, if `tesseract` is available on `PATH`, the helper uses it automatically. Otherwise set `CODEX_WIDGET_SCREEN_OCR_COMMAND` to a command template that prints text to stdout and uses `{image}` for the captured JPEG path, for example `tesseract {image} stdout -l eng+kor`. Disable OCR with `CODEX_WIDGET_SCREEN_OCR_DISABLE=1`, or cap text with `CODEX_WIDGET_SCREEN_OCR_MAX_CHARS`.
+Screen OCR is optional and local. Installed builds first use a bundled Tesseract runtime when one was available during build. At runtime, if `tesseract` is available on `PATH`, the helper uses it automatically. Bundled OCR auto-selects `eng+kor` when both `eng.traineddata` and `kor.traineddata` are present, falling back to whichever of those languages exists. Override with `CODEX_WIDGET_SCREEN_OCR_LANGUAGE`, set `CODEX_WIDGET_SCREEN_OCR_COMMAND` to a full command template that prints text to stdout and uses `{image}` for the captured JPEG path, disable OCR with `CODEX_WIDGET_SCREEN_OCR_DISABLE=1`, or cap text with `CODEX_WIDGET_SCREEN_OCR_MAX_CHARS`.
 
 For backend OAuth proxy experiments, point the daemon at an OAuth provider and agent proxy before launch:
 
@@ -127,7 +127,7 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run smoke:extension`: verify the unpacked browser DOM extension manifest/service worker
 - `npm run smoke:browser-native-host`: verify the Chrome/Edge native messaging host framing and daemon POST path
 - `npm run smoke:browser-store`: verify browser store listing, privacy, review notes, permission rationales, and package readiness
-- `npm run smoke:ocr-runtime`: verify OCR runtime packaging, standard Windows install discovery, and daemon-side bundled OCR command resolution
+- `npm run smoke:ocr-runtime`: verify OCR runtime packaging, standard Windows install discovery, tessdata language manifesting, and daemon-side bundled OCR command resolution
 - `npm run smoke:pty-runtime`: verify PTY runtime packaging and native `node-pty` loading
 - `npm run smoke:screen`: verify the local screen snapshot provider ingress
 - `npm run smoke:screen-capture:live`: verify the widget protocol can trigger a live screen capture through the daemon
@@ -159,7 +159,7 @@ Local Daemon
 Future Tool Providers
   - store-packaged browser extension provider for active tab DOM
   - Playwright/CDP provider for controlled browser use
-  - OCR model/language-pack selection and direct image input on top of the native screen capture helper
+  - OCR quality tuning and direct image input on top of the native screen capture helper
   - richer key/mouse handling on top of the node-pty PTY viewport
 ```
 
