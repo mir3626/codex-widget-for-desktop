@@ -11,6 +11,7 @@ A floating Tauri desktop agent widget inspired by old resident office assistants
 - Codex CLI-backed live responses after sign-in, using a daemon-owned `codex app-server` by default
 - Optional OAuth Bearer-token proxy streaming for backend experiments
 - Mock streaming fallback when no live auth path is available
+- Packaged builds bundle the daemon JS and a Node runtime resource for the local daemon
 
 ## Prerequisites
 
@@ -53,6 +54,8 @@ The default Codex approval policy is `CODEX_WIDGET_CODEX_APPROVAL_POLICY=on-requ
 The renderer keeps the visible chat timeline in localStorage, and the titlebar New chat button clears both the visible conversation and the daemon-side session/thread state. Mode tabs are backed by daemon-provided provider status so future DOM, Vision, and PTY providers can attach without changing the basic UI contract.
 
 For resident use, the widget hides to tray from the titlebar close button and can be restored or quit from the tray menu. The Settings button exposes Start at login, provider status, and daemon runtime health. On Windows, Start at login writes the current executable to the current user's `Run` registry key.
+
+Installed builds do not require the user to install Node.js just to run the widget daemon. The release build creates `dist/daemon-bundle/standalone.js`, copies the build machine's Node executable into `dist/node-runtime`, and bundles both into the Tauri app resources. The native shell prefers those bundled resources and falls back to a system `node` command only when the bundled runtime is absent.
 
 DOM mode can receive the current browser page through the local daemon endpoint:
 
@@ -100,11 +103,13 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run dev:services`: start renderer HMR, daemon TypeScript watch, and daemon restart loop without launching Tauri
 - `npm run dev:auth-proxy`: start only the local development OAuth/proxy server on `127.0.0.1:8787`
 - `npm run build`: build the Tauri desktop app
+- `npm run build:web`: compile the daemon, create the bundled daemon entry, build the renderer, and prepare the bundled Node runtime
 - `npm run package:extension`: create `dist/providers/codex-widget-dom-extension-0.1.0.zip`
 - `npm run smoke:all`: run the standard serial readiness gate without rebuilding daemon in parallel
 - `npm run smoke:all:live`: run the serial readiness gate plus the live Windows screen capture helper
 - `npm run smoke:resident`: run the idle resident daemon health/resource smoke
 - `npm run smoke:resident-soak`: run a short resident daemon soak with runtime samples, ping/pong health checks, and RSS growth limits
+- `npm run smoke:node-runtime`: verify the bundled Node runtime can run the bundled daemon without repository `node_modules`
 - `npm run smoke:renderer-chat`: run a Playwright layout smoke for multi-turn chat, tables, prompt resizing, and More-menu placement
 - `npm run smoke:dom`: verify the local DOM snapshot provider ingress
 - `npm run smoke:extension`: verify the unpacked browser DOM extension manifest/service worker
@@ -115,7 +120,6 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run smoke:terminal`: verify explicit terminal command execution
 - `npm run smoke:terminal-session`: verify the persistent `/pty` terminal session path
 - Production build output is written under `src-tauri/target/release/bundle/` as MSI and NSIS installer artifacts.
-- `npm run build:web`: compile the daemon and build the renderer without invoking Cargo
 - `npm run smoke`: build and verify the daemon WebSocket stream
 - `npm run lint`: TypeScript checks
 

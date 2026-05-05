@@ -92,11 +92,15 @@ impl DaemonSupervisor {
             });
             return;
         };
+        let node_runtime = resolve_node_runtime(app);
 
         update_daemon_status(&self.diagnostics, |status| {
             status.enabled = true;
             status.state = "starting".to_string();
-            status.last_event = Some("native daemon supervisor starting".to_string());
+            status.last_event = Some(format!(
+                "native daemon supervisor starting with {}",
+                node_runtime.display()
+            ));
             status.last_error = None;
         });
 
@@ -105,7 +109,7 @@ impl DaemonSupervisor {
         let diagnostics = Arc::clone(&self.diagnostics);
         let handle = thread::Builder::new()
             .name("codex-widget-daemon-supervisor".to_string())
-            .spawn(move || supervise_daemon(script, child, stop, diagnostics));
+            .spawn(move || supervise_daemon(node_runtime, script, child, stop, diagnostics));
 
         match handle {
             Ok(handle) => {
@@ -685,6 +689,7 @@ fn should_spawn_daemon() -> bool {
 }
 
 fn supervise_daemon(
+    node_runtime: PathBuf,
     script: PathBuf,
     child_slot: Arc<Mutex<Option<Child>>>,
     stop: Arc<AtomicBool>,
@@ -695,7 +700,7 @@ fn supervise_daemon(
     while !stop.load(Ordering::SeqCst) {
         let started_at = Instant::now();
 
-        match spawn_daemon_child(&script) {
+        match spawn_daemon_child(&node_runtime, &script) {
             Ok(child) => {
                 let pid = child.id();
                 if let Ok(mut slot) = child_slot.lock() {
@@ -845,8 +850,8 @@ fn update_daemon_status(
     }
 }
 
-fn spawn_daemon_child(script: &PathBuf) -> Result<Child, String> {
-    Command::new("node")
+fn spawn_daemon_child(node_runtime: &PathBuf, script: &PathBuf) -> Result<Child, String> {
+    Command::new(node_runtime)
         .arg(script)
         .env("CODEX_WIDGET_PORT", DAEMON_PORT)
         .stdin(Stdio::null())
@@ -861,14 +866,48 @@ fn spawn_daemon_child(script: &PathBuf) -> Result<Child, String> {
 
 fn resolve_daemon_script(app: &tauri::AppHandle) -> Option<PathBuf> {
     let dev_script = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../dist/daemon/standalone.js");
+    if cfg!(debug_assertions) && dev_script.exists() {
+        return Some(dev_script);
+    }
+
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        let bundled_script = resource_dir.join("dist/daemon-bundle/standalone.js");
+        if bundled_script.exists() {
+            return Some(bundled_script);
+        }
+
+        let legacy_script = resource_dir.join("dist/daemon/standalone.js");
+        if legacy_script.exists() {
+            return Some(legacy_script);
+        }
+    }
+
     if dev_script.exists() {
         return Some(dev_script);
     }
 
-    app.path()
-        .resource_dir()
-        .ok()
-        .map(|resource_dir| resource_dir.join("dist/daemon/standalone.js"))
+    None
+}
+
+fn resolve_node_runtime(app: &tauri::AppHandle) -> PathBuf {
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        let bundled_runtime = resource_dir
+            .join("dist/node-runtime")
+            .join(node_runtime_filename());
+        if bundled_runtime.exists() {
+            return bundled_runtime;
+        }
+    }
+
+    PathBuf::from("node")
+}
+
+fn node_runtime_filename() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "node.exe"
+    } else {
+        "node"
+    }
 }
 
 #[cfg(test)]
@@ -923,11 +962,18 @@ process.exit(1);
         let child_slot = Arc::new(Mutex::new(None));
         let stop = Arc::new(AtomicBool::new(false));
         let diagnostics = Arc::new(Mutex::new(NativeDaemonStatus::default()));
+        let node_runtime = PathBuf::from("node");
         let worker_child_slot = Arc::clone(&child_slot);
         let worker_stop = Arc::clone(&stop);
         let worker_diagnostics = Arc::clone(&diagnostics);
         let handle = thread::spawn(move || {
-            supervise_daemon(script, worker_child_slot, worker_stop, worker_diagnostics)
+            supervise_daemon(
+                node_runtime,
+                script,
+                worker_child_slot,
+                worker_stop,
+                worker_diagnostics,
+            )
         });
 
         let deadline = Instant::now() + Duration::from_secs(6);

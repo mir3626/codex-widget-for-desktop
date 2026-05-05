@@ -7,7 +7,8 @@ Tauri desktop shell
   - src-tauri/
   - transparent always-on-top widget window
   - tray icon, start-at-login command, and native window controls
-  - starts the local Node daemon in dev/build flows
+  - starts a supervised local daemon process
+  - packaged builds prefer bundled Node runtime + bundled daemon JS resources
 
 React renderer
   - src/renderer/
@@ -24,6 +25,11 @@ Local daemon
   - OAuth proxy streaming or mock streaming fallback for non-Codex auth modes
   - provider status registry for agent, browser, screen, and terminal modes
   - DOM snapshot ingress and terminal command provider
+
+Packaged daemon resources
+  - dist/daemon-bundle/standalone.js
+  - dist/node-runtime/node.exe on Windows builds
+  - copied into the Tauri resource tree under _up_/dist
 
 Shared protocol
   - src/shared/protocol.ts
@@ -91,6 +97,8 @@ Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only sta
 - The native window is configured with `skipTaskbar: true`; tray Show/Hide/Quit is the resident control surface.
 - The titlebar close button hides the window to tray. The tray Quit item exits the app.
 - Windows start-at-login is implemented by setting the current executable in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` through native Tauri commands.
+- Packaged builds do not depend on a user-installed `node` command for the widget daemon. `npm run build:web` creates a dependency-bundled daemon entry at `dist/daemon-bundle/standalone.js` and copies the current build Node executable into `dist/node-runtime`; Tauri bundles both directories as resources.
+- The native daemon supervisor resolves the bundled daemon and bundled Node runtime from the Tauri resource directory first, then falls back to system `node` only if the resource runtime is absent.
 - `npm run build` must produce both MSI and NSIS bundles before a release is considered installable on Windows.
 
 ## Provider Roadmap
@@ -104,5 +112,6 @@ Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only sta
 
 - `npm run lint`: TypeScript checks for renderer, shared, and daemon code.
 - `npm run build:web`: compile daemon and renderer without invoking Cargo.
+- `npm run smoke:node-runtime`: verify the bundled Node runtime can execute the bundled daemon without relying on repository `node_modules`.
 - `npm run smoke`: build web/daemon and verify WebSocket streaming.
 - `powershell -NoProfile -ExecutionPolicy Bypass -Command ". .\scripts\use-msvc-env.ps1; Push-Location src-tauri; cargo check --no-default-features; Pop-Location"`: native shell compile check on Windows.

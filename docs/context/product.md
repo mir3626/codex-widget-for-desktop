@@ -25,7 +25,7 @@ The primary user is a developer who wants a persistent desktop companion similar
 - Runtime health status is streamed from the daemon into the settings panel.
 - App-server diagnostics include start count and latest error in runtime status so resident failures are visible from the widget.
 - The chat renderer has a Playwright smoke for multi-turn layout, GFM tables, prompt resizing, and response action menu placement.
-- `npm run build` produces Windows MSI and NSIS installer bundles.
+- `npm run build` produces Windows MSI and NSIS installer bundles with a bundled daemon JS entry and bundled Node runtime, so the installed widget daemon does not require a user-installed `node` command.
 - The daemon keeps `codex exec resume` as a fallback runtime and supports mock/OAuth proxy streaming for non-Codex auth modes.
 - DOM and Vision modes have snapshot ingress; DOM has an unpacked browser extension bridge with icon assets and a generated zip package; Vision has a Windows capture helper and direct app-server image input; Terminal has one-shot command execution plus a persistent command session. OCR, browser store submission/native messaging, and true raw interactive PTY are still open.
 - Windows Tauri prerequisites are documented and verified on the local machine.
@@ -49,4 +49,5 @@ The primary user is a developer who wants a persistent desktop companion similar
 
 - `npm run dev` launches a native Tauri widget window.
 - The widget can send a prompt to the local daemon and receive streamed `message.delta` events.
+- Installed Windows builds include the daemon runtime resources needed to launch the local daemon.
 - The repository can be continued through the vibe-doctor Sprint process with initialized project context, roadmap, QA commands, and harness state.
