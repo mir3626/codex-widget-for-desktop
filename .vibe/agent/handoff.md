@@ -70,7 +70,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
   - `/pty start` starts a daemon-owned child shell in the configured Codex widget terminal workdir.
   - `/pty <command>` streams output and returns a markdown terminal-session result while preserving shell state between commands.
   - `/pty status` and `/pty stop` expose the session lifecycle.
-  - The implementation is command-oriented and not yet raw ConPTY/full-screen interactive terminal support.
+  - Direct `terminal.input` protocol messages now send live PTY text/key input and SGR mouse click/drag/wheel sequences without creating chat turns; idle PTY output is broadcast back as `terminal.output`.
 - Hardened the renderer chat layout:
   - Conversation messages now use explicit grid flow so user bubbles, assistant markdown, active streaming state, and skeletons stay in separate rows.
   - GFM tables use fixed full-width layout on wide viewports and contained horizontal scrolling on narrow widget widths.
@@ -112,6 +112,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
   - Terminal tool events now accumulate in a sticky, scrollable PTY surface instead of only appearing in the small Activity log.
   - PTY mode exposes icon-only quick actions for `/pty start`, `/pty status`, `/pty stop`, and local viewport clear.
   - PTY raw input/key requests now drain output for a short quiet window, and the Terminal viewport includes direct input controls for text, Enter, Tab, Escape, and Ctrl+C.
+  - PTY direct input now uses `terminal.input` instead of `/pty write` ask turns, keeps text/key controls available during active PTY work, and exposes a mouse-input toggle that forwards SGR click, release, drag, and wheel sequences.
   - Renderer chat smoke now verifies the PTY tab, terminal quick action request, terminal output rendering, viewport containment, and prompt/conversation separation.
 - Added `npm run smoke:release-msi-install` for MSI install/uninstall observation:
   - The smoke performs a silent MSI install into a per-user temp directory using `ALLUSERS=2 MSIINSTALLPERUSER=1`.
@@ -120,7 +121,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 
 ## Next Recommended Sprint
 
-`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with final browser store submission workflow, richer full-screen terminal mouse UX on top of the PTY viewport, an actual multi-hour soak run, and native packaging polish.
+`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with final browser store submission workflow, an actual multi-hour soak run, and native packaging polish.
 
 ## Open Issues
 
@@ -130,8 +131,8 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - OAuth refresh tokens are not persisted; users may need to sign in again when an access token expires.
 - Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge, local-only Options URL configuration, optional native messaging host, generated zip package, and store-readiness metadata; final browser store account submission remains manual.
 - Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, Settings/env/visual-drag configured crop, optional OCR command hook, bundled OCR runtime packaging, standard Windows Tesseract discovery, bundled tessdata language acquisition/defaults, OCR-only PNG preprocessing, image hash/change/diff metadata with configurable thresholding, and direct app-server image input.
-- Terminal/PTY provider now has a node-pty/ConPTY command/raw-input backend, short raw-input output drain, and a renderer PTY viewport with direct input controls, but richer full-screen mouse handling still needs product polish.
-- Final browser store account submission, richer full-screen terminal mouse UX, and an actual multi-hour/manual soak run remain open for live-service readiness.
+- Terminal/PTY provider now has a node-pty/ConPTY command/raw-input backend, short raw-input output drain, direct `terminal.input` text/key/mouse input, idle PTY output broadcast, and a renderer PTY viewport with direct input controls.
+- Final browser store account submission and an actual multi-hour/manual soak run remain open for live-service readiness.
 
 ## Verification
 

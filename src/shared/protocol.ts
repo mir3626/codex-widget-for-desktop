@@ -136,6 +136,12 @@ export type ClientMessage =
       crop?: ScreenCrop;
     }
   | {
+      type: "terminal.input";
+      id: string;
+      data: string;
+      label?: string;
+    }
+  | {
       type: "ping";
     }
   | {
@@ -229,6 +235,11 @@ export type ServerEvent =
       mode: "screen";
       state: "started" | "completed" | "error";
       message: string;
+    }
+  | {
+      type: "terminal.output";
+      id: string;
+      chunk: string;
     }
   | {
       type: "runtime.status";

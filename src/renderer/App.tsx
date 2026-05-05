@@ -15,6 +15,7 @@ import {
   LogOut,
   MessageSquarePlus,
   MoreHorizontal,
+  MousePointer2,
   Minus,
   Pin,
   PinOff,
@@ -35,6 +36,7 @@ import {
   KeyboardEvent,
   PointerEvent,
   ReactNode,
+  WheelEvent,
   isValidElement,
   useEffect,
   useMemo,
@@ -94,6 +96,8 @@ type TerminalLine = {
   kind: "command" | "output" | "system" | "error";
 };
 
+type TerminalKeyName = "enter" | "tab" | "escape" | "ctrl-c";
+
 type AssistantMessageStatus = "pending" | "thinking" | "tooling" | "streaming" | "typing" | "done" | "cancelled" | "error";
 
 type ChatMessage =
@@ -137,6 +141,7 @@ const DEFAULT_MASCOT_STAGE_HEIGHT = 126;
 const STREAM_TYPE_BASE_INTERVAL_MS = 18;
 const TERMINAL_LINE_LIMIT = 260;
 const TERMINAL_LINE_MAX_CHARS = 1800;
+const TERMINAL_MOUSE_DRAG_INTERVAL_MS = 28;
 
 const RESIZE_HANDLES: Array<{ direction: WidgetResizeDirection; className: string }> = [
   { direction: "North", className: "resize-n" },
@@ -211,6 +216,7 @@ export function App() {
   const [logLines, setLogLines] = useState<LogLine[]>([]);
   const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([]);
   const [terminalInput, setTerminalInput] = useState("");
+  const [terminalMouseEnabled, setTerminalMouseEnabled] = useState(false);
   const [screenCrop, setScreenCrop] = useState<ScreenCropSettings>(() => readStoredScreenCrop());
   const [screenCropPicker, setScreenCropPickerState] = useState<ScreenCropPickerState | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -562,6 +568,11 @@ export function App() {
 
     if (event.type === "provider.capture") {
       appendLog(event.message, event.state === "error" ? "error" : "tool");
+      return;
+    }
+
+    if (event.type === "terminal.output") {
+      appendTerminalOutput(event.id, event.chunk);
       return;
     }
 
@@ -1039,22 +1050,29 @@ export function App() {
     startAsk(command, "terminal");
   }
 
+  function sendTerminalRawInput(data: string, label: string) {
+    const id = crypto.randomUUID();
+    return send({
+      type: "terminal.input",
+      id,
+      data,
+      label
+    });
+  }
+
   function sendTerminalInput() {
     const text = terminalInput.trimEnd();
-    if (!text || activeId) {
+    if (!text) {
       return;
     }
 
-    if (startAsk(`/pty write ${encodeTerminalInput(text)}\\r`, "terminal")) {
+    if (sendTerminalRawInput(`${text}\r`, text)) {
       setTerminalInput("");
     }
   }
 
-  function sendTerminalKey(name: "enter" | "tab" | "escape" | "ctrl-c") {
-    if (activeId) {
-      return;
-    }
-    runTerminalQuickAction(`/pty key ${name}`);
+  function sendTerminalKey(name: TerminalKeyName) {
+    sendTerminalRawInput(terminalKeyToInput(name), terminalKeyToLabel(name));
   }
 
   function copyMessage(id: string, fallbackText: string) {
@@ -1875,6 +1893,9 @@ export function App() {
                 onInputChange={setTerminalInput}
                 onInputSubmit={sendTerminalInput}
                 onKeySend={sendTerminalKey}
+                mouseEnabled={terminalMouseEnabled}
+                onMouseEnabledChange={setTerminalMouseEnabled}
+                onMouseInput={(sequence, label) => sendTerminalRawInput(sequence, label)}
               />
             ) : null}
             {chatMessages.length === 0 && interactions.length === 0 && mode !== "terminal" ? (
@@ -2153,7 +2174,10 @@ type TerminalViewportProps = {
   inputValue: string;
   onInputChange: (value: string) => void;
   onInputSubmit: () => void;
-  onKeySend: (name: "enter" | "tab" | "escape" | "ctrl-c") => void;
+  onKeySend: (name: TerminalKeyName) => void;
+  mouseEnabled: boolean;
+  onMouseEnabledChange: (enabled: boolean) => void;
+  onMouseInput: (sequence: string, label: string) => void;
 };
 
 function TerminalViewport({
@@ -2167,9 +2191,13 @@ function TerminalViewport({
   inputValue,
   onInputChange,
   onInputSubmit,
-  onKeySend
+  onKeySend,
+  mouseEnabled,
+  onMouseEnabledChange,
+  onMouseInput
 }: TerminalViewportProps) {
   const outputRef = useRef<HTMLDivElement | null>(null);
+  const mouseDragRef = useRef<{ pointerId: number; buttonCode: number; col: number; row: number; sentAt: number } | null>(null);
   const providerState = providerStatus?.state ?? "unavailable";
   const providerDetail = providerStatus?.detail ?? "waiting";
 
@@ -2195,8 +2223,78 @@ function TerminalViewport({
     onInputSubmit();
   }
 
+  function sendTerminalMouseEvent(buttonCode: number, col: number, row: number, final: "M" | "m", label: string) {
+    onMouseInput(formatTerminalMouseSequence(buttonCode, col, row, final), label);
+  }
+
+  function beginTerminalMouse(event: PointerEvent<HTMLDivElement>) {
+    if (!mouseEnabled || event.button > 2) {
+      return;
+    }
+
+    event.preventDefault();
+    const point = readTerminalMouseCell(event.currentTarget, event.clientX, event.clientY);
+    const buttonCode = event.button;
+    mouseDragRef.current = { pointerId: event.pointerId, buttonCode, ...point, sentAt: Date.now() };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    sendTerminalMouseEvent(buttonCode, point.col, point.row, "M", "mouse press");
+  }
+
+  function moveTerminalMouse(event: PointerEvent<HTMLDivElement>) {
+    const drag = mouseDragRef.current;
+    if (!mouseEnabled || !drag || drag.pointerId !== event.pointerId || event.buttons === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    const point = readTerminalMouseCell(event.currentTarget, event.clientX, event.clientY);
+    const now = Date.now();
+    if (
+      point.col === drag.col &&
+      point.row === drag.row &&
+      now - drag.sentAt < TERMINAL_MOUSE_DRAG_INTERVAL_MS
+    ) {
+      return;
+    }
+
+    mouseDragRef.current = { ...drag, ...point, sentAt: now };
+    sendTerminalMouseEvent(32 + drag.buttonCode, point.col, point.row, "M", "mouse drag");
+  }
+
+  function finishTerminalMouse(event: PointerEvent<HTMLDivElement>) {
+    const drag = mouseDragRef.current;
+    if (!mouseEnabled || !drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    const point = readTerminalMouseCell(event.currentTarget, event.clientX, event.clientY);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    mouseDragRef.current = null;
+    sendTerminalMouseEvent(3, point.col, point.row, "m", "mouse release");
+  }
+
+  function wheelTerminalMouse(event: WheelEvent<HTMLDivElement>) {
+    if (!mouseEnabled) {
+      return;
+    }
+
+    event.preventDefault();
+    const point = readTerminalMouseCell(event.currentTarget, event.clientX, event.clientY);
+    sendTerminalMouseEvent(event.deltaY < 0 ? 64 : 65, point.col, point.row, "M", "mouse wheel");
+  }
+
   return (
-    <section className={busy ? "terminal-viewport is-live" : "terminal-viewport"} aria-label="Terminal viewport">
+    <section
+      className={[
+        "terminal-viewport",
+        busy ? "is-live" : "",
+        mouseEnabled ? "is-mouse-input" : ""
+      ].filter(Boolean).join(" ")}
+      aria-label="Terminal viewport"
+    >
       <div className="terminal-toolbar">
         <div className="terminal-title">
           <SquareTerminal size={14} />
@@ -2219,9 +2317,30 @@ function TerminalViewport({
           <button type="button" title="Clear" aria-label="Clear terminal viewport" onClick={onClear}>
             <Trash2 size={13} />
           </button>
+          <button
+            type="button"
+            className={mouseEnabled ? "is-active" : ""}
+            title={mouseEnabled ? "Mouse input on" : "Mouse input off"}
+            aria-label={mouseEnabled ? "Disable terminal mouse input" : "Enable terminal mouse input"}
+            aria-pressed={mouseEnabled}
+            onClick={() => onMouseEnabledChange(!mouseEnabled)}
+          >
+            <MousePointer2 size={13} />
+          </button>
         </div>
       </div>
-      <div ref={outputRef} className="terminal-output" role="log" aria-live="polite" aria-label="Terminal output">
+      <div
+        ref={outputRef}
+        className={mouseEnabled ? "terminal-output is-mouse-input" : "terminal-output"}
+        role="log"
+        aria-live="polite"
+        aria-label="Terminal output"
+        onPointerDown={beginTerminalMouse}
+        onPointerMove={moveTerminalMouse}
+        onPointerUp={finishTerminalMouse}
+        onPointerCancel={finishTerminalMouse}
+        onWheel={wheelTerminalMouse}
+      >
         {lines.length === 0 ? (
           <div className="terminal-empty">No terminal output</div>
         ) : (
@@ -2249,23 +2368,22 @@ function TerminalViewport({
           value={inputValue}
           placeholder="Send PTY input"
           aria-label="PTY text input"
-          disabled={busy}
           onChange={(event) => onInputChange(event.target.value)}
           onKeyDown={submitInputFromKey}
         />
-        <button type="button" title="Tab" aria-label="Send Tab key" disabled={busy} onClick={() => onKeySend("tab")}>
+        <button type="button" title="Tab" aria-label="Send Tab key" onClick={() => onKeySend("tab")}>
           Tab
         </button>
-        <button type="button" title="Escape" aria-label="Send Escape key" disabled={busy} onClick={() => onKeySend("escape")}>
+        <button type="button" title="Escape" aria-label="Send Escape key" onClick={() => onKeySend("escape")}>
           Esc
         </button>
-        <button type="button" title="Ctrl+C" aria-label="Send Ctrl+C" disabled={busy} onClick={() => onKeySend("ctrl-c")}>
+        <button type="button" title="Ctrl+C" aria-label="Send Ctrl+C" onClick={() => onKeySend("ctrl-c")}>
           <Ban size={12} />
         </button>
-        <button type="button" title="Enter" aria-label="Send Enter key" disabled={busy} onClick={() => onKeySend("enter")}>
+        <button type="button" title="Enter" aria-label="Send Enter key" onClick={() => onKeySend("enter")}>
           <CornerDownLeft size={12} />
         </button>
-        <button type="submit" title="Send input" aria-label="Send PTY text" disabled={busy || !inputValue.trim()}>
+        <button type="submit" title="Send input" aria-label="Send PTY text" disabled={!inputValue.trim()}>
           <Send size={12} />
         </button>
       </form>
@@ -2421,15 +2539,53 @@ function terminalLinePrefix(kind: TerminalLine["kind"]): string {
   return "|";
 }
 
-function encodeTerminalInput(text: string): string {
-  return text
-    .replace(/\\/g, "\\\\")
-    .replace(/\x1b/g, "\\e")
-    .replace(/\x03/g, "\\x03")
-    .replace(/\x04/g, "\\x04")
-    .replace(/\r/g, "\\r")
-    .replace(/\n/g, "\\n")
-    .replace(/\t/g, "\\t");
+function terminalKeyToInput(name: TerminalKeyName): string {
+  const inputs = {
+    enter: "\r",
+    tab: "\t",
+    escape: "\x1b",
+    "ctrl-c": "\x03"
+  } satisfies Record<TerminalKeyName, string>;
+  return inputs[name];
+}
+
+function terminalKeyToLabel(name: TerminalKeyName): string {
+  const labels = {
+    enter: "Enter",
+    tab: "Tab",
+    escape: "Escape",
+    "ctrl-c": "Ctrl+C"
+  } satisfies Record<TerminalKeyName, string>;
+  return labels[name];
+}
+
+function formatTerminalMouseSequence(buttonCode: number, col: number, row: number, final: "M" | "m"): string {
+  return `\x1b[<${buttonCode};${col};${row}${final}`;
+}
+
+function readTerminalMouseCell(element: HTMLElement, clientX: number, clientY: number): { col: number; row: number } {
+  const rect = element.getBoundingClientRect();
+  const style = window.getComputedStyle(element);
+  const paddingLeft = normalizeCssPixel(style.paddingLeft);
+  const paddingTop = normalizeCssPixel(style.paddingTop);
+  const paddingRight = normalizeCssPixel(style.paddingRight);
+  const paddingBottom = normalizeCssPixel(style.paddingBottom);
+  const fontSize = normalizeCssPixel(style.fontSize, 11.5);
+  const lineHeight = normalizeCssPixel(style.lineHeight, fontSize * 1.46);
+  const charWidth = Math.max(5, fontSize * 0.62);
+  const contentWidth = Math.max(charWidth, rect.width - paddingLeft - paddingRight);
+  const contentHeight = Math.max(lineHeight, rect.height - paddingTop - paddingBottom);
+  const x = Math.min(contentWidth - 1, Math.max(0, clientX - rect.left - paddingLeft));
+  const y = Math.min(contentHeight - 1, Math.max(0, clientY - rect.top - paddingTop));
+  return {
+    col: Math.min(400, Math.max(1, Math.floor(x / charWidth) + 1)),
+    row: Math.min(200, Math.max(1, Math.floor(y / lineHeight) + 1))
+  };
+}
+
+function normalizeCssPixel(value: string, fallback = 0): number {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function normalizeTerminalText(text: string): string {

@@ -34,6 +34,7 @@ class TerminalSession {
   private cwd = "";
   private pending: PendingCommand | undefined;
   private idleOutput: ((chunk: string) => void) | undefined;
+  private idleOutputSubscribers = new Set<(chunk: string) => void>();
 
   isRunning(): boolean {
     return Boolean(this.child?.isRunning());
@@ -120,6 +121,13 @@ class TerminalSession {
 
     this.child.write(data);
     return `Terminal input sent: ${label}`;
+  }
+
+  subscribeIdleOutput(listener: (chunk: string) => void): () => void {
+    this.idleOutputSubscribers.add(listener);
+    return () => {
+      this.idleOutputSubscribers.delete(listener);
+    };
   }
 
   async writeAndDrain(data: string, label: string, request: AgentRequest, emit: ToolEmitter, signal: AbortSignal): Promise<string> {
@@ -214,7 +222,13 @@ class TerminalSession {
   private handleOutput(chunk: string): void {
     const pending = this.pending;
     if (!pending) {
-      this.idleOutput?.(chunk);
+      if (this.idleOutput) {
+        this.idleOutput(chunk);
+        return;
+      }
+      for (const listener of this.idleOutputSubscribers) {
+        listener(chunk);
+      }
       return;
     }
 
@@ -264,6 +278,14 @@ class TerminalSession {
 }
 
 const terminalSession = new TerminalSession();
+
+export function writeTerminalSessionInput(data: string, label = "input"): string {
+  return terminalSession.write(data, label);
+}
+
+export function subscribeTerminalSessionOutput(listener: (chunk: string) => void): () => void {
+  return terminalSession.subscribeIdleOutput(listener);
+}
 
 export async function maybeRunTerminalSessionProvider(
   request: AgentRequest,

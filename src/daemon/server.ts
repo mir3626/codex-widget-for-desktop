@@ -6,6 +6,7 @@ import { resolveCodexExecutionContext } from "./codexRuntime.js";
 import { OAuthSession } from "./oauth.js";
 import { captureScreenSnapshot } from "./providers/screenCaptureProvider.js";
 import { ProviderRegistry, type ScreenSnapshot } from "./providers/providerRegistry.js";
+import { subscribeTerminalSessionOutput, writeTerminalSessionInput } from "./providers/terminalSessionProvider.js";
 import { getProviderStatuses } from "./tools.js";
 import type { ClientMessage, MessageSnapshotStatus, RuntimeStatus, ScreenCrop, ServerEvent } from "../shared/protocol.js";
 
@@ -37,6 +38,9 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
   const codexAppServer = new CodexAppServerBridge();
   const providers = new ProviderRegistry();
   const agentSession: AgentSessionState = {};
+  const unsubscribeTerminalOutput = subscribeTerminalSessionOutput((chunk) => {
+    broadcast(clients, { type: "terminal.output", id: "terminal-session", chunk });
+  });
   const onAuthChanged = () => {
     broadcast(clients, { type: "auth.status", auth: auth.getStatus() });
     syncCodexAppServer(auth, codexAppServer);
@@ -94,6 +98,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     port: getServerPort(server),
     close: async () => {
       clearInterval(runtimeStatusTimer);
+      unsubscribeTerminalOutput();
       await new Promise<void>((resolve, reject) => {
         for (const controller of controllers.values()) {
           controller.abort();
@@ -224,6 +229,22 @@ async function handleMessage(
 
   if (message.type === "provider.captureScreen") {
     void captureScreenFromHelper(message.description, message.crop, clients, daemonPort);
+    return;
+  }
+
+  if (message.type === "terminal.input") {
+    try {
+      if (typeof message.data !== "string" || message.data.length > 4096) {
+        throw new Error("Terminal input is invalid or too large.");
+      }
+      writeTerminalSessionInput(message.data, message.label?.trim() || "input");
+    } catch (error) {
+      send(socket, {
+        type: "error",
+        id: message.id,
+        message: error instanceof Error ? error.message : "Unable to send terminal input."
+      });
+    }
     return;
   }
 

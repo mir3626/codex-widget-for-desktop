@@ -70,6 +70,10 @@ daemon.on("connection", (socket) => {
   socket.on("message", (raw) => {
     const message = JSON.parse(raw.toString());
     clientMessages.push(message);
+    if (message.type === "terminal.input") {
+      streamTerminalInput(socket, message);
+      return;
+    }
     if (message.type !== "ask") {
       return;
     }
@@ -220,14 +224,35 @@ try {
   await page.getByLabel("PTY text input").fill("echo direct-input");
   await page.getByLabel("PTY text input").press("Enter");
   await waitUntil(
-    () => askMessages.some((message) => message.mode === "terminal" && message.text === "/pty write echo direct-input\\r"),
+    () => clientMessages.some((message) => message.type === "terminal.input" && message.data === "echo direct-input\r"),
     "Timed out waiting for terminal viewport raw input."
   );
-  await page.waitForFunction(() => document.querySelector(".terminal-viewport")?.textContent?.includes("echo direct-input"));
+  await page.waitForFunction(() => document.querySelector(".terminal-viewport")?.textContent?.includes("direct-input-output"));
   await page.getByLabel("Send Ctrl+C").click();
   await waitUntil(
-    () => askMessages.some((message) => message.mode === "terminal" && message.text === "/pty key ctrl-c"),
+    () => clientMessages.some((message) => message.type === "terminal.input" && message.data === "\u0003"),
     "Timed out waiting for terminal viewport Ctrl+C key input."
+  );
+  await page.getByLabel("Enable terminal mouse input").click();
+  const terminalOutput = page.locator(".terminal-output");
+  const outputBox = await terminalOutput.boundingBox();
+  if (!outputBox) {
+    throw new Error("Terminal output surface not found for mouse test.");
+  }
+  await terminalOutput.click({ position: { x: 82, y: 48 } });
+  await waitUntil(
+    () => clientMessages.some((message) => message.type === "terminal.input" && message.label === "mouse press" && /^\x1b\[<0;\d+;\d+M$/.test(message.data)),
+    "Timed out waiting for terminal mouse press input."
+  );
+  await waitUntil(
+    () => clientMessages.some((message) => message.type === "terminal.input" && message.label === "mouse release" && /^\x1b\[<3;\d+;\d+m$/.test(message.data)),
+    "Timed out waiting for terminal mouse release input."
+  );
+  await page.mouse.move(outputBox.x + 96, outputBox.y + 62);
+  await page.mouse.wheel(0, 80);
+  await waitUntil(
+    () => clientMessages.some((message) => message.type === "terminal.input" && message.label === "mouse wheel" && /^\x1b\[<65;\d+;\d+M$/.test(message.data)),
+    "Timed out waiting for terminal mouse wheel input."
   );
 
   console.log(`renderer chat layout smoke ok on vite ${baseUrl} daemon ${daemonPort}`);
@@ -277,6 +302,14 @@ function streamTerminal(socket, id, command) {
     socket.send(JSON.stringify({ type: "message.completed", id, text: answer }));
     socket.send(JSON.stringify({ type: "session.state", state: "idle", id }));
   }, 40);
+}
+
+function streamTerminalInput(socket, message) {
+  if (message.label?.startsWith("mouse")) {
+    return;
+  }
+  const label = message.label === "Ctrl+C" ? "ctrl-c" : message.label ?? "input";
+  socket.send(JSON.stringify({ type: "terminal.output", id: message.id, chunk: `direct-input-output ${label}\r\n` }));
 }
 
 async function assertNoMessageOverlap(page) {

@@ -1620,6 +1620,11 @@ body.is-resizing-prompt * {
   background: rgba(255, 255, 255, 0.08);
 }
 
+.terminal-actions button.is-active {
+  color: #e8fffb;
+  background: rgba(114, 205, 189, 0.18);
+}
+
 .terminal-actions button:active {
   transform: translateY(1px);
 }
@@ -1638,6 +1643,11 @@ body.is-resizing-prompt * {
   font-size: 11.5px;
   line-height: 1.46;
   scrollbar-gutter: stable;
+}
+
+.terminal-output.is-mouse-input {
+  user-select: none;
+  touch-action: none;
 }
 
 .terminal-line {
