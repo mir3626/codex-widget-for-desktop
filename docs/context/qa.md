@@ -33,6 +33,13 @@ Run this after packaged daemon bundle/runtime resource changes:
 npm run smoke:node-runtime
 ```
 
+Run this after a release build when bundle resource wiring changes:
+
+```powershell
+npm run build
+npm run smoke:release-resources
+```
+
 Run this after Tauri/Rust/native shell changes:
 
 ```powershell
@@ -80,3 +87,4 @@ npm run vibe:checkpoint
 - Packaged daemon restart backoff and child restart have Rust tests; end-to-end native crash/restart observation in an installed app is still manual.
 - Renderer-visible native daemon diagnostics are covered by type/build checks; installed-app restart UX screenshots are still manual.
 - Bundled Node runtime smoke verifies local daemon startup without repository `node_modules`; installed MSI/NSIS launch observation is still manual.
+- `npm run smoke:release-resources` verifies generated MSI/NSIS scripts include bundled daemon/runtime/provider resources, but it does not install and launch the artifacts.

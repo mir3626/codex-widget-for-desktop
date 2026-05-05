@@ -63,4 +63,5 @@ Evidence:
 - Runtime status exposes app-server start count and latest error in the widget settings panel.
 - `npm run smoke:tauri-supervisor` covers native supervisor restart backoff and actual child restart after exit.
 - `npm run smoke:node-runtime` verifies bundled Node can run the dependency-bundled daemon entry.
+- `npm run smoke:release-resources` verifies generated MSI/NSIS scripts include the bundled daemon/runtime and provider helper resources.
 - Native crash-recovery UX is surfaced through renderer diagnostics; installed-app observation and longer soak tests remain open.

@@ -82,6 +82,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Exposed native daemon supervisor diagnostics to the renderer via `get_native_daemon_status`; the widget status strip and Settings runtime grid can now show native daemon starting/running/restarting/error state even while the WebSocket is reconnecting.
 - Added packaged daemon runtime resources: `npm run build:web` now creates `dist/daemon-bundle/standalone.js`, prepares `dist/node-runtime/node.exe`, and Tauri bundles both directories so installed Windows builds do not depend on a user-installed `node` command for the widget daemon.
 - Added `npm run smoke:node-runtime` and included it in `npm run smoke:all` to verify the bundled Node runtime can run the dependency-bundled daemon without repository `node_modules`.
+- Added `npm run smoke:release-resources` to verify generated MSI/NSIS build scripts include the bundled daemon, Node runtime, screen helper, and DOM extension resources.
 
 ## Next Recommended Sprint
 
@@ -586,6 +587,7 @@ Completed after bundled daemon runtime pass:
 - `npm run smoke:all:live`
 - `npm run build`
 - `Select-String` over generated MSI/NSIS installer scripts confirmed `_up_\dist\daemon-bundle\standalone.js` and `_up_\dist\node-runtime\node.exe` are included.
+- `npm run smoke:release-resources`
 
 Completed latest release build after provider/runtime readiness passes:
 
@@ -620,10 +622,11 @@ Completed latest release build after persistent terminal session pass:
 14. Run `npm run smoke:resident` when resident lifecycle, daemon health, or resource behavior changes.
 15. Run `npm run smoke:tauri-supervisor` after Tauri/Rust daemon lifecycle changes.
 16. Run `npm run smoke:node-runtime` after daemon bundle, Node runtime resource, or Tauri resource packaging changes.
-17. Run `npm run smoke:dom` after browser/DOM provider ingress changes, `npm run smoke:extension` after browser extension or packaging changes, `npm run smoke:screen` after Vision provider changes, `npm run smoke:screen-capture:live` after daemon-triggered capture changes, `npm run smoke:screen-helper` after screen helper changes, `npm run smoke:terminal` after one-shot terminal provider changes, and `npm run smoke:terminal-session` after `/pty` session changes.
-18. DOM snapshot testing can use `providers/browser-dom-extension` as an unpacked Chrome/Edge extension or `docs/providers/dom-snapshot-bookmarklet.js` as a fallback against the local daemon on port `4128`.
-19. Screen snapshot testing can use `providers/screen-capture-helper/capture-screen.ps1` for live capture or `docs/providers/screen-snapshot-example.json` as the raw payload shape against `POST /providers/screen/snapshot`.
-20. Run `npm run build` before release checks; MSI/NSIS bundle creation is now part of the installability gate.
-21. Run `npm run vibe:checkpoint` before ending any follow-up maintenance session.
+17. Run `npm run smoke:release-resources` after `npm run build` when release bundle resources change.
+18. Run `npm run smoke:dom` after browser/DOM provider ingress changes, `npm run smoke:extension` after browser extension or packaging changes, `npm run smoke:screen` after Vision provider changes, `npm run smoke:screen-capture:live` after daemon-triggered capture changes, `npm run smoke:screen-helper` after screen helper changes, `npm run smoke:terminal` after one-shot terminal provider changes, and `npm run smoke:terminal-session` after `/pty` session changes.
+19. DOM snapshot testing can use `providers/browser-dom-extension` as an unpacked Chrome/Edge extension or `docs/providers/dom-snapshot-bookmarklet.js` as a fallback against the local daemon on port `4128`.
+20. Screen snapshot testing can use `providers/screen-capture-helper/capture-screen.ps1` for live capture or `docs/providers/screen-snapshot-example.json` as the raw payload shape against `POST /providers/screen/snapshot`.
+21. Run `npm run build` before release checks; MSI/NSIS bundle creation is now part of the installability gate.
+22. Run `npm run vibe:checkpoint` before ending any follow-up maintenance session.
 
 Use `docs/context/qa.md` for routine follow-up commands.
