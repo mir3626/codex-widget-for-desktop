@@ -54,6 +54,14 @@ The renderer keeps the visible chat timeline in localStorage, and the titlebar N
 
 For resident use, the widget hides to tray from the titlebar close button and can be restored or quit from the tray menu. The Settings button exposes Start at login, provider status, and daemon runtime health. On Windows, Start at login writes the current executable to the current user's `Run` registry key.
 
+DOM mode can receive the current browser page through the local daemon endpoint:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:4128/providers/dom/snapshot -ContentType application/json -Body '{"url":"https://example.com","title":"Example","selection":"selected text","text":"page text"}'
+```
+
+For browser testing, use [docs/providers/dom-snapshot-bookmarklet.js](docs/providers/dom-snapshot-bookmarklet.js) as a bookmarklet. Terminal mode executes only explicit commands, such as `/run Get-ChildItem`, `$ pwd`, or a fenced shell block. Destructive command patterns are blocked unless `CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE=1` is set.
+
 For backend OAuth proxy experiments, point the daemon at an OAuth provider and agent proxy before launch:
 
 ```powershell
@@ -85,6 +93,8 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run dev:auth-proxy`: start only the local development OAuth/proxy server on `127.0.0.1:8787`
 - `npm run build`: build the Tauri desktop app
 - `npm run smoke:resident`: run the idle resident daemon health/resource smoke
+- `npm run smoke:dom`: verify the local DOM snapshot provider ingress
+- `npm run smoke:terminal`: verify explicit terminal command execution
 - Production build output is written under `src-tauri/target/release/bundle/` as MSI and NSIS installer artifacts.
 - `npm run build:web`: compile the daemon and build the renderer without invoking Cargo
 - `npm run smoke`: build and verify the daemon WebSocket stream

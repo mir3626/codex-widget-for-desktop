@@ -60,3 +60,5 @@
 - 2026-05-05T13:27:48.676+09:00 [architecture][resident-ops] Added daemon `runtime.status` events, renderer Settings panel, Windows start-at-login native commands, skip-taskbar native config, and hide-to-tray titlebar close behavior.
 - 2026-05-05T13:27:48.676+09:00 [verification][resident-ops] Passed `npm run lint`, `npm run smoke`, `cargo fmt --check`, `cargo check --no-default-features`, renderer settings/runtime smoke, and `npm run build` producing release exe plus MSI/NSIS installer bundles.
 - 2026-05-05T13:27:48.676+09:00 [verification][resident-resource] Added `npm run smoke:resident` to validate idle daemon runtime health and RSS budget for resident mode.
+- 2026-05-05T13:40:26.991+09:00 [architecture][provider-shell] Added DOM snapshot ingress and explicit terminal command execution providers; DOM context now flows into model requests and terminal output streams through widget tool events.
+- 2026-05-05T13:40:26.991+09:00 [verification][provider-shell] Passed `npm run lint`, `npm run smoke`, `npm run smoke:dom`, `npm run smoke:terminal`, and `npm run smoke:resident`.

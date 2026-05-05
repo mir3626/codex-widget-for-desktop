@@ -4,6 +4,7 @@ import { daemonInfo, runAgentStream, type AgentSessionState } from "./agent.js";
 import { CodexAppServerBridge } from "./codexAppServer.js";
 import { resolveCodexExecutionContext } from "./codexRuntime.js";
 import { OAuthSession } from "./oauth.js";
+import { ProviderRegistry } from "./providers/providerRegistry.js";
 import { getProviderStatuses } from "./tools.js";
 import type { ClientMessage, RuntimeStatus, ServerEvent } from "../shared/protocol.js";
 
@@ -23,6 +24,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
   const startedAt = Date.now();
   const auth = new OAuthSession(() => (serverRef ? getServerPort(serverRef) : 0));
   const codexAppServer = new CodexAppServerBridge();
+  const providers = new ProviderRegistry();
   const agentSession: AgentSessionState = {};
   const onAuthChanged = () => {
     broadcast(clients, { type: "auth.status", auth: auth.getStatus() });
@@ -30,7 +32,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
   };
 
   const server = createServer((request, response) => {
-    void handleHttpRequest(request, response, auth, onAuthChanged);
+    void handleHttpRequest(request, response, auth, onAuthChanged, providers, clients);
   });
   serverRef = server;
   const wss = new WebSocketServer({ server });
@@ -39,12 +41,12 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     clients.add(socket);
     send(socket, { type: "connected", daemon: daemonInfo(getServerPort(server), auth.getStatus()) });
     send(socket, { type: "auth.status", auth: auth.getStatus() });
-    send(socket, { type: "provider.status", providers: getProviderStatuses() });
+    send(socket, { type: "provider.status", providers: getProviderStatuses(providers) });
     send(socket, { type: "runtime.status", status: readRuntimeStatus(startedAt, clients, controllers, codexAppServer) });
     send(socket, { type: "session.state", state: "idle" });
 
     socket.on("message", (raw) => {
-      void handleMessage(raw.toString(), socket, controllers, auth, clients, agentSession, codexAppServer);
+      void handleMessage(raw.toString(), socket, controllers, auth, clients, agentSession, codexAppServer, providers);
     });
 
     socket.on("close", () => {
@@ -103,7 +105,8 @@ async function handleMessage(
   auth: OAuthSession,
   clients: Set<WebSocket>,
   agentSession: AgentSessionState,
-  codexAppServer: CodexAppServerBridge
+  codexAppServer: CodexAppServerBridge,
+  providers: ProviderRegistry
 ): Promise<void> {
   let message: ClientMessage;
   try {
@@ -209,7 +212,8 @@ async function handleMessage(
     await runAgentStream(message, (event) => send(socket, event), controller.signal, {
       ...auth.getProxyCredentials(),
       session: agentSession,
-      codexAppServer
+      codexAppServer,
+      providers
     });
   } catch (error) {
     if (controller.signal.aborted) {
@@ -246,7 +250,9 @@ async function handleHttpRequest(
   request: IncomingMessage,
   response: ServerResponse,
   auth: OAuthSession,
-  onAuthChanged: () => void
+  onAuthChanged: () => void,
+  providers: ProviderRegistry,
+  clients: Set<WebSocket>
 ): Promise<void> {
   if (!request.url) {
     response.writeHead(404).end();
@@ -254,6 +260,17 @@ async function handleHttpRequest(
   }
 
   const url = new URL(request.url, `http://${request.headers.host ?? "127.0.0.1"}`);
+  if (request.method === "OPTIONS" && url.pathname === "/providers/dom/snapshot") {
+    response
+      .writeHead(204, {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        "Access-Control-Allow-Headers": "content-type"
+      })
+      .end();
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/oauth/token") {
     auth.writeTokenEntryResponse(response);
     return;
@@ -272,6 +289,25 @@ async function handleHttpRequest(
     } finally {
       onAuthChanged();
     }
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/providers/dom/snapshot") {
+    try {
+      const snapshot = providers.setDomSnapshot(JSON.parse(await readRequestBody(request)));
+      writeJsonResponse(response, 200, { ok: true, snapshot });
+      broadcast(clients, { type: "provider.status", providers: getProviderStatuses(providers) });
+    } catch (error) {
+      writeJsonResponse(response, 400, {
+        ok: false,
+        error: error instanceof Error ? error.message : "Invalid DOM snapshot."
+      });
+    }
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/providers/dom/snapshot") {
+    writeJsonResponse(response, 200, { ok: true, snapshot: providers.getDomSnapshot() });
     return;
   }
 
@@ -314,6 +350,17 @@ function broadcast(clients: Set<WebSocket>, event: ServerEvent): void {
   for (const client of clients) {
     send(client, event);
   }
+}
+
+function writeJsonResponse(response: ServerResponse, status: number, body: unknown): void {
+  response
+    .writeHead(status, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+      "Access-Control-Allow-Headers": "content-type"
+    })
+    .end(JSON.stringify(body));
 }
 
 function send(socket: WebSocket, event: ServerEvent): void {

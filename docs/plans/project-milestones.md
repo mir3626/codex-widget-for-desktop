@@ -29,11 +29,13 @@ Evidence:
 
 Goal: replace Agent/DOM/Vision/PTY stubs with real desktop/browser/terminal context providers that stream tool events through one widget protocol.
 
-Current progress: 0.16
+Current progress: 0.48
 
 Evidence:
 - Provider modes and tool-event rendering exist.
-- Browser DOM, screen vision, and PTY providers are still mostly stubs.
+- Browser DOM mode accepts live snapshots through the local daemon and injects them into model context.
+- Terminal/PTY mode executes explicit shell commands and streams output as tool events.
+- Screen vision provider is still a stub.
 
 ## resident-desktop-readiness
 

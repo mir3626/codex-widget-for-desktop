@@ -1,43 +1,16 @@
+import { ProviderRegistry, renderDomSnapshotToolOutput } from "./providers/providerRegistry.js";
 import type { ProviderStatus, ToolEmitter, WidgetMode } from "../shared/protocol.js";
 
-export function getProviderStatuses(): ProviderStatus[] {
-  return [
-    {
-      mode: "agent",
-      label: "Agent",
-      state: "ready",
-      detail: "Codex app-server runtime",
-      capabilities: ["streaming", "session", "approval"]
-    },
-    {
-      mode: "browser",
-      label: "DOM",
-      state: "stub",
-      detail: "Browser bridge pending",
-      capabilities: ["active-tab", "selection", "metadata"]
-    },
-    {
-      mode: "screen",
-      label: "Vision",
-      state: "stub",
-      detail: "Screen capture pending",
-      capabilities: ["capture", "crop", "diff"]
-    },
-    {
-      mode: "terminal",
-      label: "PTY",
-      state: "stub",
-      detail: "PTY provider pending",
-      capabilities: ["shell", "output", "cancel"]
-    }
-  ];
+export function getProviderStatuses(providers?: ProviderRegistry): ProviderStatus[] {
+  return providers?.getStatuses() ?? new ProviderRegistry().getStatuses();
 }
 
 export async function emitModePreview(
   id: string,
   mode: WidgetMode,
   emit: ToolEmitter,
-  signal: AbortSignal
+  signal: AbortSignal,
+  providers?: ProviderRegistry
 ): Promise<void> {
   if (mode === "agent") {
     return;
@@ -57,11 +30,11 @@ export async function emitModePreview(
 
   const messageByMode: Record<Exclude<WidgetMode, "agent">, string> = {
     browser:
-      "Browser provider stub is ready. Next step: attach a Chrome extension bridge for DOM selection and active-tab context.",
+      renderDomSnapshotToolOutput(providers?.getDomSnapshot() ?? null),
     screen:
       "Screen provider stub is ready. Next step: wire Windows Graphics Capture, crop/diff, and vision input.",
     terminal:
-      "Terminal provider stub is ready. Next step: attach ConPTY/node-pty and stream shell output into the same session."
+      "Terminal provider is ready. Use `/run <command>`, `$ <command>`, or a fenced shell block to execute an explicit command."
   };
 
   const tool = toolNameByMode[mode];

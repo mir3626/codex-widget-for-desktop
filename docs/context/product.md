@@ -18,10 +18,12 @@ The primary user is a developer who wants a persistent desktop companion similar
 - App-server approval and user-input requests now surface as widget interaction cards, so the UI can participate in local file/tool flows instead of dropping those requests.
 - Visible chat history is persisted locally across renderer reloads and can be cleared with an explicit New chat reset that also resets daemon session state.
 - Mode tabs receive daemon-owned provider status, giving Agent, DOM, Vision, and PTY a stable contract before each provider becomes fully real.
+- DOM mode accepts live browser snapshots through `POST /providers/dom/snapshot` and injects that context into the model request.
+- Terminal/PTY mode executes explicit local shell commands and streams output as widget tool events.
 - Runtime health status is streamed from the daemon into the settings panel.
 - `npm run build` produces Windows MSI and NSIS installer bundles.
 - The daemon keeps `codex exec resume` as a fallback runtime and supports mock/OAuth proxy streaming for non-Codex auth modes.
-- Browser DOM, screen vision, and terminal PTY modes currently have provider stubs rather than real integrations.
+- Screen vision mode still has a provider stub; DOM has snapshot ingress and Terminal has explicit command execution.
 - Windows Tauri prerequisites are documented and verified on the local machine.
 
 ## Product Goals
@@ -31,7 +33,7 @@ The primary user is a developer who wants a persistent desktop companion similar
 - Avoid prompt-injecting one-shot CLI calls as the core architecture. The local daemon owns session state and talks to a background Codex runtime over a structured protocol.
 - Keep the renderer-daemon protocol explicit enough that future DOM, screen, terminal, approval, and provider features can be added without patching ad hoc UI state.
 - Keep end-user auth in OAuth and keep OpenAI/API credentials behind a backend proxy.
-- Add real providers incrementally: browser DOM bridge, controlled browser automation, screen capture/vision, and terminal PTY.
+- Add real providers incrementally: controlled browser automation, screen capture/vision, and deeper interactive PTY.
 
 ## Non-goals
 

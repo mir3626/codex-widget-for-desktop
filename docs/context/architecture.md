@@ -23,6 +23,7 @@ Local daemon
   - codex exec resume fallback for app-server startup failures or explicit exec mode
   - OAuth proxy streaming or mock streaming fallback for non-Codex auth modes
   - provider status registry for agent, browser, screen, and terminal modes
+  - DOM snapshot ingress and terminal command provider
 
 Shared protocol
   - src/shared/protocol.ts
@@ -75,8 +76,14 @@ Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only sta
 - Approval policy: `CODEX_WIDGET_CODEX_APPROVAL_POLICY=on-request` is the default so app-server command/file/user-input requests can surface in the widget instead of being silently declined. Set it to `never` only for trusted automation experiments.
 - Interaction model: app-server server requests become `interaction.required` events. The renderer shows compact approval/input cards and returns `interaction.respond` messages to the daemon.
 - Reset model: `session.reset` clears the renderer-visible chat, local persistence, proxy session id, and app-server thread id. The next prompt starts a fresh Codex thread.
-- Provider status model: daemon emits `provider.status` after connection so each mode tab has a stable capability/status surface before the real DOM, Vision, and PTY providers are implemented.
+- Provider status model: daemon emits `provider.status` after connection so each mode tab has a stable capability/status surface. DOM becomes ready after a browser snapshot is posted; terminal is ready by default.
 - Runtime health model: daemon emits `runtime.status` on connection and periodically after that. The renderer settings panel displays daemon uptime, client count, active request count, and app-server state.
+
+## Provider Boundary
+
+- DOM provider: external browser tooling can `POST /providers/dom/snapshot` to the local daemon with `{ url, title, selection, text }`. The latest snapshot is surfaced as a tool event in Browser/DOM mode and injected into the model request context.
+- Terminal provider: Terminal/PTY mode executes explicit commands only (`/run`, `$`, `PS>`, `run:`, or fenced shell blocks). Output streams as `tool.output` and is summarized into the assistant response. Destructive command patterns are blocked unless `CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE=1`.
+- Screen/Vision provider remains pending.
 
 ## Resident Desktop Boundary
 

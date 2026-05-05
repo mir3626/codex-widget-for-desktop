@@ -49,6 +49,10 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added resident desktop operations: runtime health events, Settings panel, Windows start-at-login toggle, skip-taskbar native config, hide-to-tray close behavior, and a strengthened smoke gate for provider/runtime events.
 - Added `npm run smoke:resident` for idle daemon health and RSS budget checks.
 - Fixed production bundling by adding `icons/icon.ico` to the Tauri bundle icon list; `npm run build` now produces release exe, MSI, and NSIS installer artifacts.
+- Added real provider shell functionality for Iteration 2:
+  - DOM mode accepts browser/page snapshots at `POST /providers/dom/snapshot`, updates provider readiness, emits DOM snapshot tool output, and injects the latest DOM context into model requests.
+  - Terminal/PTY mode executes explicit local commands (`/run`, `$`, `PS>`, `run:`, or fenced shell blocks), streams stdout/stderr as tool output, blocks dangerous command patterns by default, and returns a markdown terminal result.
+- Added `docs/providers/dom-snapshot-bookmarklet.js`, `npm run smoke:dom`, and `npm run smoke:terminal`.
 
 ## Next Recommended Sprint
 
@@ -63,7 +67,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Browser DOM provider is a stub.
 - Screen capture/vision provider is a stub.
 - Terminal PTY provider is a stub.
-- Real DOM/Vision/PTY providers, crash recovery polish, and long-run resource budget gates remain open for live-service readiness.
+- Screen/Vision provider, packaged browser extension, deeper interactive PTY, crash recovery polish, and longer soak tests remain open for live-service readiness.
 
 ## Verification
 
@@ -427,6 +431,18 @@ Completed after resident desktop ops pass:
   - `src-tauri/target/release/bundle/msi/Codex Widget_0.1.0_x64_en-US.msi`
   - `src-tauri/target/release/bundle/nsis/Codex Widget_0.1.0_x64-setup.exe`
 
+Completed after DOM/Terminal provider shell pass:
+
+- `npm run lint`
+- `npm run smoke`
+- `npm run smoke:dom`
+- `npm run smoke:terminal`
+- `npm run smoke:resident`
+- `node --check scripts/smoke-dom-provider.mjs`
+- `node --check scripts/smoke-terminal.mjs`
+- `node --check src/daemon/providers/providerRegistry.ts`
+- `node --check src/daemon/providers/terminalProvider.ts`
+
 ## Restart Steps
 
 1. Run `git status --short --untracked-files=all` and inspect the sync diff.
@@ -443,7 +459,9 @@ Completed after resident desktop ops pass:
 12. Renderer visible chat persists under `codex-widget-chat-messages:v1`; use the titlebar New chat control or `session.reset` protocol event to clear both UI and daemon session state.
 13. The titlebar close button hides the widget to tray; use tray Quit to exit the resident app.
 14. Run `npm run smoke:resident` when resident lifecycle, daemon health, or resource behavior changes.
-15. Run `npm run build` before release checks; MSI/NSIS bundle creation is now part of the installability gate.
-16. Run `npm run vibe:checkpoint` before ending any follow-up maintenance session.
+15. Run `npm run smoke:dom` after browser/DOM provider changes and `npm run smoke:terminal` after terminal provider changes.
+16. DOM snapshot testing can use `docs/providers/dom-snapshot-bookmarklet.js` against the local daemon on port `4128`.
+17. Run `npm run build` before release checks; MSI/NSIS bundle creation is now part of the installability gate.
+18. Run `npm run vibe:checkpoint` before ending any follow-up maintenance session.
 
 Use `docs/context/qa.md` for routine follow-up commands.

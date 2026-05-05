@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { CodexAppServerBridge } from "./codexAppServer.js";
 import { spawnCodex } from "./codexCli.js";
+import { augmentRequestWithProviderContext, type ProviderRegistry } from "./providers/providerRegistry.js";
+import { maybeRunTerminalProvider } from "./providers/terminalProvider.js";
 import {
   buildCodexExecArgs,
   buildCodexWidgetPrompt,
@@ -35,6 +37,7 @@ export type AgentRuntimeOptions = {
   codexAuthenticated?: boolean;
   session?: AgentSessionState;
   codexAppServer?: CodexAppServerBridge;
+  providers?: ProviderRegistry;
 };
 
 export type AgentSessionState = {
@@ -49,22 +52,28 @@ export async function runAgentStream(
   options: AgentRuntimeOptions = {}
 ): Promise<void> {
   emit({ type: "session.state", state: "thinking", id: request.id });
-  await emitModePreview(request.id, request.mode, emit, signal);
+
+  if (await maybeRunTerminalProvider(request, emit, signal)) {
+    return;
+  }
+
+  await emitModePreview(request.id, request.mode, emit, signal, options.providers);
   emit({ type: "session.state", state: "streaming", id: request.id });
+  const effectiveRequest = augmentRequestWithProviderContext(request, options.providers);
 
   if (options.codexAuthenticated) {
     if (shouldUseCodexAppServer(options.codexAppServer)) {
-      const handled = await tryStreamCodexAppServerResponse(request, emit, signal, options.codexAppServer);
+      const handled = await tryStreamCodexAppServerResponse(effectiveRequest, emit, signal, options.codexAppServer);
       if (handled) {
         return;
       }
     }
-    await streamCodexExecResponse(request, emit, signal, options.session);
+    await streamCodexExecResponse(effectiveRequest, emit, signal, options.session);
     return;
   }
 
   if (options.proxyUrl && options.accessToken) {
-    await streamOAuthProxyResponse(request, emit, signal, {
+    await streamOAuthProxyResponse(effectiveRequest, emit, signal, {
       proxyUrl: options.proxyUrl,
       accessToken: options.accessToken,
       session: options.session
@@ -72,7 +81,7 @@ export async function runAgentStream(
     return;
   }
 
-  await streamMockResponse(request, emit, signal);
+  await streamMockResponse(effectiveRequest, emit, signal);
 }
 
 async function tryStreamCodexAppServerResponse(
