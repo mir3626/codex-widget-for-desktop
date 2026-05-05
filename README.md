@@ -123,7 +123,7 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run smoke:release-msi-install`: run a Windows MSI silent install with a per-user test directory, launch the installed app hidden, verify the bundled daemon, silently uninstall, and check cleanup
 - `npm run release:verify`: run the full live release gate (`smoke:all:live`, build, release resource/launch/NSIS/MSI install smokes) and print artifact sizes
 - `npm run release:browser-store-packet`: generate `dist/browser-store-submission/codex-widget-dom-extension-<version>` with the extension zip, store listing, privacy copy, review notes, icons, native-host notes, and SHA-256 manifest
-- `npm run release:readiness`: audit the current release artifacts, browser-store package/submission packet metadata, and latest soak report; reports manual blockers for browser store submission and true multi-hour soak unless confirmed through env flags
+- `npm run release:readiness`: audit the current release artifacts, browser-store package/submission packet metadata, and latest soak report; reports browser store submission as the remaining manual blocker after the two-hour soak evidence is present
 - `npm run release:soak`: build the release app and run a longer hidden release-exe soak with runtime samples, ping/pong checks, daemon process detection, process-tree working-set limits, and a JSON report under `dist/reports`
 - `npm run smoke:release-soak`: run the same release-exe soak against an already-built release app; set `CODEX_WIDGET_RELEASE_SOAK_MS=7200000` and `CODEX_WIDGET_RELEASE_SOAK_REPORT` for the default two-hour manual evidence run
 - `npm run smoke:node-runtime`: verify the bundled Node runtime can run the bundled daemon without repository `node_modules`

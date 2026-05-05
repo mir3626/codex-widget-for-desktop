@@ -53,7 +53,7 @@ Evidence:
 - The Screen/Vision registry computes image hash/change/diff metadata with configurable thresholding so repeated and below-threshold captures can be treated as unchanged context.
 - `npm run build:ocr-runtime`, `npm run ocr:fetch-languages`, and `npm run smoke:ocr-runtime` package and verify a Tesseract-compatible OCR runtime resource slot for installed builds, including standard Windows install discovery, `CODEX_WIDGET_TESSERACT_SEARCH_ROOTS`, tessdata language acquisition/manifesting, and bundled `eng+kor` auto-selection when both language packs exist.
 - Terminal/PTY mode executes explicit shell commands, supports a persistent node-pty/ConPTY-backed `/pty` command/raw-input session, drains output after raw input/key writes, streams output as tool events, displays terminal output in a dedicated renderer viewport with direct input controls, and forwards live text/key/mouse input through direct `terminal.input` protocol messages.
-- Final browser store account submission and two-hour soak evidence remain open.
+- Final browser store account submission remains open; two-hour release soak evidence is recorded in `docs/reports/release-soak-2026-05-05-2h.md`.
 
 ## resident-desktop-readiness
 
@@ -81,4 +81,5 @@ Evidence:
 - `npm run release:verify` runs the full live release gate and reports release artifact sizes.
 - `npm run release:readiness` audits current release artifacts, browser store metadata/package/submission packet readiness, latest soak report evidence, and manual release blockers.
 - `npm run release:soak` builds the release app and runs a longer hidden release-exe soak with runtime samples, ping/pong health checks, daemon process detection, process-tree working-set limits, and JSON evidence report output for manual/multi-hour runs.
-- Native crash-recovery UX is surfaced through renderer diagnostics; a two-hour soak run remains open before final release.
+- A two-hour release soak passed on 2026-05-05 with 1,439 runtime samples, 3,587 pong responses, 358.5 MB ending working set, and -54.0 MB growth; evidence is recorded in `docs/reports/release-soak-2026-05-05-2h.md`.
+- Native crash-recovery UX is surfaced through renderer diagnostics; final browser store account submission remains open before final release.

@@ -125,7 +125,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 
 ## Next Recommended Sprint
 
-`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with final browser store account submission, an actual two-hour soak run, and native packaging polish.
+`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with final browser store account submission and native packaging polish.
 
 ## Open Issues
 
@@ -136,7 +136,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge, local-only Options URL configuration, optional native messaging host, generated zip package, store-readiness metadata, and generated submission packet; final browser store account submission remains manual.
 - Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, Settings/env/visual-drag configured crop, optional OCR command hook, bundled OCR runtime packaging, standard Windows Tesseract discovery, bundled tessdata language acquisition/defaults, OCR-only PNG preprocessing, image hash/change/diff metadata with configurable thresholding, and direct app-server image input.
 - Terminal/PTY provider now has a node-pty/ConPTY command/raw-input backend, short raw-input output drain, direct `terminal.input` text/key/mouse input, idle PTY output broadcast, and a renderer PTY viewport with direct input controls.
-- Final browser store account submission and an actual two-hour/manual soak run remain open for live-service readiness.
+- Final browser store account submission remains open for live-service readiness. The two-hour release soak passed on 2026-05-05 with evidence in `docs/reports/release-soak-2026-05-05-2h.md`.
 
 ## Verification
 
@@ -757,8 +757,8 @@ Completed after release readiness audit pass:
 
 - `node --check scripts/release-readiness.mjs`
 - `npm run release:readiness`
-- `node scripts/release-readiness.mjs --require-manual-gates` was run intentionally and failed as expected because browser store submission and a true multi-hour soak have not been confirmed.
-- Default readiness audit passed all automated checks and reported manual blockers for browser store submission and multi-hour soak.
+- `node scripts/release-readiness.mjs --require-manual-gates` was run intentionally and failed as expected at that time because browser store submission and a true multi-hour soak had not been confirmed.
+- Default readiness audit initially reported manual blockers for browser store submission and multi-hour soak. The 2026-05-05 two-hour soak later cleared the multi-hour blocker; browser store account submission remains manual.
 
 Completed after OCR preprocessing pass:
 
