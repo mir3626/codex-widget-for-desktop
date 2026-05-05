@@ -16,11 +16,13 @@ import {
   Minus,
   Pin,
   PinOff,
+  Play,
   RotateCw,
   Send,
   Settings,
   Square,
   SquareTerminal,
+  Trash2,
   Volume2,
   X
 } from "lucide-react";
@@ -82,6 +84,12 @@ type LogLine = {
   tone: "muted" | "tool" | "error";
 };
 
+type TerminalLine = {
+  id: string;
+  text: string;
+  kind: "command" | "output" | "system" | "error";
+};
+
 type AssistantMessageStatus = "pending" | "thinking" | "tooling" | "streaming" | "typing" | "done" | "cancelled" | "error";
 
 type ChatMessage =
@@ -118,6 +126,8 @@ const PROMPT_COMPOSER_RESERVED_ROWS_HEIGHT = 210;
 const PROMPT_COMPOSER_MIN_CONVERSATION_HEIGHT = 48;
 const DEFAULT_MASCOT_STAGE_HEIGHT = 126;
 const STREAM_TYPE_BASE_INTERVAL_MS = 18;
+const TERMINAL_LINE_LIMIT = 260;
+const TERMINAL_LINE_MAX_CHARS = 1800;
 
 const RESIZE_HANDLES: Array<{ direction: WidgetResizeDirection; className: string }> = [
   { direction: "North", className: "resize-n" },
@@ -181,6 +191,7 @@ export function App() {
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [branchContext, setBranchContext] = useState<BranchContextMessage[] | null>(() => readStoredBranchContext());
   const [logLines, setLogLines] = useState<LogLine[]>([]);
+  const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showTokenForm, setShowTokenForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -199,6 +210,9 @@ export function App() {
   const branchContextRef = useRef<BranchContextMessage[] | null>(branchContext);
   const streamBuffersRef = useRef<Map<string, string>>(new Map());
   const completedResponseIdsRef = useRef<Set<string>>(new Set());
+  const terminalRequestIdsRef = useRef<Set<string>>(new Set());
+  const terminalOutputRequestIdsRef = useRef<Set<string>>(new Set());
+  const terminalOutputOpenRef = useRef(false);
   const streamTypingTimerRef = useRef<number | null>(null);
   const speechRunIdRef = useRef(0);
   const promptInputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -409,11 +423,21 @@ export function App() {
         setActiveId(null);
         if (event.id) {
           markAssistantMessage(event.id, "cancelled");
+          if (terminalRequestIdsRef.current.has(event.id)) {
+            appendTerminalLine("system", "terminal request cancelled");
+            terminalRequestIdsRef.current.delete(event.id);
+            terminalOutputRequestIdsRef.current.delete(event.id);
+          }
         }
       } else if (event.state === "error") {
         setActiveId(null);
         if (event.id) {
           markAssistantMessage(event.id, "error");
+          if (terminalRequestIdsRef.current.has(event.id)) {
+            appendTerminalLine("error", "terminal request failed");
+            terminalRequestIdsRef.current.delete(event.id);
+            terminalOutputRequestIdsRef.current.delete(event.id);
+          }
         }
       } else if (event.id) {
         markAssistantMessage(event.id, event.state === "tooling" ? "tooling" : event.state === "thinking" ? "thinking" : "streaming");
@@ -428,6 +452,7 @@ export function App() {
 
     if (event.type === "message.completed") {
       completeAssistantMessage(event.id, event.text);
+      completeTerminalRequest(event.id, event.text);
       setActiveId(null);
       return;
     }
@@ -439,17 +464,27 @@ export function App() {
 
     if (event.type === "tool.started") {
       markAssistantMessage(event.id, "tooling");
+      if (isTerminalToolEvent(event.tool)) {
+        registerTerminalRequest(event.id, event.label, false);
+        appendTerminalLine("system", `${terminalToolLabel(event.tool)} started`);
+      }
       appendLog(`${event.label}`, "tool");
       return;
     }
 
     if (event.type === "tool.output") {
+      if (isTerminalToolEvent(event.tool) || terminalRequestIdsRef.current.has(event.id)) {
+        appendTerminalOutput(event.id, event.chunk);
+      }
       appendLog(event.chunk, "muted");
       return;
     }
 
     if (event.type === "tool.completed") {
       markAssistantMessage(event.id, "streaming");
+      if (isTerminalToolEvent(event.tool) || terminalRequestIdsRef.current.has(event.id)) {
+        appendTerminalLine("system", `${terminalToolLabel(event.tool)} completed`);
+      }
       appendLog(`${event.tool} done`, "tool");
       return;
     }
@@ -493,6 +528,11 @@ export function App() {
     if (event.type === "error") {
       if (event.id) {
         markAssistantMessage(event.id, "error");
+        if (terminalRequestIdsRef.current.has(event.id)) {
+          appendTerminalLine("error", event.message);
+          terminalRequestIdsRef.current.delete(event.id);
+          terminalOutputRequestIdsRef.current.delete(event.id);
+        }
         setActiveId(null);
       }
       appendLog(event.message, "error");
@@ -627,6 +667,93 @@ export function App() {
     ]);
   }
 
+  function registerTerminalRequest(id: string, command: string, echoCommand = true) {
+    terminalRequestIdsRef.current.add(id);
+    terminalOutputRequestIdsRef.current.delete(id);
+    terminalOutputOpenRef.current = false;
+    if (echoCommand) {
+      appendTerminalLine("command", command);
+    }
+  }
+
+  function appendTerminalLine(kind: TerminalLine["kind"], text: string) {
+    const normalizedLines = normalizeTerminalText(text)
+      .split("\n")
+      .map((line) => clampTerminalLine(line))
+      .filter((line, index, lines) => line.length > 0 || index < lines.length - 1);
+
+    if (normalizedLines.length === 0) {
+      return;
+    }
+
+    terminalOutputOpenRef.current = false;
+    setTerminalLines((current) =>
+      limitTerminalLines([
+        ...current,
+        ...normalizedLines.map((line) => ({
+          id: crypto.randomUUID(),
+          text: line,
+          kind
+        }))
+      ])
+    );
+  }
+
+  function appendTerminalOutput(id: string, chunk: string) {
+    const normalized = normalizeTerminalText(chunk);
+    if (!normalized) {
+      return;
+    }
+
+    terminalOutputRequestIdsRef.current.add(id);
+    setTerminalLines((current) => {
+      const next = [...current];
+      const parts = normalized.split("\n");
+      const firstPart = clampTerminalLine(parts[0] ?? "");
+      if (terminalOutputOpenRef.current && next.length > 0 && next[next.length - 1].kind === "output") {
+        const last = next[next.length - 1];
+        next[next.length - 1] = {
+          ...last,
+          text: clampTerminalLine(`${last.text}${firstPart}`)
+        };
+      } else if (firstPart || parts.length > 1) {
+        next.push({ id: crypto.randomUUID(), text: firstPart, kind: "output" });
+      }
+
+      for (let index = 1; index < parts.length; index += 1) {
+        const text = clampTerminalLine(parts[index] ?? "");
+        if (text || index < parts.length - 1) {
+          next.push({ id: crypto.randomUUID(), text, kind: "output" });
+        }
+      }
+
+      terminalOutputOpenRef.current = !normalized.endsWith("\n");
+      return limitTerminalLines(next);
+    });
+  }
+
+  function completeTerminalRequest(id: string, text: string) {
+    if (!terminalRequestIdsRef.current.has(id)) {
+      return;
+    }
+
+    const sawOutput = terminalOutputRequestIdsRef.current.has(id);
+    const summary = summarizeTerminalCompletion(text, sawOutput);
+    if (summary) {
+      appendTerminalLine(sawOutput ? "system" : "output", summary);
+    }
+    terminalRequestIdsRef.current.delete(id);
+    terminalOutputRequestIdsRef.current.delete(id);
+    terminalOutputOpenRef.current = false;
+  }
+
+  function clearTerminalViewport() {
+    terminalOutputOpenRef.current = false;
+    terminalOutputRequestIdsRef.current.clear();
+    setTerminalLines([]);
+    appendLog("terminal cleared", "muted");
+  }
+
   function restoreMessageBuffers(messages: ChatMessage[]) {
     for (const message of messages) {
       if (message.role !== "assistant") {
@@ -659,6 +786,9 @@ export function App() {
     }
     streamBuffersRef.current.clear();
     completedResponseIdsRef.current.clear();
+    terminalRequestIdsRef.current.clear();
+    terminalOutputRequestIdsRef.current.clear();
+    terminalOutputOpenRef.current = false;
     setActiveId(null);
     setSpeakingMessageId(null);
     setOpenActionMenuId(null);
@@ -666,6 +796,7 @@ export function App() {
     setInteractionDrafts({});
     updateBranchContext(null);
     setChatMessages([]);
+    setTerminalLines([]);
     localStorage.removeItem(CHAT_STORAGE_KEY);
     if (sendToDaemon) {
       send({ type: "session.reset" });
@@ -705,8 +836,16 @@ export function App() {
   function submit(event: FormEvent) {
     event.preventDefault();
     const text = input.trim();
-    if (!text || activeId) {
+    if (!startAsk(text, mode)) {
       return;
+    }
+
+    setInput("");
+  }
+
+  function startAsk(text: string, requestMode: WidgetMode): boolean {
+    if (!text || activeId) {
+      return false;
     }
 
     const id = crypto.randomUUID();
@@ -724,19 +863,22 @@ export function App() {
     setActiveId(id);
     streamBuffersRef.current.set(id, "");
     completedResponseIdsRef.current.delete(id);
+    if (requestMode === "terminal") {
+      registerTerminalRequest(id, text);
+    }
     setChatMessages((current) => [...current, userMessage, assistantMessage]);
-    setInput("");
     const currentBranchContext = branchContextRef.current;
     send({
       type: "ask",
       id,
       text,
-      mode,
+      mode: requestMode,
       model: selectedModel,
       reasoningEffort,
       branchContext: currentBranchContext ?? undefined
     });
     updateBranchContext(null);
+    return true;
   }
 
   function submitFromPromptKey(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -763,6 +905,11 @@ export function App() {
       type: "provider.captureScreen",
       description: input.trim() || undefined
     });
+  }
+
+  function runTerminalQuickAction(command: string) {
+    setMode("terminal");
+    startAsk(command, "terminal");
   }
 
   function copyMessage(id: string, fallbackText: string) {
@@ -908,11 +1055,16 @@ export function App() {
     for (const removedId of removedAssistantIds) {
       streamBuffersRef.current.delete(removedId);
       completedResponseIdsRef.current.delete(removedId);
+      terminalRequestIdsRef.current.delete(removedId);
+      terminalOutputRequestIdsRef.current.delete(removedId);
     }
 
     setActiveId(nextId);
     streamBuffersRef.current.set(nextId, "");
     completedResponseIdsRef.current.delete(nextId);
+    if (mode === "terminal") {
+      registerTerminalRequest(nextId, userMessage.text);
+    }
     setOpenActionMenuId(null);
     if (speakingMessageId && removedAssistantIds.includes(speakingMessageId)) {
       stopReadAloud();
@@ -1279,6 +1431,7 @@ export function App() {
     [providerStatuses]
   );
   const activeProviderStatus = providerStatusByMode.get(mode);
+  const terminalProviderStatus = providerStatusByMode.get("terminal");
   const statusTone = connected ? (auth.authenticated ? "online" : "warning") : "offline";
   const displayStatus = connected ? status : formatNativeDaemonStatus(nativeDaemonStatus, status);
   const authLabel = auth.authenticated ? "Sign out" : "Sign in";
@@ -1533,7 +1686,18 @@ export function App() {
           </form>
         ) : (
           <section ref={conversationRef} className="conversation" aria-label="Conversation">
-            {chatMessages.length === 0 && interactions.length === 0 ? (
+            {mode === "terminal" ? (
+              <TerminalViewport
+                lines={terminalLines}
+                providerStatus={terminalProviderStatus}
+                busy={busy}
+                onStart={() => runTerminalQuickAction("/pty start")}
+                onStatus={() => runTerminalQuickAction("/pty status")}
+                onStop={() => runTerminalQuickAction("/pty stop")}
+                onClear={clearTerminalViewport}
+              />
+            ) : null}
+            {chatMessages.length === 0 && interactions.length === 0 && mode !== "terminal" ? (
               <div className="empty-state">
                 <span className="empty-icon">
                   <ActiveModeIcon size={20} />
@@ -1772,6 +1936,81 @@ export function App() {
   );
 }
 
+type TerminalViewportProps = {
+  lines: TerminalLine[];
+  providerStatus: ProviderStatus | undefined;
+  busy: boolean;
+  onStart: () => void;
+  onStatus: () => void;
+  onStop: () => void;
+  onClear: () => void;
+};
+
+function TerminalViewport({ lines, providerStatus, busy, onStart, onStatus, onStop, onClear }: TerminalViewportProps) {
+  const outputRef = useRef<HTMLDivElement | null>(null);
+  const providerState = providerStatus?.state ?? "unavailable";
+  const providerDetail = providerStatus?.detail ?? "waiting";
+
+  useEffect(() => {
+    const output = outputRef.current;
+    if (!output) {
+      return;
+    }
+    output.scrollTop = output.scrollHeight;
+  }, [lines, busy]);
+
+  return (
+    <section className={busy ? "terminal-viewport is-live" : "terminal-viewport"} aria-label="Terminal viewport">
+      <div className="terminal-toolbar">
+        <div className="terminal-title">
+          <SquareTerminal size={14} />
+          <strong>PTY</strong>
+          <span className={`terminal-state-dot ${providerState}`} aria-hidden="true" />
+          <span className="terminal-detail" title={providerDetail}>
+            {providerDetail}
+          </span>
+        </div>
+        <div className="terminal-actions" aria-label="Terminal actions">
+          <button type="button" title="Start" aria-label="Start terminal session" disabled={busy} onClick={onStart}>
+            <Play size={13} />
+          </button>
+          <button type="button" title="Status" aria-label="Show terminal status" disabled={busy} onClick={onStatus}>
+            <Activity size={13} />
+          </button>
+          <button type="button" title="Stop" aria-label="Stop terminal session" disabled={busy} onClick={onStop}>
+            <CircleStop size={13} />
+          </button>
+          <button type="button" title="Clear" aria-label="Clear terminal viewport" onClick={onClear}>
+            <Trash2 size={13} />
+          </button>
+        </div>
+      </div>
+      <div ref={outputRef} className="terminal-output" role="log" aria-live="polite" aria-label="Terminal output">
+        {lines.length === 0 ? (
+          <div className="terminal-empty">No terminal output</div>
+        ) : (
+          lines.map((line) => (
+            <div key={line.id} className={`terminal-line ${line.kind}`}>
+              <span className="terminal-prefix" aria-hidden="true">
+                {terminalLinePrefix(line.kind)}
+              </span>
+              <span className="terminal-line-text">{line.text || " "}</span>
+            </div>
+          ))
+        )}
+        {busy ? (
+          <div className="terminal-line system terminal-working">
+            <span className="terminal-prefix" aria-hidden="true">
+              *
+            </span>
+            <span className="terminal-line-text">working</span>
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 type MarkdownPreProps = ComponentPropsWithoutRef<"pre"> & {
   onCopyCode: (text: string) => void;
 };
@@ -1897,6 +2136,64 @@ function extractReactNodeText(node: ReactNode): string {
     return extractReactNodeText(node.props.children);
   }
   return "";
+}
+
+function isTerminalToolEvent(tool: string): boolean {
+  return tool === "terminal" || tool.startsWith("terminal:") || tool.startsWith("terminal-session:");
+}
+
+function terminalToolLabel(tool: string): string {
+  return tool.startsWith("terminal-session:") ? "pty" : "terminal";
+}
+
+function terminalLinePrefix(kind: TerminalLine["kind"]): string {
+  if (kind === "command") {
+    return ">";
+  }
+  if (kind === "error") {
+    return "!";
+  }
+  if (kind === "system") {
+    return "*";
+  }
+  return "|";
+}
+
+function normalizeTerminalText(text: string): string {
+  return text
+    .replace(/\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1b\\))/g, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+}
+
+function clampTerminalLine(text: string): string {
+  return text.length > TERMINAL_LINE_MAX_CHARS ? `${text.slice(0, TERMINAL_LINE_MAX_CHARS)}...` : text;
+}
+
+function limitTerminalLines(lines: TerminalLine[]): TerminalLine[] {
+  return lines.length > TERMINAL_LINE_LIMIT ? lines.slice(-TERMINAL_LINE_LIMIT) : lines;
+}
+
+function summarizeTerminalCompletion(markdown: string, sawOutput: boolean): string {
+  const cleaned = markdown
+    .replace(/```[\s\S]*?```/g, "\n")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/[*_~#>|]/g, " ")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (sawOutput) {
+    const statusLine = cleaned.find((line) => /\b(completed|exited with|blocked|stopped|timed out)\b/i.test(line));
+    return statusLine ? clampTerminalLine(statusLine) : "completed";
+  }
+
+  const summaryLine =
+    cleaned.find((line) => /\b(Terminal|PTY|session|started|running|stopped|resized|input sent|blocked|No output)\b/i.test(line)) ??
+    cleaned[0] ??
+    "";
+  return clampTerminalLine(summaryLine);
 }
 
 function createSpeechText(markdown: string): string {

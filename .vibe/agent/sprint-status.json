@@ -34,10 +34,12 @@
   ],
   "handoff": {
     "currentSprintId": "idle",
-    "lastActionSummary": "Tauri desktop widget MVP is running; vibe-doctor v1.7.2 harness is installed and verified for future sprint development.",
+    "lastActionSummary": "Iteration 2 runtime/provider work is active: app-server runtime, DOM/Vision ingress, node-pty PTY sessions, bundled runtime resources, and the renderer PTY viewport are implemented with smoke/release-install coverage.",
     "openIssues": [
-      "OAuth/backend proxy architecture is not implemented yet.",
-      "Browser DOM, screen vision, and terminal PTY providers are stubs."
+      "Codex app-server protocol remains experimental; keep exec fallback.",
+      "Final browser store account submission remains manual.",
+      "Higher-quality OCR runtime acquisition defaults are still operator-configured.",
+      "Richer terminal key/mouse UX and multi-hour/manual soak coverage remain open."
     ],
     "orchestratorContextBudget": "medium",
     "preferencesActive": [
@@ -46,12 +48,12 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-04T04:25:52.000Z"
+    "updatedAt": "2026-05-05T21:40:00.000+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-04T04:25:52.000Z",
-  "verifiedAt": "2026-05-04T04:25:52.000Z"
+  "stateUpdatedAt": "2026-05-05T21:40:00.000+09:00",
+  "verifiedAt": "2026-05-05T21:40:00.000+09:00"
 }

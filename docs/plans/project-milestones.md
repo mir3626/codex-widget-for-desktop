@@ -49,8 +49,8 @@ Evidence:
 - Screen/Vision mode accepts live snapshots through the local daemon, injects description/OCR context into model requests, and attaches image data to app-server Vision turns.
 - A Windows PowerShell helper captures the virtual desktop as compressed JPEG data, can run a local OCR command, bundled Tesseract runtime, or auto-detected `tesseract`, and posts the result to the Screen/Vision endpoint; the widget can trigger that helper through the daemon protocol.
 - `npm run build:ocr-runtime` and `npm run smoke:ocr-runtime` package and verify a Tesseract-compatible OCR runtime resource slot for installed builds.
-- Terminal/PTY mode executes explicit shell commands, supports a persistent node-pty/ConPTY-backed `/pty` command/raw-input session, and streams output as tool events.
-- Final browser store account submission, higher-quality OCR runtime acquisition defaults, and a dedicated terminal-emulator viewport remain open.
+- Terminal/PTY mode executes explicit shell commands, supports a persistent node-pty/ConPTY-backed `/pty` command/raw-input session, streams output as tool events, and displays terminal output in a dedicated renderer viewport.
+- Final browser store account submission, higher-quality OCR runtime acquisition defaults, and richer terminal key/mouse UX remain open.
 
 ## resident-desktop-readiness
 

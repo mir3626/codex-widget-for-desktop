@@ -102,10 +102,14 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
   - `npm run build:pty-runtime` prepares `dist/pty-runtime` with native node-pty resources, and Tauri bundles it for installed builds.
   - `/pty` sessions prefer node-pty/ConPTY, keep the stdio shell fallback via `CODEX_WIDGET_TERMINAL_BACKEND=pipe`, and support `/pty resize`, `/pty write`, and `/pty key` raw-input commands in addition to command execution.
   - `npm run smoke:pty-runtime` and the existing terminal-session smoke cover packaged native PTY loading and the node-pty backend.
+- Added a dedicated renderer PTY viewport for Terminal mode:
+  - Terminal tool events now accumulate in a sticky, scrollable PTY surface instead of only appearing in the small Activity log.
+  - PTY mode exposes icon-only quick actions for `/pty start`, `/pty status`, `/pty stop`, and local viewport clear.
+  - Renderer chat smoke now verifies the PTY tab, terminal quick action request, terminal output rendering, viewport containment, and prompt/conversation separation.
 
 ## Next Recommended Sprint
 
-`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with OCR runtime acquisition defaults, final browser store submission workflow, a dedicated terminal-emulator viewport on top of node-pty, and native packaging polish.
+`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with OCR runtime acquisition defaults, final browser store submission workflow, richer terminal key/mouse UX on top of the PTY viewport, and native packaging polish.
 
 ## Open Issues
 
@@ -115,8 +119,8 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - OAuth refresh tokens are not persisted; users may need to sign in again when an access token expires.
 - Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge, local-only Options URL configuration, optional native messaging host, generated zip package, and store-readiness metadata; final browser store account submission remains manual.
 - Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, optional OCR command hook, bundled OCR runtime packaging, and direct app-server image input; release-operator acquisition of a high-quality OCR runtime/model is still configurable rather than automatic.
-- Terminal/PTY provider now has a node-pty/ConPTY command/raw-input backend, but the renderer still lacks a dedicated terminal-emulator viewport and richer key/mouse handling.
-- Final browser store account submission, higher-quality OCR runtime acquisition defaults, terminal-emulator UI, MSI install/uninstall observation, and multi-hour/manual soak tests remain open for live-service readiness.
+- Terminal/PTY provider now has a node-pty/ConPTY command/raw-input backend and a renderer PTY viewport, but richer key/mouse handling still needs product polish.
+- Final browser store account submission, higher-quality OCR runtime acquisition defaults, richer terminal key/mouse UX, MSI install/uninstall observation, and multi-hour/manual soak tests remain open for live-service readiness.
 
 ## Verification
 
@@ -669,6 +673,17 @@ Completed after native PTY runtime pass:
 - Terminal session smoke now verifies `/pty resize` and the node-pty backend when `CODEX_WIDGET_TERMINAL_BACKEND` is not forced to `pipe`.
 - Release resource/install smokes now verify `_up_/dist/pty-runtime/pty-runtime.json` and `_up_/dist/pty-runtime/node_modules/node-pty/package.json` are bundled and installed.
 
+Completed after renderer PTY viewport pass:
+
+- `npm run lint`
+- `node --check scripts/smoke-renderer-chat-layout.mjs`
+- `npm run smoke:renderer-chat`
+- `npm run smoke:all`
+- `npm run build`
+- `npm run smoke:release-resources`
+- `npm run smoke:release-install`
+- Renderer chat smoke now covers the PTY tab, terminal quick action request, terminal output rendering, terminal viewport containment, and prompt/conversation separation.
+
 Completed after renderer chat layout hardening:
 
 - `npm run lint`
@@ -750,6 +765,13 @@ Completed latest release build after native PTY runtime pass:
 - `src-tauri/target/release/bundle/msi/Codex Widget_0.1.0_x64_en-US.msi` (39,497,728 bytes)
 - `src-tauri/target/release/bundle/nsis/Codex Widget_0.1.0_x64-setup.exe` (26,760,198 bytes)
 - Release bundles include `_up_/dist/pty-runtime/pty-runtime.json` and `_up_/dist/pty-runtime/node_modules/node-pty/package.json`.
+
+Completed latest release build after renderer PTY viewport pass:
+
+- `npm run build`
+- `src-tauri/target/release/codex-widget-for-desktop.exe` (10,314,752 bytes)
+- `src-tauri/target/release/bundle/msi/Codex Widget_0.1.0_x64_en-US.msi` (39,501,824 bytes)
+- `src-tauri/target/release/bundle/nsis/Codex Widget_0.1.0_x64-setup.exe` (26,760,706 bytes)
 
 ## Restart Steps
 

@@ -100,7 +100,7 @@ npm run vibe:checkpoint
 - Renderer chat layout has a browser smoke, but native transparent-window screenshots are still manual.
 - Browser DOM provider is snapshot-based and has an unpacked extension, a generated zip package, an optional Chrome/Edge native messaging host, and store submission metadata/readiness smoke; actual browser store account submission is still manual.
 - Screen/Vision provider is snapshot-based and has a Windows capture helper, optional local OCR command hook, bundled OCR runtime packaging, and app-server image input; higher-quality OCR engine acquisition/model selection is still release-operator controlled.
-- Terminal provider supports explicit one-shot commands and a persistent node-pty/ConPTY command session through `/pty`, including resize/raw-input commands; a dedicated terminal-emulator viewport is still not implemented.
+- Terminal provider supports explicit one-shot commands, a persistent node-pty/ConPTY command session through `/pty`, resize/raw-input commands, and a renderer PTY viewport; richer key/mouse handling remains open.
 - OAuth proxy live streaming requires an auth/proxy service and is not covered by CI-like smoke tests.
 - Packaged daemon restart backoff and child restart have Rust tests; installed-app daemon restart and app-kill orphan cleanup are covered by the NSIS release install smoke.
 - Renderer-visible native daemon diagnostics are covered by type/build checks; installed-app restart UX screenshots are still manual.

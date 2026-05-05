@@ -75,6 +75,11 @@ daemon.on("connection", (socket) => {
     }
 
     askMessages.push(message);
+    if (message.mode === "terminal") {
+      streamTerminal(socket, message.id, message.text);
+      return;
+    }
+
     requestCount += 1;
     const answer = requestCount === 1 ? firstAnswer : requestCount === 2 ? secondAnswer : thirdAnswer;
     streamAnswer(socket, message.id, answer);
@@ -164,6 +169,16 @@ try {
     throw new Error(`Branch context should be one-shot, saw: ${JSON.stringify(askMessages[5])}`);
   }
 
+  await page.getByRole("button", { name: "PTY" }).click();
+  await page.getByLabel("Start terminal session").click();
+  await waitUntil(
+    () => askMessages.some((message) => message.mode === "terminal" && message.text === "/pty start"),
+    "Timed out waiting for terminal quick action."
+  );
+  await page.waitForFunction(() => document.querySelector(".terminal-viewport")?.textContent?.includes("terminal-viewport-ok"));
+  await assertTerminalViewportStable(page);
+  await assertPromptDoesNotCoverConversation(page);
+
   console.log(`renderer chat layout smoke ok on vite ${baseUrl} daemon ${daemonPort}`);
 } finally {
   await browser.close();
@@ -178,6 +193,36 @@ function streamAnswer(socket, id, answer) {
   socket.send(JSON.stringify({ type: "message.delta", id, text: firstChunk }));
   setTimeout(() => {
     socket.send(JSON.stringify({ type: "message.delta", id, text: rest }));
+    socket.send(JSON.stringify({ type: "message.completed", id, text: answer }));
+    socket.send(JSON.stringify({ type: "session.state", state: "idle", id }));
+  }, 40);
+}
+
+function streamTerminal(socket, id, command) {
+  const tool = `terminal-session:${id}`;
+  const output = command === "/pty start"
+    ? "Terminal session started in C:\\\\Users\\\\Tony\\\\Workspace\\\\codex-widget-for-desktop (node-pty).\r\nterminal-viewport-ok\r\n"
+    : `terminal-viewport-ok ${command}\r\n`;
+  const answer = [
+    "### Terminal Session",
+    "",
+    "`completed` in `C:\\\\Users\\\\Tony\\\\Workspace\\\\codex-widget-for-desktop`",
+    "",
+    "#### Output",
+    "",
+    "```text",
+    output.trimEnd(),
+    "```"
+  ].join("\n");
+
+  socket.send(JSON.stringify({ type: "session.state", state: "tooling", id }));
+  socket.send(JSON.stringify({ type: "tool.started", id, tool, label: command }));
+  setTimeout(() => {
+    const split = Math.max(1, Math.floor(output.length / 2));
+    socket.send(JSON.stringify({ type: "tool.output", id, tool, chunk: output.slice(0, split) }));
+    socket.send(JSON.stringify({ type: "tool.output", id, tool, chunk: output.slice(split) }));
+    socket.send(JSON.stringify({ type: "tool.completed", id, tool }));
+    socket.send(JSON.stringify({ type: "message.delta", id, text: answer }));
     socket.send(JSON.stringify({ type: "message.completed", id, text: answer }));
     socket.send(JSON.stringify({ type: "session.state", state: "idle", id }));
   }, 40);
@@ -249,6 +294,30 @@ async function assertWideTableUsesContainer(page) {
   });
   if (Math.abs(result.scrollWidth - result.tableWidth) > 3) {
     throw new Error(`Wide table does not fill its container: ${JSON.stringify(result)}`);
+  }
+}
+
+async function assertTerminalViewportStable(page) {
+  const result = await page.evaluate(() => {
+    const terminal = document.querySelector(".terminal-viewport")?.getBoundingClientRect();
+    const conversation = document.querySelector(".conversation")?.getBoundingClientRect();
+    const output = document.querySelector(".terminal-output")?.getBoundingClientRect();
+    return {
+      terminalLeft: terminal?.left ?? 0,
+      terminalRight: terminal?.right ?? 0,
+      terminalHeight: terminal?.height ?? 0,
+      conversationLeft: conversation?.left ?? 0,
+      conversationRight: conversation?.right ?? 0,
+      outputHeight: output?.height ?? 0
+    };
+  });
+  if (
+    result.terminalHeight < 120 ||
+    result.outputHeight < 70 ||
+    result.terminalLeft < result.conversationLeft - 1 ||
+    result.terminalRight > result.conversationRight + 1
+  ) {
+    throw new Error(`Terminal viewport is not stable inside the conversation: ${JSON.stringify(result)}`);
   }
 }
 
