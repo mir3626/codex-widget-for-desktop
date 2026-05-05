@@ -4,7 +4,7 @@
 
 Goal: keep a small Tauri desktop widget resident on Windows with reliable window controls, prompt/chat UX, streaming Codex responses, session reset, and recoverable daemon lifecycle.
 
-Current progress: 0.84
+Current progress: 0.85
 
 Evidence:
 - Tauri shell, borderless resize, pin, opacity, mascot drag, and model/reasoning controls are implemented.
@@ -12,6 +12,7 @@ Evidence:
 - Default runtime now uses daemon-owned `codex app-server` with `exec` fallback.
 - Visible chat history persists locally across renderer reloads after Iteration 2 kickoff.
 - Multi-turn chat layout, GFM tables, prompt resizing, and response action menu placement are covered by a Playwright renderer smoke.
+- Response Branch is covered by the renderer smoke and now resets daemon runtime state before sending a one-shot branch seed with the next prompt.
 - The widget hides to tray, stays off the taskbar, and exposes resident settings.
 - Packaged Tauri builds now supervise the Node daemon and restart it after unexpected exits.
 - Native daemon supervisor diagnostics are visible in the renderer status strip and Settings runtime grid.
@@ -21,7 +22,7 @@ Evidence:
 
 Goal: use a long-lived Codex runtime boundary instead of prompt-injected one-shot calls, while preserving fallback and safe process cleanup.
 
-Current progress: 0.82
+Current progress: 0.84
 
 Evidence:
 - `CodexAppServerBridge` owns process startup, WebSocket JSON-RPC initialization, thread creation, turn streaming, interrupt, and shutdown.
@@ -31,12 +32,13 @@ Evidence:
 - The native Tauri shell supervises the daemon process with capped restart backoff and shutdown cleanup.
 - Renderer code can read native daemon state while WebSocket reconnect is in progress.
 - The native shell resolves bundled daemon/runtime resources before falling back to a system `node` command.
+- Response Branch uses `session.branch` plus one-shot `branchContext` so branch UI state and app-server/proxy session state do not silently diverge.
 
 ## real-tool-providers
 
 Goal: replace Agent/DOM/Vision/PTY stubs with real desktop/browser/terminal context providers that stream tool events through one widget protocol.
 
-Current progress: 0.76
+Current progress: 0.85
 
 Evidence:
 - Provider modes and tool-event rendering exist.
@@ -51,7 +53,7 @@ Evidence:
 
 Goal: make the widget practical as a daily resident desktop utility: tray/autostart, resource budget, crash recovery, and install/release checklist.
 
-Current progress: 0.82
+Current progress: 0.91
 
 Evidence:
 - Dev hot services, daemon lifecycle, tray menu, and start-at-login toggle exist.

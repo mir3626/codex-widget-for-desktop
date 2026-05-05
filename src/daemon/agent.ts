@@ -15,6 +15,7 @@ import {
   normalizeModelId,
   normalizeReasoningEffort,
   type AuthStatus,
+  type BranchContextMessage,
   type ModelId,
   type ReasoningEffort,
   type ServerEvent,
@@ -30,6 +31,7 @@ export type AgentRequest = {
   model?: ModelId;
   reasoningEffort?: ReasoningEffort;
   imageDataUrls?: string[];
+  branchContext?: BranchContextMessage[];
 };
 
 export type AgentRuntimeOptions = {
@@ -234,6 +236,8 @@ async function streamOAuthProxyResponse(
       reasoning_effort: selection.reasoningEffort,
       sessionId,
       session_id: sessionId,
+      branchContext: request.branchContext,
+      branch_context: request.branchContext,
       input: request.text,
       stream: true
     }),

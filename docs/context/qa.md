@@ -14,6 +14,8 @@ Run this after conversation layout, markdown/table rendering, prompt composer, o
 npm run smoke:renderer-chat
 ```
 
+This smoke also verifies response Branch behavior: the UI sends `session.branch`, the next prompt includes a one-shot `branchContext`, and subsequent branch prompts do not keep replaying that seed.
+
 Run this when changing the Windows screen capture helper and a desktop session is available:
 
 ```powershell

@@ -54,6 +54,8 @@ Dependencies: `CodexAppServerBridge`, shared `ServerEvent`/`ClientMessage`, rend
 
 Expected scope: shared protocol types, app-server approval/user-input bridge, renderer interaction cards, local chat persistence, `CODEX_WIDGET_CODEX_APPROVAL_POLICY` config.
 
+Status: app-server approval/input interactions, runtime diagnostics, local chat persistence, explicit New chat reset, app-server-backed regenerate rollback, and branch-safe `session.branch` plus one-shot `branchContext` are implemented with daemon and renderer smoke coverage.
+
 ### iter-2-sprint-02-tool-provider-shell
 
 Goal: promote DOM, Vision, and PTY modes from passive stubs to provider contracts with clear status, permission, and event surfaces.

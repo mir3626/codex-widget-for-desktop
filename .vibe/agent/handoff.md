@@ -94,6 +94,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added `providers/browser-native-host`, an optional Chrome/Edge native messaging host that receives framed `domSnapshot` messages, validates local daemon URLs, and posts snapshots to the local daemon. The browser extension now tries native messaging first and falls back to direct local HTTP when the host is not registered.
 - Added browser extension store-readiness metadata: `store-listing.md`, `privacy.md`, `review-notes.md`, and `npm run smoke:browser-store` for permission rationale/privacy/package validation.
 - Added `npm run release:soak`, a longer hidden release-exe soak that checks runtime samples, ping/pong health, daemon process presence, process-tree working set, and cleanup after the soak.
+- Made response Branch runtime-safe: Branch now sends `session.branch` to reset daemon-side proxy/app-server session state, stores the selected user/assistant pair as a one-shot `branchContext`, sends that seed with the next prompt only, and clears it after use so visible branch state does not keep running against hidden old app-server context.
 
 ## Next Recommended Sprint
 
@@ -604,6 +605,15 @@ Completed after release longer soak pass:
 - The release soak built the release app, launched the release exe hidden for 60 seconds, collected 13 runtime samples and 29 pong responses, detected the root app and daemon processes, and ended with a 463.6MB process-tree working set across 10 processes.
 - `npm run smoke:release-soak`
 - The standalone release soak smoke reused the current release build, collected 13 runtime samples and 29 pong responses, detected the root app and daemon processes, and ended with a 409.1MB process-tree working set across 9 processes.
+
+Completed after branch-safe runtime pass:
+
+- `npm run lint`
+- `npm run smoke`
+- `npm run smoke:renderer-chat`
+- `npm run smoke:screen`
+- `npm run smoke:all`
+- Daemon smoke now verifies `session.branch` does not broadcast a visible `session.reset`; renderer chat smoke verifies Branch sends `session.branch`, the next prompt includes one-shot `branchContext`, and the following branch prompt does not replay that seed.
 
 Completed after persistent terminal session pass:
 

@@ -4,6 +4,7 @@ import type { AgentRequest } from "./agent.js";
 import { spawnCodex } from "./codexCli.js";
 import {
   buildCodexWidgetDeveloperInstructions,
+  renderBranchContext,
   type AgentSelection,
   type CodexExecutionContext,
   terminateProcessTree
@@ -710,7 +711,12 @@ export function buildTurnInput(request: AgentRequest): AppServerUserInput[] {
   const input: AppServerUserInput[] = [
     {
       type: "text",
-      text: `[mode=${request.mode}] ${request.text}`,
+      text: [
+        `[mode=${request.mode}]`,
+        renderBranchContext(request.branchContext),
+        "User request:",
+        request.text
+      ].filter((part) => part !== "").join("\n"),
       text_elements: []
     }
   ];

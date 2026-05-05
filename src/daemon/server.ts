@@ -180,13 +180,14 @@ async function handleMessage(
   }
 
   if (message.type === "session.reset") {
-    for (const controller of controllers.values()) {
-      controller.abort();
-    }
-    controllers.clear();
-    resetAgentSession(agentSession);
-    codexAppServer.resetThread();
+    resetRuntimeSession(controllers, agentSession, codexAppServer);
     broadcast(clients, { type: "session.reset" });
+    broadcast(clients, { type: "session.state", state: "idle" });
+    return;
+  }
+
+  if (message.type === "session.branch") {
+    resetRuntimeSession(controllers, agentSession, codexAppServer);
     broadcast(clients, { type: "session.state", state: "idle" });
     return;
   }
@@ -272,6 +273,19 @@ async function captureScreenFromHelper(
 function resetAgentSession(agentSession: AgentSessionState): void {
   agentSession.codexThreadId = undefined;
   agentSession.proxySessionId = undefined;
+}
+
+function resetRuntimeSession(
+  controllers: Map<string, AbortController>,
+  agentSession: AgentSessionState,
+  codexAppServer: CodexAppServerBridge
+): void {
+  for (const controller of controllers.values()) {
+    controller.abort();
+  }
+  controllers.clear();
+  resetAgentSession(agentSession);
+  codexAppServer.resetThread();
 }
 
 function syncCodexAppServer(auth: OAuthSession, codexAppServer: CodexAppServerBridge): void {

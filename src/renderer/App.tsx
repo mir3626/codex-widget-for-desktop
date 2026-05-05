@@ -48,6 +48,7 @@ import {
   normalizeModelId,
   normalizeReasoningEffort,
   type AuthStatus,
+  type BranchContextMessage,
   type ClientMessage,
   type ModelId,
   type ProviderStatus,
@@ -107,6 +108,7 @@ const MODES: Array<{ mode: WidgetMode; label: string; icon: typeof Bot }> = [
 const MODEL_STORAGE_KEY = "codex-widget-model";
 const REASONING_STORAGE_KEY = "codex-widget-reasoning-effort";
 const CHAT_STORAGE_KEY = "codex-widget-chat-messages:v1";
+const BRANCH_CONTEXT_STORAGE_KEY = "codex-widget-branch-context:v1";
 const MIN_WINDOW_WIDTH = 320;
 const MIN_WINDOW_HEIGHT = 480;
 const PROMPT_COMPOSER_MIN_HEIGHT = 46;
@@ -176,6 +178,7 @@ export function App() {
   const [interactionDrafts, setInteractionDrafts] = useState<InteractionDrafts>({});
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  const [branchContext, setBranchContext] = useState<BranchContextMessage[] | null>(() => readStoredBranchContext());
   const [logLines, setLogLines] = useState<LogLine[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showTokenForm, setShowTokenForm] = useState(false);
@@ -192,6 +195,7 @@ export function App() {
   const socketRef = useRef<WebSocket | null>(null);
   const conversationRef = useRef<HTMLElement | null>(null);
   const chatMessagesRef = useRef<ChatMessage[]>([]);
+  const branchContextRef = useRef<BranchContextMessage[] | null>(branchContext);
   const streamBuffersRef = useRef<Map<string, string>>(new Map());
   const completedResponseIdsRef = useRef<Set<string>>(new Set());
   const streamTypingTimerRef = useRef<number | null>(null);
@@ -324,6 +328,11 @@ export function App() {
     chatMessagesRef.current = chatMessages;
     persistChatMessages(chatMessages);
   }, [chatMessages]);
+
+  useEffect(() => {
+    branchContextRef.current = branchContext;
+    persistBranchContext(branchContext);
+  }, [branchContext]);
 
   useEffect(() => {
     restoreMessageBuffers(chatMessagesRef.current);
@@ -597,13 +606,14 @@ export function App() {
     }
   }
 
-  function send(message: ClientMessage) {
+  function send(message: ClientMessage): boolean {
     const socket = socketRef.current;
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       appendLog("daemon offline", "error");
-      return;
+      return false;
     }
     socket.send(JSON.stringify(message));
+    return true;
   }
 
   function resetVisibleSession(sendToDaemon = true) {
@@ -620,6 +630,7 @@ export function App() {
     setOpenActionMenuId(null);
     setInteractions([]);
     setInteractionDrafts({});
+    updateBranchContext(null);
     setChatMessages([]);
     localStorage.removeItem(CHAT_STORAGE_KEY);
     if (sendToDaemon) {
@@ -681,7 +692,17 @@ export function App() {
     completedResponseIdsRef.current.delete(id);
     setChatMessages((current) => [...current, userMessage, assistantMessage]);
     setInput("");
-    send({ type: "ask", id, text, mode, model: selectedModel, reasoningEffort });
+    const currentBranchContext = branchContextRef.current;
+    send({
+      type: "ask",
+      id,
+      text,
+      mode,
+      model: selectedModel,
+      reasoningEffort,
+      branchContext: currentBranchContext ?? undefined
+    });
+    updateBranchContext(null);
   }
 
   function submitFromPromptKey(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -743,11 +764,19 @@ export function App() {
 
     const branchId = crypto.randomUUID();
     const assistantText = streamBuffersRef.current.get(messageId) ?? assistantMessage.text;
+    const nextBranchContext: BranchContextMessage[] = [
+      { role: "user", text: userMessage.text },
+      { role: "assistant", text: assistantText }
+    ];
+    setOpenActionMenuId(null);
+    if (!send({ type: "session.branch" })) {
+      return;
+    }
     streamBuffersRef.current.clear();
     streamBuffersRef.current.set(branchId, assistantText);
     completedResponseIdsRef.current.clear();
     completedResponseIdsRef.current.add(branchId);
-    setOpenActionMenuId(null);
+    updateBranchContext(nextBranchContext);
     setChatMessages([
       {
         id: `user:${branchId}`,
@@ -762,6 +791,11 @@ export function App() {
       }
     ]);
     appendLog("branched chat", "tool");
+  }
+
+  function updateBranchContext(nextContext: BranchContextMessage[] | null) {
+    branchContextRef.current = nextContext;
+    setBranchContext(nextContext);
   }
 
   function readMessageAloud(id: string, fallbackText: string) {
@@ -2200,6 +2234,38 @@ function readStoredChatMessage(value: unknown): ChatMessage[] {
   return [];
 }
 
+function readStoredBranchContext(): BranchContextMessage[] | null {
+  const stored = localStorage.getItem(BRANCH_CONTEXT_STORAGE_KEY);
+  if (!stored) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(stored) as unknown;
+    if (!Array.isArray(parsed)) {
+      return null;
+    }
+
+    const context = parsed.flatMap(readStoredBranchContextMessage).slice(-2);
+    return context.length > 0 ? context : null;
+  } catch {
+    return null;
+  }
+}
+
+function readStoredBranchContextMessage(value: unknown): BranchContextMessage[] {
+  if (typeof value !== "object" || value === null) {
+    return [];
+  }
+
+  const record = value as Record<string, unknown>;
+  if ((record.role !== "user" && record.role !== "assistant") || typeof record.text !== "string" || !record.text.trim()) {
+    return [];
+  }
+
+  return [{ role: record.role, text: record.text }];
+}
+
 function persistChatMessages(messages: ChatMessage[]): void {
   const persisted = messages
     .slice(-80)
@@ -2215,6 +2281,15 @@ function persistChatMessages(messages: ChatMessage[]): void {
   }
 
   localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(persisted));
+}
+
+function persistBranchContext(context: BranchContextMessage[] | null): void {
+  if (!context?.length) {
+    localStorage.removeItem(BRANCH_CONTEXT_STORAGE_KEY);
+    return;
+  }
+
+  localStorage.setItem(BRANCH_CONTEXT_STORAGE_KEY, JSON.stringify(context.slice(-2)));
 }
 
 function calculateResizeFrame(state: ResizeDragState) {

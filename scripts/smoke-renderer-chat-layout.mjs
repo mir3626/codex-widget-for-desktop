@@ -35,6 +35,7 @@ if (!daemonAddress || typeof daemonAddress === "string") {
 const daemonPort = daemonAddress.port;
 let requestCount = 0;
 const askMessages = [];
+const clientMessages = [];
 
 daemon.on("connection", (socket) => {
   socket.send(
@@ -68,6 +69,7 @@ daemon.on("connection", (socket) => {
 
   socket.on("message", (raw) => {
     const message = JSON.parse(raw.toString());
+    clientMessages.push(message);
     if (message.type !== "ask") {
       return;
     }
@@ -137,6 +139,30 @@ try {
   }
   await page.waitForFunction(() => document.querySelectorAll(".user-message").length === 1);
   await assertNoMessageOverlap(page);
+
+  await page.waitForFunction(() => document.querySelectorAll('[aria-label="More response actions"]').length === 1);
+  await page.getByLabel("More response actions").first().click();
+  await page.getByRole("menuitem", { name: "Branch in new chat" }).click();
+  await waitUntil(() => clientMessages.some((message) => message.type === "session.branch"), "Timed out waiting for branch session reset.");
+  await page.getByLabel("Ask Codex").fill("브랜치 후속 질문");
+  await page.getByLabel("Send prompt").click();
+  await waitUntil(() => askMessages.length >= 5, "Timed out waiting for branch follow-up request.");
+  const branchRequest = askMessages[4];
+  if (
+    branchRequest.text !== "브랜치 후속 질문" ||
+    branchRequest.branchContext?.[0]?.role !== "user" ||
+    branchRequest.branchContext?.[0]?.text !== askMessages[0].text ||
+    branchRequest.branchContext?.[1]?.role !== "assistant" ||
+    branchRequest.branchContext?.[1]?.text !== thirdAnswer
+  ) {
+    throw new Error(`Branch follow-up did not send the selected exchange as context: ${JSON.stringify(branchRequest)}`);
+  }
+  await page.getByLabel("Ask Codex").fill("브랜치 두 번째 질문");
+  await page.getByLabel("Send prompt").click();
+  await waitUntil(() => askMessages.length >= 6, "Timed out waiting for second branch request.");
+  if (askMessages[5].branchContext) {
+    throw new Error(`Branch context should be one-shot, saw: ${JSON.stringify(askMessages[5])}`);
+  }
 
   console.log(`renderer chat layout smoke ok on vite ${baseUrl} daemon ${daemonPort}`);
 } finally {

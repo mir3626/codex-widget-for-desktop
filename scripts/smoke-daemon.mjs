@@ -6,6 +6,8 @@ process.env.CODEX_WIDGET_AUTH_MODE = "mock";
 const daemon = await startDaemon({ port: 0 });
 const events = [];
 const socket = new WebSocket(`ws://127.0.0.1:${daemon.port}`);
+let branchRequested = false;
+let sessionResetDuringBranch = false;
 
 function waitForCompletion() {
   return new Promise((resolve, reject) => {
@@ -13,6 +15,9 @@ function waitForCompletion() {
     socket.on("message", (raw) => {
       const event = JSON.parse(raw.toString());
       events.push(event);
+      if (branchRequested && event.type === "session.reset") {
+        sessionResetDuringBranch = true;
+      }
       if (event.type === "connected") {
         socket.send(
           JSON.stringify({
@@ -24,8 +29,28 @@ function waitForCompletion() {
         );
       }
       if (event.type === "message.completed") {
-        clearTimeout(timeout);
-        resolve(event);
+        if (event.id === "smoke-1") {
+          branchRequested = true;
+          socket.send(JSON.stringify({ type: "session.branch" }));
+          socket.send(
+            JSON.stringify({
+              type: "ask",
+              id: "smoke-2",
+              text: "branch follow-up",
+              mode: "agent",
+              branchContext: [
+                { role: "user", text: "smoke test" },
+                { role: "assistant", text: event.text }
+              ]
+            })
+          );
+          return;
+        }
+
+        if (event.id === "smoke-2") {
+          clearTimeout(timeout);
+          resolve(event);
+        }
       }
     });
     socket.on("error", reject);
@@ -39,6 +64,9 @@ try {
   const runtimeStatus = events.find((event) => event.type === "runtime.status");
   if (deltaCount === 0) {
     throw new Error("No streamed delta events were emitted.");
+  }
+  if (sessionResetDuringBranch) {
+    throw new Error("session.branch should not broadcast a visible session.reset event.");
   }
   if (!providerStatus || providerStatus.providers?.length !== 4) {
     throw new Error("Provider status event was not emitted.");

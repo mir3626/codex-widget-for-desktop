@@ -87,6 +87,11 @@ export type RuntimeStatus = {
   };
 };
 
+export type BranchContextMessage = {
+  role: "user" | "assistant";
+  text: string;
+};
+
 export type ClientMessage =
   | {
       type: "ask";
@@ -95,6 +100,7 @@ export type ClientMessage =
       mode: WidgetMode;
       model?: ModelId;
       reasoningEffort?: ReasoningEffort;
+      branchContext?: BranchContextMessage[];
       regenerate?: {
         dropTurns: number;
       };
@@ -105,6 +111,9 @@ export type ClientMessage =
     }
   | {
       type: "session.reset";
+    }
+  | {
+      type: "session.branch";
     }
   | {
       type: "interaction.respond";
