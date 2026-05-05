@@ -34,6 +34,13 @@ Run this after packaged daemon bundle/runtime resource changes:
 npm run smoke:node-runtime
 ```
 
+Run this after browser DOM extension, Options page, or package metadata changes:
+
+```powershell
+npm run smoke:extension
+npm run smoke:dom
+```
+
 Run this after a release build when bundle resource wiring changes:
 
 ```powershell

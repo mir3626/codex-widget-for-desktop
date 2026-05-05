@@ -5,18 +5,22 @@ import path from "node:path";
 const extensionDir = path.resolve("providers/browser-dom-extension");
 const manifestPath = path.join(extensionDir, "manifest.json");
 const serviceWorkerPath = path.join(extensionDir, "service-worker.js");
+const optionsPath = path.join(extensionDir, "options.js");
 const packagePath = path.resolve("dist/providers/codex-widget-dom-extension-0.1.0.zip");
 
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 assertEqual(manifest.manifest_version, 3, "manifest_version");
 assertIncludes(manifest.permissions, "activeTab", "permissions");
 assertIncludes(manifest.permissions, "scripting", "permissions");
-assertIncludes(manifest.host_permissions, "http://127.0.0.1:4128/*", "host_permissions");
+assertIncludes(manifest.permissions, "storage", "permissions");
+assertIncludes(manifest.host_permissions, "http://127.0.0.1/*", "host_permissions");
+assertIncludes(manifest.host_permissions, "http://localhost/*", "host_permissions");
 assertEqual(manifest.background?.service_worker, "service-worker.js", "background.service_worker");
 assertEqual(manifest.icons?.["16"], "icons/icon-16.png", "icons.16");
 assertEqual(manifest.icons?.["48"], "icons/icon-48.png", "icons.48");
 assertEqual(manifest.icons?.["128"], "icons/icon-128.png", "icons.128");
 assertEqual(manifest.action?.default_icon?.["16"], "icons/icon-16.png", "action.default_icon.16");
+assertEqual(manifest.options_ui?.page, "options.html", "options_ui.page");
 
 const check = spawnSync(process.execPath, ["--check", serviceWorkerPath], {
   encoding: "utf8"
@@ -24,11 +28,18 @@ const check = spawnSync(process.execPath, ["--check", serviceWorkerPath], {
 if (check.status !== 0) {
   throw new Error([check.stdout, check.stderr].filter(Boolean).join("\n"));
 }
+const optionsCheck = spawnSync(process.execPath, ["--check", optionsPath], {
+  encoding: "utf8"
+});
+if (optionsCheck.status !== 0) {
+  throw new Error([optionsCheck.stdout, optionsCheck.stderr].filter(Boolean).join("\n"));
+}
 
 const serviceWorker = await readFile(serviceWorkerPath, "utf8");
 for (const marker of [
   "chrome.action.onClicked",
   "chrome.scripting.executeScript",
+  "chrome.storage.sync.get",
   "/providers/dom/snapshot",
   "window.getSelection",
   "document.body"
@@ -49,6 +60,8 @@ const packageEntries = readZipEntries(await readFile(packagePath));
 for (const entry of [
   "manifest.json",
   "service-worker.js",
+  "options.html",
+  "options.js",
   "icons/icon-16.png",
   "icons/icon-48.png",
   "icons/icon-128.png"

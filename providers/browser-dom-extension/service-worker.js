@@ -1,4 +1,4 @@
-const DAEMON_DOM_SNAPSHOT_URL = "http://127.0.0.1:4128/providers/dom/snapshot";
+const DEFAULT_DAEMON_DOM_SNAPSHOT_URL = "http://127.0.0.1:4128/providers/dom/snapshot";
 const BADGE_RESET_MS = 1600;
 
 chrome.action.onClicked.addListener((tab) => {
@@ -13,7 +13,8 @@ async function sendActiveTabSnapshot(tab) {
   try {
     setBadge(tab.id, "...", "#64748b");
     const snapshot = await readSnapshotFromTab(tab.id);
-    const response = await fetch(DAEMON_DOM_SNAPSHOT_URL, {
+    const daemonUrl = await readDaemonSnapshotUrl();
+    const response = await fetch(daemonUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(snapshot)
@@ -50,6 +51,36 @@ function setBadge(tabId, text, color) {
       chrome.action.setBadgeText({ tabId, text: "" });
     }, BADGE_RESET_MS);
   }
+}
+
+async function readDaemonSnapshotUrl() {
+  const stored = await readStorage({ daemonUrl: DEFAULT_DAEMON_DOM_SNAPSHOT_URL });
+  return normalizeDaemonSnapshotUrl(stored.daemonUrl);
+}
+
+function readStorage(defaults) {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(defaults, resolve);
+  });
+}
+
+function normalizeDaemonSnapshotUrl(value) {
+  if (typeof value !== "string") {
+    return DEFAULT_DAEMON_DOM_SNAPSHOT_URL;
+  }
+
+  try {
+    const url = new URL(value.trim());
+    const isLocalHost = url.hostname === "127.0.0.1" || url.hostname === "localhost";
+    const isHttp = url.protocol === "http:";
+    if (isLocalHost && isHttp && url.pathname === "/providers/dom/snapshot") {
+      return url.toString();
+    }
+  } catch {
+    // Fall through to the safe local default.
+  }
+
+  return DEFAULT_DAEMON_DOM_SNAPSHOT_URL;
 }
 
 function collectDomSnapshot() {

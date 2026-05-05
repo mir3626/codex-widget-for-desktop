@@ -62,7 +62,7 @@ Dependencies: runtime protocol from sprint 01.
 
 Expected scope: provider interfaces, mode-specific state cards, PTY command lifecycle spike, browser/screen permission placeholders with testable events.
 
-Status: DOM snapshot ingress, an unpacked browser DOM extension, Screen/Vision snapshot ingress, direct app-server image input, daemon-triggered Windows screen capture with optional OCR command support, and explicit terminal command execution are implemented with smoke coverage. Remaining provider work is bundled OCR engine packaging, store packaging/native messaging, and deeper native integrations.
+Status: DOM snapshot ingress, an unpacked browser DOM extension with local-only Options URL configuration, Screen/Vision snapshot ingress, direct app-server image input, daemon-triggered Windows screen capture with optional OCR command support, and explicit terminal command execution are implemented with smoke coverage. Remaining provider work is bundled OCR engine packaging, store packaging/native messaging, and deeper native integrations.
 
 ### iter-2-sprint-03-resident-desktop-ops
 

@@ -85,6 +85,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added `npm run smoke:node-runtime` and included it in `npm run smoke:all` to verify the bundled Node runtime can run the dependency-bundled daemon without repository `node_modules`.
 - Added `npm run smoke:release-resources` to verify generated MSI/NSIS build scripts include the bundled daemon, Node runtime, screen helper, and DOM extension resources.
 - Added `npm run smoke:release-launch` to launch the release exe hidden, verify the packaged daemon WebSocket on `127.0.0.1:4128`, and clean up the process tree.
+- Added a browser DOM extension Options page backed by `chrome.storage.sync`, so users can point the extension at another local daemon port without editing extension code. The extension only accepts local `http://127.0.0.1/...` or `http://localhost/...` snapshot URLs ending in `/providers/dom/snapshot`.
 
 ## Next Recommended Sprint
 
@@ -96,7 +97,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - App-server approval and tool-user-input requests now have renderer UI, but the exact Codex app-server protocol is still experimental and may require adapter changes as CLI releases evolve.
 - External OAuth provider/backend agent proxy support remains optional for non-Codex auth modes; this repo primarily implements the desktop widget/daemon client boundary.
 - OAuth refresh tokens are not persisted; users may need to sign in again when an access token expires.
-- Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge; no store-packaged extension or native messaging bridge yet.
+- Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge with local-only Options URL configuration; no store-packaged extension or native messaging bridge yet.
 - Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, optional OCR command hook, and direct app-server image input; bundled OCR engine packaging is still pending.
 - Terminal/PTY provider supports explicit one-shot commands and a persistent `/pty` command session, but it is not a raw ConPTY/full-screen interactive terminal yet.
 - Store-packaged browser extension, deeper interactive PTY, installed-app launch/crash observation, and longer soak tests remain open for live-service readiness.
@@ -532,6 +533,19 @@ Completed after screen helper OCR hook pass:
 - `npm run smoke:screen-helper:live`
 - `npm run smoke:screen`
 - Screen helper live smoke now posts fake OCR output and asserts it reaches the daemon snapshot.
+
+Completed after browser DOM extension Options pass:
+
+- `node --check providers\browser-dom-extension\service-worker.js`
+- `node --check providers\browser-dom-extension\options.js`
+- `node --check scripts\smoke-browser-extension.mjs`
+- `npm run smoke:extension`
+- `npm run smoke:dom`
+- `npm run smoke:all:live`
+- `npm run build`
+- `npm run smoke:release-resources`
+- `npm run smoke:release-launch`
+- Extension smoke now verifies the Options page, storage permission, local-only host permissions, Options script syntax, and packaged zip entries.
 
 Completed after persistent terminal session pass:
 

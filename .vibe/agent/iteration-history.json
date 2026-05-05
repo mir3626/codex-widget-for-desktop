@@ -47,10 +47,10 @@
       "milestoneProgress": {
         "resident-widget-mvp": 0.84,
         "durable-codex-runtime": 0.67,
-        "real-tool-providers": 0.81,
+        "real-tool-providers": 0.82,
         "resident-desktop-readiness": 0.84
       },
-      "summary": "Iteration 2 has added runtime protocol durability, app-server interaction UI, app-server start/error diagnostics, visible chat persistence, app-server-backed regenerate rollback, renderer chat layout hardening with a Playwright smoke, provider status events, runtime health status, DOM snapshot ingress, an unpacked and zip-packaged browser DOM extension, Screen/Vision snapshot ingress, direct app-server Vision image input, a daemon-triggered Windows screen capture helper with optional OCR command support, explicit one-shot terminal execution, a persistent /pty command session, start-at-login settings, tray-oriented hide behavior, packaged-app daemon restart supervision with capped backoff, renderer-visible native daemon diagnostics, bundled daemon JS and bundled Node runtime resources for installed builds, release exe launch smoke, serial smoke readiness gates, resident resource/soak smokes, and verified release installer builds. Bundled OCR engine packaging, browser store submission/native messaging, true raw interactive PTY, and full MSI/NSIS install-uninstall observation remain open."
+      "summary": "Iteration 2 has added runtime protocol durability, app-server interaction UI, app-server start/error diagnostics, visible chat persistence, app-server-backed regenerate rollback, renderer chat layout hardening with a Playwright smoke, provider status events, runtime health status, DOM snapshot ingress, an unpacked and zip-packaged browser DOM extension with local-only Options URL configuration, Screen/Vision snapshot ingress, direct app-server Vision image input, a daemon-triggered Windows screen capture helper with optional OCR command support, explicit one-shot terminal execution, a persistent /pty command session, start-at-login settings, tray-oriented hide behavior, packaged-app daemon restart supervision with capped backoff, renderer-visible native daemon diagnostics, bundled daemon JS and bundled Node runtime resources for installed builds, release exe launch smoke, serial smoke readiness gates, resident resource/soak smokes, and verified release installer builds. Bundled OCR engine packaging, browser store submission/native messaging, true raw interactive PTY, and full MSI/NSIS install-uninstall observation remain open."
     }
   ]
 }

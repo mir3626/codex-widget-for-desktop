@@ -27,6 +27,16 @@ with `manifest.json` at the zip root.
 3. Click the `Codex Widget DOM Snapshot` extension action.
 4. Switch the widget to `DOM` mode and ask about the active page, selection, or visible content.
 
+## Options
+
+The default daemon endpoint is:
+
+```text
+http://127.0.0.1:4128/providers/dom/snapshot
+```
+
+Use the extension Options page if the widget daemon is running on another local port. The extension only accepts local `http://127.0.0.1/...` or `http://localhost/...` snapshot URLs ending in `/providers/dom/snapshot`.
+
 The extension posts:
 
 ```json
