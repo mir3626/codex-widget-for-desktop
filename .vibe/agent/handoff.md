@@ -90,6 +90,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added `npm run release:verify` as the one-command live release gate. It runs `smoke:all:live`, `build`, release resource smoke, release exe launch smoke, NSIS install smoke, and prints release artifact sizes.
 - Fixed installed-build daemon resource resolution. The native shell now checks the installed exe-adjacent `_up_` resource directory for `dist/daemon-bundle/standalone.js` and `dist/node-runtime/node.exe` before falling back to development paths or system `node`.
 - Strengthened `npm run smoke:release-install` to find the installed bundled daemon process, kill it, and verify the native supervisor restarts it with a new PID before uninstall cleanup.
+- Added a daemon parent watchdog through `CODEX_WIDGET_NATIVE_PARENT_PID`, so the installed daemon exits when the native app process disappears unexpectedly instead of surviving as an orphan.
 
 ## Next Recommended Sprint
 
@@ -104,7 +105,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge with local-only Options URL configuration; no store-packaged extension or native messaging bridge yet.
 - Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, optional OCR command hook, and direct app-server image input; bundled OCR engine packaging is still pending.
 - Terminal/PTY provider supports explicit one-shot commands and a persistent `/pty` command session, but it is not a raw ConPTY/full-screen interactive terminal yet.
-- Store-packaged browser extension, deeper interactive PTY, MSI install/uninstall observation, full app-process crash observation, and longer soak tests remain open for live-service readiness.
+- Store-packaged browser extension, deeper interactive PTY, MSI install/uninstall observation, and longer soak tests remain open for live-service readiness.
 
 ## Verification
 
@@ -571,6 +572,7 @@ Completed after installed daemon resource/restart pass:
 - `node --check scripts\smoke-release-install.mjs`
 - `npm run smoke:release-install`
 - Manual diagnostic confirmed the installed app spawned `%LOCALAPPDATA%\Codex Widget\_up_\dist\node-runtime\node.exe` with `_up_\dist\daemon-bundle\standalone.js`, not repo `dist` or system `node`.
+- `npm run release:verify` passed after the parent-watchdog change; release install smoke now verifies bundled daemon restart and app-process kill orphan cleanup.
 
 Completed after persistent terminal session pass:
 

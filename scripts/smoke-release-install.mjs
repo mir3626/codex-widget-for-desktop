@@ -75,7 +75,7 @@ try {
   appPid = app.pid;
   await waitForDaemon(app);
   await verifyInstalledDaemonRestart(app);
-  cleanupProcessTree(appPid);
+  await verifyAppCrashCleansDaemon(app);
   appPid = undefined;
   await waitUntilPortClosed();
 
@@ -84,7 +84,7 @@ try {
   cleanupSmokeProductKey();
 
   console.log(
-    `release install smoke ok: installed, launched, verified daemon restart, and uninstalled from ${installDir}`
+    `release install smoke ok: installed, launched, verified daemon/app crash cleanup, and uninstalled from ${installDir}`
   );
 } finally {
   cleanupProcessTree(appPid);
@@ -140,6 +140,22 @@ function cleanupSmokeProductKey() {
       windowsHide: true
     });
   }
+}
+
+async function verifyAppCrashCleansDaemon(app) {
+  if (!app.pid) {
+    throw new Error("Installed app pid is unavailable.");
+  }
+
+  const daemonPid = findInstalledDaemonPid();
+  if (!daemonPid) {
+    throw new Error("Could not find installed bundled daemon before app crash cleanup test.");
+  }
+
+  killProcessOnly(app.pid);
+  await waitUntil(() => !isPidRunning(app.pid), "Timed out waiting for installed app process to exit.");
+  await waitUntil(() => !isPidRunning(daemonPid), "Installed daemon remained after app process exit.");
+  await waitUntilPortClosed();
 }
 
 async function verifyInstalledDaemonRestart(app) {
@@ -283,6 +299,16 @@ function cleanupProcessTree(pid) {
     return;
   }
   spawnSync("taskkill.exe", ["/pid", String(pid), "/t", "/f"], {
+    stdio: "ignore",
+    windowsHide: true
+  });
+}
+
+function killProcessOnly(pid) {
+  if (!pid) {
+    return;
+  }
+  spawnSync("taskkill.exe", ["/pid", String(pid), "/f"], {
     stdio: "ignore",
     windowsHide: true
   });

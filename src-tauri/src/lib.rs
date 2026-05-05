@@ -857,6 +857,10 @@ fn spawn_daemon_child(node_runtime: &PathBuf, script: &PathBuf) -> Result<Child,
     Command::new(node_runtime)
         .arg(script)
         .env("CODEX_WIDGET_PORT", DAEMON_PORT)
+        .env(
+            "CODEX_WIDGET_NATIVE_PARENT_PID",
+            std::process::id().to_string(),
+        )
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())

@@ -91,10 +91,10 @@ npm run vibe:checkpoint
 - Screen/Vision provider is snapshot-based and has a Windows capture helper, optional local OCR command hook, and app-server image input; bundled OCR engine packaging is not implemented yet.
 - Terminal provider supports explicit one-shot commands and a persistent command session through `/pty`, but it is not a raw ConPTY/full-screen interactive terminal yet.
 - OAuth proxy live streaming requires an auth/proxy service and is not covered by CI-like smoke tests.
-- Packaged daemon restart backoff and child restart have Rust tests; end-to-end native crash/restart observation in an installed app is still manual.
+- Packaged daemon restart backoff and child restart have Rust tests; installed-app daemon restart and app-kill orphan cleanup are covered by the NSIS release install smoke.
 - Renderer-visible native daemon diagnostics are covered by type/build checks; installed-app restart UX screenshots are still manual.
 - Bundled Node runtime smoke verifies local daemon startup without repository `node_modules`; installed MSI launch observation is still manual.
 - `npm run smoke:release-resources` verifies generated MSI/NSIS scripts include bundled daemon/runtime/provider resources, but it does not install and launch the artifacts.
 - `npm run smoke:release-launch` starts the release exe hidden and verifies the daemon WebSocket on port `4128`.
-- `npm run smoke:release-install` performs a Windows NSIS silent install, launches the installed app hidden, verifies the installed bundled daemon on port `4128`, kills that daemon to verify native supervisor restart, silently uninstalls, and checks cleanup; MSI install/uninstall is still manual.
+- `npm run smoke:release-install` performs a Windows NSIS silent install, launches the installed app hidden, verifies the installed bundled daemon on port `4128`, kills that daemon to verify native supervisor restart, kills the app process to verify daemon orphan cleanup, silently uninstalls, and checks cleanup; MSI install/uninstall is still manual.
 - `npm run release:verify` is the single full release gate and runs the live provider/resident smokes, Tauri build, release resource smoke, release exe launch smoke, and NSIS install smoke.
