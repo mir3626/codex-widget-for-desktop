@@ -4,6 +4,13 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Current Readiness Snapshot
+
+- 2026-05-06T07:22:23.060+09:00 strict `node scripts/release-readiness.mjs --require-manual-gates` re-check passed all automated release, resource, store-packet, and two-hour soak gates.
+- The active `/vibe-iterate` objective is still not complete because strict readiness fails only on `browser-store-submission`: actual Chrome Web Store or Microsoft Edge Add-ons dashboard submission has not been confirmed.
+- Current dev widget run is live after clearing port `5173`: Vite is listening on `127.0.0.1:5173`, daemon/app-server on `127.0.0.1:4128`, and startup logs are under `dist/logs/widget-dev-20260506-071947.*.log`.
+- Browser store submission runbook is source-controlled at `docs/release/browser-store-submission.md`; use it to clear the final manual gate and then rerun strict readiness.
+
 ## Branch And Harness
 
 - Branch: `main`
