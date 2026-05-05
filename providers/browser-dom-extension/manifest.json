@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Codex Widget DOM Snapshot",
+  "version": "0.1.0",
+  "description": "Send the active tab DOM snapshot to the local Codex Widget daemon.",
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["http://127.0.0.1:4128/*"],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Send DOM snapshot to Codex Widget"
+  }
+}
