@@ -107,7 +107,22 @@ try {
   await page.goto(`${baseUrl}?daemonPort=${daemonPort}`);
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("checkbox", { name: "Crop" }).check();
+  await page.getByLabel("Select crop area").click();
+  const cropPicker = page.locator(".screen-crop-picker");
+  await cropPicker.waitFor();
+  const cropPickerBox = await cropPicker.boundingBox();
+  if (!cropPickerBox) {
+    throw new Error("Screen crop picker did not expose a drag surface.");
+  }
+  await page.mouse.move(cropPickerBox.x + 50, cropPickerBox.y + 70);
+  await page.mouse.down();
+  await page.mouse.move(cropPickerBox.x + 210, cropPickerBox.y + 190, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForFunction(() => !document.querySelector(".screen-crop-picker"));
   const cropInputs = page.locator(".screen-crop-grid input");
+  if ((await cropInputs.nth(2).inputValue()) !== "160" || (await cropInputs.nth(3).inputValue()) !== "120") {
+    throw new Error("Visual screen crop picker did not write the selected size into settings.");
+  }
   await cropInputs.nth(0).fill("12");
   await cropInputs.nth(1).fill("34");
   await cropInputs.nth(2).fill("640");

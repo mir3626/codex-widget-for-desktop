@@ -120,7 +120,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 
 ## Next Recommended Sprint
 
-`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with final browser store submission workflow, richer full-screen terminal mouse UX on top of the PTY viewport, visual drag region selection, an actual multi-hour soak run, and native packaging polish.
+`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with final browser store submission workflow, richer full-screen terminal mouse UX on top of the PTY viewport, an actual multi-hour soak run, and native packaging polish.
 
 ## Open Issues
 
@@ -129,9 +129,9 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - External OAuth provider/backend agent proxy support remains optional for non-Codex auth modes; this repo primarily implements the desktop widget/daemon client boundary.
 - OAuth refresh tokens are not persisted; users may need to sign in again when an access token expires.
 - Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge, local-only Options URL configuration, optional native messaging host, generated zip package, and store-readiness metadata; final browser store account submission remains manual.
-- Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, Settings/env configured crop, optional OCR command hook, bundled OCR runtime packaging, standard Windows Tesseract discovery, bundled tessdata language defaults, OCR-only PNG preprocessing, image hash/change/diff metadata with configurable thresholding, and direct app-server image input; visual drag region selection and richer language-pack acquisition remain configurable.
+- Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, Settings/env/visual-drag configured crop, optional OCR command hook, bundled OCR runtime packaging, standard Windows Tesseract discovery, bundled tessdata language defaults, OCR-only PNG preprocessing, image hash/change/diff metadata with configurable thresholding, and direct app-server image input; richer language-pack acquisition remains configurable.
 - Terminal/PTY provider now has a node-pty/ConPTY command/raw-input backend, short raw-input output drain, and a renderer PTY viewport with direct input controls, but richer full-screen mouse handling still needs product polish.
-- Final browser store account submission, richer full-screen terminal mouse UX, visual drag region selection, and an actual multi-hour/manual soak run remain open for live-service readiness.
+- Final browser store account submission, richer full-screen terminal mouse UX, and an actual multi-hour/manual soak run remain open for live-service readiness.
 
 ## Verification
 
@@ -802,6 +802,14 @@ Completed after Vision crop/diff metadata pass:
 - `npm run build`
 - `npm run smoke:release-resources`
 - Settings now exposes compact Vision crop controls, screen capture requests carry the enabled crop rectangle, the helper accepts virtual-screen crop parameters, and screen snapshot responses include `imageHash`, `imageChanged`, `imageDiffRatio`, `imageDiffThreshold`, and `imageMeaningfullyChanged` metadata for repeated-capture diff awareness.
+
+Completed after Vision drag crop picker pass:
+
+- Settings now includes a visual crop selector for Vision capture regions.
+- The selector converts the dragged webview rectangle into screen crop coordinates using Tauri window geometry and persists the result into the existing crop settings.
+- `npm run smoke:renderer-chat` verifies the picker writes the selected crop size and preserves the existing crop capture request path.
+- `npm run smoke:all`, `npm run build`, and `npm run smoke:release-resources` passed after the picker addition.
+- Latest release artifacts: `codex-widget-for-desktop.exe` 10,316,800 bytes, MSI 39,505,920 bytes, NSIS 26,753,674 bytes.
 - Latest release artifacts after this pass: exe 10,315,776 bytes, MSI 39,505,920 bytes, NSIS 26,764,799 bytes.
 
 Completed after renderer chat layout hardening:

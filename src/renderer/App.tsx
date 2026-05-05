@@ -78,6 +78,7 @@ import {
   toggleMaximizeWidget,
   togglePinned,
   type NativeDaemonStatus,
+  type WidgetWindowGeometry,
   type WidgetResizeDirection
 } from "./shell";
 
@@ -175,6 +176,15 @@ type PromptResizeState = {
   startHeight: number;
 };
 
+type ScreenCropPickerState = {
+  pointerId: number | null;
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
+  geometry: WidgetWindowGeometry | null;
+};
+
 export function App() {
   const [mode, setMode] = useState<WidgetMode>("agent");
   const [selectedModel, setSelectedModel] = useState<ModelId>(() => readStoredModel());
@@ -202,6 +212,7 @@ export function App() {
   const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([]);
   const [terminalInput, setTerminalInput] = useState("");
   const [screenCrop, setScreenCrop] = useState<ScreenCropSettings>(() => readStoredScreenCrop());
+  const [screenCropPicker, setScreenCropPickerState] = useState<ScreenCropPickerState | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showTokenForm, setShowTokenForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -227,6 +238,7 @@ export function App() {
   const speechRunIdRef = useRef(0);
   const promptInputRef = useRef<HTMLTextAreaElement | null>(null);
   const promptResizeRef = useRef<PromptResizeState | null>(null);
+  const screenCropPickerRef = useRef<ScreenCropPickerState | null>(null);
   const opacityValueTimerRef = useRef<number | null>(null);
   const resizeDragRef = useRef<ResizeDragState | null>(null);
 
@@ -362,6 +374,25 @@ export function App() {
   useEffect(() => {
     persistScreenCrop(screenCrop);
   }, [screenCrop]);
+
+  useEffect(() => {
+    if (!screenCropPicker) {
+      return;
+    }
+
+    document.body.classList.add("is-picking-screen-crop");
+    function cancelFromEscape(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        setScreenCropPicker(null);
+      }
+    }
+
+    document.addEventListener("keydown", cancelFromEscape);
+    return () => {
+      document.body.classList.remove("is-picking-screen-crop");
+      document.removeEventListener("keydown", cancelFromEscape);
+    };
+  }, [screenCropPicker]);
 
   useEffect(() => {
     restoreMessageBuffers(chatMessagesRef.current);
@@ -929,6 +960,80 @@ export function App() {
     }));
   }
 
+  function setScreenCropPicker(next: ScreenCropPickerState | null) {
+    screenCropPickerRef.current = next;
+    setScreenCropPickerState(next);
+  }
+
+  async function startScreenCropPicker() {
+    setMode("screen");
+    const geometry = await readWidgetWindowGeometry();
+    setScreenCropPicker({
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      currentX: 0,
+      currentY: 0,
+      geometry
+    });
+    appendLog("drag crop region", "tool");
+  }
+
+  function beginScreenCropPick(event: PointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) {
+      return;
+    }
+    const current = screenCropPickerRef.current;
+    if (!current) {
+      return;
+    }
+
+    const point = readCropPickerPoint(event.currentTarget, event);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setScreenCropPicker({
+      ...current,
+      pointerId: event.pointerId,
+      startX: point.x,
+      startY: point.y,
+      currentX: point.x,
+      currentY: point.y
+    });
+  }
+
+  function updateScreenCropPick(event: PointerEvent<HTMLDivElement>) {
+    const current = screenCropPickerRef.current;
+    if (!current || current.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const point = readCropPickerPoint(event.currentTarget, event);
+    setScreenCropPicker({
+      ...current,
+      currentX: point.x,
+      currentY: point.y
+    });
+  }
+
+  function finishScreenCropPick(event: PointerEvent<HTMLDivElement>) {
+    const current = screenCropPickerRef.current;
+    if (!current || current.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    const selection = readScreenCropPickerSelection(current);
+    if (selection.width >= 8 && selection.height >= 8) {
+      setScreenCrop({
+        enabled: true,
+        ...convertPickerSelectionToScreenCrop(selection, current)
+      });
+    }
+    setScreenCropPicker(null);
+  }
+
   function runTerminalQuickAction(command: string) {
     setMode("terminal");
     startAsk(command, "terminal");
@@ -1489,6 +1594,8 @@ export function App() {
       : auth.reason ?? "Sign in is not configured";
   const panelStyle = { "--prompt-composer-height": `${promptHeight}px` } as CSSProperties;
   const isOverlayPanelOpen = showSettings || showTokenForm;
+  const cropPickerSelection = screenCropPicker ? readScreenCropPickerSelection(screenCropPicker) : null;
+  const cropPickerSelectionStyle = cropPickerSelection ? (cropPickerSelection as CSSProperties) : undefined;
 
   return (
     <main className={maximized ? "widget-shell is-maximized" : "widget-shell"} style={shellStyle}>
@@ -1710,6 +1817,10 @@ export function App() {
                     </label>
                   ))}
                 </div>
+                <button type="button" className="screen-crop-picker-button" aria-label="Select crop area" onClick={startScreenCropPicker}>
+                  <Square size={12} />
+                  <span>Select</span>
+                </button>
               </div>
             </div>
           </section>
@@ -2001,6 +2112,32 @@ export function App() {
         draggable={false}
         onPointerDown={beginMascotDrag}
       />
+      {screenCropPicker ? (
+        <div
+          className="screen-crop-picker"
+          role="dialog"
+          aria-label="Screen crop picker"
+          onPointerDown={beginScreenCropPick}
+          onPointerMove={updateScreenCropPick}
+          onPointerUp={finishScreenCropPick}
+          onPointerCancel={() => setScreenCropPicker(null)}
+        >
+          <div className="screen-crop-picker-toolbar" onPointerDown={(event) => event.stopPropagation()}>
+            <Square size={13} />
+            <span>Drag capture region</span>
+            <button type="button" aria-label="Cancel crop selection" onClick={() => setScreenCropPicker(null)}>
+              <X size={13} />
+            </button>
+          </div>
+          {cropPickerSelectionStyle && cropPickerSelection ? (
+            <div className="screen-crop-picker-selection" style={cropPickerSelectionStyle}>
+              <span>
+                {Math.round(cropPickerSelection.width)} x {Math.round(cropPickerSelection.height)}
+              </span>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -2658,6 +2795,42 @@ function buildScreenCrop(crop: ScreenCropSettings): ScreenCrop | undefined {
     y: crop.y,
     width: crop.width,
     height: crop.height
+  };
+}
+
+function readCropPickerPoint(element: HTMLElement, event: PointerEvent<HTMLElement>): { x: number; y: number } {
+  const rect = element.getBoundingClientRect();
+  return {
+    x: Math.min(rect.width, Math.max(0, event.clientX - rect.left)),
+    y: Math.min(rect.height, Math.max(0, event.clientY - rect.top))
+  };
+}
+
+function readScreenCropPickerSelection(state: ScreenCropPickerState): CSSProperties & {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+} {
+  const left = Math.min(state.startX, state.currentX);
+  const top = Math.min(state.startY, state.currentY);
+  const width = Math.abs(state.currentX - state.startX);
+  const height = Math.abs(state.currentY - state.startY);
+  return { left, top, width, height };
+}
+
+function convertPickerSelectionToScreenCrop(
+  selection: { left: number; top: number; width: number; height: number },
+  state: ScreenCropPickerState
+): ScreenCrop {
+  const scaleFactor = state.geometry?.scaleFactor ?? window.devicePixelRatio ?? 1;
+  const originX = state.geometry?.x ?? Math.round(window.screenX * scaleFactor);
+  const originY = state.geometry?.y ?? Math.round(window.screenY * scaleFactor);
+  return {
+    x: Math.round(originX + selection.left * scaleFactor),
+    y: Math.round(originY + selection.top * scaleFactor),
+    width: Math.max(1, Math.round(selection.width * scaleFactor)),
+    height: Math.max(1, Math.round(selection.height * scaleFactor))
   };
 }
 
