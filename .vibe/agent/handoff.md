@@ -137,6 +137,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, Settings/env/visual-drag configured crop, optional OCR command hook, bundled OCR runtime packaging, standard Windows Tesseract discovery, bundled tessdata language acquisition/defaults, OCR-only PNG preprocessing, image hash/change/diff metadata with configurable thresholding, and direct app-server image input.
 - Terminal/PTY provider now has a node-pty/ConPTY command/raw-input backend, short raw-input output drain, direct `terminal.input` text/key/mouse input, idle PTY output broadcast, and a renderer PTY viewport with direct input controls.
 - Final browser store account submission remains open for live-service readiness. The two-hour release soak passed on 2026-05-05 with evidence in `docs/reports/release-soak-2026-05-05-2h.md`.
+- The live readiness completion audit is recorded in `docs/reports/live-readiness-audit-2026-05-06.md`; it maps the objective to concrete artifacts and confirms browser store account submission as the only remaining manual blocker.
 
 ## Verification
 
