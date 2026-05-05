@@ -54,6 +54,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added real provider shell functionality for Iteration 2:
   - DOM mode accepts browser/page snapshots at `POST /providers/dom/snapshot`, updates provider readiness, emits DOM snapshot tool output, and injects the latest DOM context into model requests.
   - `providers/browser-dom-extension` adds an unpacked Chrome/Edge Manifest V3 extension that captures the active tab and posts a DOM snapshot to the daemon.
+  - The browser DOM extension now has committed icon assets, manifest icon/action metadata, and `npm run package:extension` to generate `dist/providers/codex-widget-dom-extension-0.1.0.zip`.
   - Vision mode accepts screen snapshots at `POST /providers/screen/snapshot`, updates provider readiness, emits screen snapshot tool output, and injects screen description/OCR context into model requests.
   - `providers/screen-capture-helper/capture-screen.ps1` captures the Windows virtual desktop, compresses it to JPEG data URL, and posts it to the Vision snapshot endpoint.
   - The Vision-mode Capture action sends `provider.captureScreen` to the daemon, which runs the screen capture helper and refreshes provider status without requiring the user to run PowerShell manually.
@@ -553,6 +554,15 @@ Completed after resident soak gate pass:
 - `npm run smoke:resident-soak`
 - `npm run smoke:all:live`
 
+Completed after browser DOM extension packaging pass:
+
+- `npm run package:extension`
+- `npm run smoke:extension`
+- `npm run lint`
+- `npm run smoke:all:live`
+- `npm run build`
+- `npm run smoke:extension` now verifies manifest icons, service worker syntax, zip creation, and required zip entries.
+
 Completed latest release build after provider/runtime readiness passes:
 
 - `npm run build`
@@ -584,7 +594,7 @@ Completed latest release build after persistent terminal session pass:
 12. Renderer visible chat persists under `codex-widget-chat-messages:v1`; use the titlebar New chat control or `session.reset` protocol event to clear both UI and daemon session state.
 13. The titlebar close button hides the widget to tray; use tray Quit to exit the resident app.
 14. Run `npm run smoke:resident` when resident lifecycle, daemon health, or resource behavior changes.
-15. Run `npm run smoke:dom` after browser/DOM provider ingress changes, `npm run smoke:extension` after browser extension changes, `npm run smoke:screen` after Vision provider changes, `npm run smoke:screen-capture:live` after daemon-triggered capture changes, `npm run smoke:screen-helper` after screen helper changes, `npm run smoke:terminal` after one-shot terminal provider changes, and `npm run smoke:terminal-session` after `/pty` session changes.
+15. Run `npm run smoke:dom` after browser/DOM provider ingress changes, `npm run smoke:extension` after browser extension or packaging changes, `npm run smoke:screen` after Vision provider changes, `npm run smoke:screen-capture:live` after daemon-triggered capture changes, `npm run smoke:screen-helper` after screen helper changes, `npm run smoke:terminal` after one-shot terminal provider changes, and `npm run smoke:terminal-session` after `/pty` session changes.
 16. DOM snapshot testing can use `providers/browser-dom-extension` as an unpacked Chrome/Edge extension or `docs/providers/dom-snapshot-bookmarklet.js` as a fallback against the local daemon on port `4128`.
 17. Screen snapshot testing can use `providers/screen-capture-helper/capture-screen.ps1` for live capture or `docs/providers/screen-snapshot-example.json` as the raw payload shape against `POST /providers/screen/snapshot`.
 18. Run `npm run build` before release checks; MSI/NSIS bundle creation is now part of the installability gate.

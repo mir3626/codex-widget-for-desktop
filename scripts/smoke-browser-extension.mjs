@@ -5,6 +5,7 @@ import path from "node:path";
 const extensionDir = path.resolve("providers/browser-dom-extension");
 const manifestPath = path.join(extensionDir, "manifest.json");
 const serviceWorkerPath = path.join(extensionDir, "service-worker.js");
+const packagePath = path.resolve("dist/providers/codex-widget-dom-extension-0.1.0.zip");
 
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 assertEqual(manifest.manifest_version, 3, "manifest_version");
@@ -12,6 +13,10 @@ assertIncludes(manifest.permissions, "activeTab", "permissions");
 assertIncludes(manifest.permissions, "scripting", "permissions");
 assertIncludes(manifest.host_permissions, "http://127.0.0.1:4128/*", "host_permissions");
 assertEqual(manifest.background?.service_worker, "service-worker.js", "background.service_worker");
+assertEqual(manifest.icons?.["16"], "icons/icon-16.png", "icons.16");
+assertEqual(manifest.icons?.["48"], "icons/icon-48.png", "icons.48");
+assertEqual(manifest.icons?.["128"], "icons/icon-128.png", "icons.128");
+assertEqual(manifest.action?.default_icon?.["16"], "icons/icon-16.png", "action.default_icon.16");
 
 const check = spawnSync(process.execPath, ["--check", serviceWorkerPath], {
   encoding: "utf8"
@@ -33,7 +38,27 @@ for (const marker of [
   }
 }
 
-console.log("browser DOM extension smoke ok");
+const packageRun = spawnSync(process.execPath, ["scripts/package-browser-extension.mjs"], {
+  encoding: "utf8"
+});
+if (packageRun.status !== 0) {
+  throw new Error([packageRun.stdout, packageRun.stderr].filter(Boolean).join("\n"));
+}
+
+const packageEntries = readZipEntries(await readFile(packagePath));
+for (const entry of [
+  "manifest.json",
+  "service-worker.js",
+  "icons/icon-16.png",
+  "icons/icon-48.png",
+  "icons/icon-128.png"
+]) {
+  if (!packageEntries.includes(entry)) {
+    throw new Error(`Extension package is missing ${entry}: ${packageEntries.join(", ")}`);
+  }
+}
+
+console.log(`browser DOM extension smoke ok: package entries=${packageEntries.length}`);
 
 function assertEqual(actual, expected, label) {
   if (actual !== expected) {
@@ -45,4 +70,33 @@ function assertIncludes(values, expected, label) {
   if (!Array.isArray(values) || !values.includes(expected)) {
     throw new Error(`${label} must include ${JSON.stringify(expected)}`);
   }
+}
+
+function readZipEntries(buffer) {
+  let eocdOffset = -1;
+  for (let offset = buffer.length - 22; offset >= 0; offset -= 1) {
+    if (buffer.readUInt32LE(offset) === 0x06054b50) {
+      eocdOffset = offset;
+      break;
+    }
+  }
+  if (eocdOffset < 0) {
+    throw new Error("Extension package is not a valid zip: EOCD not found.");
+  }
+
+  const entryCount = buffer.readUInt16LE(eocdOffset + 10);
+  let offset = buffer.readUInt32LE(eocdOffset + 16);
+  const entries = [];
+  for (let index = 0; index < entryCount; index += 1) {
+    if (buffer.readUInt32LE(offset) !== 0x02014b50) {
+      throw new Error(`Extension package central directory is invalid at entry ${index}.`);
+    }
+    const nameLength = buffer.readUInt16LE(offset + 28);
+    const extraLength = buffer.readUInt16LE(offset + 30);
+    const commentLength = buffer.readUInt16LE(offset + 32);
+    const nameStart = offset + 46;
+    entries.push(buffer.subarray(nameStart, nameStart + nameLength).toString("utf8"));
+    offset = nameStart + nameLength + extraLength + commentLength;
+  }
+  return entries;
 }

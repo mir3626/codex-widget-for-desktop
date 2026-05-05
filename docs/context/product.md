@@ -27,7 +27,7 @@ The primary user is a developer who wants a persistent desktop companion similar
 - The chat renderer has a Playwright smoke for multi-turn layout, GFM tables, prompt resizing, and response action menu placement.
 - `npm run build` produces Windows MSI and NSIS installer bundles.
 - The daemon keeps `codex exec resume` as a fallback runtime and supports mock/OAuth proxy streaming for non-Codex auth modes.
-- DOM and Vision modes have snapshot ingress; DOM has an unpacked browser extension bridge; Vision has a Windows capture helper and direct app-server image input; Terminal has one-shot command execution plus a persistent command session. OCR, store extension packaging, and true raw interactive PTY are still open.
+- DOM and Vision modes have snapshot ingress; DOM has an unpacked browser extension bridge with icon assets and a generated zip package; Vision has a Windows capture helper and direct app-server image input; Terminal has one-shot command execution plus a persistent command session. OCR, browser store submission/native messaging, and true raw interactive PTY are still open.
 - Windows Tauri prerequisites are documented and verified on the local machine.
 
 ## Product Goals

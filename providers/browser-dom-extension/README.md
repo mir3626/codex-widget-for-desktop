@@ -9,6 +9,17 @@ This unpacked Chrome/Edge extension sends the active tab DOM snapshot to the loc
 3. Choose **Load unpacked**.
 4. Select this folder: `providers/browser-dom-extension`.
 
+## Package
+
+Run:
+
+```powershell
+npm run package:extension
+```
+
+The package is written to `dist/providers/codex-widget-dom-extension-0.1.0.zip`
+with `manifest.json` at the zip root.
+
 ## Use
 
 1. Start the widget daemon so it listens on `http://127.0.0.1:4128`.
