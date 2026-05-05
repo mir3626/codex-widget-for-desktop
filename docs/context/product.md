@@ -22,6 +22,7 @@ The primary user is a developer who wants a persistent desktop companion similar
 - Vision mode accepts screen snapshots through `POST /providers/screen/snapshot` and injects screen description/OCR context into the model request. A Windows PowerShell helper can capture the virtual desktop and post a compressed image snapshot.
 - Terminal/PTY mode executes explicit local shell commands and streams output as widget tool events.
 - Runtime health status is streamed from the daemon into the settings panel.
+- App-server diagnostics include start count and latest error in runtime status so resident failures are visible from the widget.
 - `npm run build` produces Windows MSI and NSIS installer bundles.
 - The daemon keeps `codex exec resume` as a fallback runtime and supports mock/OAuth proxy streaming for non-Codex auth modes.
 - DOM and Vision modes have snapshot ingress; DOM has an unpacked browser extension bridge; Vision has a Windows capture helper; Terminal has explicit command execution. OCR/direct image model input, store extension packaging, and deeper interactive PTY are still open.

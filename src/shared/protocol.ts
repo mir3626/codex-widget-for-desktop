@@ -80,6 +80,10 @@ export type RuntimeStatus = {
     pid?: number;
     hasThread: boolean;
     activeTurn: boolean;
+    startCount: number;
+    lastStartedAt?: string;
+    lastExitedAt?: string;
+    lastError?: string;
   };
 };
 

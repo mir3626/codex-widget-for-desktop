@@ -77,6 +77,10 @@ export class CodexAppServerBridge {
   private pendingInteractions = new Map<string, PendingInteraction>();
   private activeTurn: ActiveTurn | undefined;
   private closing = false;
+  private startCount = 0;
+  private lastStartedAt: string | undefined;
+  private lastExitedAt: string | undefined;
+  private lastError: string | undefined;
 
   async warm(context: CodexExecutionContext): Promise<void> {
     await this.ensureReady(context);
@@ -91,7 +95,11 @@ export class CodexAppServerBridge {
       state: this.ws?.readyState === WebSocket.OPEN ? "connected" : this.starting ? "starting" : "closed",
       pid: this.child?.pid,
       hasThread: Boolean(this.threadId),
-      activeTurn: Boolean(this.activeTurn)
+      activeTurn: Boolean(this.activeTurn),
+      startCount: this.startCount,
+      lastStartedAt: this.lastStartedAt,
+      lastExitedAt: this.lastExitedAt,
+      lastError: this.lastError
     };
   }
 
@@ -229,48 +237,58 @@ export class CodexAppServerBridge {
   private async start(context: CodexExecutionContext): Promise<void> {
     await this.close();
     this.closing = false;
+    this.startCount += 1;
+    this.lastStartedAt = new Date().toISOString();
+    this.lastExitedAt = undefined;
 
-    const child = spawnCodex(["app-server", "--listen", "ws://127.0.0.1:0"], {
-      cwd: context.workdir,
-      stdio: ["ignore", "pipe", "pipe"],
-      windowsHide: true
-    });
-    this.child = child;
-
-    child.stdout?.resume();
-    child.on("exit", (code) => this.handleChildExit(code));
-
-    const url = await this.waitForListeningUrl(child);
-    const ws = new WebSocket(url);
-    this.ws = ws;
-
-    ws.on("message", (raw) => this.handleMessage(raw.toString()));
-    ws.on("close", () => this.handleSocketClose());
-    ws.on("error", (error) => this.rejectAll(error instanceof Error ? error : new Error(String(error))));
-
-    await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error("Timed out connecting to Codex app-server.")), 10_000);
-      ws.once("open", () => {
-        clearTimeout(timer);
-        resolve();
+    try {
+      const child = spawnCodex(["app-server", "--listen", "ws://127.0.0.1:0"], {
+        cwd: context.workdir,
+        stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true
       });
-      ws.once("error", (error) => {
-        clearTimeout(timer);
-        reject(error);
-      });
-    });
+      this.child = child;
 
-    await this.request("initialize", {
-      clientInfo: {
-        name: "codex-widget-for-desktop",
-        title: "Codex Widget",
-        version: "0.1.0"
-      },
-      capabilities: {
-        experimentalApi: true
-      }
-    });
-    this.notify("initialized");
+      child.stdout?.resume();
+      child.on("exit", (code) => this.handleChildExit(code));
+
+      const url = await this.waitForListeningUrl(child);
+      const ws = new WebSocket(url);
+      this.ws = ws;
+
+      ws.on("message", (raw) => this.handleMessage(raw.toString()));
+      ws.on("close", () => this.handleSocketClose());
+      ws.on("error", (error) => this.rejectAll(error instanceof Error ? error : new Error(String(error))));
+
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error("Timed out connecting to Codex app-server.")), 10_000);
+        ws.once("open", () => {
+          clearTimeout(timer);
+          resolve();
+        });
+        ws.once("error", (error) => {
+          clearTimeout(timer);
+          reject(error);
+        });
+      });
+
+      await this.request("initialize", {
+        clientInfo: {
+          name: "codex-widget-for-desktop",
+          title: "Codex Widget",
+          version: "0.1.0"
+        },
+        capabilities: {
+          experimentalApi: true
+        }
+      });
+      this.notify("initialized");
+      this.lastError = undefined;
+    } catch (error) {
+      this.lastError = readErrorMessage(error);
+      await this.close();
+      throw error;
+    }
   }
 
   private waitForListeningUrl(child: ChildProcess): Promise<string> {
@@ -629,7 +647,9 @@ export class CodexAppServerBridge {
     this.ws = undefined;
     this.threadId = undefined;
     if (!this.closing) {
-      this.rejectAll(new Error("Codex app-server socket closed."));
+      const error = new Error("Codex app-server socket closed.");
+      this.lastError = error.message;
+      this.rejectAll(error);
     }
   }
 
@@ -637,8 +657,11 @@ export class CodexAppServerBridge {
     this.child = undefined;
     this.ws = undefined;
     this.threadId = undefined;
+    this.lastExitedAt = new Date().toISOString();
     if (!this.closing) {
-      this.rejectAll(new Error(`Codex app-server exited with ${code ?? "unknown"}.`));
+      const error = new Error(`Codex app-server exited with ${code ?? "unknown"}.`);
+      this.lastError = error.message;
+      this.rejectAll(error);
     }
   }
 
@@ -804,4 +827,8 @@ function readTurnError(value: unknown): string | undefined {
     return error.code;
   }
   return undefined;
+}
+
+function readErrorMessage(value: unknown): string {
+  return value instanceof Error ? value.message : String(value);
 }

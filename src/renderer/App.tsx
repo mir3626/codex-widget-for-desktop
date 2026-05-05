@@ -1350,6 +1350,8 @@ export function App() {
                 <RuntimeMetric label="Active" value={runtimeStatus?.activeRequests ?? 0} />
                 <RuntimeMetric label="Codex" value={runtimeStatus?.codexAppServer.state ?? "closed"} />
                 <RuntimeMetric label="Thread" value={runtimeStatus?.codexAppServer.hasThread ? "ready" : "none"} />
+                <RuntimeMetric label="Starts" value={runtimeStatus?.codexAppServer.startCount ?? 0} />
+                <RuntimeMetric label="Error" value={runtimeStatus?.codexAppServer.lastError ?? "none"} />
               </div>
             </div>
 
@@ -1653,7 +1655,7 @@ function RuntimeMetric({ label, value }: { label: string; value: string | number
   return (
     <div className="runtime-metric">
       <span>{label}</span>
-      <strong>{value}</strong>
+      <strong title={String(value)}>{value}</strong>
     </div>
   );
 }

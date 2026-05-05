@@ -44,6 +44,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Started `/vibe-iterate` Iteration `iter-2` (`Resident Runtime Expansion`) and added milestone/report state for runtime protocol, provider shell, and resident desktop ops.
 - Added first-class renderer-daemon runtime interactions: app-server approval/user-input server requests now emit `interaction.required`, render compact approval/input cards in the widget, and return `interaction.respond` to the daemon instead of being silently declined.
 - Added `CODEX_WIDGET_CODEX_APPROVAL_POLICY=on-request` as the default app-server approval policy, with `never` still available for trusted automation experiments.
+- Added app-server runtime diagnostics: `runtime.status` now includes start count, last started/exited timestamps, and latest error; the Settings panel surfaces start count and latest error.
 - Added visible chat timeline persistence across renderer reloads plus a titlebar New chat control that clears local chat state and resets daemon proxy/app-server session state.
 - Added daemon-owned provider status events for Agent, DOM, Vision, and PTY modes so the mode tabs now have a reusable capability/status contract before real providers are implemented.
 - Added resident desktop operations: runtime health events, Settings panel, Windows start-at-login toggle, skip-taskbar native config, hide-to-tray close behavior, and a strengthened smoke gate for provider/runtime events.
@@ -480,6 +481,13 @@ Completed after Windows screen capture helper pass:
 - `node --check scripts/smoke-screen-helper-live.mjs`
 - `node --check scripts/smoke-all.mjs`
 - `node --check src/daemon/server.ts`
+
+Completed after app-server diagnostics pass:
+
+- `npm run lint`
+- `npm run smoke:resident`
+- `npm run smoke:all:live`
+- `node --check src/daemon/codexAppServer.ts`
 
 ## Restart Steps
 

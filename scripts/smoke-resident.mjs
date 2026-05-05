@@ -42,6 +42,12 @@ try {
   if (lastStatus.codexAppServer.state !== "closed") {
     throw new Error(`Mock resident smoke should not start app-server, saw ${lastStatus.codexAppServer.state}.`);
   }
+  if (typeof lastStatus.codexAppServer.startCount !== "number") {
+    throw new Error(`Codex app-server startCount diagnostic missing: ${JSON.stringify(lastStatus.codexAppServer)}`);
+  }
+  if ("lastError" in lastStatus.codexAppServer && typeof lastStatus.codexAppServer.lastError !== "string") {
+    throw new Error(`Codex app-server lastError diagnostic should be a string when present.`);
+  }
 
   const rssMb = process.memoryUsage().rss / 1024 / 1024;
   if (rssMb > MAX_IDLE_RSS_MB) {
