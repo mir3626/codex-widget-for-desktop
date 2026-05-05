@@ -153,13 +153,7 @@ export class CodexAppServerBridge {
     const threadId = await this.ensureThread(input.selection, input.context);
     const turn = (await this.request("turn/start", {
       threadId,
-      input: [
-        {
-          type: "text",
-          text: `[mode=${input.request.mode}] ${input.request.text}`,
-          text_elements: []
-        }
-      ],
+      input: buildTurnInput(input.request),
       cwd: input.context.workdir,
       approvalPolicy: input.context.approvalPolicy,
       model: input.selection.model,
@@ -699,6 +693,39 @@ export class CodexAppServerBridge {
       active.reject(error);
     }
   }
+}
+
+type AppServerUserInput =
+  | {
+      type: "text";
+      text: string;
+      text_elements: [];
+    }
+  | {
+      type: "image";
+      url: string;
+    };
+
+export function buildTurnInput(request: AgentRequest): AppServerUserInput[] {
+  const input: AppServerUserInput[] = [
+    {
+      type: "text",
+      text: `[mode=${request.mode}] ${request.text}`,
+      text_elements: []
+    }
+  ];
+
+  for (const url of request.imageDataUrls ?? []) {
+    if (isSupportedImageUrl(url)) {
+      input.push({ type: "image", url });
+    }
+  }
+
+  return input;
+}
+
+function isSupportedImageUrl(value: string): boolean {
+  return /^data:image\/[a-z0-9.+-]+;base64,/i.test(value) || /^https?:\/\//i.test(value);
 }
 
 function readRecord(value: unknown): Record<string, unknown> | undefined {

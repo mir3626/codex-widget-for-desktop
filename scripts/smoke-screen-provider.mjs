@@ -1,20 +1,23 @@
 import WebSocket from "ws";
 import { startDaemon } from "../dist/daemon/server.js";
+import { buildTurnInput } from "../dist/daemon/codexAppServer.js";
+import { augmentRequestWithProviderContext, ProviderRegistry } from "../dist/daemon/providers/providerRegistry.js";
 
 process.env.CODEX_WIDGET_AUTH_MODE = "mock";
 
 const daemon = await startDaemon({ port: 0 });
 const marker = "screen-smoke-ocr-marker";
+const screenPayload = {
+  source: "smoke-test-capture",
+  title: "Screen Smoke Snapshot",
+  description: "Synthetic screen snapshot for provider smoke coverage.",
+  ocrText: `Visible OCR text includes ${marker}`,
+  imageDataUrl: "data:image/jpeg;base64,c2NyZWVu"
+};
 const response = await fetch(`http://127.0.0.1:${daemon.port}/providers/screen/snapshot`, {
   method: "POST",
   headers: { "content-type": "application/json" },
-  body: JSON.stringify({
-    source: "smoke-test-capture",
-    title: "Screen Smoke Snapshot",
-    description: "Synthetic screen snapshot for provider smoke coverage.",
-    ocrText: `Visible OCR text includes ${marker}`,
-    imageDataUrl: "data:image/jpeg;base64,c2NyZWVu"
-  })
+  body: JSON.stringify(screenPayload)
 });
 
 if (!response.ok) {
@@ -23,6 +26,24 @@ if (!response.ok) {
 const posted = await response.json();
 if (posted.snapshot?.imageDataUrl || posted.snapshot?.imageDataUrlLength <= 0) {
   throw new Error(`Screen snapshot response should redact image data: ${JSON.stringify(posted)}`);
+}
+
+const registry = new ProviderRegistry();
+registry.setScreenSnapshot(screenPayload);
+const augmented = augmentRequestWithProviderContext(
+  {
+    id: "screen-augment-smoke",
+    text: "Summarize the screen.",
+    mode: "screen"
+  },
+  registry
+);
+const turnInput = buildTurnInput(augmented);
+if (!augmented.imageDataUrls?.includes(screenPayload.imageDataUrl)) {
+  throw new Error("Screen provider did not attach image data URL to the augmented request.");
+}
+if (!turnInput.some((item) => item.type === "image" && item.url === screenPayload.imageDataUrl)) {
+  throw new Error(`Codex app-server input did not include the screen image: ${JSON.stringify(turnInput)}`);
 }
 
 const socket = new WebSocket(`ws://127.0.0.1:${daemon.port}`);

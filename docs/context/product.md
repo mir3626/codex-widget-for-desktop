@@ -20,14 +20,14 @@ The primary user is a developer who wants a persistent desktop companion similar
 - Regenerate now truncates the visible chat from the selected answer onward and asks the app-server to roll back the same number of thread turns before starting the replacement response.
 - Mode tabs receive daemon-owned provider status, giving Agent, DOM, Vision, and PTY a stable contract before each provider becomes fully real.
 - DOM mode accepts live browser snapshots through `POST /providers/dom/snapshot` and injects that context into the model request. An unpacked Chrome/Edge extension can send active-tab snapshots into that endpoint.
-- Vision mode accepts screen snapshots through `POST /providers/screen/snapshot` and injects screen description/OCR context into the model request. The widget can ask the daemon to run a Windows PowerShell helper that captures the virtual desktop and posts a compressed image snapshot.
+- Vision mode accepts screen snapshots through `POST /providers/screen/snapshot`, injects screen description/OCR context into the model request, and attaches captured image data as an app-server image input for Vision turns. The widget can ask the daemon to run a Windows PowerShell helper that captures the virtual desktop and posts a compressed image snapshot.
 - Terminal/PTY mode executes explicit local shell commands, supports a persistent `/pty` command session, and streams output as widget tool events.
 - Runtime health status is streamed from the daemon into the settings panel.
 - App-server diagnostics include start count and latest error in runtime status so resident failures are visible from the widget.
 - The chat renderer has a Playwright smoke for multi-turn layout, GFM tables, prompt resizing, and response action menu placement.
 - `npm run build` produces Windows MSI and NSIS installer bundles.
 - The daemon keeps `codex exec resume` as a fallback runtime and supports mock/OAuth proxy streaming for non-Codex auth modes.
-- DOM and Vision modes have snapshot ingress; DOM has an unpacked browser extension bridge; Vision has a Windows capture helper; Terminal has one-shot command execution plus a persistent command session. OCR/direct image model input, store extension packaging, and true raw interactive PTY are still open.
+- DOM and Vision modes have snapshot ingress; DOM has an unpacked browser extension bridge; Vision has a Windows capture helper and direct app-server image input; Terminal has one-shot command execution plus a persistent command session. OCR, store extension packaging, and true raw interactive PTY are still open.
 - Windows Tauri prerequisites are documented and verified on the local machine.
 
 ## Product Goals

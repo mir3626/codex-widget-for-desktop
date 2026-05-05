@@ -108,6 +108,7 @@ export class ProviderRegistry {
 export function augmentRequestWithProviderContext<T extends {
   mode: WidgetMode;
   text: string;
+  imageDataUrls?: string[];
 }>(input: T, providers: ProviderRegistry | undefined): T {
   if (input.mode !== "browser") {
     if (input.mode !== "screen") {
@@ -121,6 +122,9 @@ export function augmentRequestWithProviderContext<T extends {
 
     return {
       ...input,
+      imageDataUrls: screenSnapshot.imageDataUrl
+        ? [...(input.imageDataUrls ?? []), screenSnapshot.imageDataUrl]
+        : input.imageDataUrls,
       text: [
         "Screen/Vision context:",
         `Source: ${screenSnapshot.source || "(unknown)"}`,
@@ -128,7 +132,7 @@ export function augmentRequestWithProviderContext<T extends {
         `Captured: ${screenSnapshot.capturedAt}`,
         screenSnapshot.description ? `Description:\n${screenSnapshot.description}` : "",
         screenSnapshot.ocrText ? `OCR text:\n${screenSnapshot.ocrText}` : "",
-        screenSnapshot.imageDataUrl ? "Image data URL is attached to the daemon snapshot but not embedded in this text turn." : "",
+        screenSnapshot.imageDataUrl ? "Image input is attached to this Vision turn." : "",
         "",
         "User request:",
         input.text

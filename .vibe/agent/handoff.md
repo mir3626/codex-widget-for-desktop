@@ -57,6 +57,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
   - Vision mode accepts screen snapshots at `POST /providers/screen/snapshot`, updates provider readiness, emits screen snapshot tool output, and injects screen description/OCR context into model requests.
   - `providers/screen-capture-helper/capture-screen.ps1` captures the Windows virtual desktop, compresses it to JPEG data URL, and posts it to the Vision snapshot endpoint.
   - The Vision-mode Capture action sends `provider.captureScreen` to the daemon, which runs the screen capture helper and refreshes provider status without requiring the user to run PowerShell manually.
+  - Screen/Vision image data is now attached to Codex app-server Vision turns as image input instead of remaining daemon-only metadata.
   - Terminal/PTY mode executes explicit local commands (`/run`, `$`, `PS>`, `run:`, or fenced shell blocks), streams stdout/stderr as tool output, blocks dangerous command patterns by default, and returns a markdown terminal result.
 - Added a persistent command-session layer for Terminal/PTY mode:
   - `/pty start` starts a daemon-owned child shell in the configured Codex widget terminal workdir.
@@ -536,6 +537,14 @@ Completed after regenerate rollback pass:
 - `npm run smoke:all:live`
 - `npm run build`
 - The renderer smoke asserts that regenerating the first of three assistant answers sends `regenerate.dropTurns: 3`.
+
+Completed after direct Vision image input pass:
+
+- `npm run lint`
+- `npm run smoke:screen`
+- `npm run smoke:all:live`
+- `npm run build`
+- `npm run smoke:screen` now asserts that screen snapshots become app-server image input items.
 
 Completed latest release build after provider/runtime readiness passes:
 

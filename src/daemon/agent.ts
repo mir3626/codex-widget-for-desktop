@@ -29,6 +29,7 @@ export type AgentRequest = {
   mode: WidgetMode;
   model?: ModelId;
   reasoningEffort?: ReasoningEffort;
+  imageDataUrls?: string[];
 };
 
 export type AgentRuntimeOptions = {
