@@ -10,7 +10,8 @@ const commands = [
   npmCommand("run", "build"),
   npmCommand("run", "smoke:release-resources"),
   npmCommand("run", "smoke:release-launch"),
-  npmCommand("run", "smoke:release-install")
+  npmCommand("run", "smoke:release-install"),
+  npmCommand("run", "smoke:release-msi-install")
 ];
 const artifacts = [
   join(root, "src-tauri", "target", "release", "codex-widget-for-desktop.exe"),

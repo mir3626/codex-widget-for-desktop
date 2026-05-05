@@ -104,9 +104,10 @@ npm run vibe:checkpoint
 - OAuth proxy live streaming requires an auth/proxy service and is not covered by CI-like smoke tests.
 - Packaged daemon restart backoff and child restart have Rust tests; installed-app daemon restart and app-kill orphan cleanup are covered by the NSIS release install smoke.
 - Renderer-visible native daemon diagnostics are covered by type/build checks; installed-app restart UX screenshots are still manual.
-- Bundled Node/PTY runtime smokes verify local daemon startup without repository `node_modules` and native node-pty packaging; installed MSI launch observation is still manual.
+- Bundled Node/PTY runtime smokes verify local daemon startup without repository `node_modules` and native node-pty packaging; installed MSI launch/uninstall observation is now covered by `npm run smoke:release-msi-install`.
 - `npm run smoke:release-resources` verifies generated MSI/NSIS scripts include bundled daemon/runtime/provider resources, but it does not install and launch the artifacts.
 - `npm run smoke:release-launch` starts the release exe hidden and verifies the daemon WebSocket on port `4128`.
-- `npm run smoke:release-install` performs a Windows NSIS silent install, launches the installed app hidden, verifies the installed bundled daemon on port `4128`, kills that daemon to verify native supervisor restart, kills the app process to verify daemon orphan cleanup, silently uninstalls, and checks cleanup; MSI install/uninstall is still manual.
-- `npm run release:verify` is the single full release gate and runs the live provider/resident smokes, Tauri build, release resource smoke, release exe launch smoke, and NSIS install smoke.
+- `npm run smoke:release-install` performs a Windows NSIS silent install, launches the installed app hidden, verifies the installed bundled daemon on port `4128`, kills that daemon to verify native supervisor restart, kills the app process to verify daemon orphan cleanup, silently uninstalls, and checks cleanup.
+- `npm run smoke:release-msi-install` performs a Windows MSI silent install into a per-user test directory, launches the installed app hidden, verifies the installed bundled daemon on port `4128`, silently uninstalls, and checks cleanup.
+- `npm run release:verify` is the single full release gate and runs the live provider/resident smokes, Tauri build, release resource smoke, release exe launch smoke, NSIS install smoke, and MSI install smoke.
 - `npm run release:soak` is the longer hidden release-exe soak. It defaults to 60 seconds and can be tuned with `CODEX_WIDGET_RELEASE_SOAK_MS`, `CODEX_WIDGET_RELEASE_SOAK_MAX_WORKING_SET_MB`, and `CODEX_WIDGET_RELEASE_SOAK_MAX_GROWTH_MB`.
