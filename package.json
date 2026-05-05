@@ -14,6 +14,7 @@
     "build:daemon": "tsc -p tsconfig.node.json",
     "build:renderer": "vite build",
     "smoke": "npm run build:web && node scripts/smoke-daemon.mjs",
+    "smoke:resident": "npm run build:daemon && node scripts/smoke-resident.mjs",
     "lint": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "vibe:build": "tsc -p .vibe/harness/tsconfig.json",
     "vibe:typecheck": "tsc -p .vibe/harness/tsconfig.harness.json --noEmit",

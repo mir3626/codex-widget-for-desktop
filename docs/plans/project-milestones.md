@@ -39,9 +39,10 @@ Evidence:
 
 Goal: make the widget practical as a daily resident desktop utility: tray/autostart, resource budget, crash recovery, and install/release checklist.
 
-Current progress: 0.55
+Current progress: 0.62
 
 Evidence:
 - Dev hot services, daemon lifecycle, tray menu, and start-at-login toggle exist.
 - `npm run build` produces release exe plus MSI and NSIS installer bundles.
-- Long-run resource gates and crash-recovery polish remain open.
+- `npm run smoke:resident` verifies idle runtime health and RSS budget.
+- Crash-recovery polish and longer soak tests remain open.

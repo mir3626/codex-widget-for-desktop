@@ -47,6 +47,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added visible chat timeline persistence across renderer reloads plus a titlebar New chat control that clears local chat state and resets daemon proxy/app-server session state.
 - Added daemon-owned provider status events for Agent, DOM, Vision, and PTY modes so the mode tabs now have a reusable capability/status contract before real providers are implemented.
 - Added resident desktop operations: runtime health events, Settings panel, Windows start-at-login toggle, skip-taskbar native config, hide-to-tray close behavior, and a strengthened smoke gate for provider/runtime events.
+- Added `npm run smoke:resident` for idle daemon health and RSS budget checks.
 - Fixed production bundling by adding `icons/icon.ico` to the Tauri bundle icon list; `npm run build` now produces release exe, MSI, and NSIS installer artifacts.
 
 ## Next Recommended Sprint
@@ -417,6 +418,7 @@ Completed after resident desktop ops pass:
 
 - `npm run lint`
 - `npm run smoke` with strengthened provider/runtime event checks
+- `npm run smoke:resident`
 - `cargo fmt --check`
 - `cargo check --no-default-features`
 - Renderer Playwright smoke confirmed Settings runtime/provider layout and hidden prompt rows at `360x480`.
@@ -440,7 +442,8 @@ Completed after resident desktop ops pass:
 11. For renderer UI work, capture a `360x480` Playwright smoke against `http://127.0.0.1:5173/?daemonPort=4128` to check overlap in the fixed Tauri viewport. Model/reasoning selectors live between the status strip and mode tabs and persist to localStorage keys `codex-widget-model` and `codex-widget-reasoning-effort`.
 12. Renderer visible chat persists under `codex-widget-chat-messages:v1`; use the titlebar New chat control or `session.reset` protocol event to clear both UI and daemon session state.
 13. The titlebar close button hides the widget to tray; use tray Quit to exit the resident app.
-14. Run `npm run build` before release checks; MSI/NSIS bundle creation is now part of the installability gate.
-15. Run `npm run vibe:checkpoint` before ending any follow-up maintenance session.
+14. Run `npm run smoke:resident` when resident lifecycle, daemon health, or resource behavior changes.
+15. Run `npm run build` before release checks; MSI/NSIS bundle creation is now part of the installability gate.
+16. Run `npm run vibe:checkpoint` before ending any follow-up maintenance session.
 
 Use `docs/context/qa.md` for routine follow-up commands.

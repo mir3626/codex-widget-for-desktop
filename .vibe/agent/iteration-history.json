@@ -47,9 +47,9 @@
         "resident-widget-mvp": 0.78,
         "durable-codex-runtime": 0.62,
         "real-tool-providers": 0.16,
-        "resident-desktop-readiness": 0.55
+        "resident-desktop-readiness": 0.62
       },
-      "summary": "Iteration 2 has added runtime protocol durability, app-server interaction UI, visible chat persistence, provider status events, runtime health status, start-at-login settings, tray-oriented hide behavior, and verified release installer builds. Real DOM/Vision/PTY provider implementations remain open."
+      "summary": "Iteration 2 has added runtime protocol durability, app-server interaction UI, visible chat persistence, provider status events, runtime health status, start-at-login settings, tray-oriented hide behavior, resident resource smoke, and verified release installer builds. Real DOM/Vision/PTY provider implementations remain open."
     }
   ]
 }

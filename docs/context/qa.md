@@ -8,6 +8,7 @@ Run these after ordinary TypeScript/daemon/renderer changes:
 npm run lint
 npm run build:web
 npm run smoke
+npm run smoke:resident
 ```
 
 Run this after Tauri/Rust/native shell changes:

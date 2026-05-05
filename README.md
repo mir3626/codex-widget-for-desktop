@@ -84,6 +84,7 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run dev:services`: start renderer HMR, daemon TypeScript watch, and daemon restart loop without launching Tauri
 - `npm run dev:auth-proxy`: start only the local development OAuth/proxy server on `127.0.0.1:8787`
 - `npm run build`: build the Tauri desktop app
+- `npm run smoke:resident`: run the idle resident daemon health/resource smoke
 - Production build output is written under `src-tauri/target/release/bundle/` as MSI and NSIS installer artifacts.
 - `npm run build:web`: compile the daemon and build the renderer without invoking Cargo
 - `npm run smoke`: build and verify the daemon WebSocket stream
