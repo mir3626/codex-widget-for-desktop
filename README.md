@@ -103,6 +103,7 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run smoke:all`: run the standard serial readiness gate without rebuilding daemon in parallel
 - `npm run smoke:all:live`: run the serial readiness gate plus the live Windows screen capture helper
 - `npm run smoke:resident`: run the idle resident daemon health/resource smoke
+- `npm run smoke:resident-soak`: run a short resident daemon soak with runtime samples, ping/pong health checks, and RSS growth limits
 - `npm run smoke:renderer-chat`: run a Playwright layout smoke for multi-turn chat, tables, prompt resizing, and More-menu placement
 - `npm run smoke:dom`: verify the local DOM snapshot provider ingress
 - `npm run smoke:extension`: verify the unpacked browser DOM extension manifest/service worker

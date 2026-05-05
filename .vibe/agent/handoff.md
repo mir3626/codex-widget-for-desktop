@@ -75,6 +75,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
   - This preserves app-server context before the selected answer without sending the visible chat history as a prompt.
 - Added `docs/providers/dom-snapshot-bookmarklet.js`, `docs/providers/screen-snapshot-example.json`, `npm run smoke:dom`, `npm run smoke:extension`, `npm run smoke:screen`, `npm run smoke:screen-capture:live`, `npm run smoke:screen-helper`, `npm run smoke:screen-helper:live`, and `npm run smoke:terminal`.
 - Added `npm run smoke:renderer-chat` for browser-level validation of multi-turn chat overlap, table width, prompt resize, and response action menu placement.
+- Added `npm run smoke:resident-soak` for a short resident daemon soak covering runtime samples, ping/pong health, idle active request count, app-server closed state in mock mode, RSS ceiling, and RSS growth.
 
 ## Next Recommended Sprint
 
@@ -545,6 +546,12 @@ Completed after direct Vision image input pass:
 - `npm run smoke:all:live`
 - `npm run build`
 - `npm run smoke:screen` now asserts that screen snapshots become app-server image input items.
+
+Completed after resident soak gate pass:
+
+- `npm run lint`
+- `npm run smoke:resident-soak`
+- `npm run smoke:all:live`
 
 Completed latest release build after provider/runtime readiness passes:
 

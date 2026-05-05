@@ -21,6 +21,12 @@ npm run smoke:all:live
 npm run smoke:screen-capture:live
 ```
 
+Run this after resident daemon lifecycle, runtime status, or resource-budget changes:
+
+```powershell
+npm run smoke:resident-soak
+```
+
 Run this after Tauri/Rust/native shell changes:
 
 ```powershell

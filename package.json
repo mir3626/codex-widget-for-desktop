@@ -19,6 +19,7 @@
     "smoke:dom": "npm run build:daemon && node scripts/smoke-dom-provider.mjs",
     "smoke:extension": "node scripts/smoke-browser-extension.mjs",
     "smoke:resident": "npm run build:daemon && node scripts/smoke-resident.mjs",
+    "smoke:resident-soak": "npm run build:daemon && node scripts/smoke-resident-soak.mjs",
     "smoke:screen": "npm run build:daemon && node scripts/smoke-screen-provider.mjs",
     "smoke:screen-capture:live": "npm run build:daemon && node scripts/smoke-screen-capture-request.mjs",
     "smoke:screen-helper": "node scripts/smoke-screen-helper.mjs",

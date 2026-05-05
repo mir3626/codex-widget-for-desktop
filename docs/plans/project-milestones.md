@@ -45,12 +45,13 @@ Evidence:
 
 Goal: make the widget practical as a daily resident desktop utility: tray/autostart, resource budget, crash recovery, and install/release checklist.
 
-Current progress: 0.7
+Current progress: 0.72
 
 Evidence:
 - Dev hot services, daemon lifecycle, tray menu, and start-at-login toggle exist.
 - `npm run build` produces release exe plus MSI and NSIS installer bundles.
 - `npm run smoke:resident` verifies idle runtime health and RSS budget.
+- `npm run smoke:resident-soak` adds a short resident runtime sample, ping/pong health, and RSS growth gate.
 - `npm run smoke:all` provides a serial readiness gate that avoids parallel build races across provider smokes.
 - `npm run smoke:screen-capture:live` verifies the widget-protocol screen capture request path.
 - Runtime status exposes app-server start count and latest error in the widget settings panel.
