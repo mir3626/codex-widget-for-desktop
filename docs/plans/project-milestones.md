@@ -14,6 +14,7 @@ Evidence:
 - Multi-turn chat layout, GFM tables, prompt resizing, and response action menu placement are covered by a Playwright renderer smoke.
 - The widget hides to tray, stays off the taskbar, and exposes resident settings.
 - Packaged Tauri builds now supervise the Node daemon and restart it after unexpected exits.
+- Native daemon supervisor diagnostics are visible in the renderer status strip and Settings runtime grid.
 
 ## durable-codex-runtime
 
@@ -27,6 +28,7 @@ Evidence:
 - Approval and user-input request plumbing is being promoted to first-class widget UI.
 - The daemon emits runtime health status for clients, active requests, and app-server state.
 - The native Tauri shell supervises the daemon process with capped restart backoff and shutdown cleanup.
+- Renderer code can read native daemon state while WebSocket reconnect is in progress.
 
 ## real-tool-providers
 
@@ -58,4 +60,4 @@ Evidence:
 - `npm run smoke:screen-capture:live` verifies the widget-protocol screen capture request path.
 - Runtime status exposes app-server start count and latest error in the widget settings panel.
 - `npm run smoke:tauri-supervisor` covers native supervisor restart backoff and actual child restart after exit.
-- Native crash-recovery UX surfacing and longer soak tests remain open.
+- Native crash-recovery UX is surfaced through renderer diagnostics; installed-app observation and longer soak tests remain open.

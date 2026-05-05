@@ -79,6 +79,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added `npm run smoke:resident-soak` for a short resident daemon soak covering runtime samples, ping/pong health, idle active request count, app-server closed state in mock mode, RSS ceiling, and RSS growth.
 - Replaced the packaged Tauri daemon child holder with a native daemon supervisor that restarts the Node daemon after unexpected exits with capped exponential backoff, keeps dev-mode duplicate spawn disabled by default, and kills the daemon child on widget shutdown.
 - Added `npm run smoke:tauri-supervisor` to validate supervisor backoff and actual child restart behavior through Rust tests.
+- Exposed native daemon supervisor diagnostics to the renderer via `get_native_daemon_status`; the widget status strip and Settings runtime grid can now show native daemon starting/running/restarting/error state even while the WebSocket is reconnecting.
 
 ## Next Recommended Sprint
 
@@ -568,7 +569,11 @@ Completed after browser DOM extension packaging pass:
 Completed after native daemon supervisor pass:
 
 - `npm run smoke:tauri-supervisor`
+- `npm run lint`
+- `npm run smoke:renderer-chat`
+- `npm run build`
 - Added packaged-app daemon restart supervision with capped exponential backoff and shutdown cleanup; the smoke now verifies both delay capping and actual child restart after an exit.
+- Added renderer-visible native daemon diagnostics so offline/reconnecting states can distinguish dev-services mode, daemon restart, and daemon errors.
 
 Completed latest release build after provider/runtime readiness passes:
 

@@ -27,6 +27,15 @@ export type WidgetWindowFrame = {
   height: number;
 };
 
+export type NativeDaemonStatus = {
+  enabled: boolean;
+  state: "disabled" | "starting" | "running" | "restarting" | "stopped" | "error" | string;
+  pid?: number | null;
+  restartCount: number;
+  lastEvent?: string | null;
+  lastError?: string | null;
+};
+
 export async function hideWidget(): Promise<void> {
   try {
     await getCurrentWindow().hide();
@@ -166,5 +175,13 @@ export async function setAutostartEnabled(enabled: boolean): Promise<boolean> {
     return await invoke<boolean>("set_autostart_enabled", { enabled });
   } catch {
     return false;
+  }
+}
+
+export async function readNativeDaemonStatus(): Promise<NativeDaemonStatus | null> {
+  try {
+    return await invoke<NativeDaemonStatus>("get_native_daemon_status");
+  } catch {
+    return null;
   }
 }

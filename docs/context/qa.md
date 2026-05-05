@@ -72,3 +72,4 @@ npm run vibe:checkpoint
 - Terminal provider supports explicit one-shot commands and a persistent command session through `/pty`, but it is not a raw ConPTY/full-screen interactive terminal yet.
 - OAuth proxy live streaming requires an auth/proxy service and is not covered by CI-like smoke tests.
 - Packaged daemon restart backoff and child restart have Rust tests; end-to-end native crash/restart observation in an installed app is still manual.
+- Renderer-visible native daemon diagnostics are covered by type/build checks; installed-app restart UX screenshots are still manual.

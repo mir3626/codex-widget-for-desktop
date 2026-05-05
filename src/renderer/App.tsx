@@ -61,6 +61,7 @@ import {
   closeWidget,
   minimizeWidget,
   openExternalUrl,
+  readNativeDaemonStatus,
   readAutostartEnabled,
   readWidgetWindowGeometry,
   setAutostartEnabled,
@@ -69,6 +70,7 @@ import {
   startResizeWidget,
   toggleMaximizeWidget,
   togglePinned,
+  type NativeDaemonStatus,
   type WidgetResizeDirection
 } from "./shell";
 
@@ -158,6 +160,7 @@ export function App() {
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>(() => readStoredReasoningEffort());
   const [providerStatuses, setProviderStatuses] = useState<ProviderStatus[]>([]);
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus | null>(null);
+  const [nativeDaemonStatus, setNativeDaemonStatus] = useState<NativeDaemonStatus | null>(null);
   const [status, setStatus] = useState("connecting");
   const [auth, setAuth] = useState<AuthStatus>({
     mode: "mock",
@@ -263,6 +266,28 @@ export function App() {
       }
     };
   }, [daemonPort]);
+
+  useEffect(() => {
+    let stopped = false;
+    let timer: number | null = null;
+
+    async function refreshNativeDaemonStatus() {
+      const snapshot = await readNativeDaemonStatus();
+      if (!stopped && snapshot) {
+        setNativeDaemonStatus(snapshot);
+      }
+    }
+
+    void refreshNativeDaemonStatus();
+    timer = window.setInterval(refreshNativeDaemonStatus, connected ? 5000 : 1500);
+
+    return () => {
+      stopped = true;
+      if (timer !== null) {
+        window.clearInterval(timer);
+      }
+    };
+  }, [connected]);
 
   useEffect(() => {
     if (!openActionMenuId) {
@@ -1187,6 +1212,7 @@ export function App() {
   );
   const activeProviderStatus = providerStatusByMode.get(mode);
   const statusTone = connected ? (auth.authenticated ? "online" : "warning") : "offline";
+  const displayStatus = connected ? status : formatNativeDaemonStatus(nativeDaemonStatus, status);
   const authLabel = auth.authenticated ? "Sign out" : "Sign in";
   const liveLabel = auth.authenticated
     ? auth.modelLabel && auth.modelLabel !== "codex"
@@ -1297,7 +1323,9 @@ export function App() {
         <div className="system-strip">
           <div className="status-copy">
             <span className={`status-dot ${statusTone}`} />
-            <span className="status-text">{status}</span>
+            <span className="status-text" title={nativeDaemonStatus?.lastEvent ?? undefined}>
+              {displayStatus}
+            </span>
             {liveLabel ? <span className="model-label">{liveLabel}</span> : null}
           </div>
           <button
@@ -1375,6 +1403,8 @@ export function App() {
                 <RuntimeMetric label="Thread" value={runtimeStatus?.codexAppServer.hasThread ? "ready" : "none"} />
                 <RuntimeMetric label="Starts" value={runtimeStatus?.codexAppServer.startCount ?? 0} />
                 <RuntimeMetric label="Error" value={runtimeStatus?.codexAppServer.lastError ?? "none"} />
+                <RuntimeMetric label="Shell" value={nativeDaemonStatus?.state ?? "unknown"} />
+                <RuntimeMetric label="Restarts" value={nativeDaemonStatus?.restartCount ?? 0} />
               </div>
             </div>
 
@@ -2095,6 +2125,31 @@ function formatRuntimeAge(seconds: number): string {
     return `${minutes}m uptime`;
   }
   return `${hours}h ${minutes % 60}m uptime`;
+}
+
+function formatNativeDaemonStatus(snapshot: NativeDaemonStatus | null, fallback: string): string {
+  if (!snapshot) {
+    return fallback;
+  }
+  if (!snapshot.enabled) {
+    return "dev services";
+  }
+  if (snapshot.state === "running") {
+    return "daemon running";
+  }
+  if (snapshot.state === "restarting") {
+    return "daemon restarting";
+  }
+  if (snapshot.state === "starting") {
+    return "daemon starting";
+  }
+  if (snapshot.state === "error") {
+    return "daemon error";
+  }
+  if (snapshot.state === "stopped") {
+    return "daemon stopped";
+  }
+  return fallback;
 }
 
 function createInteractionDraft(interaction: RuntimeInteraction): Record<string, string> {

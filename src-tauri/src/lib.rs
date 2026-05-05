@@ -21,10 +21,37 @@ const DAEMON_RESTART_MAX_DELAY_MS: u64 = 15_000;
 const DAEMON_STABLE_RUNTIME_MS: u64 = 10_000;
 const DAEMON_STATUS_POLL_MS: u64 = 500;
 
+type DaemonDiagnostics = Arc<Mutex<NativeDaemonStatus>>;
+
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NativeDaemonStatus {
+    enabled: bool,
+    state: String,
+    pid: Option<u32>,
+    restart_count: u32,
+    last_event: Option<String>,
+    last_error: Option<String>,
+}
+
+impl Default for NativeDaemonStatus {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            state: "disabled".to_string(),
+            pid: None,
+            restart_count: 0,
+            last_event: None,
+            last_error: None,
+        }
+    }
+}
+
 struct DaemonSupervisor {
     child: Arc<Mutex<Option<Child>>>,
     stop: Arc<AtomicBool>,
     thread: Mutex<Option<JoinHandle<()>>>,
+    diagnostics: DaemonDiagnostics,
 }
 
 impl DaemonSupervisor {
@@ -33,11 +60,17 @@ impl DaemonSupervisor {
             child: Arc::new(Mutex::new(None)),
             stop: Arc::new(AtomicBool::new(false)),
             thread: Mutex::new(None),
+            diagnostics: Arc::new(Mutex::new(NativeDaemonStatus::default())),
         }
     }
 
     fn start(&self, app: &tauri::AppHandle) {
         if !should_spawn_daemon() {
+            update_daemon_status(&self.diagnostics, |status| {
+                status.enabled = false;
+                status.state = "disabled".to_string();
+                status.last_event = Some("native daemon spawn disabled in dev mode".to_string());
+            });
             return;
         }
 
@@ -52,14 +85,27 @@ impl DaemonSupervisor {
 
         let Some(script) = resolve_daemon_script(app) else {
             eprintln!("[codex-widget] daemon script could not be resolved");
+            update_daemon_status(&self.diagnostics, |status| {
+                status.enabled = true;
+                status.state = "error".to_string();
+                status.last_error = Some("daemon script could not be resolved".to_string());
+            });
             return;
         };
 
+        update_daemon_status(&self.diagnostics, |status| {
+            status.enabled = true;
+            status.state = "starting".to_string();
+            status.last_event = Some("native daemon supervisor starting".to_string());
+            status.last_error = None;
+        });
+
         let child = Arc::clone(&self.child);
         let stop = Arc::clone(&self.stop);
+        let diagnostics = Arc::clone(&self.diagnostics);
         let handle = thread::Builder::new()
             .name("codex-widget-daemon-supervisor".to_string())
-            .spawn(move || supervise_daemon(script, child, stop));
+            .spawn(move || supervise_daemon(script, child, stop, diagnostics));
 
         match handle {
             Ok(handle) => {
@@ -69,6 +115,11 @@ impl DaemonSupervisor {
             }
             Err(error) => {
                 eprintln!("[codex-widget] failed to start daemon supervisor: {error}");
+                update_daemon_status(&self.diagnostics, |status| {
+                    status.enabled = true;
+                    status.state = "error".to_string();
+                    status.last_error = Some(error.to_string());
+                });
             }
         }
     }
@@ -182,6 +233,17 @@ fn set_autostart_enabled(enabled: bool) -> Result<bool, String> {
     read_autostart_enabled()
 }
 
+#[tauri::command]
+fn get_native_daemon_status(
+    state: tauri::State<'_, DaemonSupervisor>,
+) -> Result<NativeDaemonStatus, String> {
+    state
+        .diagnostics
+        .lock()
+        .map(|status| status.clone())
+        .map_err(|_| "failed to lock daemon supervisor status".to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -196,7 +258,8 @@ pub fn run() {
             start_window_resize,
             open_external_url,
             get_autostart_enabled,
-            set_autostart_enabled
+            set_autostart_enabled,
+            get_native_daemon_status
         ])
         .setup(|app| {
             if let Some(state) = app.try_state::<DaemonSupervisor>() {
@@ -621,14 +684,19 @@ fn should_spawn_daemon() -> bool {
         && std::env::var("CODEX_WIDGET_DEV_SPAWN_DAEMON").as_deref() != Ok("1"))
 }
 
-fn supervise_daemon(script: PathBuf, child_slot: Arc<Mutex<Option<Child>>>, stop: Arc<AtomicBool>) {
+fn supervise_daemon(
+    script: PathBuf,
+    child_slot: Arc<Mutex<Option<Child>>>,
+    stop: Arc<AtomicBool>,
+    diagnostics: DaemonDiagnostics,
+) {
     let mut crash_count = 0u32;
 
     while !stop.load(Ordering::SeqCst) {
         let started_at = Instant::now();
 
         match spawn_daemon_child(&script) {
-            Some(child) => {
+            Ok(child) => {
                 let pid = child.id();
                 if let Ok(mut slot) = child_slot.lock() {
                     *slot = Some(child);
@@ -637,7 +705,14 @@ fn supervise_daemon(script: PathBuf, child_slot: Arc<Mutex<Option<Child>>>, stop
                 }
 
                 eprintln!("[codex-widget] daemon started pid={pid}");
-                wait_for_daemon_exit(&child_slot, &stop);
+                update_daemon_status(&diagnostics, |status| {
+                    status.enabled = true;
+                    status.state = "running".to_string();
+                    status.pid = Some(pid);
+                    status.last_event = Some(format!("daemon started pid={pid}"));
+                    status.last_error = None;
+                });
+                wait_for_daemon_exit(&child_slot, &stop, &diagnostics);
 
                 if stop.load(Ordering::SeqCst) {
                     break;
@@ -649,8 +724,14 @@ fn supervise_daemon(script: PathBuf, child_slot: Arc<Mutex<Option<Child>>>, stop
                     crash_count = crash_count.saturating_add(1);
                 }
             }
-            None => {
+            Err(error) => {
                 crash_count = crash_count.saturating_add(1);
+                update_daemon_status(&diagnostics, |status| {
+                    status.enabled = true;
+                    status.state = "error".to_string();
+                    status.pid = None;
+                    status.last_error = Some(error);
+                });
             }
         }
 
@@ -663,13 +744,32 @@ fn supervise_daemon(script: PathBuf, child_slot: Arc<Mutex<Option<Child>>>, stop
             "[codex-widget] daemon restart scheduled in {}ms",
             delay.as_millis()
         );
+        update_daemon_status(&diagnostics, |status| {
+            status.enabled = true;
+            status.state = "restarting".to_string();
+            status.pid = None;
+            status.restart_count = status.restart_count.saturating_add(1);
+            status.last_event = Some(format!(
+                "daemon restart scheduled in {}ms",
+                delay.as_millis()
+            ));
+        });
         sleep_until_restart_or_stop(&stop, delay);
     }
 
     kill_daemon_child(&child_slot);
+    update_daemon_status(&diagnostics, |status| {
+        status.state = "stopped".to_string();
+        status.pid = None;
+        status.last_event = Some("native daemon supervisor stopped".to_string());
+    });
 }
 
-fn wait_for_daemon_exit(child_slot: &Arc<Mutex<Option<Child>>>, stop: &Arc<AtomicBool>) {
+fn wait_for_daemon_exit(
+    child_slot: &Arc<Mutex<Option<Child>>>,
+    stop: &Arc<AtomicBool>,
+    diagnostics: &DaemonDiagnostics,
+) {
     loop {
         if stop.load(Ordering::SeqCst) {
             kill_daemon_child(child_slot);
@@ -690,6 +790,11 @@ fn wait_for_daemon_exit(child_slot: &Arc<Mutex<Option<Child>>>, stop: &Arc<Atomi
                     *slot = None;
                 }
                 eprintln!("[codex-widget] daemon exited with {status}");
+                update_daemon_status(diagnostics, |diagnostics| {
+                    diagnostics.state = "restarting".to_string();
+                    diagnostics.pid = None;
+                    diagnostics.last_event = Some(format!("daemon exited with {status}"));
+                });
                 return;
             }
             Ok(None) => thread::sleep(Duration::from_millis(DAEMON_STATUS_POLL_MS)),
@@ -698,6 +803,11 @@ fn wait_for_daemon_exit(child_slot: &Arc<Mutex<Option<Child>>>, stop: &Arc<Atomi
                     *slot = None;
                 }
                 eprintln!("[codex-widget] failed to inspect daemon status: {error}");
+                update_daemon_status(diagnostics, |diagnostics| {
+                    diagnostics.state = "error".to_string();
+                    diagnostics.pid = None;
+                    diagnostics.last_error = Some(error.to_string());
+                });
                 return;
             }
         }
@@ -726,7 +836,16 @@ fn daemon_restart_delay(crash_count: u32) -> Duration {
     Duration::from_millis(delay_ms)
 }
 
-fn spawn_daemon_child(script: &PathBuf) -> Option<Child> {
+fn update_daemon_status(
+    diagnostics: &DaemonDiagnostics,
+    update: impl FnOnce(&mut NativeDaemonStatus),
+) {
+    if let Ok(mut status) = diagnostics.lock() {
+        update(&mut status);
+    }
+}
+
+fn spawn_daemon_child(script: &PathBuf) -> Result<Child, String> {
     Command::new("node")
         .arg(script)
         .env("CODEX_WIDGET_PORT", DAEMON_PORT)
@@ -736,9 +855,8 @@ fn spawn_daemon_child(script: &PathBuf) -> Option<Child> {
         .spawn()
         .map_err(|error| {
             eprintln!("[codex-widget] failed to start daemon: {error}");
-            error
+            error.to_string()
         })
-        .ok()
 }
 
 fn resolve_daemon_script(app: &tauri::AppHandle) -> Option<PathBuf> {
@@ -804,10 +922,13 @@ process.exit(1);
         std::env::set_var("CODEX_WIDGET_SUPERVISOR_TEST_COUNTER", &counter);
         let child_slot = Arc::new(Mutex::new(None));
         let stop = Arc::new(AtomicBool::new(false));
+        let diagnostics = Arc::new(Mutex::new(NativeDaemonStatus::default()));
         let worker_child_slot = Arc::clone(&child_slot);
         let worker_stop = Arc::clone(&stop);
-        let handle =
-            thread::spawn(move || supervise_daemon(script, worker_child_slot, worker_stop));
+        let worker_diagnostics = Arc::clone(&diagnostics);
+        let handle = thread::spawn(move || {
+            supervise_daemon(script, worker_child_slot, worker_stop, worker_diagnostics)
+        });
 
         let deadline = Instant::now() + Duration::from_secs(6);
         let mut restart_count = 0;
@@ -831,6 +952,15 @@ process.exit(1);
         assert!(
             restart_count >= 2,
             "expected supervisor to restart exited child at least once, saw {restart_count}"
+        );
+        let snapshot = diagnostics
+            .lock()
+            .expect("diagnostics lock poisoned")
+            .clone();
+        assert!(
+            snapshot.restart_count >= 1,
+            "expected diagnostics to record at least one restart, saw {}",
+            snapshot.restart_count
         );
     }
 }
