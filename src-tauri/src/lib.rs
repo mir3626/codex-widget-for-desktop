@@ -1,7 +1,12 @@
 use std::{
     path::PathBuf,
     process::{Child, Command, Stdio},
-    sync::Mutex,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
+    thread::{self, JoinHandle},
+    time::{Duration, Instant},
 };
 
 use tauri::{
@@ -10,13 +15,76 @@ use tauri::{
     Manager, WebviewWindow,
 };
 
-struct DaemonProcess(Mutex<Option<Child>>);
+const DAEMON_PORT: &str = "4128";
+const DAEMON_RESTART_BASE_DELAY_MS: u64 = 750;
+const DAEMON_RESTART_MAX_DELAY_MS: u64 = 15_000;
+const DAEMON_STABLE_RUNTIME_MS: u64 = 10_000;
+const DAEMON_STATUS_POLL_MS: u64 = 500;
 
-impl Drop for DaemonProcess {
+struct DaemonSupervisor {
+    child: Arc<Mutex<Option<Child>>>,
+    stop: Arc<AtomicBool>,
+    thread: Mutex<Option<JoinHandle<()>>>,
+}
+
+impl DaemonSupervisor {
+    fn new() -> Self {
+        Self {
+            child: Arc::new(Mutex::new(None)),
+            stop: Arc::new(AtomicBool::new(false)),
+            thread: Mutex::new(None),
+        }
+    }
+
+    fn start(&self, app: &tauri::AppHandle) {
+        if !should_spawn_daemon() {
+            return;
+        }
+
+        if self
+            .thread
+            .lock()
+            .map(|thread| thread.is_some())
+            .unwrap_or(true)
+        {
+            return;
+        }
+
+        let Some(script) = resolve_daemon_script(app) else {
+            eprintln!("[codex-widget] daemon script could not be resolved");
+            return;
+        };
+
+        let child = Arc::clone(&self.child);
+        let stop = Arc::clone(&self.stop);
+        let handle = thread::Builder::new()
+            .name("codex-widget-daemon-supervisor".to_string())
+            .spawn(move || supervise_daemon(script, child, stop));
+
+        match handle {
+            Ok(handle) => {
+                if let Ok(mut slot) = self.thread.lock() {
+                    *slot = Some(handle);
+                }
+            }
+            Err(error) => {
+                eprintln!("[codex-widget] failed to start daemon supervisor: {error}");
+            }
+        }
+    }
+}
+
+impl Drop for DaemonSupervisor {
     fn drop(&mut self) {
-        if let Ok(mut child) = self.0.lock() {
+        self.stop.store(true, Ordering::SeqCst);
+        if let Ok(mut child) = self.child.lock() {
             if let Some(process) = child.as_mut() {
                 let _ = process.kill();
+            }
+        }
+        if let Ok(mut thread) = self.thread.lock() {
+            if let Some(handle) = thread.take() {
+                let _ = handle.join();
             }
         }
     }
@@ -117,7 +185,7 @@ fn set_autostart_enabled(enabled: bool) -> Result<bool, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .manage(DaemonProcess(Mutex::new(None)))
+        .manage(DaemonSupervisor::new())
         .manage(PinState(Mutex::new(true)))
         .invoke_handler(tauri::generate_handler![
             toggle_pin,
@@ -131,10 +199,8 @@ pub fn run() {
             set_autostart_enabled
         ])
         .setup(|app| {
-            if let Some(state) = app.try_state::<DaemonProcess>() {
-                if let Ok(mut slot) = state.0.lock() {
-                    *slot = spawn_daemon(&app.handle());
-                }
+            if let Some(state) = app.try_state::<DaemonSupervisor>() {
+                state.start(&app.handle());
             }
 
             if let Some(window) = app.get_webview_window("main") {
@@ -550,21 +616,128 @@ fn write_autostart_enabled(_enabled: bool) -> Result<(), String> {
     Err("start at login is currently implemented on Windows only".to_string())
 }
 
-fn spawn_daemon(app: &tauri::AppHandle) -> Option<Child> {
-    if cfg!(debug_assertions)
-        && std::env::var("CODEX_WIDGET_DEV_SPAWN_DAEMON").as_deref() != Ok("1")
-    {
-        return None;
+fn should_spawn_daemon() -> bool {
+    !(cfg!(debug_assertions)
+        && std::env::var("CODEX_WIDGET_DEV_SPAWN_DAEMON").as_deref() != Ok("1"))
+}
+
+fn supervise_daemon(script: PathBuf, child_slot: Arc<Mutex<Option<Child>>>, stop: Arc<AtomicBool>) {
+    let mut crash_count = 0u32;
+
+    while !stop.load(Ordering::SeqCst) {
+        let started_at = Instant::now();
+
+        match spawn_daemon_child(&script) {
+            Some(child) => {
+                let pid = child.id();
+                if let Ok(mut slot) = child_slot.lock() {
+                    *slot = Some(child);
+                } else {
+                    return;
+                }
+
+                eprintln!("[codex-widget] daemon started pid={pid}");
+                wait_for_daemon_exit(&child_slot, &stop);
+
+                if stop.load(Ordering::SeqCst) {
+                    break;
+                }
+
+                if started_at.elapsed() >= Duration::from_millis(DAEMON_STABLE_RUNTIME_MS) {
+                    crash_count = 0;
+                } else {
+                    crash_count = crash_count.saturating_add(1);
+                }
+            }
+            None => {
+                crash_count = crash_count.saturating_add(1);
+            }
+        }
+
+        if stop.load(Ordering::SeqCst) {
+            break;
+        }
+
+        let delay = daemon_restart_delay(crash_count.saturating_sub(1));
+        eprintln!(
+            "[codex-widget] daemon restart scheduled in {}ms",
+            delay.as_millis()
+        );
+        sleep_until_restart_or_stop(&stop, delay);
     }
 
-    let script = resolve_daemon_script(app)?;
+    kill_daemon_child(&child_slot);
+}
+
+fn wait_for_daemon_exit(child_slot: &Arc<Mutex<Option<Child>>>, stop: &Arc<AtomicBool>) {
+    loop {
+        if stop.load(Ordering::SeqCst) {
+            kill_daemon_child(child_slot);
+            return;
+        }
+
+        let status = match child_slot.lock() {
+            Ok(mut slot) => match slot.as_mut() {
+                Some(child) => child.try_wait(),
+                None => return,
+            },
+            Err(_) => return,
+        };
+
+        match status {
+            Ok(Some(status)) => {
+                if let Ok(mut slot) = child_slot.lock() {
+                    *slot = None;
+                }
+                eprintln!("[codex-widget] daemon exited with {status}");
+                return;
+            }
+            Ok(None) => thread::sleep(Duration::from_millis(DAEMON_STATUS_POLL_MS)),
+            Err(error) => {
+                if let Ok(mut slot) = child_slot.lock() {
+                    *slot = None;
+                }
+                eprintln!("[codex-widget] failed to inspect daemon status: {error}");
+                return;
+            }
+        }
+    }
+}
+
+fn kill_daemon_child(child_slot: &Arc<Mutex<Option<Child>>>) {
+    if let Ok(mut slot) = child_slot.lock() {
+        if let Some(mut child) = slot.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+}
+
+fn sleep_until_restart_or_stop(stop: &Arc<AtomicBool>, delay: Duration) {
+    let deadline = Instant::now() + delay;
+    while !stop.load(Ordering::SeqCst) && Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(100));
+    }
+}
+
+fn daemon_restart_delay(crash_count: u32) -> Duration {
+    let multiplier = 1u64 << crash_count.min(5);
+    let delay_ms = (DAEMON_RESTART_BASE_DELAY_MS * multiplier).min(DAEMON_RESTART_MAX_DELAY_MS);
+    Duration::from_millis(delay_ms)
+}
+
+fn spawn_daemon_child(script: &PathBuf) -> Option<Child> {
     Command::new("node")
         .arg(script)
-        .env("CODEX_WIDGET_PORT", "4128")
+        .env("CODEX_WIDGET_PORT", DAEMON_PORT)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
+        .map_err(|error| {
+            eprintln!("[codex-widget] failed to start daemon: {error}");
+            error
+        })
         .ok()
 }
 
@@ -578,4 +751,20 @@ fn resolve_daemon_script(app: &tauri::AppHandle) -> Option<PathBuf> {
         .resource_dir()
         .ok()
         .map(|resource_dir| resource_dir.join("dist/daemon/standalone.js"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn daemon_restart_delay_uses_capped_exponential_backoff() {
+        assert_eq!(daemon_restart_delay(0), Duration::from_millis(750));
+        assert_eq!(daemon_restart_delay(1), Duration::from_millis(1_500));
+        assert_eq!(daemon_restart_delay(2), Duration::from_millis(3_000));
+        assert_eq!(daemon_restart_delay(3), Duration::from_millis(6_000));
+        assert_eq!(daemon_restart_delay(4), Duration::from_millis(12_000));
+        assert_eq!(daemon_restart_delay(5), Duration::from_millis(15_000));
+        assert_eq!(daemon_restart_delay(99), Duration::from_millis(15_000));
+    }
 }

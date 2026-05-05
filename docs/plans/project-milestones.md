@@ -4,7 +4,7 @@
 
 Goal: keep a small Tauri desktop widget resident on Windows with reliable window controls, prompt/chat UX, streaming Codex responses, session reset, and recoverable daemon lifecycle.
 
-Current progress: 0.8
+Current progress: 0.82
 
 Evidence:
 - Tauri shell, borderless resize, pin, opacity, mascot drag, and model/reasoning controls are implemented.
@@ -13,18 +13,20 @@ Evidence:
 - Visible chat history persists locally across renderer reloads after Iteration 2 kickoff.
 - Multi-turn chat layout, GFM tables, prompt resizing, and response action menu placement are covered by a Playwright renderer smoke.
 - The widget hides to tray, stays off the taskbar, and exposes resident settings.
+- Packaged Tauri builds now supervise the Node daemon and restart it after unexpected exits.
 
 ## durable-codex-runtime
 
 Goal: use a long-lived Codex runtime boundary instead of prompt-injected one-shot calls, while preserving fallback and safe process cleanup.
 
-Current progress: 0.78
+Current progress: 0.8
 
 Evidence:
 - `CodexAppServerBridge` owns process startup, WebSocket JSON-RPC initialization, thread creation, turn streaming, interrupt, and shutdown.
 - `CODEX_WIDGET_CODEX_RUNTIME=app-server` is the default with `exec` fallback.
 - Approval and user-input request plumbing is being promoted to first-class widget UI.
 - The daemon emits runtime health status for clients, active requests, and app-server state.
+- The native Tauri shell supervises the daemon process with capped restart backoff and shutdown cleanup.
 
 ## real-tool-providers
 
@@ -45,7 +47,7 @@ Evidence:
 
 Goal: make the widget practical as a daily resident desktop utility: tray/autostart, resource budget, crash recovery, and install/release checklist.
 
-Current progress: 0.72
+Current progress: 0.76
 
 Evidence:
 - Dev hot services, daemon lifecycle, tray menu, and start-at-login toggle exist.
@@ -55,4 +57,5 @@ Evidence:
 - `npm run smoke:all` provides a serial readiness gate that avoids parallel build races across provider smokes.
 - `npm run smoke:screen-capture:live` verifies the widget-protocol screen capture request path.
 - Runtime status exposes app-server start count and latest error in the widget settings panel.
-- Crash-recovery polish and longer soak tests remain open.
+- `npm run smoke:tauri-supervisor` covers the native supervisor restart-backoff guard.
+- Native crash-recovery UX surfacing and longer soak tests remain open.

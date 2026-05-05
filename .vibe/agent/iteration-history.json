@@ -45,12 +45,12 @@
         "Renderer-visible conversation state and Codex app-server thread state can diverge if reset/retry flows are not explicit."
       ],
       "milestoneProgress": {
-        "resident-widget-mvp": 0.8,
-        "durable-codex-runtime": 0.62,
+        "resident-widget-mvp": 0.82,
+        "durable-codex-runtime": 0.64,
         "real-tool-providers": 0.78,
-        "resident-desktop-readiness": 0.72
+        "resident-desktop-readiness": 0.76
       },
-      "summary": "Iteration 2 has added runtime protocol durability, app-server interaction UI, app-server start/error diagnostics, visible chat persistence, app-server-backed regenerate rollback, renderer chat layout hardening with a Playwright smoke, provider status events, runtime health status, DOM snapshot ingress, an unpacked and zip-packaged browser DOM extension, Screen/Vision snapshot ingress, direct app-server Vision image input, a daemon-triggered Windows screen capture helper, explicit one-shot terminal execution, a persistent /pty command session, start-at-login settings, tray-oriented hide behavior, serial smoke readiness gates, resident resource/soak smokes, and verified release installer builds. OCR, browser store submission/native messaging, and true raw interactive PTY remain open."
+      "summary": "Iteration 2 has added runtime protocol durability, app-server interaction UI, app-server start/error diagnostics, visible chat persistence, app-server-backed regenerate rollback, renderer chat layout hardening with a Playwright smoke, provider status events, runtime health status, DOM snapshot ingress, an unpacked and zip-packaged browser DOM extension, Screen/Vision snapshot ingress, direct app-server Vision image input, a daemon-triggered Windows screen capture helper, explicit one-shot terminal execution, a persistent /pty command session, start-at-login settings, tray-oriented hide behavior, packaged-app daemon restart supervision with capped backoff, serial smoke readiness gates, resident resource/soak smokes, and verified release installer builds. OCR, browser store submission/native messaging, true raw interactive PTY, and longer native crash-recovery UX verification remain open."
     }
   ]
 }
