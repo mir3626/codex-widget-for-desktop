@@ -36,16 +36,29 @@ export async function captureScreenSnapshot(input: {
     "-OcrMaxChars",
     process.env.CODEX_WIDGET_SCREEN_OCR_MAX_CHARS ?? "20000"
   ];
+  const ocrScale = process.env.CODEX_WIDGET_SCREEN_OCR_SCALE?.trim();
+  if (ocrScale) {
+    args.push("-OcrScale", ocrScale);
+  }
+  const ocrMaxWidth = process.env.CODEX_WIDGET_SCREEN_OCR_MAX_WIDTH?.trim();
+  if (ocrMaxWidth) {
+    args.push("-OcrMaxWidth", ocrMaxWidth);
+  }
   const configuredOcrLanguage = process.env.CODEX_WIDGET_SCREEN_OCR_LANGUAGE?.trim();
   if (configuredOcrLanguage) {
     args.push("-OcrLanguage", configuredOcrLanguage);
   }
   if (process.env.CODEX_WIDGET_SCREEN_OCR_DISABLE === "1") {
     args.push("-DisableOcr");
-  } else if (!process.env.CODEX_WIDGET_SCREEN_OCR_COMMAND?.trim()) {
-    const bundledOcrCommand = resolveBundledOcrCommand();
-    if (bundledOcrCommand) {
-      args.push("-OcrCommand", bundledOcrCommand);
+  } else {
+    if (process.env.CODEX_WIDGET_SCREEN_OCR_DISABLE_PREPROCESS === "1") {
+      args.push("-DisableOcrPreprocess");
+    }
+    if (!process.env.CODEX_WIDGET_SCREEN_OCR_COMMAND?.trim()) {
+      const bundledOcrCommand = resolveBundledOcrCommand();
+      if (bundledOcrCommand) {
+        args.push("-OcrCommand", bundledOcrCommand);
+      }
     }
   }
 

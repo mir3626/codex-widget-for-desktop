@@ -5,8 +5,11 @@ param(
   [int]$JpegQuality = 72,
   [string]$OcrCommand = "",
   [string]$OcrLanguage = "",
+  [int]$OcrScale = 2,
+  [int]$OcrMaxWidth = 2400,
   [int]$OcrMaxChars = 20000,
   [switch]$DisableOcr,
+  [switch]$DisableOcrPreprocess,
   [switch]$DryRun
 )
 
@@ -63,6 +66,48 @@ function Resize-Bitmap {
 
   $Bitmap.Dispose()
   return $resized
+}
+
+function New-OcrBitmap {
+  param(
+    [Parameter(Mandatory = $true)]
+    [System.Drawing.Bitmap]$Bitmap,
+    [int]$Scale,
+    [int]$MaxWidth
+  )
+
+  $safeScale = [Math]::Max(1, $Scale)
+  $targetWidth = [int][Math]::Round($Bitmap.Width * $safeScale)
+  if ($MaxWidth -gt 0) {
+    $targetWidth = [Math]::Min($MaxWidth, $targetWidth)
+  }
+  $targetWidth = [Math]::Max(1, $targetWidth)
+  $targetHeight = [Math]::Max(1, [int][Math]::Round($Bitmap.Height * ($targetWidth / $Bitmap.Width)))
+
+  $ocrBitmap = [System.Drawing.Bitmap]::new($targetWidth, $targetHeight)
+  $graphics = [System.Drawing.Graphics]::FromImage($ocrBitmap)
+  try {
+    $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+    $graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+    $graphics.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
+    $graphics.DrawImage($Bitmap, 0, 0, $targetWidth, $targetHeight)
+  } finally {
+    $graphics.Dispose()
+  }
+
+  return $ocrBitmap
+}
+
+function Save-PngFile {
+  param(
+    [Parameter(Mandatory = $true)]
+    [System.Drawing.Bitmap]$Bitmap,
+    [Parameter(Mandatory = $true)]
+    [string]$Path
+  )
+
+  $Bitmap.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
 }
 
 function Quote-CmdArgument {
@@ -235,14 +280,26 @@ try {
   $ocrText = ""
   $ocrCommandLine = Resolve-OcrCommand
   if (-not [string]::IsNullOrWhiteSpace($ocrCommandLine)) {
-    $tempImagePath = [System.IO.Path]::ChangeExtension([System.IO.Path]::GetTempFileName(), ".jpg")
+    $tempImagePath = [System.IO.Path]::ChangeExtension(
+      [System.IO.Path]::GetTempFileName(),
+      $(if ($DisableOcrPreprocess) { ".jpg" } else { ".png" })
+    )
+    $ocrBitmap = $null
     try {
-      [System.IO.File]::WriteAllBytes($tempImagePath, $bytes)
+      if ($DisableOcrPreprocess) {
+        [System.IO.File]::WriteAllBytes($tempImagePath, $bytes)
+      } else {
+        $ocrBitmap = New-OcrBitmap -Bitmap $bitmap -Scale $OcrScale -MaxWidth $OcrMaxWidth
+        Save-PngFile -Bitmap $ocrBitmap -Path $tempImagePath
+      }
       $ocrText = Invoke-OcrCommand -CommandTemplate $ocrCommandLine -ImagePath $tempImagePath -MaxChars $OcrMaxChars
     } catch {
       Write-Warning "screen OCR skipped: $($_.Exception.Message)"
       $ocrText = ""
     } finally {
+      if ($ocrBitmap) {
+        $ocrBitmap.Dispose()
+      }
       if ($tempImagePath -and (Test-Path -LiteralPath $tempImagePath)) {
         Remove-Item -LiteralPath $tempImagePath -Force -ErrorAction SilentlyContinue
       }
