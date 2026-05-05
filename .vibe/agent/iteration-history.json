@@ -47,10 +47,10 @@
       "milestoneProgress": {
         "resident-widget-mvp": 0.78,
         "durable-codex-runtime": 0.62,
-        "real-tool-providers": 0.6,
+        "real-tool-providers": 0.64,
         "resident-desktop-readiness": 0.62
       },
-      "summary": "Iteration 2 has added runtime protocol durability, app-server interaction UI, visible chat persistence, provider status events, runtime health status, DOM snapshot ingress, an unpacked browser DOM extension, Screen/Vision snapshot ingress, explicit terminal command execution, start-at-login settings, tray-oriented hide behavior, resident resource smoke, and verified release installer builds. Store extension packaging, native screen capture helper, and deeper interactive PTY remain open."
+      "summary": "Iteration 2 has added runtime protocol durability, app-server interaction UI, visible chat persistence, provider status events, runtime health status, DOM snapshot ingress, an unpacked browser DOM extension, Screen/Vision snapshot ingress, a Windows screen capture helper, explicit terminal command execution, start-at-login settings, tray-oriented hide behavior, resident resource smoke, and verified release installer builds. OCR/direct image model input, store extension packaging, and deeper interactive PTY remain open."
     }
   ]
 }

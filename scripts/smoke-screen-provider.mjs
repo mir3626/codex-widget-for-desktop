@@ -12,12 +12,17 @@ const response = await fetch(`http://127.0.0.1:${daemon.port}/providers/screen/s
     source: "smoke-test-capture",
     title: "Screen Smoke Snapshot",
     description: "Synthetic screen snapshot for provider smoke coverage.",
-    ocrText: `Visible OCR text includes ${marker}`
+    ocrText: `Visible OCR text includes ${marker}`,
+    imageDataUrl: "data:image/jpeg;base64,c2NyZWVu"
   })
 });
 
 if (!response.ok) {
   throw new Error(`Screen snapshot POST failed (${response.status}).`);
+}
+const posted = await response.json();
+if (posted.snapshot?.imageDataUrl || posted.snapshot?.imageDataUrlLength <= 0) {
+  throw new Error(`Screen snapshot response should redact image data: ${JSON.stringify(posted)}`);
 }
 
 const socket = new WebSocket(`ws://127.0.0.1:${daemon.port}`);

@@ -66,7 +66,7 @@ Vision mode can receive a screen snapshot through the same local daemon boundary
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:4128/providers/screen/snapshot -ContentType application/json -Body '{"source":"windows-capture-helper","title":"Active desktop","description":"A settings dialog is open.","ocrText":"Visible screen text"}'
 ```
 
-For browser testing, load the unpacked Chrome/Edge extension in [providers/browser-dom-extension](providers/browser-dom-extension), or use [docs/providers/dom-snapshot-bookmarklet.js](docs/providers/dom-snapshot-bookmarklet.js) as a fallback bookmarklet. For screen helper payload shape, see [docs/providers/screen-snapshot-example.json](docs/providers/screen-snapshot-example.json). Terminal mode executes only explicit commands, such as `/run Get-ChildItem`, `$ pwd`, or a fenced shell block. Destructive command patterns are blocked unless `CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE=1` is set.
+For browser testing, load the unpacked Chrome/Edge extension in [providers/browser-dom-extension](providers/browser-dom-extension), or use [docs/providers/dom-snapshot-bookmarklet.js](docs/providers/dom-snapshot-bookmarklet.js) as a fallback bookmarklet. For screen capture, run [providers/screen-capture-helper/capture-screen.ps1](providers/screen-capture-helper/capture-screen.ps1), or see [docs/providers/screen-snapshot-example.json](docs/providers/screen-snapshot-example.json) for the raw payload shape. Terminal mode executes only explicit commands, such as `/run Get-ChildItem`, `$ pwd`, or a fenced shell block. Destructive command patterns are blocked unless `CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE=1` is set.
 
 For backend OAuth proxy experiments, point the daemon at an OAuth provider and agent proxy before launch:
 
@@ -102,6 +102,8 @@ You do not need to open `.env` manually. In token mode, pressing **Sign in** in 
 - `npm run smoke:dom`: verify the local DOM snapshot provider ingress
 - `npm run smoke:extension`: verify the unpacked browser DOM extension manifest/service worker
 - `npm run smoke:screen`: verify the local screen snapshot provider ingress
+- `npm run smoke:screen-helper`: verify the Windows screen capture helper syntax and required APIs
+- `npm run smoke:screen-helper:live`: run the Windows screen capture helper against a live daemon
 - `npm run smoke:terminal`: verify explicit terminal command execution
 - Production build output is written under `src-tauri/target/release/bundle/` as MSI and NSIS installer artifacts.
 - `npm run build:web`: compile the daemon and build the renderer without invoking Cargo
@@ -127,7 +129,7 @@ Local Daemon
 Future Tool Providers
   - store-packaged browser extension provider for active tab DOM
   - Playwright/CDP provider for controlled browser use
-  - native screen capture helper for vision/computer-use loops
+  - OCR and direct image input on top of the native screen capture helper
   - PTY provider for terminal sessions
 ```
 

@@ -82,7 +82,7 @@ Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only sta
 ## Provider Boundary
 
 - DOM provider: external browser tooling can `POST /providers/dom/snapshot` to the local daemon with `{ url, title, selection, text }`. The latest snapshot is surfaced as a tool event in Browser/DOM mode and injected into the model request context. `providers/browser-dom-extension` packages the first Chrome/Edge Manifest V3 bridge for active-tab snapshots.
-- Screen/Vision provider: external capture tooling can `POST /providers/screen/snapshot` with `{ source, title, description, ocrText, imageDataUrl }`. The latest text/description snapshot is surfaced as a Vision mode tool event and injected into the model request context; base64 image data is retained in daemon state but not prompt-injected as text.
+- Screen/Vision provider: external capture tooling can `POST /providers/screen/snapshot` with `{ source, title, description, ocrText, imageDataUrl }`. The latest text/description snapshot is surfaced as a Vision mode tool event and injected into the model request context; base64 image data is retained in daemon state but not prompt-injected as text. `providers/screen-capture-helper/capture-screen.ps1` is the first Windows helper for posting a compressed virtual-screen capture.
 - Terminal provider: Terminal/PTY mode executes explicit commands only (`/run`, `$`, `PS>`, `run:`, or fenced shell blocks). Output streams as `tool.output` and is summarized into the assistant response. Destructive command patterns are blocked unless `CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE=1`.
 
 ## Resident Desktop Boundary
@@ -96,7 +96,7 @@ Codex ChatGPT auth stays in the user's Codex CLI auth store. The daemon only sta
 
 - Browser DOM provider: store packaging, optional native messaging, accessible labels, and element highlighting on top of the unpacked localhost extension bridge.
 - Controlled browser provider: Playwright/CDP for automation in a managed browser context.
-- Screen provider: native Windows capture/crop/diff helper feeding the existing screen snapshot endpoint and, later, image input or computer-use loops.
+- Screen provider: OCR/crop/diff and direct image input on top of the existing Windows capture helper.
 - Terminal provider: ConPTY/node-pty process sessions streamed as daemon tool events.
 
 ## Verification Commands

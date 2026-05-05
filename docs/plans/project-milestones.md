@@ -29,15 +29,16 @@ Evidence:
 
 Goal: replace Agent/DOM/Vision/PTY stubs with real desktop/browser/terminal context providers that stream tool events through one widget protocol.
 
-Current progress: 0.6
+Current progress: 0.64
 
 Evidence:
 - Provider modes and tool-event rendering exist.
 - Browser DOM mode accepts live snapshots through the local daemon and injects them into model context.
 - An unpacked Chrome/Edge extension can send active-tab DOM snapshots to the daemon.
 - Screen/Vision mode accepts live snapshots through the local daemon and injects description/OCR context into model requests.
+- A Windows PowerShell helper captures the virtual desktop as compressed JPEG data and posts it to the Screen/Vision endpoint.
 - Terminal/PTY mode executes explicit shell commands and streams output as tool events.
-- Store extension packaging, native screen capture helper, and deeper interactive PTY remain open.
+- OCR/direct image model input, store extension packaging, and deeper interactive PTY remain open.
 
 ## resident-desktop-readiness
 

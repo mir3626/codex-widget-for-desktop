@@ -4,7 +4,7 @@ import { daemonInfo, runAgentStream, type AgentSessionState } from "./agent.js";
 import { CodexAppServerBridge } from "./codexAppServer.js";
 import { resolveCodexExecutionContext } from "./codexRuntime.js";
 import { OAuthSession } from "./oauth.js";
-import { ProviderRegistry } from "./providers/providerRegistry.js";
+import { ProviderRegistry, type ScreenSnapshot } from "./providers/providerRegistry.js";
 import { getProviderStatuses } from "./tools.js";
 import type { ClientMessage, RuntimeStatus, ServerEvent } from "../shared/protocol.js";
 
@@ -314,7 +314,7 @@ async function handleHttpRequest(
   if (request.method === "POST" && url.pathname === "/providers/screen/snapshot") {
     try {
       const snapshot = providers.setScreenSnapshot(JSON.parse(await readRequestBody(request, 2 * 1024 * 1024)));
-      writeJsonResponse(response, 200, { ok: true, snapshot });
+      writeJsonResponse(response, 200, { ok: true, snapshot: summarizeScreenSnapshot(snapshot) });
       broadcast(clients, { type: "provider.status", providers: getProviderStatuses(providers) });
     } catch (error) {
       writeJsonResponse(response, 400, {
@@ -326,7 +326,8 @@ async function handleHttpRequest(
   }
 
   if (request.method === "GET" && url.pathname === "/providers/screen/snapshot") {
-    writeJsonResponse(response, 200, { ok: true, snapshot: providers.getScreenSnapshot() });
+    const snapshot = providers.getScreenSnapshot();
+    writeJsonResponse(response, 200, { ok: true, snapshot: snapshot ? summarizeScreenSnapshot(snapshot) : null });
     return;
   }
 
@@ -367,6 +368,19 @@ async function readRequestBody(request: IncomingMessage, maxBytes = 64 * 1024): 
 
 function isProviderSnapshotPath(pathname: string): boolean {
   return pathname === "/providers/dom/snapshot" || pathname === "/providers/screen/snapshot";
+}
+
+function summarizeScreenSnapshot(snapshot: ScreenSnapshot): Omit<ScreenSnapshot, "imageDataUrl"> & {
+  imageDataUrlLength: number;
+} {
+  return {
+    source: snapshot.source,
+    title: snapshot.title,
+    description: snapshot.description,
+    ocrText: snapshot.ocrText,
+    imageDataUrlLength: snapshot.imageDataUrl.length,
+    capturedAt: snapshot.capturedAt
+  };
 }
 
 function broadcast(clients: Set<WebSocket>, event: ServerEvent): void {

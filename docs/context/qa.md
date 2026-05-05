@@ -12,7 +12,14 @@ npm run smoke:resident
 npm run smoke:dom
 npm run smoke:extension
 npm run smoke:screen
+npm run smoke:screen-helper
 npm run smoke:terminal
+```
+
+Run this when changing the Windows screen capture helper and a desktop session is available:
+
+```powershell
+npm run smoke:screen-helper:live
 ```
 
 Run this after Tauri/Rust/native shell changes:
@@ -54,6 +61,6 @@ npm run vibe:checkpoint
 
 - No automated screenshot assertion for the native transparent Tauri window.
 - Browser DOM provider is snapshot-based; an unpacked extension exists, but there is no store-packaged extension or native messaging bridge yet.
-- Screen/Vision provider is snapshot-based; no native packaged capture helper yet.
+- Screen/Vision provider is snapshot-based and has a Windows capture helper; OCR and direct image-to-model delivery are not implemented yet.
 - Terminal provider executes explicit commands but is not a fully interactive PTY session yet.
 - OAuth proxy live streaming requires an auth/proxy service and is not covered by CI-like smoke tests.
