@@ -1,61 +1,22 @@
+import { Check } from "lucide-react";
 import {
-  Activity,
-  Ban,
-  Bot,
-  Camera,
-  Check,
-  CircleDot,
-  CircleStop,
-  Copy,
-  CornerDownLeft,
-  Eye,
-  Globe2,
-  Keyboard,
-  LogIn,
-  LogOut,
-  MessageSquarePlus,
-  MoreHorizontal,
-  MousePointer2,
-  Minus,
-  Pin,
-  PinOff,
-  Play,
-  RotateCw,
-  Send,
-  Settings,
-  Square,
-  SquareTerminal,
-  Trash2,
-  Volume2,
-  X
-} from "lucide-react";
-import {
-  Children,
   CSSProperties,
   FormEvent,
   KeyboardEvent,
   PointerEvent,
-  ReactNode,
-  WheelEvent,
-  isValidElement,
   useEffect,
   useMemo,
   useRef,
-  useState,
-  type ComponentPropsWithoutRef
+  useState
 } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import appIconUrl from "../../src-tauri/icons/icon.png";
-import mascotUrl from "./assets/mascot.png";
 import {
-  MODEL_OPTIONS,
-  REASONING_EFFORT_OPTIONS,
   normalizeModelId,
   normalizeReasoningEffort,
   type AuthStatus,
   type BranchContextMessage,
   type ClientMessage,
+  type LedgerSnapshot,
   type MessageSnapshotStatus,
   type ModelId,
   type ProviderStatus,
@@ -63,9 +24,52 @@ import {
   type RuntimeInteraction,
   type RuntimeStatus,
   type ScreenCrop,
+  type SessionMessage,
+  type SessionSnapshot,
+  type SessionSummary,
+  type VisionStreamSummary,
   type ServerEvent,
   type WidgetMode
 } from "../shared/protocol.js";
+import {
+  BRANCH_CONTEXT_STORAGE_KEY,
+  CHAT_STORAGE_KEY,
+  DEFAULT_MASCOT_STAGE_HEIGHT,
+  DEFAULT_VISION_STREAM_SETTINGS,
+  MIN_WINDOW_HEIGHT,
+  MIN_WINDOW_WIDTH,
+  MODEL_STORAGE_KEY,
+  MODES,
+  PROMPT_COMPOSER_MAX_HEIGHT,
+  PROMPT_COMPOSER_MIN_CONVERSATION_HEIGHT,
+  PROMPT_COMPOSER_MIN_HEIGHT,
+  PROMPT_COMPOSER_RESERVED_ROWS_HEIGHT,
+  REASONING_STORAGE_KEY,
+  RESIZE_HANDLES,
+  SCREEN_CROP_STORAGE_KEY,
+  STREAM_TYPE_BASE_INTERVAL_MS,
+  TERMINAL_LINE_LIMIT,
+  TERMINAL_LINE_MAX_CHARS,
+  TERMINAL_MOUSE_DRAG_INTERVAL_MS,
+  VISION_AGENT_STREAM_FRAME_INTERVAL_MS,
+  VISION_AGENT_STREAM_JPEG_QUALITY,
+  VISION_AGENT_STREAM_MAX_FRAME_WIDTH,
+  VISION_RECORDING_MAX_BYTES,
+  VISION_RECORDING_MAX_DURATION_MS,
+  VISION_STREAM_SETTINGS_STORAGE_KEY
+} from "./config";
+import { ActivityLog } from "./components/ActivityLog";
+import { ConversationPanel } from "./components/ConversationPanel";
+import { FloatingTooltipRoot } from "./components/FloatingTooltipRoot";
+import { MascotSprite } from "./components/MascotSprite";
+import { ModeTabs } from "./components/ModeTabs";
+import { ModelControls } from "./components/ModelControls";
+import { PromptComposer } from "./components/PromptComposer";
+import { ScreenCropOverlay } from "./components/ScreenCropOverlay";
+import { SettingsPanel } from "./components/SettingsPanel";
+import { SessionStrip } from "./components/SessionStrip";
+import { SystemStrip } from "./components/SystemStrip";
+import { TitleBar } from "./components/TitleBar";
 import {
   closeWidget,
   minimizeWidget,
@@ -80,79 +84,81 @@ import {
   toggleMaximizeWidget,
   togglePinned,
   type NativeDaemonStatus,
-  type WidgetWindowGeometry,
   type WidgetResizeDirection
 } from "./shell";
-
-type LogLine = {
-  id: string;
-  text: string;
-  tone: "muted" | "tool" | "error";
-};
-
-type TerminalLine = {
-  id: string;
-  text: string;
-  kind: "command" | "output" | "system" | "error";
-};
-
-type TerminalKeyName = "enter" | "tab" | "escape" | "ctrl-c";
-
-type AssistantMessageStatus = "pending" | "thinking" | "tooling" | "streaming" | "typing" | "done" | "cancelled" | "error";
-
-type ChatMessage =
-  | {
-      id: string;
-      role: "user";
-      text: string;
-    }
-  | {
-      id: string;
-      role: "assistant";
-      text: string;
-      status: AssistantMessageStatus;
-    };
-
-type InteractionDrafts = Record<string, Record<string, string>>;
-
-type ScreenCropSettings = ScreenCrop & {
-  enabled: boolean;
-};
-
-const MODES: Array<{ mode: WidgetMode; label: string; icon: typeof Bot }> = [
-  { mode: "agent", label: "Agent", icon: Bot },
-  { mode: "browser", label: "DOM", icon: Globe2 },
-  { mode: "screen", label: "Vision", icon: Eye },
-  { mode: "terminal", label: "PTY", icon: SquareTerminal }
-];
-
-const MODEL_STORAGE_KEY = "codex-widget-model";
-const REASONING_STORAGE_KEY = "codex-widget-reasoning-effort";
-const CHAT_STORAGE_KEY = "codex-widget-chat-messages:v1";
-const BRANCH_CONTEXT_STORAGE_KEY = "codex-widget-branch-context:v1";
-const SCREEN_CROP_STORAGE_KEY = "codex-widget-screen-crop:v1";
-const MIN_WINDOW_WIDTH = 320;
-const MIN_WINDOW_HEIGHT = 480;
-const PROMPT_COMPOSER_MIN_HEIGHT = 46;
-const PROMPT_COMPOSER_MAX_HEIGHT = 192;
-const PROMPT_COMPOSER_RESERVED_ROWS_HEIGHT = 210;
-const PROMPT_COMPOSER_MIN_CONVERSATION_HEIGHT = 48;
-const DEFAULT_MASCOT_STAGE_HEIGHT = 126;
-const STREAM_TYPE_BASE_INTERVAL_MS = 18;
-const TERMINAL_LINE_LIMIT = 260;
-const TERMINAL_LINE_MAX_CHARS = 1800;
-const TERMINAL_MOUSE_DRAG_INTERVAL_MS = 28;
-
-const RESIZE_HANDLES: Array<{ direction: WidgetResizeDirection; className: string }> = [
-  { direction: "North", className: "resize-n" },
-  { direction: "East", className: "resize-e" },
-  { direction: "South", className: "resize-s" },
-  { direction: "West", className: "resize-w" },
-  { direction: "NorthEast", className: "resize-ne" },
-  { direction: "NorthWest", className: "resize-nw" },
-  { direction: "SouthEast", className: "resize-se" },
-  { direction: "SouthWest", className: "resize-sw" }
-];
+import type {
+  AssistantMessageStatus,
+  ChatMessage,
+  InteractionDrafts,
+  LogLine,
+  PromptResizeState,
+  ScreenCropPickerState,
+  ScreenCropSettings,
+  SpeechRecognitionConstructor,
+  SpeechRecognitionLike,
+  TerminalKeyName,
+  TerminalLine,
+  ToastNotice,
+  VisionFrameStats,
+  VisionStreamSettings
+} from "./types";
+import {
+  ensureAssistantMessage,
+  findPreviousUserMessage,
+  getNextTypingLength,
+  getTypingDelay,
+  isAssistantWorking,
+  readWorkingAssistantId,
+  sessionMessageToChatMessage,
+  snapshotStatusToAssistantStatus
+} from "./utils/chat";
+import { formatNativeDaemonStatus } from "./utils/format";
+import {
+  canUseVoiceInput,
+  createSpeechText,
+  pickSpeechLanguage,
+  pickSpeechVoice,
+  readSpeechRecognitionConstructor
+} from "./utils/speech";
+import {
+  clampOpacity,
+  normalizeScreenCropField,
+  normalizeVisionFrameInterval,
+  normalizeVisionMaxDuration,
+  persistBranchContext,
+  persistChatMessages,
+  persistScreenCrop,
+  persistVisionStreamSettings,
+  readInitialWidgetMode,
+  readStoredBranchContext,
+  readStoredChatMessages,
+  readStoredModel,
+  readStoredOpacity,
+  readStoredReasoningEffort,
+  readStoredScreenCrop,
+  readStoredVisionStreamSettings
+} from "./utils/storage";
+import {
+  clampTerminalLine,
+  formatTerminalMouseSequence,
+  isTerminalToolEvent,
+  limitTerminalLines,
+  normalizeTerminalText,
+  readTerminalMouseCell,
+  summarizeTerminalCompletion,
+  terminalKeyToInput,
+  terminalKeyToLabel,
+  terminalLinePrefix,
+  terminalToolLabel
+} from "./utils/terminal";
+import {
+  blobToDataUrl,
+  buildScreenCrop,
+  convertPickerSelectionToScreenCrop,
+  formatVisionStreamStatus,
+  readCropPickerPoint,
+  readScreenCropPickerSelection
+} from "./utils/vision";
 
 type ResizeDragState = {
   direction: WidgetResizeDirection;
@@ -175,23 +181,8 @@ type ResizeDragState = {
   ended: boolean;
 };
 
-type PromptResizeState = {
-  pointerId: number;
-  startClientY: number;
-  startHeight: number;
-};
-
-type ScreenCropPickerState = {
-  pointerId: number | null;
-  startX: number;
-  startY: number;
-  currentX: number;
-  currentY: number;
-  geometry: WidgetWindowGeometry | null;
-};
-
 export function App() {
-  const [mode, setMode] = useState<WidgetMode>("agent");
+  const [mode, setMode] = useState<WidgetMode>(() => readInitialWidgetMode());
   const [selectedModel, setSelectedModel] = useState<ModelId>(() => readStoredModel());
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort>(() => readStoredReasoningEffort());
   const [providerStatuses, setProviderStatuses] = useState<ProviderStatus[]>([]);
@@ -213,10 +204,26 @@ export function App() {
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [branchContext, setBranchContext] = useState<BranchContextMessage[] | null>(() => readStoredBranchContext());
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [trashedSessions, setTrashedSessions] = useState<SessionSummary[]>([]);
+  const [showSessionTrash, setShowSessionTrash] = useState(false);
+  const [ledger, setLedger] = useState<LedgerSnapshot | null>(null);
+  const [trashLedger, setTrashLedger] = useState<LedgerSnapshot | null>(null);
+  const [trashArtifactSessionId, setTrashArtifactSessionId] = useState<string | null>(null);
+  const [toastNotice, setToastNotice] = useState<ToastNotice | null>(null);
+  const [sessionControlsFlashing, setSessionControlsFlashing] = useState(false);
+  const [showActivityDetails, setShowActivityDetails] = useState(false);
+  const [showVisionMenu, setShowVisionMenu] = useState(false);
+  const [visionSession, setVisionSession] = useState<VisionStreamSummary | null>(null);
+  const [visionStreamSettings, setVisionStreamSettings] = useState<VisionStreamSettings>(() => readStoredVisionStreamSettings());
+  const [visionFrameStats, setVisionFrameStats] = useState<VisionFrameStats>({ sent: 0, skipped: 0, failed: 0, lastSentAt: null });
+  const [voiceListening, setVoiceListening] = useState(false);
   const [logLines, setLogLines] = useState<LogLine[]>([]);
   const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([]);
   const [terminalInput, setTerminalInput] = useState("");
   const [terminalMouseEnabled, setTerminalMouseEnabled] = useState(false);
+  const [showTerminalGuide, setShowTerminalGuide] = useState(() => readInitialWidgetMode() === "terminal");
   const [screenCrop, setScreenCrop] = useState<ScreenCropSettings>(() => readStoredScreenCrop());
   const [screenCropPicker, setScreenCropPickerState] = useState<ScreenCropPickerState | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -234,6 +241,8 @@ export function App() {
   const socketRef = useRef<WebSocket | null>(null);
   const conversationRef = useRef<HTMLElement | null>(null);
   const chatMessagesRef = useRef<ChatMessage[]>([]);
+  const activeSessionIdRef = useRef<string | null>(activeSessionId);
+  const trashArtifactSessionIdRef = useRef<string | null>(trashArtifactSessionId);
   const branchContextRef = useRef<BranchContextMessage[] | null>(branchContext);
   const streamBuffersRef = useRef<Map<string, string>>(new Map());
   const completedResponseIdsRef = useRef<Set<string>>(new Set());
@@ -245,7 +254,21 @@ export function App() {
   const promptInputRef = useRef<HTMLTextAreaElement | null>(null);
   const promptResizeRef = useRef<PromptResizeState | null>(null);
   const screenCropPickerRef = useRef<ScreenCropPickerState | null>(null);
+  const visionMediaStreamRef = useRef<MediaStream | null>(null);
+  const visionRecorderRef = useRef<MediaRecorder | null>(null);
+  const visionRecordingChunksRef = useRef<Blob[]>([]);
+  const visionRecordingStartedAtRef = useRef<number>(0);
+  const visionGuardTimerRef = useRef<number | null>(null);
+  const visionFrameTimerRef = useRef<number | null>(null);
+  const visionFrameVideoRef = useRef<HTMLVideoElement | null>(null);
+  const visionFrameInFlightRef = useRef(false);
+  const visionFrameFailureLoggedRef = useRef(false);
+  const visionFinalizedIdsRef = useRef<Set<string>>(new Set());
+  const voiceRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const voicePromptBaseRef = useRef("");
   const opacityValueTimerRef = useRef<number | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
+  const sessionControlsPulseTimerRef = useRef<number | null>(null);
   const resizeDragRef = useRef<ResizeDragState | null>(null);
 
   const daemonPort = useMemo(() => {
@@ -305,9 +328,22 @@ export function App() {
       if (opacityValueTimerRef.current !== null) {
         window.clearTimeout(opacityValueTimerRef.current);
       }
+      if (toastTimerRef.current !== null) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+      if (sessionControlsPulseTimerRef.current !== null) {
+        window.clearTimeout(sessionControlsPulseTimerRef.current);
+      }
       if (streamTypingTimerRef.current !== null) {
         window.clearTimeout(streamTypingTimerRef.current);
       }
+      if (visionGuardTimerRef.current !== null) {
+        window.clearTimeout(visionGuardTimerRef.current);
+      }
+      stopVisionFrameStreaming();
+      stopVisionMediaTracks();
+      voiceRecognitionRef.current?.abort();
+      voiceRecognitionRef.current = null;
       if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
@@ -343,7 +379,7 @@ export function App() {
 
     function closeMenuFromOutside(event: MouseEvent | globalThis.PointerEvent) {
       const target = event.target;
-      if (target instanceof Element && target.closest(".message-actions-shell")) {
+      if (target instanceof Element && target.closest(".message-actions-shell, .message-action-menu")) {
         return;
       }
       setOpenActionMenuId(null);
@@ -364,6 +400,87 @@ export function App() {
   }, [openActionMenuId]);
 
   useEffect(() => {
+    if (!showSessionTrash) {
+      return;
+    }
+
+    function closeTrashFromOutside(event: MouseEvent | globalThis.PointerEvent) {
+      const target = event.target;
+      if (target instanceof Element && target.closest(".session-strip, .session-trash-popover")) {
+        return;
+      }
+      setShowSessionTrash(false);
+    }
+
+    function closeTrashFromEscape(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        setShowSessionTrash(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", closeTrashFromOutside, true);
+    document.addEventListener("keydown", closeTrashFromEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeTrashFromOutside, true);
+      document.removeEventListener("keydown", closeTrashFromEscape);
+    };
+  }, [showSessionTrash]);
+
+  useEffect(() => {
+    if (!showVisionMenu) {
+      return;
+    }
+
+    function closeVisionMenuFromOutside(event: MouseEvent | globalThis.PointerEvent) {
+      const target = event.target;
+      if (target instanceof Element && target.closest(".vision-action-wrap, .vision-action-menu")) {
+        return;
+      }
+      setShowVisionMenu(false);
+    }
+
+    function closeVisionMenuFromEscape(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        setShowVisionMenu(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", closeVisionMenuFromOutside, true);
+    document.addEventListener("keydown", closeVisionMenuFromEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeVisionMenuFromOutside, true);
+      document.removeEventListener("keydown", closeVisionMenuFromEscape);
+    };
+  }, [showVisionMenu]);
+
+  useEffect(() => {
+    if (!showActivityDetails) {
+      return;
+    }
+
+    function closeActivityFromOutside(event: MouseEvent | globalThis.PointerEvent) {
+      const target = event.target;
+      if (target instanceof Element && target.closest(".log-list, .activity-popover")) {
+        return;
+      }
+      setShowActivityDetails(false);
+    }
+
+    function closeActivityFromEscape(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        setShowActivityDetails(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", closeActivityFromOutside, true);
+    document.addEventListener("keydown", closeActivityFromEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeActivityFromOutside, true);
+      document.removeEventListener("keydown", closeActivityFromEscape);
+    };
+  }, [showActivityDetails]);
+
+  useEffect(() => {
     void readAutostartEnabled().then(setAutostartEnabledState);
   }, []);
 
@@ -380,6 +497,10 @@ export function App() {
   useEffect(() => {
     persistScreenCrop(screenCrop);
   }, [screenCrop]);
+
+  useEffect(() => {
+    persistVisionStreamSettings(visionStreamSettings);
+  }, [visionStreamSettings]);
 
   useEffect(() => {
     if (!screenCropPicker) {
@@ -463,6 +584,29 @@ export function App() {
     if (event.type === "auth.url") {
       void openExternalUrl(event.url);
       appendLog("opened sign-in", "tool");
+      return;
+    }
+
+    if (event.type === "session.snapshot") {
+      applySessionSnapshot(event.snapshot);
+      return;
+    }
+
+    if (event.type === "ledger.snapshot") {
+      if (
+        trashArtifactSessionIdRef.current &&
+        event.snapshot.sessionId === trashArtifactSessionIdRef.current &&
+        event.snapshot.sessionId !== activeSessionIdRef.current
+      ) {
+        setTrashLedger(event.snapshot);
+        return;
+      }
+      setLedger(event.snapshot);
+      return;
+    }
+
+    if (event.type === "artifact.fileChange") {
+      appendLog(`${event.title} ${event.phase}`, "tool");
       return;
     }
 
@@ -567,6 +711,21 @@ export function App() {
     }
 
     if (event.type === "provider.capture") {
+      appendLog(event.message, event.state === "error" ? "error" : "tool");
+      return;
+    }
+
+    if (event.type === "provider.vision") {
+      setVisionSession(event.stream);
+      if (event.state === "started" && event.stream.mode === "agent_stream") {
+        setVisionFrameStats({ sent: 0, skipped: 0, failed: 0, lastSentAt: null });
+      }
+      if (event.state !== "started") {
+        visionFinalizedIdsRef.current.add(event.stream.id);
+        clearVisionGuardTimer();
+        stopVisionFrameStreaming();
+        stopVisionMediaTracks();
+      }
       appendLog(event.message, event.state === "error" ? "error" : "tool");
       return;
     }
@@ -823,6 +982,49 @@ export function App() {
     }
   }
 
+  function applySessionSnapshot(snapshot: SessionSnapshot) {
+    const nextMessages = snapshot.messages.map(sessionMessageToChatMessage);
+    const nextActiveSession = snapshot.sessions.find((session) => session.id === snapshot.activeSessionId) ?? null;
+    const previousActiveSessionId = activeSessionIdRef.current;
+    activeSessionIdRef.current = snapshot.activeSessionId;
+    setActiveSessionId(snapshot.activeSessionId);
+    setSessions(snapshot.sessions);
+    setTrashedSessions(snapshot.trashedSessions);
+    setShowSessionTrash((current) => (snapshot.trashedSessions.length > 0 ? current : false));
+    if (
+      trashArtifactSessionIdRef.current &&
+      !snapshot.trashedSessions.some((session) => session.id === trashArtifactSessionIdRef.current)
+    ) {
+      trashArtifactSessionIdRef.current = null;
+      setTrashArtifactSessionId(null);
+      setTrashLedger(null);
+    }
+
+    streamBuffersRef.current.clear();
+    completedResponseIdsRef.current.clear();
+    restoreMessageBuffers(nextMessages);
+    chatMessagesRef.current = nextMessages;
+    setChatMessages(nextMessages);
+    setActiveId(readWorkingAssistantId(nextMessages));
+    setInteractions([]);
+    setInteractionDrafts({});
+
+    if (nextActiveSession?.activeModel) {
+      setSelectedModel(nextActiveSession.activeModel);
+      localStorage.setItem(MODEL_STORAGE_KEY, nextActiveSession.activeModel);
+    }
+    if (nextActiveSession?.activeReasoning) {
+      setReasoningEffort(nextActiveSession.activeReasoning);
+      localStorage.setItem(REASONING_STORAGE_KEY, nextActiveSession.activeReasoning);
+    }
+    if (nextActiveSession?.activeMode) {
+      setMode(nextActiveSession.activeMode);
+    }
+    if (previousActiveSessionId && previousActiveSessionId !== snapshot.activeSessionId) {
+      pulseSessionControls();
+    }
+  }
+
   function send(message: ClientMessage): boolean {
     const socket = socketRef.current;
     if (!socket || socket.readyState !== WebSocket.OPEN) {
@@ -831,6 +1033,75 @@ export function App() {
     }
     socket.send(JSON.stringify(message));
     return true;
+  }
+
+  function createNewSession() {
+    if (activeId) {
+      send({ type: "cancel", id: activeId });
+    }
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    setShowSessionTrash(false);
+    send({
+      type: "session.create",
+      model: selectedModel,
+      reasoningEffort,
+      mode
+    });
+  }
+
+  function openSession(sessionId: string) {
+    if (sessionId === activeSessionId) {
+      return;
+    }
+    if (activeId) {
+      send({ type: "cancel", id: activeId });
+    }
+    setShowSessionTrash(false);
+    send({ type: "session.open", sessionId });
+  }
+
+  function refreshLedger(sessionId = activeSessionId ?? undefined) {
+    send({ type: "ledger.refresh", sessionId });
+  }
+
+  function viewTrashArtifacts(sessionId: string) {
+    const nextSessionId = trashArtifactSessionIdRef.current === sessionId ? null : sessionId;
+    trashArtifactSessionIdRef.current = nextSessionId;
+    setTrashArtifactSessionId(nextSessionId);
+    setTrashLedger(null);
+    if (nextSessionId) {
+      refreshLedger(nextSessionId);
+    }
+  }
+
+  function openArtifactFile(artifactFileId: string, versionId?: string) {
+    send({ type: "artifact.open", artifactFileId, versionId });
+  }
+
+  function trashSession(sessionId: string) {
+    if (activeId) {
+      send({ type: "cancel", id: activeId });
+    }
+    if (trashArtifactSessionIdRef.current === sessionId) {
+      trashArtifactSessionIdRef.current = null;
+      setTrashArtifactSessionId(null);
+      setTrashLedger(null);
+    }
+    send({ type: "session.trash", sessionId });
+  }
+
+  function restoreSession(sessionId: string) {
+    if (activeId) {
+      send({ type: "cancel", id: activeId });
+    }
+    if (trashArtifactSessionIdRef.current === sessionId) {
+      trashArtifactSessionIdRef.current = null;
+      setTrashArtifactSessionId(null);
+      setTrashLedger(null);
+    }
+    send({ type: "session.restore", sessionId });
   }
 
   function resetVisibleSession(sendToDaemon = true) {
@@ -929,6 +1200,7 @@ export function App() {
       id,
       text,
       mode: requestMode,
+      sessionId: activeSessionId ?? undefined,
       model: selectedModel,
       reasoningEffort,
       branchContext: currentBranchContext ?? undefined
@@ -957,11 +1229,365 @@ export function App() {
 
   function captureScreen() {
     setMode("screen");
+    setShowVisionMenu(false);
     send({
       type: "provider.captureScreen",
       description: input.trim() || undefined,
       crop: buildScreenCrop(screenCrop)
     });
+  }
+
+  async function startVisionRecording() {
+    setMode("screen");
+    setShowVisionMenu(false);
+    if (!canUseDisplayCapture() || typeof MediaRecorder === "undefined") {
+      appendLog("screen recording unavailable", "error");
+      return;
+    }
+
+    const id = crypto.randomUUID();
+    visionFinalizedIdsRef.current.delete(id);
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      const mime = chooseWebmMimeType();
+      const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      visionMediaStreamRef.current = stream;
+      visionRecorderRef.current = recorder;
+      visionRecordingChunksRef.current = [];
+      visionRecordingStartedAtRef.current = Date.now();
+
+      stream.getTracks().forEach((track) => {
+        track.addEventListener("ended", () => stopVisionRecording("capture ended"), { once: true });
+      });
+
+      recorder.addEventListener("dataavailable", (event) => {
+        if (event.data.size > 0) {
+          visionRecordingChunksRef.current.push(event.data);
+        }
+      });
+      recorder.addEventListener("stop", () => {
+        void completeVisionRecording(id, recorder.mimeType || "video/webm");
+      });
+
+      recorder.start(1000);
+      setVisionGuardTimer(() => stopVisionRecording("duration limit"), visionStreamSettings.maxDurationMs);
+      send({
+        type: "provider.vision.start",
+        id,
+        mode: "recording",
+        sessionId: activeSessionId ?? undefined,
+        fps: 4,
+        frameIntervalMs: 250,
+        maxDurationMs: visionStreamSettings.maxDurationMs,
+        detail: {
+          retention: "recording_blob",
+          consent: "browser_display_capture",
+          maxDurationMs: visionStreamSettings.maxDurationMs,
+          localMaxBytes: VISION_RECORDING_MAX_BYTES
+        }
+      });
+    } catch (error) {
+      stopVisionMediaTracks();
+      send({ type: "provider.vision.error", id, message: error instanceof Error ? error.message : "Unable to start screen recording." });
+      appendLog(error instanceof Error ? error.message : "recording failed", "error");
+    }
+  }
+
+  async function startAgentScreenStream() {
+    setMode("screen");
+    setShowVisionMenu(false);
+    if (!canUseDisplayCapture()) {
+      appendLog("screen sharing unavailable", "error");
+      return;
+    }
+
+    const id = crypto.randomUUID();
+    visionFinalizedIdsRef.current.delete(id);
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      visionMediaStreamRef.current = stream;
+      visionFrameFailureLoggedRef.current = false;
+      setVisionFrameStats({ sent: 0, skipped: 0, failed: 0, lastSentAt: null });
+      stream.getTracks().forEach((track) => {
+        track.addEventListener("ended", () => stopAgentScreenStream(id, "capture ended"), { once: true });
+      });
+      await startVisionFrameStreaming(stream, id, visionStreamSettings.frameIntervalMs);
+      setVisionGuardTimer(() => stopAgentScreenStream(id, "duration limit"), visionStreamSettings.maxDurationMs);
+      send({
+        type: "provider.vision.start",
+        id,
+        mode: "agent_stream",
+        sessionId: activeSessionId ?? undefined,
+        fps: Number((1000 / visionStreamSettings.frameIntervalMs).toFixed(2)),
+        frameIntervalMs: visionStreamSettings.frameIntervalMs,
+        maxDurationMs: visionStreamSettings.maxDurationMs,
+        detail: {
+          retention: "metadata_only",
+          consent: "browser_display_capture",
+          frameIntervalMs: visionStreamSettings.frameIntervalMs,
+          maxDurationMs: visionStreamSettings.maxDurationMs,
+          resource: {
+            maxFrameWidth: VISION_AGENT_STREAM_MAX_FRAME_WIDTH,
+            jpegQuality: VISION_AGENT_STREAM_JPEG_QUALITY,
+            overlapPolicy: "drop_if_previous_frame_pending"
+          }
+        }
+      });
+    } catch (error) {
+      stopVisionMediaTracks();
+      send({ type: "provider.vision.error", id, message: error instanceof Error ? error.message : "Unable to start Agent screen stream." });
+      appendLog(error instanceof Error ? error.message : "screen stream failed", "error");
+    }
+  }
+
+  function stopVisionRecording(reason = "user stopped") {
+    setShowVisionMenu(false);
+    clearVisionGuardTimer();
+    const recorder = visionRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+      return;
+    }
+    stopVisionMediaTracks();
+    if (visionSession?.id && !visionFinalizedIdsRef.current.has(visionSession.id)) {
+      visionFinalizedIdsRef.current.add(visionSession.id);
+      send({ type: "provider.vision.stop", id: visionSession.id, reason });
+    }
+  }
+
+  function stopAgentScreenStream(id = visionSession?.id, reason = "user stopped") {
+    setShowVisionMenu(false);
+    clearVisionGuardTimer();
+    stopVisionFrameStreaming();
+    stopVisionMediaTracks();
+    if (id && !visionFinalizedIdsRef.current.has(id)) {
+      visionFinalizedIdsRef.current.add(id);
+      send({ type: "provider.vision.stop", id, reason });
+    }
+  }
+
+  async function completeVisionRecording(id: string, mime: string) {
+    clearVisionGuardTimer();
+    const chunks = visionRecordingChunksRef.current;
+    visionRecordingChunksRef.current = [];
+    visionFinalizedIdsRef.current.add(id);
+    stopVisionMediaTracks();
+    const blob = new Blob(chunks, { type: mime || "video/webm" });
+    if (blob.size > VISION_RECORDING_MAX_BYTES) {
+      send({ type: "provider.vision.error", id, message: "Recording exceeded the local size guardrail." });
+      appendLog("recording too large", "error");
+      return;
+    }
+    if (blob.size === 0) {
+      send({ type: "provider.vision.stop", id, reason: "empty recording" });
+      return;
+    }
+    const dataUrl = await blobToDataUrl(blob);
+    send({
+      type: "provider.vision.recording.complete",
+      id,
+      mime: blob.type || "video/webm",
+      dataUrl,
+      durationMs: Date.now() - visionRecordingStartedAtRef.current,
+      size: blob.size
+    });
+  }
+
+  function canUseDisplayCapture(): boolean {
+    return Boolean(navigator.mediaDevices && "getDisplayMedia" in navigator.mediaDevices);
+  }
+
+  function chooseWebmMimeType(): string {
+    const candidates = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+    return candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) ?? "";
+  }
+
+  function setVisionGuardTimer(callback: () => void, timeoutMs: number) {
+    clearVisionGuardTimer();
+    visionGuardTimerRef.current = window.setTimeout(callback, timeoutMs);
+  }
+
+  function clearVisionGuardTimer() {
+    if (visionGuardTimerRef.current !== null) {
+      window.clearTimeout(visionGuardTimerRef.current);
+      visionGuardTimerRef.current = null;
+    }
+  }
+
+  function stopVisionMediaTracks() {
+    visionMediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    visionMediaStreamRef.current = null;
+    visionRecorderRef.current = null;
+  }
+
+  async function startVisionFrameStreaming(stream: MediaStream, streamId: string, frameIntervalMs: number) {
+    stopVisionFrameStreaming();
+    if (stream.getVideoTracks().length === 0) {
+      return;
+    }
+
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    video.srcObject = stream;
+    visionFrameVideoRef.current = video;
+    try {
+      await video.play();
+    } catch {
+      return;
+    }
+
+    const sendFrame = () => {
+      void postVisionStreamFrame(video, streamId);
+    };
+    sendFrame();
+    visionFrameTimerRef.current = window.setInterval(sendFrame, frameIntervalMs);
+  }
+
+  function stopVisionFrameStreaming() {
+    if (visionFrameTimerRef.current !== null) {
+      window.clearInterval(visionFrameTimerRef.current);
+      visionFrameTimerRef.current = null;
+    }
+    visionFrameInFlightRef.current = false;
+    const video = visionFrameVideoRef.current;
+    if (video) {
+      video.pause();
+      video.srcObject = null;
+    }
+    visionFrameVideoRef.current = null;
+  }
+
+  async function postVisionStreamFrame(video: HTMLVideoElement, streamId: string) {
+    if (visionFrameInFlightRef.current) {
+      setVisionFrameStats((current) => ({
+        ...current,
+        skipped: current.skipped + 1
+      }));
+      return;
+    }
+    if (!video.videoWidth || !video.videoHeight) {
+      return;
+    }
+    const scale = Math.min(1, VISION_AGENT_STREAM_MAX_FRAME_WIDTH / video.videoWidth);
+    const width = Math.max(1, Math.round(video.videoWidth * scale));
+    const height = Math.max(1, Math.round(video.videoHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return;
+    }
+    visionFrameInFlightRef.current = true;
+    context.drawImage(video, 0, 0, width, height);
+    const imageDataUrl = canvas.toDataURL("image/jpeg", VISION_AGENT_STREAM_JPEG_QUALITY);
+    try {
+      const response = await fetch(`http://127.0.0.1:${daemonPort}/providers/screen/snapshot`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source: "agent-screen-stream",
+          title: "Agent screen stream",
+          description: `Live screen stream frame from ${streamId}.`,
+          imageDataUrl
+        })
+      });
+      if (!response.ok) {
+        throw new Error(`screen snapshot failed: ${response.status}`);
+      }
+      setVisionFrameStats((current) => ({
+        sent: current.sent + 1,
+        skipped: current.skipped,
+        failed: current.failed,
+        lastSentAt: Date.now()
+      }));
+    } catch {
+      setVisionFrameStats((current) => ({
+        ...current,
+        failed: current.failed + 1
+      }));
+      if (!visionFrameFailureLoggedRef.current) {
+        visionFrameFailureLoggedRef.current = true;
+        appendLog("screen stream frame failed", "error");
+      }
+    } finally {
+      visionFrameInFlightRef.current = false;
+    }
+  }
+
+  function updateVisionFrameInterval(value: string) {
+    setVisionStreamSettings((current) => ({
+      ...current,
+      frameIntervalMs: normalizeVisionFrameInterval(Number.parseInt(value, 10))
+    }));
+  }
+
+  function updateVisionMaxDuration(value: string) {
+    setVisionStreamSettings((current) => ({
+      ...current,
+      maxDurationMs: normalizeVisionMaxDuration(Number.parseInt(value, 10))
+    }));
+  }
+
+  function toggleVoicePromptInput() {
+    if (voiceListening) {
+      stopVoicePromptInput();
+      return;
+    }
+    startVoicePromptInput();
+  }
+
+  function startVoicePromptInput() {
+    const Recognition = readSpeechRecognitionConstructor();
+    if (!Recognition) {
+      appendLog("voice input unavailable", "error");
+      return;
+    }
+
+    stopVoicePromptInput(false);
+    const recognition = new Recognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = navigator.language || "en-US";
+    voicePromptBaseRef.current = input.trimEnd();
+    recognition.onresult = (event) => {
+      let transcript = "";
+      for (let index = 0; index < event.results.length; index += 1) {
+        transcript += event.results[index]?.[0]?.transcript ?? "";
+      }
+      const separator = voicePromptBaseRef.current && transcript.trim() ? " " : "";
+      setInput(`${voicePromptBaseRef.current}${separator}${transcript}`.trimStart());
+    };
+    recognition.onerror = (event) => {
+      appendLog(event.error ? `voice input ${event.error}` : "voice input failed", "error");
+    };
+    recognition.onend = () => {
+      if (voiceRecognitionRef.current === recognition) {
+        voiceRecognitionRef.current = null;
+      }
+      setVoiceListening(false);
+    };
+    voiceRecognitionRef.current = recognition;
+    setVoiceListening(true);
+    try {
+      recognition.start();
+    } catch (error) {
+      voiceRecognitionRef.current = null;
+      setVoiceListening(false);
+      appendLog(error instanceof Error ? error.message : "voice input failed", "error");
+    }
+  }
+
+  function stopVoicePromptInput(updateState = true) {
+    const recognition = voiceRecognitionRef.current;
+    voiceRecognitionRef.current = null;
+    if (recognition) {
+      recognition.stop();
+    }
+    if (updateState) {
+      setVoiceListening(false);
+    }
   }
 
   function updateScreenCropField(field: keyof ScreenCrop, value: string) {
@@ -1050,6 +1676,16 @@ export function App() {
     startAsk(command, "terminal");
   }
 
+  function openTerminalPopout() {
+    setMode("terminal");
+    const url = new URL(window.location.href);
+    url.searchParams.set("daemonPort", daemonPort);
+    url.searchParams.set("mode", "terminal");
+    url.searchParams.set("surface", "pty");
+    const popup = window.open(url.toString(), "codex-widget-pty", "popup,width=920,height=640");
+    appendLog(popup ? "pty popup opened" : "pty popup blocked", popup ? "tool" : "error");
+  }
+
   function sendTerminalRawInput(data: string, label: string) {
     const id = crypto.randomUUID();
     return send({
@@ -1106,35 +1742,30 @@ export function App() {
       return;
     }
 
-    const branchId = crypto.randomUUID();
     const assistantText = streamBuffersRef.current.get(messageId) ?? assistantMessage.text;
     const nextBranchContext: BranchContextMessage[] = [
       { role: "user", text: userMessage.text },
       { role: "assistant", text: assistantText }
     ];
     setOpenActionMenuId(null);
-    if (!send({ type: "session.branch" })) {
+    if (
+      !send({
+        type: "session.branch",
+        messages: nextBranchContext,
+        sourceMessageId: messageId,
+        title: userMessage.text,
+        model: selectedModel,
+        reasoningEffort,
+        mode
+      })
+    ) {
       return;
     }
     streamBuffersRef.current.clear();
-    streamBuffersRef.current.set(branchId, assistantText);
     completedResponseIdsRef.current.clear();
-    completedResponseIdsRef.current.add(branchId);
     updateBranchContext(nextBranchContext);
-    setChatMessages([
-      {
-        id: `user:${branchId}`,
-        role: "user",
-        text: userMessage.text
-      },
-      {
-        id: branchId,
-        role: "assistant",
-        text: assistantText,
-        status: "done"
-      }
-    ]);
-    appendLog("branched chat", "tool");
+    appendLog("branched to new session", "tool");
+    showToast("Branched to new session");
   }
 
   function updateBranchContext(nextContext: BranchContextMessage[] | null) {
@@ -1251,10 +1882,12 @@ export function App() {
       id: nextId,
       text: userMessage.text,
       mode,
+      sessionId: activeSessionId ?? undefined,
       model: selectedModel,
       reasoningEffort,
       regenerate: {
-        dropTurns: Math.max(1, removedAssistantIds.length)
+        dropTurns: Math.max(1, removedAssistantIds.length),
+        replaceFromMessageId: messageId
       }
     });
   }
@@ -1294,6 +1927,28 @@ export function App() {
     const nextEffort = normalizeReasoningEffort(value);
     setReasoningEffort(nextEffort);
     localStorage.setItem(REASONING_STORAGE_KEY, nextEffort);
+  }
+
+  function showToast(text: string) {
+    if (toastTimerRef.current !== null) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+    setToastNotice({ id: Date.now(), text });
+    toastTimerRef.current = window.setTimeout(() => {
+      setToastNotice(null);
+      toastTimerRef.current = null;
+    }, 1900);
+  }
+
+  function pulseSessionControls() {
+    if (sessionControlsPulseTimerRef.current !== null) {
+      window.clearTimeout(sessionControlsPulseTimerRef.current);
+    }
+    setSessionControlsFlashing(true);
+    sessionControlsPulseTimerRef.current = window.setTimeout(() => {
+      setSessionControlsFlashing(false);
+      sessionControlsPulseTimerRef.current = null;
+    }, 1000);
   }
 
   function revealOpacityValue() {
@@ -1437,7 +2092,7 @@ export function App() {
     document.body.classList.remove("is-resizing-prompt");
   }
 
-  function beginMascotDrag(event: PointerEvent<HTMLImageElement>) {
+  function beginMascotDrag(event: PointerEvent<HTMLElement>) {
     if (event.button !== 0) {
       return;
     }
@@ -1595,6 +2250,9 @@ export function App() {
   );
   const activeProviderStatus = providerStatusByMode.get(mode);
   const terminalProviderStatus = providerStatusByMode.get("terminal");
+  const visibleActivities = ledger?.activities.slice(0, 1) ?? [];
+  const providerSnapshots = ledger?.providerSnapshots ?? [];
+  const activityBadgeCount = ledger ? ledger.activities.length + ledger.artifacts.length + providerSnapshots.length : 0;
   const statusTone = connected ? (auth.authenticated ? "online" : "warning") : "offline";
   const displayStatus = connected ? status : formatNativeDaemonStatus(nativeDaemonStatus, status);
   const authLabel = auth.authenticated ? "Sign out" : "Sign in";
@@ -1614,6 +2272,26 @@ export function App() {
   const isOverlayPanelOpen = showSettings || showTokenForm;
   const cropPickerSelection = screenCropPicker ? readScreenCropPickerSelection(screenCropPicker) : null;
   const cropPickerSelectionStyle = cropPickerSelection ? (cropPickerSelection as CSSProperties) : undefined;
+  const isVisionRecording = visionSession?.mode === "recording" && visionSession.status === "recording";
+  const isVisionStreaming = visionSession?.mode === "agent_stream" && visionSession.status === "streaming";
+  const visionStreamStatusText = formatVisionStreamStatus(visionFrameStats, visionStreamSettings.frameIntervalMs);
+  const visionStateLabel = isVisionRecording
+    ? "Recording WebM"
+    : isVisionStreaming
+      ? "Sharing screen"
+      : visionSession?.status === "error"
+        ? "Vision error"
+        : "Vision ready";
+  const voiceInputAvailable = canUseVoiceInput();
+  const mascotStateClass = [
+    "mascot",
+    !connected ? "is-offline" : "",
+    busy ? "is-working" : "",
+    isVisionRecording ? "is-recording" : "",
+    isVisionStreaming ? "is-streaming" : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <main className={maximized ? "widget-shell is-maximized" : "widget-shell"} style={shellStyle}>
@@ -1634,214 +2312,74 @@ export function App() {
           />
         ))}
 
-        <header className="titlebar">
-          <div className="app-identity" data-tauri-drag-region>
-            <img className="app-favicon" src={appIconUrl} alt="" draggable={false} />
-            <div className="app-title" data-tauri-drag-region>
-              <strong>Codex Widget</strong>
-            </div>
+        <TitleBar
+          appIconUrl={appIconUrl}
+          opacity={opacity}
+          opacityLabel={opacityLabel}
+          showOpacityValue={showOpacityValue}
+          pinned={pinned}
+          maximized={maximized}
+          onOpacityChange={updateOpacity}
+          onOpacityEditStart={revealOpacityValue}
+          onOpacityEditEnd={hideOpacityValueSoon}
+          onTogglePin={togglePinState}
+          onMinimize={minimize}
+          onToggleMaximize={toggleMaximize}
+          onClose={() => void closeWidget()}
+        />
+
+        <SystemStrip
+          statusTone={statusTone}
+          displayStatus={displayStatus}
+          statusTitle={nativeDaemonStatus?.lastEvent ?? undefined}
+          liveLabel={liveLabel}
+          authenticated={auth.authenticated}
+          authLabel={authLabel}
+          authButtonTitle={authButtonTitle}
+          authDisabled={!connected || (!auth.authenticated && !auth.signInAvailable)}
+          settingsOpen={showSettings}
+          onAuthAction={authAction}
+          onToggleSettings={toggleSettings}
+        />
+
+        <SessionStrip
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          trashedSessions={trashedSessions}
+          showSessionTrash={showSessionTrash}
+          trashArtifactSessionId={trashArtifactSessionId}
+          trashLedger={trashLedger}
+          onOpenSession={openSession}
+          onTrashSession={trashSession}
+          onCreateNewSession={createNewSession}
+          onToggleTrash={() => setShowSessionTrash((current) => !current)}
+          onViewTrashArtifacts={viewTrashArtifacts}
+          onRestoreSession={restoreSession}
+          onOpenArtifactFile={openArtifactFile}
+        />
+
+        {toastNotice ? (
+          <div key={toastNotice.id} className="widget-toast" role="status" aria-live="polite">
+            <Check size={13} />
+            <span>{toastNotice.text}</span>
           </div>
+        ) : null}
 
-          <label
-            className={showOpacityValue ? "opacity-control titlebar-opacity is-editing" : "opacity-control titlebar-opacity"}
-            title="Opacity"
-          >
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="5"
-              value={Math.round(opacity * 100)}
-              onChange={(event) => updateOpacity(event.target.value)}
-              onPointerDown={revealOpacityValue}
-              onPointerUp={hideOpacityValueSoon}
-              onPointerCancel={hideOpacityValueSoon}
-              onFocus={revealOpacityValue}
-              onBlur={hideOpacityValueSoon}
-              aria-label="Widget opacity"
-            />
-            <output>{opacityLabel}</output>
-          </label>
-
-          <div className="titlebar-grip" data-tauri-drag-region />
-
-          <div className="window-controls">
-            <button
-              className="titlebar-button"
-              title="New chat"
-              aria-label="New chat"
-              onClick={() => resetVisibleSession(true)}
-            >
-              <MessageSquarePlus size={14} />
-            </button>
-            <button
-              className={pinned ? "pin-button active" : "pin-button"}
-              title={pinned ? "Pinned" : "Unpinned"}
-              aria-label={pinned ? "Pinned" : "Unpinned"}
-              aria-pressed={pinned}
-              onClick={togglePinState}
-            >
-              {pinned ? <Pin size={14} /> : <PinOff size={14} />}
-            </button>
-            <button
-              className="titlebar-button"
-              title="Minimize"
-              aria-label="Minimize"
-              onClick={minimize}
-            >
-              <Minus size={14} />
-            </button>
-            <button
-              className={maximized ? "titlebar-button active" : "titlebar-button"}
-              title={maximized ? "Restore" : "Maximize"}
-              aria-label={maximized ? "Restore" : "Maximize"}
-              aria-pressed={maximized}
-              onClick={toggleMaximize}
-            >
-              <Square size={12} />
-            </button>
-            <button className="titlebar-button close" title="Hide to tray" aria-label="Hide to tray" onClick={() => void closeWidget()}>
-              <X size={14} />
-            </button>
-          </div>
-        </header>
-
-        <div className="system-strip">
-          <div className="status-copy">
-            <span className={`status-dot ${statusTone}`} />
-            <span className="status-text" title={nativeDaemonStatus?.lastEvent ?? undefined}>
-              {displayStatus}
-            </span>
-            {liveLabel ? <span className="model-label">{liveLabel}</span> : null}
-          </div>
-          <button
-            type="button"
-            className={auth.authenticated ? "auth-button signed-in" : "auth-button"}
-            title={authButtonTitle}
-            aria-label={authLabel}
-            disabled={!connected || (!auth.authenticated && !auth.signInAvailable)}
-            onClick={authAction}
-          >
-            {auth.authenticated ? <LogOut size={14} /> : <LogIn size={14} />}
-            <span>{authLabel}</span>
-          </button>
-          <button
-            type="button"
-            className={showSettings ? "icon-button active" : "icon-button"}
-            title="Settings"
-            aria-label="Settings"
-            aria-pressed={showSettings}
-            onClick={toggleSettings}
-          >
-            <Settings size={14} />
-          </button>
-        </div>
-
-        <div className="mode-row" role="tablist" aria-label="Mode">
-          {MODES.map((item) => {
-            const Icon = item.icon;
-            const providerStatus = providerStatusByMode.get(item.mode);
-            return (
-              <button
-                key={item.mode}
-                className={mode === item.mode ? "mode active" : "mode"}
-                title={providerStatus ? `${item.label}: ${providerStatus.detail}` : item.label}
-                aria-pressed={mode === item.mode}
-                onClick={() => setMode(item.mode)}
-              >
-                <Icon size={15} />
-                <span>{item.label}</span>
-                {providerStatus ? <span className={`mode-status-dot ${providerStatus.state}`} aria-hidden="true" /> : null}
-              </button>
-            );
-          })}
-        </div>
+        <ModeTabs mode={mode} providerStatusByMode={providerStatusByMode} onModeChange={setMode} />
 
         {showSettings ? (
-          <section className="settings-panel" aria-label="Settings">
-            <div className="settings-section">
-              <div className="settings-heading">
-                <strong>Resident</strong>
-                <span>Desktop behavior</span>
-              </div>
-              <label className="toggle-row">
-                <input
-                  type="checkbox"
-                  checked={autostartEnabled}
-                  onChange={(event) => updateAutostart(event.target.checked)}
-                />
-                <span>
-                  <strong>Start at login</strong>
-                  <small>Register this app in the Windows user startup list.</small>
-                </span>
-              </label>
-            </div>
-
-            <div className="settings-section">
-              <div className="settings-heading">
-                <strong>Runtime</strong>
-                <span>{runtimeStatus ? formatRuntimeAge(runtimeStatus.uptimeSeconds) : "Waiting for daemon"}</span>
-              </div>
-              <div className="runtime-grid">
-                <RuntimeMetric label="Clients" value={runtimeStatus?.clients ?? 0} />
-                <RuntimeMetric label="Active" value={runtimeStatus?.activeRequests ?? 0} />
-                <RuntimeMetric label="Codex" value={runtimeStatus?.codexAppServer.state ?? "closed"} />
-                <RuntimeMetric label="Thread" value={runtimeStatus?.codexAppServer.hasThread ? "ready" : "none"} />
-                <RuntimeMetric label="Starts" value={runtimeStatus?.codexAppServer.startCount ?? 0} />
-                <RuntimeMetric label="Error" value={runtimeStatus?.codexAppServer.lastError ?? "none"} />
-                <RuntimeMetric label="Shell" value={nativeDaemonStatus?.state ?? "unknown"} />
-                <RuntimeMetric label="Restarts" value={nativeDaemonStatus?.restartCount ?? 0} />
-              </div>
-            </div>
-
-            <div className="settings-section provider-settings">
-              <div className="settings-heading">
-                <strong>Providers</strong>
-                <span>{providerStatuses.length} modes</span>
-              </div>
-              {providerStatuses.map((provider) => (
-                <div key={provider.mode} className={provider.mode === "screen" ? "provider-row has-action" : "provider-row"}>
-                  <span className={`mode-status-dot ${provider.state}`} aria-hidden="true" />
-                  <strong>{provider.label}</strong>
-                  <span>{provider.detail}</span>
-                  {provider.mode === "screen" ? (
-                    <button type="button" className="provider-action" title="Capture screen" aria-label="Capture screen" onClick={captureScreen}>
-                      <Camera size={12} />
-                    </button>
-                  ) : null}
-                </div>
-              ))}
-              <div className="screen-crop-card">
-                <label className="screen-crop-toggle">
-                  <input
-                    type="checkbox"
-                    checked={screenCrop.enabled}
-                    onChange={(event) => setScreenCrop((current) => ({ ...current, enabled: event.target.checked }))}
-                  />
-                  <span>Crop</span>
-                </label>
-                <div className="screen-crop-grid" aria-label="Screen crop rectangle">
-                  {(["x", "y", "width", "height"] as const).map((field) => (
-                    <label key={field}>
-                      <span>{field === "width" ? "W" : field === "height" ? "H" : field.toUpperCase()}</span>
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        value={screenCrop[field]}
-                        min={field === "width" || field === "height" ? 0 : undefined}
-                        onChange={(event) => updateScreenCropField(field, event.target.value)}
-                        disabled={!screenCrop.enabled}
-                      />
-                    </label>
-                  ))}
-                </div>
-                <button type="button" className="screen-crop-picker-button" aria-label="Select crop area" onClick={startScreenCropPicker}>
-                  <Square size={12} />
-                  <span>Select</span>
-                </button>
-              </div>
-            </div>
-          </section>
+          <SettingsPanel
+            autostartEnabled={autostartEnabled}
+            runtimeStatus={runtimeStatus}
+            nativeDaemonStatus={nativeDaemonStatus}
+            providerStatuses={providerStatuses}
+            screenCrop={screenCrop}
+            onAutostartChange={updateAutostart}
+            onCaptureScreen={captureScreen}
+            onScreenCropEnabledChange={(enabled) => setScreenCrop((current) => ({ ...current, enabled }))}
+            onScreenCropFieldChange={updateScreenCropField}
+            onStartScreenCropPicker={startScreenCropPicker}
+          />
         ) : showTokenForm ? (
           <form className="auth-panel" onSubmit={saveToken}>
             <label>
@@ -1879,1009 +2417,122 @@ export function App() {
             </div>
           </form>
         ) : (
-          <section ref={conversationRef} className="conversation" aria-label="Conversation">
-            {mode === "terminal" ? (
-              <TerminalViewport
-                lines={terminalLines}
-                providerStatus={terminalProviderStatus}
-                busy={busy}
-                onStart={() => runTerminalQuickAction("/pty start")}
-                onStatus={() => runTerminalQuickAction("/pty status")}
-                onStop={() => runTerminalQuickAction("/pty stop")}
-                onClear={clearTerminalViewport}
-                inputValue={terminalInput}
-                onInputChange={setTerminalInput}
-                onInputSubmit={sendTerminalInput}
-                onKeySend={sendTerminalKey}
-                mouseEnabled={terminalMouseEnabled}
-                onMouseEnabledChange={setTerminalMouseEnabled}
-                onMouseInput={(sequence, label) => sendTerminalRawInput(sequence, label)}
-              />
-            ) : null}
-            {chatMessages.length === 0 && interactions.length === 0 && mode !== "terminal" ? (
-              <div className="empty-state">
-                <span className="empty-icon">
-                  <ActiveModeIcon size={20} />
-                </span>
-                <strong>{auth.authenticated ? "Ready" : "Sign in required"}</strong>
-                <span>{activeProviderStatus?.state === "stub" ? "Provider pending" : activeMode.label}</span>
-                {mode === "screen" ? (
-                  <button type="button" className="empty-action" onClick={captureScreen}>
-                    <Camera size={13} />
-                    <span>Capture</span>
-                  </button>
-                ) : null}
-              </div>
-            ) : (
-              <>
-              {chatMessages.map((message) =>
-                message.role === "user" ? (
-                  <article key={message.id} className="message user-message">
-                    <p>{message.text}</p>
-                  </article>
-                ) : (
-                  <article
-                    key={message.id}
-                    className={isAssistantWorking(message.status) ? "message assistant-message is-live" : "message assistant-message"}
-                  >
-                    {isAssistantWorking(message.status) || message.status === "cancelled" || message.status === "error" ? (
-                      <div className="message-state-row">
-                        <span className={`response-state ${message.status}`}>
-                          {assistantStatusLabel(message.status)}
-                          {isAssistantWorking(message.status) ? (
-                            <span className="typing-dots" aria-hidden="true">
-                              <span />
-                              <span />
-                              <span />
-                            </span>
-                          ) : null}
-                        </span>
-                      </div>
-                    ) : null}
-                    {message.text ? (
-                      <>
-                        <div className="markdown-body">
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={{
-                              pre: (props) => <MarkdownPre {...props} onCopyCode={copyCodeBlock} />,
-                              table: (props) => <MarkdownTable {...props} />
-                            }}
-                          >
-                            {message.text}
-                          </ReactMarkdown>
-                          {isAssistantWorking(message.status) ? <span className="typing-cursor" aria-hidden="true" /> : null}
-                        </div>
-                        {!isAssistantWorking(message.status) ? (
-                          <div className="message-actions-shell">
-                            <div className="message-actions" aria-label="Response actions">
-                              <button
-                                type="button"
-                                data-tooltip="Copy"
-                                aria-label="Copy response"
-                                onClick={() => copyMessage(message.id, message.text)}
-                              >
-                                <Copy size={13} />
-                              </button>
-                              <button
-                                type="button"
-                                data-tooltip="Regenerate"
-                                aria-label="Regenerate response"
-                                disabled={Boolean(activeId)}
-                                onClick={() => retryAssistantMessage(message.id)}
-                              >
-                                <RotateCw size={13} />
-                              </button>
-                              <button
-                                type="button"
-                                className={openActionMenuId === message.id ? "active" : ""}
-                                data-tooltip="More"
-                                aria-label="More response actions"
-                                aria-expanded={openActionMenuId === message.id}
-                                onClick={() => setOpenActionMenuId((current) => (current === message.id ? null : message.id))}
-                              >
-                                <MoreHorizontal size={13} />
-                              </button>
-                        </div>
-                            {openActionMenuId === message.id ? (
-                              <div className="message-action-menu" role="menu">
-                                <button type="button" role="menuitem" onClick={() => branchFromAssistantMessage(message.id)}>
-                                  Branch in new chat
-                                </button>
-                                <button
-                                  type="button"
-                                  role="menuitem"
-                                  className={speakingMessageId === message.id ? "is-stop" : ""}
-                                  onClick={() => readMessageAloud(message.id, message.text)}
-                                >
-                                  {speakingMessageId === message.id ? (
-                                    <>
-                                      <CircleStop size={14} />
-                                      <span>중지</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Volume2 size={14} />
-                                      <span>Read aloud</span>
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </>
-                    ) : isAssistantWorking(message.status) ? (
-                      <div className="answer-skeleton" aria-hidden="true" />
-                    ) : (
-                      <p className="assistant-empty-response">{assistantFallbackText(message.status)}</p>
-                    )}
-                  </article>
-                )
-              )}
-              {interactions.map((interaction) => (
-                <InteractionCard
-                  key={interaction.id}
-                  interaction={interaction}
-                  values={interactionDrafts[interaction.id] ?? {}}
-                  onChange={updateInteractionDraft}
-                  onRespond={respondToInteraction}
-                />
-              ))}
-              </>
-            )}
-          </section>
+          <ConversationPanel
+            conversationRef={conversationRef}
+            mode={mode}
+            busy={busy}
+            authAuthenticated={auth.authenticated}
+            activeProviderStatus={activeProviderStatus}
+            terminalProviderStatus={terminalProviderStatus}
+            activeModeLabel={activeMode.label}
+            activeModeIcon={activeMode.icon}
+            chatMessages={chatMessages}
+            interactions={interactions}
+            interactionDrafts={interactionDrafts}
+            ledger={ledger}
+            activeRequestId={activeId}
+            openActionMenuId={openActionMenuId}
+            speakingMessageId={speakingMessageId}
+            terminalLines={terminalLines}
+            terminalInput={terminalInput}
+            terminalMouseEnabled={terminalMouseEnabled}
+            showTerminalGuide={showTerminalGuide}
+            showVisionMenu={showVisionMenu}
+            isVisionRecording={isVisionRecording}
+            isVisionStreaming={isVisionStreaming}
+            visionStateLabel={visionStateLabel}
+            visionStreamStatusText={visionStreamStatusText}
+            visionStreamSettings={visionStreamSettings}
+            visionFrameStats={visionFrameStats}
+            onRunTerminalQuickAction={runTerminalQuickAction}
+            onClearTerminal={clearTerminalViewport}
+            onOpenTerminalPopout={openTerminalPopout}
+            onTerminalInputChange={setTerminalInput}
+            onTerminalInputSubmit={sendTerminalInput}
+            onTerminalKeySend={sendTerminalKey}
+            onTerminalMouseEnabledChange={setTerminalMouseEnabled}
+            onTerminalMouseInput={sendTerminalRawInput}
+            onToggleTerminalGuide={() => setShowTerminalGuide((current) => !current)}
+            onToggleVisionMenu={() => setShowVisionMenu((current) => !current)}
+            onCaptureScreen={captureScreen}
+            onRecordVision={isVisionRecording ? () => stopVisionRecording() : startVisionRecording}
+            onStreamVision={isVisionStreaming ? () => stopAgentScreenStream() : startAgentScreenStream}
+            onVisionFrameIntervalChange={updateVisionFrameInterval}
+            onVisionMaxDurationChange={updateVisionMaxDuration}
+            onCopyCodeBlock={copyCodeBlock}
+            onCopyMessage={copyMessage}
+            onRegenerateMessage={retryAssistantMessage}
+            onToggleMessageActions={(messageId) => setOpenActionMenuId((current) => (current === messageId ? null : messageId))}
+            onBranchMessage={branchFromAssistantMessage}
+            onReadMessageAloud={readMessageAloud}
+            onOpenArtifactFile={openArtifactFile}
+            onInteractionChange={updateInteractionDraft}
+            onInteractionRespond={respondToInteraction}
+          />
         )}
 
         {!isOverlayPanelOpen ? (
           <>
-        <form className="prompt-row" onPointerDownCapture={focusPromptInput} onSubmit={submit}>
-          <div
-            className="prompt-resize-handle"
-            role="separator"
-            aria-label="Resize prompt"
-            aria-orientation="horizontal"
-            onPointerDown={beginPromptResize}
-            onPointerMove={updatePromptResize}
-            onPointerUp={finishPromptResize}
-            onPointerCancel={finishPromptResize}
-          />
-          <textarea
-            ref={promptInputRef}
-            rows={1}
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            onKeyDown={submitFromPromptKey}
-            placeholder="Ask Codex"
-            disabled={!connected}
-            aria-label="Ask Codex"
-          />
-          {busy ? (
-            <button type="button" className="send-button stop" title="Stop" aria-label="Stop response" onClick={cancel}>
-              <CircleDot size={17} />
-            </button>
-          ) : (
-            <button
-              type="submit"
-              className="send-button"
-              title="Send"
-              aria-label="Send prompt"
-              disabled={!connected || !input.trim()}
-            >
-              <Send size={17} />
-            </button>
-          )}
-        </form>
+        <PromptComposer
+          promptInputRef={promptInputRef}
+          value={input}
+          connected={connected}
+          busy={busy}
+          voiceListening={voiceListening}
+          voiceInputAvailable={voiceInputAvailable}
+          onValueChange={setInput}
+          onSubmit={submit}
+          onPromptKeyDown={submitFromPromptKey}
+          onFocusFromRow={focusPromptInput}
+          onBeginResize={beginPromptResize}
+          onUpdateResize={updatePromptResize}
+          onFinishResize={finishPromptResize}
+          onToggleVoice={toggleVoicePromptInput}
+          onCancel={cancel}
+        />
 
-        <div className="model-row" aria-label="Model settings">
-          <label className="model-field model-field-wide" htmlFor="codex-widget-model-select">
-            <span>Model</span>
-            <select
-              id="codex-widget-model-select"
-              aria-label="Model"
-              value={selectedModel}
-              onChange={(event) => updateSelectedModel(event.target.value)}
-            >
-              {MODEL_OPTIONS.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+        <ModelControls
+          selectedModel={selectedModel}
+          reasoningEffort={reasoningEffort}
+          flashing={sessionControlsFlashing}
+          onModelChange={updateSelectedModel}
+          onReasoningChange={updateReasoningEffort}
+        />
 
-          <label className="model-field" htmlFor="codex-widget-reasoning-select">
-            <span>Reason</span>
-            <select
-              id="codex-widget-reasoning-select"
-              aria-label="Reasoning effort"
-              value={reasoningEffort}
-              onChange={(event) => updateReasoningEffort(event.target.value)}
-            >
-              {REASONING_EFFORT_OPTIONS.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div className="log-list" aria-label="Activity">
-          <div className="log-statusbar">
-            <div className="log-heading">
-              <Activity size={12} />
-              <span>Activity</span>
-            </div>
-          </div>
-          <div className="log-lines">
-            {logLines.slice(0, 2).map((line) => (
-              <div key={line.id} className={`log-line ${line.tone}`}>
-                {line.text}
-              </div>
-            ))}
-          </div>
-        </div>
+        <ActivityLog
+          visibleActivities={visibleActivities}
+          fallbackLines={logLines}
+          showDetails={showActivityDetails}
+          activityBadgeCount={activityBadgeCount}
+          ledger={ledger}
+          providerSnapshots={providerSnapshots}
+          onToggleDetails={() => setShowActivityDetails((current) => !current)}
+          onRefresh={refreshLedger}
+        />
           </>
         ) : null}
       </section>
 
-      <img
-        className="mascot"
-        src={mascotUrl}
-        alt=""
-        draggable={false}
+      <MascotSprite
+        className={mascotStateClass}
         onPointerDown={beginMascotDrag}
       />
       {screenCropPicker ? (
-        <div
-          className="screen-crop-picker"
-          role="dialog"
-          aria-label="Screen crop picker"
+        <ScreenCropOverlay
+          selection={cropPickerSelection}
+          selectionStyle={cropPickerSelectionStyle}
           onPointerDown={beginScreenCropPick}
           onPointerMove={updateScreenCropPick}
           onPointerUp={finishScreenCropPick}
-          onPointerCancel={() => setScreenCropPicker(null)}
-        >
-          <div className="screen-crop-picker-toolbar" onPointerDown={(event) => event.stopPropagation()}>
-            <Square size={13} />
-            <span>Drag capture region</span>
-            <button type="button" aria-label="Cancel crop selection" onClick={() => setScreenCropPicker(null)}>
-              <X size={13} />
-            </button>
-          </div>
-          {cropPickerSelectionStyle && cropPickerSelection ? (
-            <div className="screen-crop-picker-selection" style={cropPickerSelectionStyle}>
-              <span>
-                {Math.round(cropPickerSelection.width)} x {Math.round(cropPickerSelection.height)}
-              </span>
-            </div>
-          ) : null}
-        </div>
+          onCancel={() => setScreenCropPicker(null)}
+        />
       ) : null}
+      <FloatingTooltipRoot />
     </main>
   );
 }
 
-type TerminalViewportProps = {
-  lines: TerminalLine[];
-  providerStatus: ProviderStatus | undefined;
-  busy: boolean;
-  onStart: () => void;
-  onStatus: () => void;
-  onStop: () => void;
-  onClear: () => void;
-  inputValue: string;
-  onInputChange: (value: string) => void;
-  onInputSubmit: () => void;
-  onKeySend: (name: TerminalKeyName) => void;
-  mouseEnabled: boolean;
-  onMouseEnabledChange: (enabled: boolean) => void;
-  onMouseInput: (sequence: string, label: string) => void;
-};
 
-function TerminalViewport({
-  lines,
-  providerStatus,
-  busy,
-  onStart,
-  onStatus,
-  onStop,
-  onClear,
-  inputValue,
-  onInputChange,
-  onInputSubmit,
-  onKeySend,
-  mouseEnabled,
-  onMouseEnabledChange,
-  onMouseInput
-}: TerminalViewportProps) {
-  const outputRef = useRef<HTMLDivElement | null>(null);
-  const mouseDragRef = useRef<{ pointerId: number; buttonCode: number; col: number; row: number; sentAt: number } | null>(null);
-  const providerState = providerStatus?.state ?? "unavailable";
-  const providerDetail = providerStatus?.detail ?? "waiting";
-
-  useEffect(() => {
-    const output = outputRef.current;
-    if (!output) {
-      return;
-    }
-    output.scrollTop = output.scrollHeight;
-  }, [lines, busy]);
-
-  function submitInput(event: FormEvent) {
-    event.preventDefault();
-    onInputSubmit();
-  }
-
-  function submitInputFromKey(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== "Enter" || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) {
-      return;
-    }
-
-    event.preventDefault();
-    onInputSubmit();
-  }
-
-  function sendTerminalMouseEvent(buttonCode: number, col: number, row: number, final: "M" | "m", label: string) {
-    onMouseInput(formatTerminalMouseSequence(buttonCode, col, row, final), label);
-  }
-
-  function beginTerminalMouse(event: PointerEvent<HTMLDivElement>) {
-    if (!mouseEnabled || event.button > 2) {
-      return;
-    }
-
-    event.preventDefault();
-    const point = readTerminalMouseCell(event.currentTarget, event.clientX, event.clientY);
-    const buttonCode = event.button;
-    mouseDragRef.current = { pointerId: event.pointerId, buttonCode, ...point, sentAt: Date.now() };
-    event.currentTarget.setPointerCapture(event.pointerId);
-    sendTerminalMouseEvent(buttonCode, point.col, point.row, "M", "mouse press");
-  }
-
-  function moveTerminalMouse(event: PointerEvent<HTMLDivElement>) {
-    const drag = mouseDragRef.current;
-    if (!mouseEnabled || !drag || drag.pointerId !== event.pointerId || event.buttons === 0) {
-      return;
-    }
-
-    event.preventDefault();
-    const point = readTerminalMouseCell(event.currentTarget, event.clientX, event.clientY);
-    const now = Date.now();
-    if (
-      point.col === drag.col &&
-      point.row === drag.row &&
-      now - drag.sentAt < TERMINAL_MOUSE_DRAG_INTERVAL_MS
-    ) {
-      return;
-    }
-
-    mouseDragRef.current = { ...drag, ...point, sentAt: now };
-    sendTerminalMouseEvent(32 + drag.buttonCode, point.col, point.row, "M", "mouse drag");
-  }
-
-  function finishTerminalMouse(event: PointerEvent<HTMLDivElement>) {
-    const drag = mouseDragRef.current;
-    if (!mouseEnabled || !drag || drag.pointerId !== event.pointerId) {
-      return;
-    }
-
-    event.preventDefault();
-    const point = readTerminalMouseCell(event.currentTarget, event.clientX, event.clientY);
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    mouseDragRef.current = null;
-    sendTerminalMouseEvent(3, point.col, point.row, "m", "mouse release");
-  }
-
-  function wheelTerminalMouse(event: WheelEvent<HTMLDivElement>) {
-    if (!mouseEnabled) {
-      return;
-    }
-
-    event.preventDefault();
-    const point = readTerminalMouseCell(event.currentTarget, event.clientX, event.clientY);
-    sendTerminalMouseEvent(event.deltaY < 0 ? 64 : 65, point.col, point.row, "M", "mouse wheel");
-  }
-
-  return (
-    <section
-      className={[
-        "terminal-viewport",
-        busy ? "is-live" : "",
-        mouseEnabled ? "is-mouse-input" : ""
-      ].filter(Boolean).join(" ")}
-      aria-label="Terminal viewport"
-    >
-      <div className="terminal-toolbar">
-        <div className="terminal-title">
-          <SquareTerminal size={14} />
-          <strong>PTY</strong>
-          <span className={`terminal-state-dot ${providerState}`} aria-hidden="true" />
-          <span className="terminal-detail" title={providerDetail}>
-            {providerDetail}
-          </span>
-        </div>
-        <div className="terminal-actions" aria-label="Terminal actions">
-          <button type="button" title="Start" aria-label="Start terminal session" disabled={busy} onClick={onStart}>
-            <Play size={13} />
-          </button>
-          <button type="button" title="Status" aria-label="Show terminal status" disabled={busy} onClick={onStatus}>
-            <Activity size={13} />
-          </button>
-          <button type="button" title="Stop" aria-label="Stop terminal session" disabled={busy} onClick={onStop}>
-            <CircleStop size={13} />
-          </button>
-          <button type="button" title="Clear" aria-label="Clear terminal viewport" onClick={onClear}>
-            <Trash2 size={13} />
-          </button>
-          <button
-            type="button"
-            className={mouseEnabled ? "is-active" : ""}
-            title={mouseEnabled ? "Mouse input on" : "Mouse input off"}
-            aria-label={mouseEnabled ? "Disable terminal mouse input" : "Enable terminal mouse input"}
-            aria-pressed={mouseEnabled}
-            onClick={() => onMouseEnabledChange(!mouseEnabled)}
-          >
-            <MousePointer2 size={13} />
-          </button>
-        </div>
-      </div>
-      <div
-        ref={outputRef}
-        className={mouseEnabled ? "terminal-output is-mouse-input" : "terminal-output"}
-        role="log"
-        aria-live="polite"
-        aria-label="Terminal output"
-        onPointerDown={beginTerminalMouse}
-        onPointerMove={moveTerminalMouse}
-        onPointerUp={finishTerminalMouse}
-        onPointerCancel={finishTerminalMouse}
-        onWheel={wheelTerminalMouse}
-      >
-        {lines.length === 0 ? (
-          <div className="terminal-empty">No terminal output</div>
-        ) : (
-          lines.map((line) => (
-            <div key={line.id} className={`terminal-line ${line.kind}`}>
-              <span className="terminal-prefix" aria-hidden="true">
-                {terminalLinePrefix(line.kind)}
-              </span>
-              <span className="terminal-line-text">{line.text || " "}</span>
-            </div>
-          ))
-        )}
-        {busy ? (
-          <div className="terminal-line system terminal-working">
-            <span className="terminal-prefix" aria-hidden="true">
-              *
-            </span>
-            <span className="terminal-line-text">working</span>
-          </div>
-        ) : null}
-      </div>
-      <form className="terminal-input-row" aria-label="PTY raw input" onSubmit={submitInput}>
-        <Keyboard size={13} aria-hidden="true" />
-        <input
-          value={inputValue}
-          placeholder="Send PTY input"
-          aria-label="PTY text input"
-          onChange={(event) => onInputChange(event.target.value)}
-          onKeyDown={submitInputFromKey}
-        />
-        <button type="button" title="Tab" aria-label="Send Tab key" onClick={() => onKeySend("tab")}>
-          Tab
-        </button>
-        <button type="button" title="Escape" aria-label="Send Escape key" onClick={() => onKeySend("escape")}>
-          Esc
-        </button>
-        <button type="button" title="Ctrl+C" aria-label="Send Ctrl+C" onClick={() => onKeySend("ctrl-c")}>
-          <Ban size={12} />
-        </button>
-        <button type="button" title="Enter" aria-label="Send Enter key" onClick={() => onKeySend("enter")}>
-          <CornerDownLeft size={12} />
-        </button>
-        <button type="submit" title="Send input" aria-label="Send PTY text" disabled={!inputValue.trim()}>
-          <Send size={12} />
-        </button>
-      </form>
-    </section>
-  );
-}
-
-type MarkdownPreProps = ComponentPropsWithoutRef<"pre"> & {
-  onCopyCode: (text: string) => void;
-};
-
-type InteractionCardProps = {
-  interaction: RuntimeInteraction;
-  values: Record<string, string>;
-  onChange: (interactionId: string, fieldId: string, value: string) => void;
-  onRespond: (interaction: RuntimeInteraction, decision: "approve" | "decline" | "submit") => void;
-};
-
-function RuntimeMetric({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="runtime-metric">
-      <span>{label}</span>
-      <strong title={String(value)}>{value}</strong>
-    </div>
-  );
-}
-
-function InteractionCard({ interaction, values, onChange, onRespond }: InteractionCardProps) {
-  const fields = interaction.fields ?? [];
-
-  return (
-    <article className="interaction-card">
-      <div className="interaction-copy">
-        <strong>{interaction.title}</strong>
-        <p>{interaction.body}</p>
-      </div>
-      {interaction.kind === "input" ? (
-        <div className="interaction-fields">
-          {fields.map((field) => (
-            <label key={field.id}>
-              <span>{field.label}</span>
-              {field.multiline ? (
-                <textarea
-                  value={values[field.id] ?? ""}
-                  placeholder={field.placeholder}
-                  onChange={(event) => onChange(interaction.id, field.id, event.target.value)}
-                />
-              ) : (
-                <input
-                  value={values[field.id] ?? ""}
-                  placeholder={field.placeholder}
-                  onChange={(event) => onChange(interaction.id, field.id, event.target.value)}
-                />
-              )}
-            </label>
-          ))}
-        </div>
-      ) : null}
-      <div className="interaction-actions">
-        <button type="button" className="ghost" onClick={() => onRespond(interaction, "decline")}>
-          <Ban size={13} />
-          <span>Deny</span>
-        </button>
-        <button
-          type="button"
-          className="primary"
-          onClick={() => onRespond(interaction, interaction.kind === "input" ? "submit" : "approve")}
-        >
-          <Check size={13} />
-          <span>{interaction.kind === "input" ? "Send" : "Allow"}</span>
-        </button>
-      </div>
-    </article>
-  );
-}
-
-function MarkdownTable({ children, ...props }: ComponentPropsWithoutRef<"table">) {
-  return (
-    <div className="markdown-table-scroll">
-      <table {...props}>{children}</table>
-    </div>
-  );
-}
-
-function MarkdownPre({ children, onCopyCode, ...props }: MarkdownPreProps) {
-  const codeText = extractReactNodeText(children);
-  const language = readCodeLanguage(children);
-
-  return (
-    <div className="codeblock">
-      <div className="codeblock-header">
-        <span>{language}</span>
-        <button type="button" title="Copy code" aria-label="Copy code" onClick={() => onCopyCode(codeText)}>
-          <Copy size={12} />
-        </button>
-      </div>
-      <pre {...props}>{children}</pre>
-    </div>
-  );
-}
-
-function readCodeLanguage(node: ReactNode): string {
-  for (const child of Children.toArray(node)) {
-    if (!isValidElement<{ className?: unknown }>(child)) {
-      continue;
-    }
-
-    const className = child.props.className;
-    if (typeof className !== "string") {
-      continue;
-    }
-
-    const match = /language-([A-Za-z0-9_-]+)/.exec(className);
-    if (match?.[1]) {
-      return match[1];
-    }
-  }
-
-  return "text";
-}
-
-function extractReactNodeText(node: ReactNode): string {
-  if (typeof node === "string" || typeof node === "number") {
-    return String(node);
-  }
-  if (Array.isArray(node)) {
-    return node.map(extractReactNodeText).join("");
-  }
-  if (isValidElement<{ children?: ReactNode }>(node)) {
-    return extractReactNodeText(node.props.children);
-  }
-  return "";
-}
-
-function isTerminalToolEvent(tool: string): boolean {
-  return tool === "terminal" || tool.startsWith("terminal:") || tool.startsWith("terminal-session:");
-}
-
-function terminalToolLabel(tool: string): string {
-  return tool.startsWith("terminal-session:") ? "pty" : "terminal";
-}
-
-function terminalLinePrefix(kind: TerminalLine["kind"]): string {
-  if (kind === "command") {
-    return ">";
-  }
-  if (kind === "error") {
-    return "!";
-  }
-  if (kind === "system") {
-    return "*";
-  }
-  return "|";
-}
-
-function terminalKeyToInput(name: TerminalKeyName): string {
-  const inputs = {
-    enter: "\r",
-    tab: "\t",
-    escape: "\x1b",
-    "ctrl-c": "\x03"
-  } satisfies Record<TerminalKeyName, string>;
-  return inputs[name];
-}
-
-function terminalKeyToLabel(name: TerminalKeyName): string {
-  const labels = {
-    enter: "Enter",
-    tab: "Tab",
-    escape: "Escape",
-    "ctrl-c": "Ctrl+C"
-  } satisfies Record<TerminalKeyName, string>;
-  return labels[name];
-}
-
-function formatTerminalMouseSequence(buttonCode: number, col: number, row: number, final: "M" | "m"): string {
-  return `\x1b[<${buttonCode};${col};${row}${final}`;
-}
-
-function readTerminalMouseCell(element: HTMLElement, clientX: number, clientY: number): { col: number; row: number } {
-  const rect = element.getBoundingClientRect();
-  const style = window.getComputedStyle(element);
-  const paddingLeft = normalizeCssPixel(style.paddingLeft);
-  const paddingTop = normalizeCssPixel(style.paddingTop);
-  const paddingRight = normalizeCssPixel(style.paddingRight);
-  const paddingBottom = normalizeCssPixel(style.paddingBottom);
-  const fontSize = normalizeCssPixel(style.fontSize, 11.5);
-  const lineHeight = normalizeCssPixel(style.lineHeight, fontSize * 1.46);
-  const charWidth = Math.max(5, fontSize * 0.62);
-  const contentWidth = Math.max(charWidth, rect.width - paddingLeft - paddingRight);
-  const contentHeight = Math.max(lineHeight, rect.height - paddingTop - paddingBottom);
-  const x = Math.min(contentWidth - 1, Math.max(0, clientX - rect.left - paddingLeft));
-  const y = Math.min(contentHeight - 1, Math.max(0, clientY - rect.top - paddingTop));
-  return {
-    col: Math.min(400, Math.max(1, Math.floor(x / charWidth) + 1)),
-    row: Math.min(200, Math.max(1, Math.floor(y / lineHeight) + 1))
-  };
-}
-
-function normalizeCssPixel(value: string, fallback = 0): number {
-  const parsed = Number.parseFloat(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function normalizeTerminalText(text: string): string {
-  return text
-    .replace(/\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1b\\))/g, "")
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n");
-}
-
-function clampTerminalLine(text: string): string {
-  return text.length > TERMINAL_LINE_MAX_CHARS ? `${text.slice(0, TERMINAL_LINE_MAX_CHARS)}...` : text;
-}
-
-function limitTerminalLines(lines: TerminalLine[]): TerminalLine[] {
-  return lines.length > TERMINAL_LINE_LIMIT ? lines.slice(-TERMINAL_LINE_LIMIT) : lines;
-}
-
-function summarizeTerminalCompletion(markdown: string, sawOutput: boolean): string {
-  const cleaned = markdown
-    .replace(/```[\s\S]*?```/g, "\n")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
-    .replace(/[*_~#>|]/g, " ")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (sawOutput) {
-    const statusLine = cleaned.find((line) => /\b(completed|exited with|blocked|stopped|timed out)\b/i.test(line));
-    return statusLine ? clampTerminalLine(statusLine) : "completed";
-  }
-
-  const summaryLine =
-    cleaned.find((line) => /\b(Terminal|PTY|session|started|running|stopped|resized|input sent|blocked|No output)\b/i.test(line)) ??
-    cleaned[0] ??
-    "";
-  return clampTerminalLine(summaryLine);
-}
-
-function createSpeechText(markdown: string): string {
-  return markdown
-    .replace(/```[\s\S]*?```/g, "\n \n")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/https?:\/\/[^\s)]+/g, " ")
-    .replace(/^\s*thought\s+for\s+.+$/gim, "")
-    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
-    .replace(/^\s{0,3}>\s?/gm, "")
-    .replace(/^\s*[-*+]\s+/gm, "")
-    .replace(/^\s*\d+[.)]\s+/gm, "")
-    .replace(/[*_~#>|]/g, " ")
-    .replace(/[()[\]{}<>]/g, " ")
-    .replace(/[\\/]+/g, " ")
-    .replace(/[-=]{3,}/g, " ")
-    .replace(/[“”"']/g, "")
-    .replace(/[;:]+/g, ", ")
-    .replace(/[?!]{2,}/g, ".")
-    .replace(/[.]{2,}/g, ".")
-    .replace(/\s*([.!?。！？])\s*/g, "$1 ")
-    .replace(/\s*,\s*/g, ", ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function pickSpeechLanguage(text: string): string {
-  if (/[가-힣]/.test(text)) {
-    return "ko-KR";
-  }
-  if (/[ぁ-んァ-ン一-龯]/.test(text)) {
-    return "ja-JP";
-  }
-  return navigator.language || "en-US";
-}
-
-function pickSpeechVoice(lang: string): SpeechSynthesisVoice | null {
-  const voices = window.speechSynthesis.getVoices();
-  return (
-    voices.find((voice) => voice.lang === lang) ??
-    voices.find((voice) => voice.lang.toLowerCase().startsWith(lang.slice(0, 2).toLowerCase())) ??
-    null
-  );
-}
-
-function readStoredOpacity(): number {
-  const stored = localStorage.getItem("codex-widget-opacity");
-  if (!stored) {
-    return 0.95;
-  }
-  return clampOpacity(Number(stored));
-}
-
-function clampOpacity(value: number): number {
-  if (!Number.isFinite(value)) {
-    return 0.95;
-  }
-  return Math.min(1, Math.max(0, value > 1 ? value / 100 : value));
-}
-
-function ensureAssistantMessage(messages: ChatMessage[], id: string): ChatMessage[] {
-  if (messages.some((message) => message.role === "assistant" && message.id === id)) {
-    return messages;
-  }
-  return [
-    ...messages,
-    {
-      id,
-      role: "assistant",
-      text: "",
-      status: "pending"
-    }
-  ];
-}
-
-function findPreviousUserMessage(messages: ChatMessage[], startIndex: number): Extract<ChatMessage, { role: "user" }> | null {
-  for (let index = Math.min(startIndex - 1, messages.length - 1); index >= 0; index -= 1) {
-    const message = messages[index];
-    if (message.role === "user") {
-      return message;
-    }
-  }
-  return null;
-}
-
-function getNextTypingLength(text: string, currentLength: number, remaining: number, isCompleted: boolean): number {
-  const atomicEnd = readAtomicTokenEnd(text, currentLength, isCompleted);
-  if (atomicEnd !== null) {
-    return atomicEnd;
-  }
-
-  const nextLength = Math.min(text.length, currentLength + getTypingStepSize(remaining));
-  const atomicStart = findAtomicTokenStart(text, currentLength + 1, nextLength);
-  return atomicStart ?? nextLength;
-}
-
-function findAtomicTokenStart(text: string, start: number, end: number): number | null {
-  for (let index = start; index < end; index += 1) {
-    if (isAtomicTokenStart(text, index)) {
-      return index;
-    }
-  }
-  return null;
-}
-
-function readAtomicTokenEnd(text: string, start: number, isCompleted: boolean): number | null {
-  if (text.charAt(start) === "!" && text.charAt(start + 1) === "[") {
-    const imageEnd = readMarkdownLinkEnd(text, start + 1);
-    return imageEnd ?? (isCompleted ? null : start);
-  }
-  if (text.charAt(start) === "[") {
-    const linkEnd = readMarkdownLinkEnd(text, start);
-    return linkEnd ?? (isCompleted ? null : start);
-  }
-  if (isAutoUrlStart(text, start)) {
-    return readAutoUrlEnd(text, start, isCompleted);
-  }
-  return null;
-}
-
-function isAtomicTokenStart(text: string, start: number): boolean {
-  return (
-    text.charAt(start) === "[" ||
-    (text.charAt(start) === "!" && text.charAt(start + 1) === "[") ||
-    isAutoUrlStart(text, start)
-  );
-}
-
-function readMarkdownLinkEnd(text: string, start: number): number | null {
-  if (text.charAt(start) !== "[") {
-    return null;
-  }
-
-  let labelEnd = start + 1;
-  while (labelEnd < text.length) {
-    labelEnd = text.indexOf("]", labelEnd);
-    if (labelEnd < 0) {
-      return null;
-    }
-    if (text.charAt(labelEnd - 1) === "\\") {
-      labelEnd += 1;
-      continue;
-    }
-    break;
-  }
-
-  if (text.charAt(labelEnd + 1) !== "(") {
-    return null;
-  }
-
-  const urlEnd = text.indexOf(")", labelEnd + 2);
-  return urlEnd > labelEnd ? urlEnd + 1 : null;
-}
-
-function isAutoUrlStart(text: string, start: number): boolean {
-  return text.startsWith("https://", start) || text.startsWith("http://", start);
-}
-
-function readAutoUrlEnd(text: string, start: number, isCompleted: boolean): number | null {
-  if (!isAutoUrlStart(text, start)) {
-    return null;
-  }
-
-  const rest = text.slice(start);
-  const boundary = /[\s<>"`]/.exec(rest);
-  if (!boundary && !isCompleted) {
-    return start;
-  }
-
-  let end = boundary ? start + boundary.index : text.length;
-  while (end > start && /[.,;:!?)]/.test(text.charAt(end - 1))) {
-    end -= 1;
-  }
-  return end > start ? end : null;
-}
-
-function getTypingStepSize(remaining: number): number {
-  if (remaining > 900) {
-    return 6;
-  }
-  if (remaining > 360) {
-    return 4;
-  }
-  if (remaining > 120) {
-    return 3;
-  }
-  if (remaining > 32) {
-    return 2;
-  }
-  return 1;
-}
-
-function getTypingDelay(character: string, remaining: number): number {
-  if (remaining > 360) {
-    return 12;
-  }
-  if (character === "\n") {
-    return 62;
-  }
-  if (/[.!?。！？]$/.test(character)) {
-    return 76;
-  }
-  if (/[,;:，、]$/.test(character)) {
-    return 42;
-  }
-  if (character === " ") {
-    return 14;
-  }
-  return STREAM_TYPE_BASE_INTERVAL_MS;
-}
-
-function isAssistantWorking(status: AssistantMessageStatus): boolean {
-  return status === "pending" || status === "thinking" || status === "tooling" || status === "streaming" || status === "typing";
-}
-
-function snapshotStatusToAssistantStatus(status: MessageSnapshotStatus): AssistantMessageStatus {
-  return status === "done" ||
-    status === "cancelled" ||
-    status === "error" ||
-    status === "thinking" ||
-    status === "tooling" ||
-    status === "streaming"
-    ? status
-    : "pending";
-}
-
-function assistantStatusLabel(status: AssistantMessageStatus): string {
-  switch (status) {
-    case "pending":
-      return "Queued";
-    case "thinking":
-      return "Thinking";
-    case "tooling":
-      return "Working";
-    case "streaming":
-      return "Streaming";
-    case "typing":
-      return "Typing";
-    case "cancelled":
-      return "Stopped";
-    case "error":
-      return "Error";
-    case "done":
-    default:
-      return "Done";
-  }
-}
-
-function assistantFallbackText(status: AssistantMessageStatus): string {
-  if (status === "cancelled") {
-    return "Stopped before a response was returned.";
-  }
-  if (status === "error") {
-    return "The response could not be completed.";
-  }
-  return "";
-}
 
 function clampPromptHeight(value: number, maxHeight = PROMPT_COMPOSER_MAX_HEIGHT): number {
   if (!Number.isFinite(value)) {
@@ -2909,135 +2560,8 @@ function readCssPixelVariable(name: string, fallback: number): number {
   return Number.isFinite(value) ? value : fallback;
 }
 
-function readStoredModel(): ModelId {
-  return normalizeModelId(localStorage.getItem(MODEL_STORAGE_KEY));
-}
 
-function readStoredReasoningEffort(): ReasoningEffort {
-  return normalizeReasoningEffort(localStorage.getItem(REASONING_STORAGE_KEY));
-}
 
-function readStoredScreenCrop(): ScreenCropSettings {
-  const fallback: ScreenCropSettings = { enabled: false, x: 0, y: 0, width: 0, height: 0 };
-  const stored = localStorage.getItem(SCREEN_CROP_STORAGE_KEY);
-  if (!stored) {
-    return fallback;
-  }
-
-  try {
-    const parsed = JSON.parse(stored) as Partial<ScreenCropSettings>;
-    return {
-      enabled: parsed.enabled === true,
-      x: normalizeScreenCropField("x", parsed.x),
-      y: normalizeScreenCropField("y", parsed.y),
-      width: normalizeScreenCropField("width", parsed.width),
-      height: normalizeScreenCropField("height", parsed.height)
-    };
-  } catch {
-    return fallback;
-  }
-}
-
-function persistScreenCrop(crop: ScreenCropSettings): void {
-  localStorage.setItem(SCREEN_CROP_STORAGE_KEY, JSON.stringify(crop));
-}
-
-function buildScreenCrop(crop: ScreenCropSettings): ScreenCrop | undefined {
-  if (!crop.enabled || crop.width <= 0 || crop.height <= 0) {
-    return undefined;
-  }
-  return {
-    x: crop.x,
-    y: crop.y,
-    width: crop.width,
-    height: crop.height
-  };
-}
-
-function readCropPickerPoint(element: HTMLElement, event: PointerEvent<HTMLElement>): { x: number; y: number } {
-  const rect = element.getBoundingClientRect();
-  return {
-    x: Math.min(rect.width, Math.max(0, event.clientX - rect.left)),
-    y: Math.min(rect.height, Math.max(0, event.clientY - rect.top))
-  };
-}
-
-function readScreenCropPickerSelection(state: ScreenCropPickerState): CSSProperties & {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-} {
-  const left = Math.min(state.startX, state.currentX);
-  const top = Math.min(state.startY, state.currentY);
-  const width = Math.abs(state.currentX - state.startX);
-  const height = Math.abs(state.currentY - state.startY);
-  return { left, top, width, height };
-}
-
-function convertPickerSelectionToScreenCrop(
-  selection: { left: number; top: number; width: number; height: number },
-  state: ScreenCropPickerState
-): ScreenCrop {
-  const scaleFactor = state.geometry?.scaleFactor ?? window.devicePixelRatio ?? 1;
-  const originX = state.geometry?.x ?? Math.round(window.screenX * scaleFactor);
-  const originY = state.geometry?.y ?? Math.round(window.screenY * scaleFactor);
-  return {
-    x: Math.round(originX + selection.left * scaleFactor),
-    y: Math.round(originY + selection.top * scaleFactor),
-    width: Math.max(1, Math.round(selection.width * scaleFactor)),
-    height: Math.max(1, Math.round(selection.height * scaleFactor))
-  };
-}
-
-function normalizeScreenCropField(field: keyof ScreenCrop, value: unknown): number {
-  const numeric = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
-  if (!Number.isFinite(numeric)) {
-    return 0;
-  }
-  const rounded = Math.trunc(numeric);
-  return field === "width" || field === "height" ? Math.max(0, rounded) : rounded;
-}
-
-function formatRuntimeAge(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds <= 0) {
-    return "just started";
-  }
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 1) {
-    return `${seconds}s uptime`;
-  }
-  const hours = Math.floor(minutes / 60);
-  if (hours < 1) {
-    return `${minutes}m uptime`;
-  }
-  return `${hours}h ${minutes % 60}m uptime`;
-}
-
-function formatNativeDaemonStatus(snapshot: NativeDaemonStatus | null, fallback: string): string {
-  if (!snapshot) {
-    return fallback;
-  }
-  if (!snapshot.enabled) {
-    return "dev services";
-  }
-  if (snapshot.state === "running") {
-    return "daemon running";
-  }
-  if (snapshot.state === "restarting") {
-    return "daemon restarting";
-  }
-  if (snapshot.state === "starting") {
-    return "daemon starting";
-  }
-  if (snapshot.state === "error") {
-    return "daemon error";
-  }
-  if (snapshot.state === "stopped") {
-    return "daemon stopped";
-  }
-  return fallback;
-}
 
 function createInteractionDraft(interaction: RuntimeInteraction): Record<string, string> {
   const fields = interaction.fields ?? [];
@@ -3048,102 +2572,6 @@ function createInteractionDraft(interaction: RuntimeInteraction): Record<string,
   return Object.fromEntries(fields.map((field) => [field.id, ""]));
 }
 
-function readStoredChatMessages(): ChatMessage[] {
-  const stored = localStorage.getItem(CHAT_STORAGE_KEY);
-  if (!stored) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(stored) as unknown;
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-    return parsed.flatMap(readStoredChatMessage).slice(-80);
-  } catch {
-    return [];
-  }
-}
-
-function readStoredChatMessage(value: unknown): ChatMessage[] {
-  if (typeof value !== "object" || value === null) {
-    return [];
-  }
-
-  const record = value as Record<string, unknown>;
-  if (typeof record.id !== "string" || typeof record.text !== "string") {
-    return [];
-  }
-
-  if (record.role === "user") {
-    return [{ id: record.id, role: "user", text: record.text }];
-  }
-
-  if (record.role === "assistant") {
-    const status = record.status === "error" || record.status === "cancelled" ? record.status : "done";
-    return [{ id: record.id, role: "assistant", text: record.text, status }];
-  }
-
-  return [];
-}
-
-function readStoredBranchContext(): BranchContextMessage[] | null {
-  const stored = localStorage.getItem(BRANCH_CONTEXT_STORAGE_KEY);
-  if (!stored) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(stored) as unknown;
-    if (!Array.isArray(parsed)) {
-      return null;
-    }
-
-    const context = parsed.flatMap(readStoredBranchContextMessage).slice(-2);
-    return context.length > 0 ? context : null;
-  } catch {
-    return null;
-  }
-}
-
-function readStoredBranchContextMessage(value: unknown): BranchContextMessage[] {
-  if (typeof value !== "object" || value === null) {
-    return [];
-  }
-
-  const record = value as Record<string, unknown>;
-  if ((record.role !== "user" && record.role !== "assistant") || typeof record.text !== "string" || !record.text.trim()) {
-    return [];
-  }
-
-  return [{ role: record.role, text: record.text }];
-}
-
-function persistChatMessages(messages: ChatMessage[]): void {
-  const persisted = messages
-    .slice(-80)
-    .map((message): ChatMessage =>
-      message.role === "assistant" && isAssistantWorking(message.status)
-        ? { ...message, status: "cancelled" }
-        : message
-    );
-
-  if (persisted.length === 0) {
-    localStorage.removeItem(CHAT_STORAGE_KEY);
-    return;
-  }
-
-  localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(persisted));
-}
-
-function persistBranchContext(context: BranchContextMessage[] | null): void {
-  if (!context?.length) {
-    localStorage.removeItem(BRANCH_CONTEXT_STORAGE_KEY);
-    return;
-  }
-
-  localStorage.setItem(BRANCH_CONTEXT_STORAGE_KEY, JSON.stringify(context.slice(-2)));
-}
 
 function calculateResizeFrame(state: ResizeDragState) {
   const direction = state.direction;

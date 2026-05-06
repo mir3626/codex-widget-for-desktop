@@ -166,6 +166,8 @@ describe('project report', () => {
     }
     assert.equal(result.html.includes('data-section="milestones"'), false);
     assert.match(result.html, /No iterations recorded yet/);
+    assert.match(result.html, /data-demo="true"/);
+    assert.match(result.html, /sprint-contract/);
     assert.match(result.html, /<nav class="site-nav"/);
     assert.match(result.html, /<div class="outer-frame">/);
     assert.match(result.html, /<main id="content" class="container">/);
@@ -417,7 +419,7 @@ describe('project report', () => {
     assert.equal(result.html.includes('<details open'), false);
   });
 
-  it('renders iOS liquid-glass light theme with iridescent brand orb', async () => {
+  it('renders premium operational light theme with a stable brand mark', async () => {
     const root = await makeTempDir('project-report-style-');
     const { runProjectReportCli } = await loadReportModule();
     await scaffoldReportProject(root);
@@ -430,10 +432,12 @@ describe('project report', () => {
     assert.equal(/<br>/i.test(result.html), false);
     assert.match(result.html, /color-scheme:light/);
     assert.match(result.html, /backdrop-filter:blur/);
-    assert.match(result.html, /#007aff/);
-    assert.match(result.html, /class="orb"/);
-    assert.match(result.html, /orb-core/);
-    assert.match(result.html, /@keyframes orb-spin/);
+    assert.match(result.html, /#0f766e/);
+    assert.match(result.html, /class="brand-mark"/);
+    assert.match(result.html, /pulse-line/);
+    assert.match(result.html, /@keyframes mark-pulse/);
+    assert.equal(/class="orb"/.test(result.html), false);
+    assert.equal(/Inter/.test(result.html), false);
     assert.match(result.html, /@media print/);
   });
 });

@@ -1,12 +1,12 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-2",
+  "currentIteration": "iter-7",
   "iterations": [
     {
       "id": "iter-1",
       "label": "Resident Agent Widget Foundation",
       "startedAt": "2026-05-04T00:00:00.000Z",
-      "completedAt": null,
+      "completedAt": "2026-05-06T16:53:00.000+09:00",
       "goal": "Continue development of the Tauri desktop Codex-style resident agent widget through vibe-doctor sprints.",
       "plannedSprints": [
         "sprint-01-auth-architecture",
@@ -51,6 +51,163 @@
         "resident-desktop-readiness": 0.96
       },
       "summary": "Iteration 2 has added runtime protocol durability, app-server interaction UI, app-server start/error diagnostics, fake app-server protocol smoke coverage for thread reuse/approval/rollback, optional live app-server smoke coverage for real CLI protocol drift, visible chat persistence, app-server-backed regenerate rollback, branch-safe session reset with one-shot branch context, reconnect response snapshot replay, renderer chat layout hardening with a Playwright smoke, provider status events, runtime health status, DOM snapshot ingress, an unpacked and zip-packaged browser DOM extension with local-only Options URL configuration plus an optional Chrome/Edge native messaging host and store-readiness metadata, Screen/Vision snapshot ingress, direct app-server Vision image input, a daemon-triggered Windows screen capture helper with Settings/env/visual-drag configured crop, optional OCR command support, OCR-only PNG preprocessing, image hash/change/diff metadata with configurable thresholding, bundled OCR runtime packaging, standard Windows Tesseract discovery/search roots, tessdata language acquisition, and bundled tessdata language defaults, explicit one-shot terminal execution, a persistent node-pty/ConPTY-backed /pty command/raw-input session, raw-input output drain, a renderer PTY viewport with terminal output accumulation, quick actions, and direct input controls, start-at-login settings, tray-oriented hide behavior, packaged-app daemon restart supervision with capped backoff, daemon parent-watchdog cleanup, renderer-visible native daemon diagnostics, bundled daemon JS, Node runtime, and PTY runtime resources for installed builds, installed `_up_` resource resolution, release exe launch smoke, NSIS install/uninstall plus daemon/app crash cleanup smoke, MSI install/launch/uninstall smoke, one-command release verification, release readiness audit, release exe longer soak with JSON evidence reports, serial smoke readiness gates, resident resource/soak smokes, a passed two-hour release soak, verified release installer builds, and a source-controlled browser store submission runbook. The active development goal is complete for dogfooding; browser store account submission is deferred until after dogfooding."
+    },
+    {
+      "id": "iter-3",
+      "label": "Durable Product State",
+      "startedAt": "2026-05-06T12:27:12.372+09:00",
+      "completedAt": "2026-05-06T14:07:59.836+09:00",
+      "goal": "Build Codex Widget into a durable local-first desktop product with daemon-owned SQLite state, recoverable sessions, internal tabs, trash, artifact history, provider snapshots, activity logs, and extensible theme/mascot/module foundations.",
+      "plannedSprints": [
+        "iter-3-sprint-01-storage-foundation",
+        "iter-3-sprint-02-session-tabs-trash",
+        "iter-3-sprint-03-artifact-activity-ledger",
+        "iter-3-sprint-04-vision-streaming-and-ux-foundation"
+      ],
+      "completedSprints": [
+        "iter-3-sprint-01-storage-foundation",
+        "iter-3-sprint-02-session-tabs-trash",
+        "iter-3-sprint-03-artifact-activity-ledger",
+        "iter-3-sprint-04-vision-streaming-and-ux-foundation"
+      ],
+      "carryover": "Iter-2 completed the app-server runtime, reconnect replay, regenerate rollback, DOM/Vision/PTY providers, renderer chat hardening, release readiness gates, and resident desktop operations for dogfooding. Iter-3 carries forward the product owner request to route follow-up work through vibe-iterate and make daemon-owned durable product state the next architecture boundary.",
+      "openRisks": [
+        "Codex app-server protocol remains experimental; keep exec fallback and do not assume thread resume across app restarts.",
+        "SQLite must not store OAuth or Codex credentials.",
+        "Large artifacts, screenshots, and recordings should live in a blob store with DB metadata, not in SQLite rows.",
+        "Screen streaming and recording need CPU, memory, retention, and user-consent guardrails before daily use."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.88,
+        "durable-codex-runtime": 0.88,
+        "real-tool-providers": 0.98,
+        "resident-desktop-readiness": 0.92,
+        "durable-product-state": 0.82
+      },
+      "summary": "Iteration 3 completed the planned durable product-state sprint set. The daemon now owns SQLite storage with migrations, app-data/blob paths, WAL/foreign-key setup, runtime storage diagnostics, `/storage/health`, a no-secret app-setting boundary, and smoke coverage. Durable session tabs/trash are implemented with daemon session snapshots, SQLite-backed messages, internal renderer tabs, New chat session creation, branch-to-new-session behavior, restorable trash, and per-session model/reasoning/mode restoration. The artifact/activity ledger persists tool output and app-server file-change events as blob-backed artifacts with snapshots, text diffs where possible, click-to-open file entries, chat and trash artifact viewers, one-line activity summaries, and an activity detail popover. Vision now has a popup for snapshot capture, WebM recording, and Agent screen streaming; recordings preserve daemon metadata plus blob storage, Agent stream sends low-frequency live frames to the Vision snapshot endpoint without storing a video file, and mascot/status hooks reflect offline, working, recording, and streaming states. This is not the completion of the product-wide /goal; it only closes the Iteration 3 sprint set. Remaining work continues in Iteration 4."
+    },
+    {
+      "id": "iter-4",
+      "label": "Backlog Closure And Dogfood Polish",
+      "startedAt": "2026-05-06T14:44:38.519+09:00",
+      "completedAt": "2026-05-06T15:43:32.772+09:00",
+      "goal": "Continue Codex Widget product development through repeated vibe-iterate sprints until the categorized dogfooding backlog is closed: UI polish, session/tab behavior, Agent widget awareness, artifact rendering/version UX, Vision streaming/voice foundations, PTY popup behavior, mascot/persona behavior, and durable runtime/provider history gaps.",
+      "plannedSprints": [
+        "iter-4-sprint-01-ui-polish-and-tab-interactions",
+        "iter-4-sprint-02-widget-context-agent-awareness",
+        "iter-4-sprint-03-artifact-rendering-and-version-browser",
+        "iter-4-sprint-04-vision-voice-interactive-loop",
+        "iter-4-sprint-05-pty-popup-and-mascot-persona"
+      ],
+      "completedSprints": [
+        "iter-4-sprint-01-ui-polish-and-tab-interactions",
+        "iter-4-sprint-02-widget-context-agent-awareness",
+        "iter-4-sprint-03-artifact-rendering-and-version-browser",
+        "iter-4-sprint-04-vision-voice-interactive-loop",
+        "iter-4-sprint-05-pty-popup-and-mascot-persona"
+      ],
+      "carryover": "The product owner clarified that the prior /goal meant repeated /vibe-iterate execution for all remaining task groups, not stopping after Iteration 3. Iter-3 delivered the SQLite/session/artifact/Vision foundations; iter-4 carries forward the visible dogfooding backlog plus deeper runtime/context/product-surface gaps.",
+      "openRisks": [
+        "The external goal tracker was prematurely marked complete and cannot be reverted by the available tool; this iteration history is the durable correction.",
+        "Codex app-server protocol remains experimental; keep exec fallback and avoid assuming durable thread resume until explicitly implemented.",
+        "Vision screen streaming needs dogfooding for CPU, memory, cadence, privacy, and retention behavior.",
+        "Artifact version preservation must avoid data loss while keeping blob storage growth bounded.",
+        "Future custom theme/mascot/module platform work should remain bounded to data and persona foundations in this iteration."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.93,
+        "durable-codex-runtime": 0.87,
+        "real-tool-providers": 0.99,
+        "resident-desktop-readiness": 0.92,
+        "durable-product-state": 0.9
+      },
+      "summary": "Iteration 4 completed its planned dogfooding polish sprint set. Sprint 01 completed visible UI/session polish; Sprint 02 added daemon-owned widget capability context per Agent turn; Sprint 03 upgraded artifact surfaces with file type icons, text/image previews, version metadata, versioned open requests, and reusable chat/trash artifact browser coverage; Sprint 04 clarified Vision recording vs Agent screen sharing, added cadence/duration controls, retained consent/retention details in daemon stream metadata, added outside-click dismissal, and added a Web Speech API voice prompt input boundary; Sprint 05 added a PTY guide/popout entry point and injected Default Dog mascot persona/tone into Agent widget context. Remaining follow-up should continue in a new iteration focused on durable runtime thread rebinding, provider snapshot history UI, and dogfood-driven resource tuning."
+    },
+    {
+      "id": "iter-5",
+      "label": "Runtime Rebinding And Provider History Closure",
+      "startedAt": "2026-05-06T16:04:18.953+09:00",
+      "completedAt": "2026-05-06T16:53:00.000+09:00",
+      "goal": "Close the remaining feasible Codex Widget backlog through vibe-iterate: durable app-server runtime thread rebinding per restored/switched session, provider snapshot history UI, Vision resource and retention tuning, and a final completion audit.",
+      "plannedSprints": [
+        "iter-5-sprint-01-durable-app-server-thread-rebinding",
+        "iter-5-sprint-02-provider-snapshot-history-ui",
+        "iter-5-sprint-03-vision-resource-and-retention-tuning",
+        "iter-5-sprint-04-completion-audit-and-readiness-update"
+      ],
+      "completedSprints": [
+        "iter-5-sprint-01-durable-app-server-thread-rebinding",
+        "iter-5-sprint-02-provider-snapshot-history-ui",
+        "iter-5-sprint-03-vision-resource-and-retention-tuning",
+        "iter-5-sprint-04-completion-audit-and-readiness-update"
+      ],
+      "carryover": "Iter-4 completed the visible dogfooding polish set and left a narrow remaining backlog: durable app-server thread rebinding, provider snapshot history UI, and Vision resource tuning. The product owner now asked to continue all possible remaining work through vibe-iterate.",
+      "openRisks": [
+        "Codex app-server protocol remains experimental; stale persisted thread ids fall back safely, but cross-process resume behavior needs dogfooding/live protocol validation.",
+        "Vision screen sharing has bounded defaults and diagnostics, but final CPU/memory tuning depends on longer real use.",
+        "Browser store account submission remains intentionally deferred until after dogfooding."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.96,
+        "durable-codex-runtime": 0.93,
+        "real-tool-providers": 0.99,
+        "resident-desktop-readiness": 0.94,
+        "durable-product-state": 0.97
+      },
+      "summary": "Iteration 5 completed the remaining feasible non-dogfood backlog. Sprint 01 implemented session-aware Codex app-server thread rebinding with stale-thread retry/clear behavior. Sprint 02 implemented redacted provider snapshot history in daemon ledger snapshots and the Activity detail popover. Sprint 03 tuned Vision resource/retention behavior with in-flight frame throttling, skipped-frame diagnostics, duplicate-stop prevention, cleanup on provider terminal events, and effective guardrail metadata. Sprint 04 refreshed roadmap, milestone, handoff, session-log, and report state and classified remaining work as dogfood-dependent or externally deferred."
+    },
+    {
+      "id": "iter-6",
+      "label": "Renderer Architecture Refactor",
+      "startedAt": "2026-05-06T23:19:17.596+09:00",
+      "completedAt": "2026-05-06T23:19:17.596+09:00",
+      "goal": "Refactor the oversized React renderer into a maintainable frontend structure without changing widget behavior.",
+      "plannedSprints": [
+        "iter-6-sprint-01-renderer-structure-refactor"
+      ],
+      "completedSprints": [
+        "iter-6-sprint-01-renderer-structure-refactor"
+      ],
+      "carryover": "Dogfooding exposed that the renderer had grown into a single oversized App.tsx plus single CSS file. The refactor keeps the daemon/session/runtime architecture intact and only changes frontend organization.",
+      "openRisks": [
+        "App.tsx still owns complex daemon protocol and native window orchestration; future feature sprints should continue extracting focused hooks when behavior changes.",
+        "Renderer visual behavior should be dogfooded because this sprint intentionally avoided redesigning UI behavior."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.96,
+        "durable-codex-runtime": 0.93,
+        "real-tool-providers": 0.99,
+        "resident-desktop-readiness": 0.94,
+        "durable-product-state": 0.97
+      },
+      "summary": "Iteration 6 split renderer UI structure by responsibility: App.tsx now focuses on state/effects and daemon/native orchestration; titlebar, system strip, mode tabs, settings, conversation, prompt/model controls, session strip, activity log, terminal, Vision menu, artifacts, markdown, floating tooltip, and interaction UI live under src/renderer/components; shared constants/types moved into config.ts and types.ts; behavior helpers moved into hooks and utils; and the monolithic CSS file is now an import manifest over scoped partials. Verification passed lint, renderer build, renderer chat smoke, diff check, strict UTF-8 decoding, and mojibake scan."
+    },
+    {
+      "id": "iter-7",
+      "label": "Dogfood UI Motion Polish",
+      "startedAt": "2026-05-06T23:39:18.331+09:00",
+      "completedAt": "2026-05-06T23:39:18.331+09:00",
+      "goal": "Apply dogfood UI polish for trash artifact alignment, Activity footer height, and mascot motion.",
+      "plannedSprints": [
+        "iter-7-sprint-01-trash-activity-mascot-polish"
+      ],
+      "completedSprints": [
+        "iter-7-sprint-01-trash-activity-mascot-polish"
+      ],
+      "carryover": "After the renderer structure refactor, the product owner identified three concrete UI corrections: artifact icon placement in trash, Activity footer height, and replacing CSS bounce mascot effects with frame-based motion from the existing mascot asset.",
+      "openRisks": [
+        "Product-owner review rejected the generated single-pose mascot sprite as a proxy implementation. It must not be treated as accepted mascot motion.",
+        "Mascot motion needs a consensus step and real authored pose/expression/state animation assets before another implementation pass.",
+        "The generated sprite asset adds about 1.69 MB to renderer assets and should be removed or replaced when the real mascot motion direction is selected."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.96,
+        "durable-codex-runtime": 0.93,
+        "real-tool-providers": 0.99,
+        "resident-desktop-readiness": 0.94,
+        "durable-product-state": 0.97
+      },
+      "summary": "Iteration 7 moved the trash artifact icon next to the count and reduced the Activity footer from the old 76px reserve to 52px. The generated 9-frame mascot sprite was later rejected by product-owner review because it derives from one static pose and does not meet the intent of a genuinely moving mascot. Future mascot motion work must begin with consensus on acceptance criteria and use real authored motion assets. The previous smoke coverage only proves the sprite path exists; it is not acceptance evidence for animation quality."
     }
   ]
 }

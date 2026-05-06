@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import WebSocket from "ws";
+import { createSmokeAppDataEnv } from "./smoke-isolation.mjs";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const runtimeBin = process.platform === "win32" ? "node.exe" : "node";
@@ -22,10 +23,11 @@ if (version.trim() !== process.version) {
   throw new Error(`Bundled Node version mismatch: expected ${process.version}, saw ${version.trim()}`);
 }
 
+const smokeAppData = createSmokeAppDataEnv(process.env, "codex-widget-node-runtime-smoke");
 const daemon = spawn(runtimePath, [bundledDaemon], {
   cwd: root,
   env: {
-    ...process.env,
+    ...smokeAppData.env,
     CODEX_WIDGET_AUTH_MODE: "mock",
     CODEX_WIDGET_PORT: "0"
   },
@@ -50,6 +52,7 @@ try {
 } finally {
   daemon.kill();
   await waitForExit();
+  smokeAppData.cleanup();
 }
 
 function runVersion() {

@@ -67,7 +67,9 @@ Phase 2 provider 선택 (fast-path: 사용자 "기본" → 즉시 확정)
   ↓
 Phase 3 네이티브 인터뷰 (`.vibe/harness/scripts/vibe-interview.mjs`)
   ↓ (사용자 답변 / PO 대행)
-  └─ 모호성 점수 ≤ 0.2 수렴까지 반복
+  └─ 모호성 점수/coverage 종료 조건까지 반복
+  ↓
+Phase 3 consensus check (사람 승인 / 수정 / 보류 / PO-proxy 미확인)
   ↓
 Phase 3' seed → product.md / architecture.md / conventions.md
   ↓
@@ -85,13 +87,14 @@ vibe-preflight --bootstrap → exit 0
 1. 네이티브 인터뷰를 **스킵하지 않는다** (인터뷰 flow 자체가 숨겨진 가정을 드러내는 강제 장치).
 2. Orchestrator가 `.vibe/harness/scripts/vibe-interview.mjs`를 정상 호출.
 3. 질문이 반환되면 Orchestrator가 PO 관점에서 답변 판단.
-4. **Phase별 rationale 요약 1회** — 인터뷰 종료 직후 session-log에 다음 형식으로 append:
+4. 종료 조건 이후 consensus check는 사람이 직접 확인하지 않았으므로 `--consensus --decision proxy-unconfirmed` 로 기록한다. `approved`를 쓰지 않는다.
+5. **Phase별 rationale 요약 1회** — 인터뷰 종료 직후 session-log에 다음 형식으로 append:
    ```
    - YYYY-MM-DDTHH:mm [decision][phase3-po-proxy] {Phase 3 종료 요약}.
      핵심 답변 N개 rationale: (1) ... (2) ... (3) ...
      최종 모호성 점수: 0.XX. 주요 미정 항목: ... (또는 "none").
    ```
-5. product.md 끝에 `## Phase 3 답변 기록 (PO 대행)` 섹션으로 Q/A 전체 덤프.
+6. product.md 끝에 `## Phase 3 답변 기록 (PO 대행)` 섹션으로 Q/A 전체 덤프. consensus block에는 `proxy-unconfirmed` 상태가 남아야 한다.
 
 **로그 폭증 방지**: 답변마다 개별 기록 X, Phase 종료 1회 요약 O. (dogfood 반복으로 수치 조정 예정.)
 

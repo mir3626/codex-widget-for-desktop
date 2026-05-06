@@ -9,6 +9,7 @@ import {
   type CodexExecutionContext,
   terminateProcessTreeAndWait
 } from "./codexRuntime.js";
+import { renderWidgetContextSection } from "./widgetContext.js";
 import type { RuntimeInteraction, RuntimeStatus, ToolEmitter } from "../shared/protocol.js";
 
 type JsonRpcId = string;
@@ -91,14 +92,30 @@ export class CodexAppServerBridge {
     this.threadId = undefined;
   }
 
+  getThreadId(): string | undefined {
+    return this.threadId;
+  }
+
+  setThreadId(threadId: string | undefined): void {
+    this.threadId = threadId?.trim() || undefined;
+  }
+
   async rollbackThread(numTurns: number): Promise<boolean> {
     if (!this.threadId || numTurns < 1) {
       return false;
     }
-    await this.request("thread/rollback", {
-      threadId: this.threadId,
-      numTurns
-    });
+    try {
+      await this.request("thread/rollback", {
+        threadId: this.threadId,
+        numTurns
+      });
+    } catch (error) {
+      if (isRetryableThreadError(error)) {
+        this.threadId = undefined;
+        return false;
+      }
+      throw error;
+    }
     return true;
   }
 
@@ -151,15 +168,18 @@ export class CodexAppServerBridge {
     }
 
     await this.ensureReady(input.context);
-    const threadId = await this.ensureThread(input.selection, input.context);
-    const turn = (await this.request("turn/start", {
-      threadId,
-      input: buildTurnInput(input.request),
-      cwd: input.context.workdir,
-      approvalPolicy: input.context.approvalPolicy,
-      model: input.selection.model,
-      effort: input.selection.reasoningEffort
-    })) as TurnStartResponse;
+    let threadId = await this.ensureThread(input.selection, input.context);
+    let turn: TurnStartResponse;
+    try {
+      turn = await this.startTurn(threadId, input);
+    } catch (error) {
+      if (!isRetryableThreadError(error)) {
+        throw error;
+      }
+      this.threadId = undefined;
+      threadId = await this.ensureThread(input.selection, input.context);
+      turn = await this.startTurn(threadId, input);
+    }
 
     const turnId = turn.turn?.id;
     if (!turnId) {
@@ -351,6 +371,24 @@ export class CodexAppServerBridge {
     return threadId;
   }
 
+  private async startTurn(
+    threadId: string,
+    input: {
+      request: AgentRequest;
+      selection: AgentSelection;
+      context: CodexExecutionContext;
+    }
+  ): Promise<TurnStartResponse> {
+    return (await this.request("turn/start", {
+      threadId,
+      input: buildTurnInput(input.request),
+      cwd: input.context.workdir,
+      approvalPolicy: input.context.approvalPolicy,
+      model: input.selection.model,
+      effort: input.selection.reasoningEffort
+    })) as TurnStartResponse;
+  }
+
   private request(method: string, params: unknown, timeoutMs = APP_SERVER_REQUEST_TIMEOUT_MS): Promise<unknown> {
     const ws = this.ws;
     if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -453,6 +491,7 @@ export class CodexAppServerBridge {
         this.queueApprovalInteraction(id, message, "Command approval");
         return;
       case "item/fileChange/requestApproval":
+        this.emitFileChangeArtifact("before", message);
         this.queueApprovalInteraction(id, message, "File change approval");
         return;
       case "item/tool/requestUserInput":
@@ -514,6 +553,31 @@ export class CodexAppServerBridge {
         body: readInteractionReason(params, undefined, "Codex needs more information to continue."),
         fields: readInputFields(params)
       }
+    });
+  }
+
+  private emitFileChangeArtifact(phase: "before" | "after", message: Pick<JsonRpcMessage, "method" | "params">): void {
+    const active = this.activeTurn;
+    if (!active) {
+      return;
+    }
+
+    const params = readRecord(message.params);
+    const item = readRecord(params?.item) ?? params;
+    const paths = readFileChangePaths(item);
+    if (paths.length === 0) {
+      return;
+    }
+
+    active.emit({
+      type: "artifact.fileChange",
+      id: active.widgetRequestId,
+      changeId: readFileChangeId(item, active.turnId),
+      phase,
+      title: readFileChangeTitle(item, phase),
+      operation: readFileChangeOperation(item),
+      paths,
+      detail: pickFileChangeDetail(item)
     });
   }
 
@@ -604,6 +668,9 @@ export class CodexAppServerBridge {
       const tool = describeToolItem(item);
       if (tool) {
         active.emit({ type: "tool.completed", id: active.widgetRequestId, tool: tool.name });
+      }
+      if (item?.type === "fileChange") {
+        this.emitFileChangeArtifact("after", { method: message.method, params: { item } });
       }
       return;
     }
@@ -713,6 +780,7 @@ export function buildTurnInput(request: AgentRequest): AppServerUserInput[] {
       type: "text",
       text: [
         `[mode=${request.mode}]`,
+        renderWidgetContextSection(request.widgetContext),
         renderBranchContext(request.branchContext),
         "User request:",
         request.text
@@ -859,6 +927,90 @@ function describeToolItem(item: Record<string, unknown> | undefined): { name: st
   return undefined;
 }
 
+function readFileChangePaths(item: Record<string, unknown> | undefined): string[] {
+  if (!item) {
+    return [];
+  }
+
+  const candidates: string[] = [];
+  for (const key of ["path", "file", "filePath", "targetPath"]) {
+    const value = item[key];
+    if (typeof value === "string") {
+      candidates.push(value);
+    }
+  }
+
+  for (const key of ["paths", "files", "filePaths", "changes"]) {
+    const value = item[key];
+    if (!Array.isArray(value)) {
+      continue;
+    }
+    for (const entry of value) {
+      if (typeof entry === "string") {
+        candidates.push(entry);
+        continue;
+      }
+      const record = readRecord(entry);
+      for (const nestedKey of ["path", "file", "filePath", "targetPath"]) {
+        const nested = record?.[nestedKey];
+        if (typeof nested === "string") {
+          candidates.push(nested);
+        }
+      }
+    }
+  }
+
+  return [...new Set(candidates.map((path) => path.trim()).filter(Boolean))].slice(0, 20);
+}
+
+function readFileChangeId(item: Record<string, unknown> | undefined, fallback: string): string {
+  for (const key of ["id", "changeId", "itemId"]) {
+    const value = item?.[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return fallback;
+}
+
+function readFileChangeTitle(item: Record<string, unknown> | undefined, phase: "before" | "after"): string {
+  for (const key of ["title", "summary", "description"]) {
+    const value = item?.[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  const paths = readFileChangePaths(item);
+  return paths.length === 1 ? `File ${phase}: ${paths[0]}` : "File change";
+}
+
+function readFileChangeOperation(item: Record<string, unknown> | undefined): "create" | "modify" | "delete" {
+  const operation = typeof item?.operation === "string" ? item.operation.toLowerCase() : "";
+  const kind = typeof item?.kind === "string" ? item.kind.toLowerCase() : "";
+  const changeType = typeof item?.changeType === "string" ? item.changeType.toLowerCase() : "";
+  const combined = `${operation} ${kind} ${changeType}`;
+  if (/\b(delete|remove|unlink)\b/.test(combined)) {
+    return "delete";
+  }
+  if (/\b(create|add|new)\b/.test(combined)) {
+    return "create";
+  }
+  return "modify";
+}
+
+function pickFileChangeDetail(item: Record<string, unknown> | undefined): Record<string, unknown> {
+  if (!item) {
+    return {};
+  }
+  const detail: Record<string, unknown> = {};
+  for (const key of ["id", "type", "operation", "kind", "changeType", "summary", "description"]) {
+    if (item[key] !== undefined) {
+      detail[key] = item[key];
+    }
+  }
+  return detail;
+}
+
 function readTurnError(value: unknown): string | undefined {
   const error = readRecord(value);
   if (!error) {
@@ -875,4 +1027,16 @@ function readTurnError(value: unknown): string | undefined {
 
 function readErrorMessage(value: unknown): string {
   return value instanceof Error ? value.message : String(value);
+}
+
+function isRetryableThreadError(value: unknown): boolean {
+  const message = readErrorMessage(value).toLowerCase();
+  return (
+    message.includes("thread") &&
+    (message.includes("not found") ||
+      message.includes("unknown") ||
+      message.includes("invalid") ||
+      message.includes("does not exist") ||
+      message.includes("closed"))
+  );
 }

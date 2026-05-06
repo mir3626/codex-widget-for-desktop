@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { startDaemon } from "../dist/daemon/server.js";
+import { useSmokeAppData } from "./smoke-isolation.mjs";
 
 if (process.platform !== "win32") {
   console.log("screen helper live smoke skipped: Windows-only helper");
@@ -9,6 +10,7 @@ if (process.platform !== "win32") {
 
 process.env.CODEX_WIDGET_AUTH_MODE = "mock";
 
+const smokeAppData = useSmokeAppData("codex-widget-screen-helper-live");
 const daemon = await startDaemon({ port: 0 });
 const helperPath = path.resolve("providers/screen-capture-helper/capture-screen.ps1");
 
@@ -69,6 +71,7 @@ try {
   console.log(`screen helper live smoke ok on port ${daemon.port}`);
 } finally {
   await daemon.close();
+  smokeAppData.cleanup();
 }
 
 function runPowerShellHelper(command, args) {

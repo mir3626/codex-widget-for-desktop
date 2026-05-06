@@ -1,4 +1,4 @@
-# QA Context
+# QA policy
 
 ## Default Checks
 
@@ -10,13 +10,21 @@ npm run smoke:all
 
 `smoke:all` includes daemon reconnect replay coverage through `npm run smoke:daemon-reconnect` and fake Codex app-server protocol coverage through `npm run smoke:app-server`.
 
+Run this after daemon storage, schema, app-data path, or persistence-boundary changes:
+
+```powershell
+npm run smoke:storage
+```
+
+`smoke:storage` opens a temporary app-data root, applies SQLite migrations, verifies WAL/foreign-key/integrity health, persists a non-secret setting, rejects secret-like setting keys, records an activity entry, exercises session/ask/branch/trash/restore storage paths, records text and file-change artifacts, resolves artifact open paths, records/stops Vision recording and Agent screen-stream metadata, and reopens the database.
+
 Run this after conversation layout, markdown/table rendering, prompt composer, or response action menu changes:
 
 ```powershell
 npm run smoke:renderer-chat
 ```
 
-This smoke also verifies response Branch behavior: the UI sends `session.branch`, the next prompt includes a one-shot `branchContext`, and subsequent branch prompts do not keep replaying that seed.
+This smoke also verifies response Branch behavior: the UI sends `session.branch`, the branch appears as a new durable session snapshot, the next prompt includes a one-shot `branchContext`, subsequent branch prompts do not keep replaying that seed, a trashed session can request and render its artifact ledger, and the Vision popup can send snapshot, WebM recording, and Agent screen-stream requests.
 
 Run this when changing the Windows screen capture helper and a desktop session is available:
 
@@ -111,8 +119,9 @@ npm run vibe:checkpoint
 - No automated screenshot assertion for the native transparent Tauri window.
 - Renderer chat layout has a browser smoke, but native transparent-window screenshots are still manual.
 - Browser DOM provider is snapshot-based and has an unpacked extension, a generated zip package, an optional Chrome/Edge native messaging host, store submission metadata, a generated submission packet, and readiness smoke; actual browser store account submission is still manual.
-- Screen/Vision provider is snapshot-based and has a Windows capture helper, Settings/env configured crop plus visual drag selection, optional local OCR command hook, bundled OCR runtime packaging, standard Windows Tesseract discovery, bundled tessdata language acquisition/defaults, OCR-only PNG preprocessing, image hash/change/diff metadata with configurable thresholding, and app-server image input.
+- Screen/Vision provider has snapshot capture, a Windows capture helper, Settings/env configured crop plus visual drag selection, optional local OCR command hook, bundled OCR runtime packaging, standard Windows Tesseract discovery, bundled tessdata language acquisition/defaults, OCR-only PNG preprocessing, image hash/change/diff metadata with configurable thresholding, app-server image input, WebM recording metadata/blob preservation, and metadata-only Agent screen sharing that posts low-frequency frames to the snapshot endpoint.
 - Terminal provider supports explicit one-shot commands, a persistent node-pty/ConPTY command session through `/pty`, resize/raw-input commands with short output drain, direct `terminal.input` text/key/mouse input, idle PTY output broadcast, and a renderer PTY viewport with direct input controls.
+- SQLite storage foundation, session tabs/trash, artifact/activity ledger, and Vision stream metadata slices have smoke coverage, but app-server thread rebinding per restored session, deeper provider snapshot history UI, and full migration cleanup away from renderer localStorage fallback remain future work.
 - OAuth proxy live streaming requires an auth/proxy service and is not covered by CI-like smoke tests.
 - Packaged daemon restart backoff and child restart have Rust tests; installed-app daemon restart and app-kill orphan cleanup are covered by the NSIS release install smoke.
 - Renderer-visible native daemon diagnostics are covered by type/build checks; installed-app restart UX screenshots are still manual.

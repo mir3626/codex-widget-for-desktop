@@ -93,6 +93,7 @@ impl DaemonSupervisor {
             return;
         };
         let node_runtime = resolve_node_runtime(app);
+        let app_data_dir = app.path().app_data_dir().ok();
 
         update_daemon_status(&self.diagnostics, |status| {
             status.enabled = true;
@@ -109,7 +110,7 @@ impl DaemonSupervisor {
         let diagnostics = Arc::clone(&self.diagnostics);
         let handle = thread::Builder::new()
             .name("codex-widget-daemon-supervisor".to_string())
-            .spawn(move || supervise_daemon(node_runtime, script, child, stop, diagnostics));
+            .spawn(move || supervise_daemon(node_runtime, script, app_data_dir, child, stop, diagnostics));
 
         match handle {
             Ok(handle) => {
@@ -694,6 +695,7 @@ fn should_spawn_daemon() -> bool {
 fn supervise_daemon(
     node_runtime: PathBuf,
     script: PathBuf,
+    app_data_dir: Option<PathBuf>,
     child_slot: Arc<Mutex<Option<Child>>>,
     stop: Arc<AtomicBool>,
     diagnostics: DaemonDiagnostics,
@@ -703,7 +705,7 @@ fn supervise_daemon(
     while !stop.load(Ordering::SeqCst) {
         let started_at = Instant::now();
 
-        match spawn_daemon_child(&node_runtime, &script) {
+        match spawn_daemon_child(&node_runtime, &script, app_data_dir.as_ref()) {
             Ok(child) => {
                 let pid = child.id();
                 if let Ok(mut slot) = child_slot.lock() {
@@ -853,8 +855,13 @@ fn update_daemon_status(
     }
 }
 
-fn spawn_daemon_child(node_runtime: &PathBuf, script: &PathBuf) -> Result<Child, String> {
-    Command::new(node_runtime)
+fn spawn_daemon_child(
+    node_runtime: &PathBuf,
+    script: &PathBuf,
+    app_data_dir: Option<&PathBuf>,
+) -> Result<Child, String> {
+    let mut command = Command::new(node_runtime);
+    command
         .arg(script)
         .env("CODEX_WIDGET_PORT", DAEMON_PORT)
         .env(
@@ -863,12 +870,16 @@ fn spawn_daemon_child(node_runtime: &PathBuf, script: &PathBuf) -> Result<Child,
         )
         .stdin(Stdio::null())
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .map_err(|error| {
-            eprintln!("[codex-widget] failed to start daemon: {error}");
-            error.to_string()
-        })
+        .stderr(Stdio::null());
+
+    if let Some(path) = app_data_dir {
+        command.env("CODEX_WIDGET_APP_DATA_DIR", path);
+    }
+
+    command.spawn().map_err(|error| {
+        eprintln!("[codex-widget] failed to start daemon: {error}");
+        error.to_string()
+    })
 }
 
 fn resolve_daemon_script(app: &tauri::AppHandle) -> Option<PathBuf> {
@@ -994,6 +1005,7 @@ process.exit(1);
             supervise_daemon(
                 node_runtime,
                 script,
+                None,
                 worker_child_slot,
                 worker_stop,
                 worker_diagnostics,

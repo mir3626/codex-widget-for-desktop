@@ -1,8 +1,10 @@
 import WebSocket from "ws";
 import { startDaemon } from "../dist/daemon/server.js";
+import { useSmokeAppData } from "./smoke-isolation.mjs";
 
 process.env.CODEX_WIDGET_AUTH_MODE = "mock";
 
+const smokeAppData = useSmokeAppData("codex-widget-reconnect-smoke");
 const daemon = await startDaemon({ port: 0 });
 const requestId = "reconnect-smoke-1";
 
@@ -69,4 +71,5 @@ try {
   console.log(`daemon reconnect smoke ok on port ${daemon.port}`);
 } finally {
   await daemon.close();
+  smokeAppData.cleanup();
 }

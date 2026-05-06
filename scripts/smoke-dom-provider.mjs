@@ -1,8 +1,10 @@
 import WebSocket from "ws";
 import { startDaemon } from "../dist/daemon/server.js";
+import { useSmokeAppData } from "./smoke-isolation.mjs";
 
 process.env.CODEX_WIDGET_AUTH_MODE = "mock";
 
+const smokeAppData = useSmokeAppData("codex-widget-dom-smoke");
 const daemon = await startDaemon({ port: 0 });
 const marker = "dom-smoke-selection";
 const response = await fetch(`http://127.0.0.1:${daemon.port}/providers/dom/snapshot`, {
@@ -52,6 +54,11 @@ try {
   if (browserStatus?.state !== "ready") {
     throw new Error(`Browser provider was not ready: ${JSON.stringify(browserStatus)}`);
   }
+  const ledgerSnapshot = events.find((event) => event.type === "ledger.snapshot");
+  const domHistory = ledgerSnapshot?.snapshot?.providerSnapshots?.find((snapshot) => snapshot.provider === "dom");
+  if (!domHistory?.summary?.includes("DOM Smoke Page") || domHistory.data?.textLength <= 0) {
+    throw new Error(`DOM provider history was not persisted: ${JSON.stringify(ledgerSnapshot)}`);
+  }
 
   const toolOutput = events
     .filter((event) => event.type === "tool.output")
@@ -64,4 +71,5 @@ try {
 } finally {
   socket.close();
   await daemon.close();
+  smokeAppData.cleanup();
 }

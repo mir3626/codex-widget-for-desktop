@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import type { BranchContextMessage, ModelId, ReasoningEffort, WidgetMode } from "../shared/protocol.js";
+import { renderWidgetContextSection } from "./widgetContext.js";
 
 export type CodexSandboxMode = "workspace-write" | "danger-full-access";
 export type CodexApprovalPolicy = "on-request" | "on-failure" | "never";
@@ -64,12 +65,13 @@ export function buildCodexExecArgs(
 }
 
 export function buildCodexWidgetPrompt(
-  request: { mode: WidgetMode; text: string; branchContext?: BranchContextMessage[] },
+  request: { mode: WidgetMode; text: string; branchContext?: BranchContextMessage[]; widgetContext?: string },
   context: CodexExecutionContext
 ): string {
   return [
     `[mode=${request.mode}]`,
     buildCodexWidgetDeveloperInstructions(context),
+    renderWidgetContextSection(request.widgetContext),
     renderBranchContext(request.branchContext),
     "",
     "User request:",
@@ -85,6 +87,7 @@ export function buildCodexWidgetDeveloperInstructions(context: CodexExecutionCon
     `- Approval policy: ${context.approvalPolicy}`,
     `- Protected widget source root: ${context.protectedRoot}`,
     "- The widget is for normal desktop assistance. You may search, read, create, edit, move, or delete user files only when the user explicitly asks for that file operation and the target path is clear.",
+    "- Each turn may include a Codex Widget desktop context section. Use that context to answer questions about widget controls, mode tabs, sessions, artifacts, Vision, DOM, PTY, model/reason settings, and current provider state.",
     "- Do not inspect or modify the protected widget source root from this widget session. If the user asks to change this widget, this repository, or source code in the protected root, answer that source changes should be handled from the CLI instead.",
     "- For destructive operations such as delete, overwrite, or bulk move, proceed only when the user's wording is explicit about the action and target."
   ].join("\n");

@@ -6,7 +6,7 @@
 
 ## 기본 Provider 구성
 
-> 이 downstream 프로젝트의 현재 기본 역할 배정은 모두 `codex`다. Claude 계열 provider는 upstream harness 호환 및 명시적 fallback 후보로만 남긴다.
+> 일반 downstream에서는 실제 역할 배정을 `/vibe-init` 또는 `.vibe/config.json` → `sprintRoles`에서 선택할 수 있다. 이 downstream 프로젝트의 현재 기본 역할 배정은 모두 `codex`다. Claude 계열 provider는 upstream harness 호환 및 명시적 fallback 후보로만 남긴다.
 
 | Provider | 호출 방법 | 비고 |
 |----------|-----------|------|

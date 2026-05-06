@@ -1,8 +1,10 @@
 import WebSocket from "ws";
 import { startDaemon } from "../dist/daemon/server.js";
+import { useSmokeAppData } from "./smoke-isolation.mjs";
 
 process.env.CODEX_WIDGET_AUTH_MODE = "mock";
 
+const smokeAppData = useSmokeAppData("codex-widget-terminal-session-smoke");
 const daemon = await startDaemon({ port: 0 });
 const socket = new WebSocket(`ws://127.0.0.1:${daemon.port}`);
 const events = [];
@@ -42,6 +44,7 @@ try {
 } finally {
   socket.close();
   await daemon.close();
+  smokeAppData.cleanup();
 }
 
 if (success) {

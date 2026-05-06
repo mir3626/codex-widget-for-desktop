@@ -124,7 +124,15 @@ async function runTurn(socket, pendingClientResponses, threadId, thread, turnId,
 
   const history = thread?.inputs.join("\\n") ?? "";
   const remembered = history.includes("alpha") ? "alpha" : "none";
-  const text = inputText.includes("what remains after rollback")
+  const hasAlpha = history.includes("alpha");
+  const hasBeta = history.includes("beta");
+  const text = inputText.includes("what can the PTY button do")
+    ? \`widgetContext=\${inputText.includes("Codex Widget desktop context:")}; pty=\${inputText.includes("PTY button/use cases")}; controls=\${inputText.includes("Mode tabs: Agent")}; persona=\${inputText.includes("Default Dog")}\`
+    : inputText.includes("session beta isolated")
+    ? \`thread=\${threadId}; history=\${thread?.inputs.length ?? 0}; alpha=\${hasAlpha}; beta=\${hasBeta}\`
+    : inputText.includes("session alpha rebound")
+    ? \`thread=\${threadId}; history=\${thread?.inputs.length ?? 0}; alpha=\${hasAlpha}; beta=\${hasBeta}\`
+    : inputText.includes("what remains after rollback")
     ? \`thread=\${threadId}; history=\${thread?.inputs.length ?? 0}; rollbacks=\${thread?.rollbacks ?? 0}; remembered=\${remembered}\`
     : inputText.includes("needs approval")
       ? \`approved=\${approvalDecision}; remembered=\${remembered}; history=\${thread?.inputs.length ?? 0}\`
@@ -196,6 +204,9 @@ const previousEnv = {
   runtime: process.env.CODEX_WIDGET_CODEX_RUNTIME,
   workdir: process.env.CODEX_WIDGET_CODEX_WORKDIR,
   approvalPolicy: process.env.CODEX_WIDGET_CODEX_APPROVAL_POLICY,
+  appDataDir: process.env.CODEX_WIDGET_APP_DATA_DIR,
+  storageDbPath: process.env.CODEX_WIDGET_STORAGE_DB_PATH,
+  blobDir: process.env.CODEX_WIDGET_BLOB_DIR,
   path: process.env.PATH
 };
 
@@ -203,6 +214,9 @@ process.env.CODEX_WIDGET_AUTH_MODE = "codex";
 process.env.CODEX_WIDGET_CODEX_RUNTIME = "app-server";
 process.env.CODEX_WIDGET_CODEX_WORKDIR = root;
 process.env.CODEX_WIDGET_CODEX_APPROVAL_POLICY = "on-request";
+process.env.CODEX_WIDGET_APP_DATA_DIR = join(tempDir, "app-data");
+delete process.env.CODEX_WIDGET_STORAGE_DB_PATH;
+delete process.env.CODEX_WIDGET_BLOB_DIR;
 process.env.PATH = `${tempDir}${delimiter}${process.env.PATH ?? ""}`;
 
 const daemon = await startDaemon({ port: 0 });
@@ -229,6 +243,11 @@ try {
   const connected = events.find((event) => event.type === "connected");
   if (connected?.daemon?.auth?.mode !== "codex" || connected.daemon.auth.authenticated !== true) {
     throw new Error(`Expected authenticated codex connection: ${JSON.stringify(connected)}`);
+  }
+  const initialSnapshot = await waitForEvent((event) => event.type === "session.snapshot", "initial session snapshot");
+  const sessionA = initialSnapshot.snapshot.activeSessionId;
+  if (!sessionA) {
+    throw new Error("Expected an initial active session.");
   }
 
   socket.send(JSON.stringify({ type: "ask", id: "app-1", text: "remember alpha", mode: "agent" }));
@@ -275,6 +294,67 @@ try {
   );
   if (!third.text.includes("rollbacks=1") || !third.text.includes("history=2") || !third.text.includes("remembered=alpha")) {
     throw new Error(`Rollback response mismatch: ${third.text}`);
+  }
+
+  socket.send(
+    JSON.stringify({
+      type: "ask",
+      id: "app-4",
+      text: "what can the PTY button do?",
+      mode: "agent"
+    })
+  );
+  const fourth = await waitForEvent(
+    (event) => event.type === "message.completed" && event.id === "app-4",
+    "widget context app-server completion"
+  );
+  if (!fourth.text.includes("widgetContext=true") || !fourth.text.includes("pty=true") || !fourth.text.includes("controls=true") || !fourth.text.includes("persona=true")) {
+    throw new Error(`Widget context was not injected into app-server turns: ${fourth.text}`);
+  }
+
+  socket.send(JSON.stringify({ type: "session.create", title: "session beta", mode: "agent" }));
+  const betaSnapshot = await waitForEvent(
+    (event) => event.type === "session.snapshot" && event.snapshot.activeSessionId !== sessionA,
+    "beta session snapshot"
+  );
+  const sessionB = betaSnapshot.snapshot.activeSessionId;
+  socket.send(
+    JSON.stringify({
+      type: "ask",
+      id: "app-beta",
+      text: "session beta isolated",
+      mode: "agent",
+      sessionId: sessionB
+    })
+  );
+  const beta = await waitForEvent(
+    (event) => event.type === "message.completed" && event.id === "app-beta",
+    "beta session completion"
+  );
+  if (!beta.text.includes("thread=thread-2") || !beta.text.includes("history=1") || !beta.text.includes("alpha=false") || !beta.text.includes("beta=true")) {
+    throw new Error(`Session B should use an isolated app-server thread: ${beta.text}`);
+  }
+
+  socket.send(JSON.stringify({ type: "session.open", sessionId: sessionA }));
+  await waitForEvent(
+    (event) => event.type === "session.snapshot" && event.snapshot.activeSessionId === sessionA,
+    "session A reopen snapshot"
+  );
+  socket.send(
+    JSON.stringify({
+      type: "ask",
+      id: "app-alpha-rebound",
+      text: "session alpha rebound",
+      mode: "agent",
+      sessionId: sessionA
+    })
+  );
+  const alphaRebound = await waitForEvent(
+    (event) => event.type === "message.completed" && event.id === "app-alpha-rebound",
+    "session A rebound completion"
+  );
+  if (!alphaRebound.text.includes("thread=thread-1") || !alphaRebound.text.includes("alpha=true") || alphaRebound.text.includes("beta=true")) {
+    throw new Error(`Session A should rebind to its original app-server thread: ${alphaRebound.text}`);
   }
 
   const deltaCount = events.filter((event) => event.type === "message.delta").length;
@@ -327,6 +407,9 @@ function restoreEnv() {
   restoreEnvValue("CODEX_WIDGET_CODEX_RUNTIME", previousEnv.runtime);
   restoreEnvValue("CODEX_WIDGET_CODEX_WORKDIR", previousEnv.workdir);
   restoreEnvValue("CODEX_WIDGET_CODEX_APPROVAL_POLICY", previousEnv.approvalPolicy);
+  restoreEnvValue("CODEX_WIDGET_APP_DATA_DIR", previousEnv.appDataDir);
+  restoreEnvValue("CODEX_WIDGET_STORAGE_DB_PATH", previousEnv.storageDbPath);
+  restoreEnvValue("CODEX_WIDGET_BLOB_DIR", previousEnv.blobDir);
   restoreEnvValue("PATH", previousEnv.path);
 }
 

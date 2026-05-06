@@ -5,6 +5,7 @@ const includeLive = process.argv.includes("--include-live");
 const steps = [
   npmStep("lint"),
   npmStep("build:web"),
+  ["Storage foundation", process.execPath, ["scripts/smoke-storage.mjs"]],
   ["daemon stream", process.execPath, ["scripts/smoke-daemon.mjs"]],
   ["daemon reconnect replay", process.execPath, ["scripts/smoke-daemon-reconnect.mjs"]],
   ["Codex app-server bridge", process.execPath, ["scripts/smoke-codex-app-server.mjs"]],

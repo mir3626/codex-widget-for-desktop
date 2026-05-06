@@ -1,0 +1,35 @@
+{
+  "id": "iter-3",
+  "mode": "iterate",
+  "carryover": "iter-2",
+  "createdAt": "2026-05-06T12:27:12.372+09:00",
+  "goal": "Build Codex Widget into a durable local-first desktop product with daemon-owned state, recoverable sessions, artifact history, and extensible provider/theme foundations.",
+  "newUserRequests": [
+    "Route all follow-up work through the vibe-iterate workflow instead of one-off UI or feature patches.",
+    "Introduce a daemon-owned SQLite storage layer after reviewing project structure and future data needs.",
+    "Support multiple internal conversation tabs, session restore after app restart, session trash, and branch-to-new-session behavior.",
+    "Preserve generated, modified, and deleted files through an artifact ledger with versions and reusable viewers in chat and trash.",
+    "Let Vision choose between WebM screen recording and Agent screen streaming, with future voice prompt and interactive screen-sharing sessions in mind.",
+    "Keep renderer focused on UI and interaction while daemon owns sessions, messages, app-server runtime, provider snapshots, artifacts, and activity logs."
+  ],
+  "carryoverSummary": [
+    "Iteration 2 completed the app-server runtime, reconnect replay, regenerate rollback, DOM/Vision/PTY providers, renderer chat hardening, release readiness gates, and resident desktop operations for dogfooding.",
+    "Visible chat persistence is still renderer localStorage-based; durable product state now needs a daemon-owned storage authority.",
+    "Branching currently uses one-shot branch context and runtime reset; the next target is an internal tab/session model.",
+    "Provider snapshots, terminal output, activity detail, and generated file artifacts are not yet modeled as durable first-class entities.",
+    "Browser store account submission remains deferred until after dogfooding and is not part of this iteration's implementation scope."
+  ],
+  "plannedSprints": [
+    "iter-3-sprint-01-storage-foundation",
+    "iter-3-sprint-02-session-tabs-trash",
+    "iter-3-sprint-03-artifact-activity-ledger",
+    "iter-3-sprint-04-vision-streaming-and-ux-foundation"
+  ],
+  "openRisks": [
+    "Codex app-server protocol remains experimental; keep exec fallback and avoid assuming thread resume across app restarts.",
+    "SQLite must not store OAuth or Codex credentials; secrets stay in the existing auth boundary.",
+    "Large artifacts, screenshots, and recordings should use blob files with DB metadata to avoid bloating SQLite.",
+    "Screen streaming and recording need explicit CPU, memory, and retention limits before daily dogfooding."
+  ],
+  "status": "in-progress"
+}

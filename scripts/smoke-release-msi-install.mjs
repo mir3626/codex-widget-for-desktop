@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import WebSocket from "ws";
+import { createSmokeAppDataEnv } from "./smoke-isolation.mjs";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const msiPath = join(
@@ -45,6 +46,7 @@ if (await canConnect()) {
 let appPid = undefined;
 let installSucceeded = false;
 let resolvedInstallDir = requestedInstallDir;
+const smokeAppData = createSmokeAppDataEnv(process.env, "codex-widget-release-msi-smoke");
 try {
   const installResult = runMsiexec(
     [
@@ -82,7 +84,7 @@ try {
   const app = spawn(installedExe, [], {
     cwd: installDir,
     env: {
-      ...process.env,
+      ...smokeAppData.env,
       CODEX_WIDGET_AUTH_MODE: "mock",
       CODEX_WIDGET_START_HIDDEN: "1"
     },
@@ -109,6 +111,7 @@ try {
     cleanupInstallDirIfOwned(resolvedInstallDir);
     cleanupInstallDirIfOwned(requestedInstallDir);
   }
+  smokeAppData.cleanup();
 }
 
 function assertInstalledResources(installDir) {

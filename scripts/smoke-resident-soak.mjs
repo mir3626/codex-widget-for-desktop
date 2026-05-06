@@ -1,8 +1,10 @@
 import WebSocket from "ws";
 import { startDaemon } from "../dist/daemon/server.js";
+import { useSmokeAppData } from "./smoke-isolation.mjs";
 
 process.env.CODEX_WIDGET_AUTH_MODE = "mock";
 
+const smokeAppData = useSmokeAppData("codex-widget-resident-soak");
 const SOAK_MS = Number(process.env.CODEX_WIDGET_SMOKE_SOAK_MS ?? 18_000);
 const MAX_RSS_MB = Number(process.env.CODEX_WIDGET_SMOKE_MAX_RSS_MB ?? 256);
 const MAX_RSS_GROWTH_MB = Number(process.env.CODEX_WIDGET_SMOKE_MAX_RSS_GROWTH_MB ?? 32);
@@ -70,6 +72,7 @@ try {
 } finally {
   socket.close();
   await daemon.close();
+  smokeAppData.cleanup();
 }
 
 function waitForConnected(socket) {

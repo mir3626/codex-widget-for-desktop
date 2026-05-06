@@ -30,7 +30,10 @@ const previousEnv = {
   sandbox: process.env.CODEX_WIDGET_CODEX_SANDBOX,
   approvalPolicy: process.env.CODEX_WIDGET_CODEX_APPROVAL_POLICY,
   model: process.env.CODEX_WIDGET_MODEL,
-  reasoningEffort: process.env.CODEX_WIDGET_REASONING_EFFORT
+  reasoningEffort: process.env.CODEX_WIDGET_REASONING_EFFORT,
+  appDataDir: process.env.CODEX_WIDGET_APP_DATA_DIR,
+  storageDbPath: process.env.CODEX_WIDGET_STORAGE_DB_PATH,
+  blobDir: process.env.CODEX_WIDGET_BLOB_DIR
 };
 
 process.env.CODEX_WIDGET_AUTH_MODE = "codex";
@@ -40,6 +43,9 @@ process.env.CODEX_WIDGET_CODEX_SANDBOX = "workspace-write";
 process.env.CODEX_WIDGET_CODEX_APPROVAL_POLICY = "on-request";
 process.env.CODEX_WIDGET_MODEL = process.env.CODEX_WIDGET_LIVE_SMOKE_MODEL ?? "gpt-5.4-mini";
 process.env.CODEX_WIDGET_REASONING_EFFORT = process.env.CODEX_WIDGET_LIVE_SMOKE_REASONING_EFFORT ?? "low";
+process.env.CODEX_WIDGET_APP_DATA_DIR = join(tempDir, "app-data");
+delete process.env.CODEX_WIDGET_STORAGE_DB_PATH;
+delete process.env.CODEX_WIDGET_BLOB_DIR;
 
 const daemon = await startDaemon({ port: 0 });
 const events = [];
@@ -151,6 +157,9 @@ function restoreEnv() {
   restoreEnvValue("CODEX_WIDGET_CODEX_APPROVAL_POLICY", previousEnv.approvalPolicy);
   restoreEnvValue("CODEX_WIDGET_MODEL", previousEnv.model);
   restoreEnvValue("CODEX_WIDGET_REASONING_EFFORT", previousEnv.reasoningEffort);
+  restoreEnvValue("CODEX_WIDGET_APP_DATA_DIR", previousEnv.appDataDir);
+  restoreEnvValue("CODEX_WIDGET_STORAGE_DB_PATH", previousEnv.storageDbPath);
+  restoreEnvValue("CODEX_WIDGET_BLOB_DIR", previousEnv.blobDir);
 }
 
 function restoreEnvValue(name, value) {

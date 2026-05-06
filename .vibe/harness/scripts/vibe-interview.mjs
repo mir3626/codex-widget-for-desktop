@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import {
   existsSync,
   mkdirSync,
@@ -37,6 +37,18 @@ import { resolveRoleFromCli } from './vibe-resolve-model.mjs';
  *     timestamp: string
  *   }>,
  *   ambiguityTrace: number[],
+ *   consensus: {
+ *     status: "pending" | "approved" | "approved_with_deferred_items" | "proxy-unconfirmed" | null,
+ *     promptedAt: string | null,
+ *     decidedAt: string | null,
+ *     summaryHash: string | null,
+ *     terminationReason: "ambiguity" | "max-rounds" | "soft-terminate" | null,
+ *     ambiguityFinal: number | null,
+ *     summary: unknown | null,
+ *     corrections: Array<{ text: string, timestamp: string }>,
+ *     decision: "approve" | "defer" | "proxy-unconfirmed" | null,
+ *     rationale: string
+ *   },
  *   terminatedAt: string | null,
  *   terminationReason: "ambiguity" | "max-rounds" | "soft-terminate" | null,
  *   outputPath: string,
@@ -118,6 +130,7 @@ function usage() {
     '   or: node .vibe/harness/scripts/vibe-interview.mjs --set-domain --domain "<string or json>"',
     '   or: node .vibe/harness/scripts/vibe-interview.mjs --continue --answer "<text>"',
     '   or: node .vibe/harness/scripts/vibe-interview.mjs --record --attribution \'<json>\'',
+    '   or: node .vibe/harness/scripts/vibe-interview.mjs --consensus --decision approve|revise|defer|proxy-unconfirmed [--correction "<text>"] [--rationale "<text>"]',
     '   or: node .vibe/harness/scripts/vibe-interview.mjs --status',
     '   or: node .vibe/harness/scripts/vibe-interview.mjs --abort',
     '   or: node .vibe/harness/scripts/vibe-interview.mjs --mode iterate --carryover <iteration-id> --dry-run',
@@ -932,6 +945,172 @@ function listDeferredSubFields(state) {
   return deferred;
 }
 
+function consensusCorrections(state) {
+  return Array.isArray(state.consensus?.corrections) ? state.consensus.corrections : [];
+}
+
+function buildConsensusSummary(state, ambiguityFinal, terminationReason, corrections = consensusCorrections(state)) {
+  const dimensions = buildDimensionSummary(state);
+  const coveredDimensions = dimensions
+    .filter((dimension) => dimension.details.length > 0)
+    .map((dimension) => ({
+      id: dimension.id,
+      label: dimension.label,
+      ratio: Number((dimension.ratio ?? 0).toFixed(4)),
+      details: dimension.details,
+    }));
+  const unresolvedDimensions = dimensions
+    .filter((dimension) => dimension.details.length === 0 || (dimension.ratio ?? 0) < 1)
+    .map((dimension) => {
+      const sourceDimension = state.dimensions.find((candidate) => candidate.id === dimension.id);
+      return {
+        id: dimension.id,
+        label: dimension.label,
+        ratio: Number((dimension.ratio ?? 0).toFixed(4)),
+        pending: sourceDimension ? pendingSubFieldsForDimension(state, sourceDimension) : [],
+      };
+    });
+  const terms = dimensions
+    .filter((dimension) => ['domain_specifics', 'platform', 'tech_stack'].includes(dimension.id))
+    .flatMap((dimension) => dimension.details.map((detail) => `${dimension.id}: ${detail}`));
+  const nonGoals = dimensions.find((dimension) => dimension.id === 'non_goals')?.details ?? [];
+
+  return {
+    oneLiner: sanitizeInput(state.oneLiner),
+    inferredDomain: sanitizeInput(state.inferredDomain ?? ''),
+    terminationReason,
+    ambiguityFinal: Number(ambiguityFinal.toFixed(4)),
+    agentUnderstanding: coveredDimensions,
+    unresolvedDimensions,
+    deferredItems: listDeferredSubFields(state),
+    nonGoals,
+    terms,
+    userCorrections: corrections.map((correction) => correction.text),
+  };
+}
+
+function hashConsensusSummary(summary) {
+  return createHash('sha256').update(JSON.stringify(summary)).digest('hex').slice(0, 16);
+}
+
+function buildConsensusPrompt(state, consensus) {
+  const summary = consensus.summary;
+  if (state.lang === 'en') {
+    return [
+      'The interview has met its termination criteria. Before writing product context, confirm whether the agent understanding matches the human intent.',
+      '',
+      `Summary hash: ${consensus.summaryHash}`,
+      `Termination: ${summary.terminationReason}, ambiguity: ${summary.ambiguityFinal}`,
+      '',
+      'Reply with one of:',
+      '- approve: the understanding is correct enough to become product context.',
+      '- revise: provide corrections; the engine will keep the session open and show a revised consensus packet.',
+      '- defer: proceed, but keep unresolved items explicit in product context.',
+      '',
+      'User corrections override the dimension summary when they conflict.',
+    ].join('\n');
+  }
+
+  return [
+    '인터뷰가 종료 조건을 만족했습니다. product context를 작성하기 전에 에이전트의 이해가 사람의 의도와 맞는지 확인하세요.',
+    '',
+    `Summary hash: ${consensus.summaryHash}`,
+    `Termination: ${summary.terminationReason}, ambiguity: ${summary.ambiguityFinal}`,
+    '',
+    '응답 방식:',
+    '- approve: 현재 이해를 product context로 넘겨도 됩니다.',
+    '- revise: 수정 내용을 제공합니다. 세션은 열린 상태로 유지되고 수정 반영 consensus packet을 다시 보여줍니다.',
+    '- defer: 진행은 허용하되 미해결 항목을 product context에 명시합니다.',
+    '',
+    '충돌이 있으면 사용자 correction이 dimension summary보다 우선합니다.',
+  ].join('\n');
+}
+
+function createConsensusPayload(state, ambiguityFinal, terminationReason) {
+  const corrections = consensusCorrections(state);
+  const summary = buildConsensusSummary(state, ambiguityFinal, terminationReason, corrections);
+  const consensus = {
+    status: 'pending',
+    promptedAt: new Date().toISOString(),
+    decidedAt: null,
+    summaryHash: hashConsensusSummary(summary),
+    terminationReason,
+    ambiguityFinal,
+    summary,
+    corrections,
+    decision: null,
+    rationale: '',
+  };
+
+  state.consensus = consensus;
+  state.terminationReason = terminationReason;
+
+  return {
+    phase: 'consensus',
+    consensusPrompt: buildConsensusPrompt(state, consensus),
+    consensus: {
+      status: consensus.status,
+      promptedAt: consensus.promptedAt,
+      summaryHash: consensus.summaryHash,
+      terminationReason: consensus.terminationReason,
+      ambiguityFinal: Number(ambiguityFinal.toFixed(4)),
+      corrections: consensus.corrections,
+    },
+    summary,
+  };
+}
+
+function consensusMarkdown(state) {
+  const consensus = state.consensus ?? {};
+  const summary = consensus.summary ?? null;
+  const corrections = Array.isArray(consensus.corrections) ? consensus.corrections : [];
+  const understandingLines =
+    summary && Array.isArray(summary.agentUnderstanding)
+      ? summary.agentUnderstanding.map((dimension) => {
+            const details =
+              Array.isArray(dimension.details) && dimension.details.length > 0
+                ? dimension.details.join('; ')
+                : '(none)';
+            return `- **${dimension.label}** (${dimension.id}, ${dimension.ratio}): ${details}`;
+          })
+      : [];
+  const understanding = understandingLines.length > 0 ? understandingLines.join('\n') : '- none';
+  const unresolved =
+    summary && Array.isArray(summary.unresolvedDimensions) && summary.unresolvedDimensions.length > 0
+      ? summary.unresolvedDimensions
+          .map((dimension) => {
+            const pending =
+              Array.isArray(dimension.pending) && dimension.pending.length > 0
+                ? dimension.pending.join(', ')
+                : 'none';
+            return `- **${dimension.label}** (${dimension.id}, ${dimension.ratio}): pending ${pending}`;
+          })
+          .join('\n')
+      : '- none';
+
+  return [
+    '### Phase 3 Consensus Check',
+    `- status: ${sanitizeInput(consensus.status ?? 'not-recorded') || 'not-recorded'}`,
+    `- summary_hash: ${sanitizeInput(consensus.summaryHash ?? '') || 'none'}`,
+    `- decided_at: ${sanitizeInput(consensus.decidedAt ?? '') || 'not decided'}`,
+    `- decision: ${sanitizeInput(consensus.decision ?? '') || 'none'}`,
+    `- rationale: ${sanitizeInput(consensus.rationale ?? '') || 'none'}`,
+    '',
+    '#### Agent understanding submitted for consensus',
+    understanding,
+    '',
+    '#### Unresolved dimensions',
+    unresolved,
+    '',
+    '#### User corrections',
+    corrections.length > 0
+      ? corrections.map((correction) => `- ${correction.timestamp}: ${correction.text}`).join('\n')
+      : '- none',
+    '',
+    '> If user corrections conflict with the dimension summary above, user corrections take precedence.',
+  ].join('\n');
+}
+
 function buildSeedForProductMd(state, ambiguityFinal) {
   const summaryLines = buildDimensionSummary(state)
     .map((dimension) => {
@@ -959,6 +1138,8 @@ function buildSeedForProductMd(state, ambiguityFinal) {
     '### Final ambiguity',
     `- ${ambiguityFinal.toFixed(4)}`,
     '',
+    consensusMarkdown(state),
+    '',
     '### Deferred sub-fields',
     deferred.length > 0 ? deferred.map((entry) => `- ${entry}`).join('\n') : '- none',
     '',
@@ -983,6 +1164,7 @@ function createDonePayload(state, ambiguityFinal, terminationReason) {
       dimensions: dimensionSummary,
       answers,
       rationale,
+      consensus: state.consensus ?? null,
     },
     seedForProductMd: buildSeedForProductMd(state, ambiguityFinal),
   };
@@ -1034,6 +1216,18 @@ function initCommand(flags) {
     coverage: createInitialCoverage(dimensionsDocument.dimensions),
     rounds: [],
     ambiguityTrace: [],
+    consensus: {
+      status: null,
+      promptedAt: null,
+      decidedAt: null,
+      summaryHash: null,
+      terminationReason: null,
+      ambiguityFinal: null,
+      summary: null,
+      corrections: [],
+      decision: null,
+      rationale: '',
+    },
     terminatedAt: null,
     terminationReason: null,
     outputPath,
@@ -1176,19 +1370,85 @@ function recordCommand(flags) {
   );
 
   if (termination.terminate) {
-    state.terminatedAt = new Date().toISOString();
-    state.terminationReason = termination.reason;
+    const payload = createConsensusPayload(state, ambiguity, termination.reason);
     saveSession(state);
-    clearActivePointer(state.sessionId);
-    process.stdout.write(
-      `${JSON.stringify(createDonePayload(state, ambiguity, termination.reason), null, 2)}\n`,
-    );
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
     return;
   }
 
   const payload = createPendingRound(state);
   saveSession(state);
   process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+}
+
+function consensusCommand(flags) {
+  const decision = sanitizeInput(flags.get('--decision')).toLowerCase();
+  if (!['approve', 'revise', 'defer', 'proxy-unconfirmed'].includes(decision)) {
+    exitWith(2, '--decision must be approve, revise, defer, or proxy-unconfirmed');
+  }
+
+  const { state } = loadSessionFromActivePointer();
+  if (state.pending) {
+    exitWith(2, 'cannot record consensus while an interview round is pending');
+  }
+
+  const consensus = state.consensus;
+  if (!consensus || consensus.status !== 'pending') {
+    exitWith(2, 'no pending consensus check to record');
+  }
+
+  const now = new Date().toISOString();
+  const ambiguityFinal =
+    typeof consensus.ambiguityFinal === 'number'
+      ? consensus.ambiguityFinal
+      : computeAmbiguity(state.dimensions, state.coverage);
+  const terminationReason = consensus.terminationReason ?? state.terminationReason ?? 'soft-terminate';
+
+  if (decision === 'revise') {
+    const correction = sanitizeInput(flags.get('--correction') ?? flags.get('--answer'));
+    if (correction === '') {
+      exitWith(2, '--correction is required when --decision revise');
+    }
+
+    state.consensus = {
+      ...consensus,
+      corrections: [
+        ...consensusCorrections(state),
+        {
+          text: correction,
+          timestamp: now,
+        },
+      ],
+    };
+    const payload = createConsensusPayload(state, ambiguityFinal, terminationReason);
+    saveSession(state);
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+    return;
+  }
+
+  const rationale = sanitizeInput(flags.get('--rationale'));
+  const status =
+    decision === 'approve'
+      ? 'approved'
+      : decision === 'defer'
+        ? 'approved_with_deferred_items'
+        : 'proxy-unconfirmed';
+
+  state.consensus = {
+    ...consensus,
+    status,
+    decidedAt: now,
+    decision,
+    rationale,
+  };
+  state.terminatedAt = now;
+  state.terminationReason = terminationReason;
+  saveSession(state);
+  clearActivePointer(state.sessionId);
+
+  process.stdout.write(
+    `${JSON.stringify(createDonePayload(state, ambiguityFinal, terminationReason), null, 2)}\n`,
+  );
 }
 
 function statusCommand() {
@@ -1204,6 +1464,15 @@ function statusCommand() {
         rounds: state.rounds.length,
         pendingDimensionId: state.pending?.dimensionId ?? null,
         pendingDimension: pendingDimensionSnapshot(state),
+        consensus:
+          state.consensus && state.consensus.status
+            ? {
+                status: state.consensus.status,
+                summaryHash: state.consensus.summaryHash ?? null,
+                terminationReason: state.consensus.terminationReason ?? null,
+                corrections: consensusCorrections(state),
+              }
+            : null,
         ambiguity: computeAmbiguity(state.dimensions, state.coverage),
         coverage: coverageSnapshot(state),
       },
@@ -1292,6 +1561,11 @@ function main() {
 
     if (flags.has('--record')) {
       recordCommand(flags);
+      return;
+    }
+
+    if (flags.has('--consensus')) {
+      consensusCommand(flags);
       return;
     }
 

@@ -1,0 +1,39 @@
+{
+  "id": "iter-4",
+  "mode": "iterate",
+  "carryover": "iter-3",
+  "createdAt": "2026-05-06T14:44:38.519+09:00",
+  "goal": "Continue Codex Widget product development through repeated vibe-iterate sprints until the categorized dogfooding backlog is closed.",
+  "clarification": "The product owner clarified that the prior /goal directive was not satisfied by completing the Iteration 3 sprint set. The durable project state must remain active and continue opening new iterations/sprints for remaining product areas.",
+  "newUserRequests": [
+    "Treat /goal as a repeated vibe-iterate workflow for all remaining tasks, not a one-off sprint or single iteration.",
+    "Close the previously categorized task groups that remain incomplete: UI polish, session/tab behavior, Agent widget awareness, artifact rendering/version UX, Vision streaming/voice foundations, PTY popup behavior, mascot/persona behavior, and provider/runtime history gaps.",
+    "Keep architecture, project structure, reuse, and long-term extensibility in scope whenever new features are added.",
+    "Preserve daemon ownership of sessions, messages, app-server runtime, provider snapshots, artifacts, activity logs, and SQLite/blob-backed product state.",
+    "Use taste-skill guidance for visible widget UI improvements while preserving the desktop-widget interaction model."
+  ],
+  "carryoverSummary": [
+    "Iteration 3 completed the storage/session/artifact/Vision foundations but left several user-facing backlog areas partial or unimplemented.",
+    "Visible durable sessions, internal tabs, trash, artifacts, and Vision streaming now exist, but deeper app-server thread rebinding, richer artifact rendering/version UI, and provider snapshot history remain open.",
+    "The renderer has several dogfooding UI defects: resize hit areas, minimum-width select overlap, tab/session affordance polish, More action menu alignment, and branch/session feedback.",
+    "Agent mode needs explicit widget capability context so it can answer questions about its own controls, modes, PTY, Vision, DOM, settings, and limitations.",
+    "Vision should progress toward interactive screen-sharing and later voice prompt input while keeping user consent, resource limits, and retention boundaries explicit.",
+    "PTY currently works as an internal terminal viewport, but the intended separate popup window and product use-case explanation are not complete.",
+    "Mascot support has status-aware animation and seeded metadata, but the default dog persona/tone behavior and future module platform boundary need another sprint."
+  ],
+  "plannedSprints": [
+    "iter-4-sprint-01-ui-polish-and-tab-interactions",
+    "iter-4-sprint-02-widget-context-agent-awareness",
+    "iter-4-sprint-03-artifact-rendering-and-version-browser",
+    "iter-4-sprint-04-vision-voice-interactive-loop",
+    "iter-4-sprint-05-pty-popup-and-mascot-persona"
+  ],
+  "openRisks": [
+    "The external goal tracker was prematurely marked complete; the durable project state now records this correction, but the tool status cannot be reverted in this session.",
+    "Codex app-server protocol remains experimental; keep exec fallback and avoid assuming durable thread resume until explicitly implemented.",
+    "Vision screen streaming needs dogfooding for CPU, memory, cadence, and privacy/retention behavior.",
+    "Artifact version preservation must avoid data loss while keeping blob storage growth bounded.",
+    "Future custom theme/mascot/module platform work should not leak into current sprint scope beyond data-boundary preparation."
+  ],
+  "status": "in-progress"
+}

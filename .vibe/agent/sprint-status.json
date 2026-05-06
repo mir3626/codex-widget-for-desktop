@@ -33,11 +33,13 @@
     }
   ],
   "handoff": {
-    "currentSprintId": "idle",
-    "lastActionSummary": "Iteration 2 runtime/provider/resident work is complete for dogfooding: app-server runtime, fake and live app-server smoke coverage, DOM/Vision ingress, Vision numeric/visual crop UI plus configurable screen diff metadata, OCR acquisition/defaults/preprocessing, PTY direct input, bundled runtime resources, release install gates, release soak JSON reports, and release readiness audits are implemented with smoke coverage.",
+    "currentSprintId": "iter-7-sprint-01-trash-activity-mascot-polish",
+    "lastActionSummary": "Synced vibe-doctor harness to v1.7.7, manually merged orchestration/provider conflicts to preserve this project's Codex role contract, and fixed GitHub CI entrypoints.",
     "openIssues": [
-      "Codex app-server protocol remains experimental; keep exec fallback.",
-      "Browser store account submission is deferred until after dogfooding."
+      "Codex app-server protocol remains experimental; stale persisted thread ids fall back safely, but live cross-process resume behavior needs dogfooding validation.",
+      "Browser store account submission is deferred until after dogfooding.",
+      "Vision recording/screen streaming has consent, retention, history, cleanup, skipped-frame diagnostics, and resource guardrails; longer CPU/memory tuning remains dogfood-dependent.",
+      "Mascot motion must be reworked with real authored pose/expression/state animation assets; generated static-pose sprites are not accepted."
     ],
     "orchestratorContextBudget": "medium",
     "preferencesActive": [
@@ -46,12 +48,12 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-06T08:56:59.660+09:00"
+    "updatedAt": "2026-05-06T15:25:39.389Z"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-06T08:56:59.660+09:00",
-  "verifiedAt": "2026-05-06T08:56:59.660+09:00"
+  "stateUpdatedAt": "2026-05-06T15:25:39.389Z",
+  "verifiedAt": "2026-05-06T15:25:39.389Z"
 }

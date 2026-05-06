@@ -3,6 +3,7 @@ import type { CodexAppServerBridge } from "./codexAppServer.js";
 import { spawnCodex } from "./codexCli.js";
 import { augmentRequestWithProviderContext, type ProviderRegistry } from "./providers/providerRegistry.js";
 import { maybeRunTerminalProvider } from "./providers/terminalProvider.js";
+import { attachWidgetContext } from "./widgetContext.js";
 import {
   buildCodexExecArgs,
   buildCodexWidgetPrompt,
@@ -32,6 +33,7 @@ export type AgentRequest = {
   reasoningEffort?: ReasoningEffort;
   imageDataUrls?: string[];
   branchContext?: BranchContextMessage[];
+  widgetContext?: string;
 };
 
 export type AgentRuntimeOptions = {
@@ -41,6 +43,7 @@ export type AgentRuntimeOptions = {
   session?: AgentSessionState;
   codexAppServer?: CodexAppServerBridge;
   providers?: ProviderRegistry;
+  authStatus?: AuthStatus;
 };
 
 export type AgentSessionState = {
@@ -62,7 +65,11 @@ export async function runAgentStream(
 
   await emitModePreview(request.id, request.mode, emit, signal, options.providers);
   emit({ type: "session.state", state: "streaming", id: request.id });
-  const effectiveRequest = augmentRequestWithProviderContext(request, options.providers);
+  const contextAwareRequest = attachWidgetContext(request, {
+    authStatus: options.authStatus,
+    providers: options.providers
+  });
+  const effectiveRequest = augmentRequestWithProviderContext(contextAwareRequest, options.providers);
 
   if (options.codexAuthenticated) {
     if (shouldUseCodexAppServer(options.codexAppServer)) {
@@ -238,6 +245,8 @@ async function streamOAuthProxyResponse(
       session_id: sessionId,
       branchContext: request.branchContext,
       branch_context: request.branchContext,
+      widgetContext: request.widgetContext,
+      widget_context: request.widgetContext,
       input: request.text,
       stream: true
     }),

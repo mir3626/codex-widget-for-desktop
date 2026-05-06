@@ -21,6 +21,13 @@
 - Preserve transparent/frameless/always-on-top/skip-taskbar behavior unless explicitly changing window strategy.
 - Keep the generated mascot asset project-local under `src/renderer/assets/`.
 
+## Requirement Intent And Consensus
+
+- Do not satisfy visual or UX requirements with proxy implementations that only pass automated checks. Smoke tests are evidence, not the definition of product acceptance.
+- Treat ambiguous experiential words such as "moving", "native-like", "social-login-like", or "web-session-like" as intent-bearing requirements, not literal implementation hints.
+- Before implementing when intent is unclear, run a short consensus step: restate the inferred intent, propose concrete acceptance criteria, list viable implementation options with tradeoffs, state the validation method, and wait for the user's direction when the choice affects product semantics.
+- For mascot motion specifically, static-image transforms or sprite sheets generated from one unchanged pose do not satisfy "moving mascot" unless the user explicitly accepts that compromise. The default bar is authored motion with meaningful pose, expression, or state changes, delivered through real animation frames, APNG/GIF/WebM/Lottie, or equivalent assets.
+
 ## Git and Generated Files
 
 - Commit `src-tauri/Cargo.lock`.

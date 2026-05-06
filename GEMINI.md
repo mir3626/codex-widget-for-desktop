@@ -16,5 +16,9 @@
 <!-- END:HARNESS:agent-memory -->
 
 <!-- BEGIN:PROJECT:custom-rules -->
-<!-- Add project-specific Gemini rules here. -->
+## Project orchestration override
+
+- 이 downstream 프로젝트의 메인 Orchestrator는 Codex다.
+- `.vibe/config.json`의 `orchestrator`, `sprintRoles.planner`, `sprintRoles.generator`, `sprintRoles.evaluator`는 모두 `codex`를 기본값으로 둔다.
+- Claude 계열 provider는 이 프로젝트의 기본 역할 경로가 아니며, 사용자가 명시적으로 설정을 바꿀 때만 보조/fallback provider로 취급한다.
 <!-- END:PROJECT:custom-rules -->

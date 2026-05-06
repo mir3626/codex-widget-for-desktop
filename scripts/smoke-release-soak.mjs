@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import WebSocket from "ws";
+import { createSmokeAppDataEnv } from "./smoke-isolation.mjs";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const releaseExe = join(root, "src-tauri", "target", "release", "codex-widget-for-desktop.exe");
@@ -28,10 +29,11 @@ if (await canConnect()) {
   throw new Error(`Port ${daemonPort} is already serving a widget daemon; stop it before release soak.`);
 }
 
+const smokeAppData = createSmokeAppDataEnv(process.env, "codex-widget-release-soak");
 const app = spawn(releaseExe, [], {
   cwd: root,
   env: {
-    ...process.env,
+    ...smokeAppData.env,
     CODEX_WIDGET_AUTH_MODE: "mock",
     CODEX_WIDGET_START_HIDDEN: "1"
   },
@@ -78,6 +80,7 @@ try {
 } finally {
   cleanupProcessTree(app.pid);
   await waitUntilPortClosed();
+  smokeAppData.cleanup();
 }
 
 function writeSoakReport({ appPid, startStats, endStats }) {

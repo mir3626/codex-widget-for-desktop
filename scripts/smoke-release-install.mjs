@@ -4,6 +4,7 @@ import { existsSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import WebSocket from "ws";
+import { createSmokeAppDataEnv } from "./smoke-isolation.mjs";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const installerPath = join(
@@ -47,6 +48,7 @@ if (await canConnect()) {
 
 let appPid = undefined;
 let installedBySmoke = false;
+const smokeAppData = createSmokeAppDataEnv(process.env, "codex-widget-release-install-smoke");
 try {
   runOrThrow(installerPath, ["/S"], "NSIS silent install");
   installedBySmoke = true;
@@ -79,7 +81,7 @@ try {
   const app = spawn(installedExe, [], {
     cwd: installDir,
     env: {
-      ...process.env,
+      ...smokeAppData.env,
       CODEX_WIDGET_AUTH_MODE: "mock",
       CODEX_WIDGET_START_HIDDEN: "1"
     },
@@ -108,6 +110,7 @@ try {
     await waitUntilUninstalled().catch(() => undefined);
     cleanupSmokeProductKey();
   }
+  smokeAppData.cleanup();
 }
 
 function assertFile(path, message) {

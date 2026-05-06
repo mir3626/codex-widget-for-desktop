@@ -1,0 +1,381 @@
+.widget-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 320px;
+  min-height: 480px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  user-select: none;
+}
+
+.widget-panel {
+  position: absolute;
+  inset: 0 0 var(--mascot-stage) 0;
+  z-index: 1;
+  min-width: 320px;
+  min-height: calc(480px - var(--mascot-stage));
+  display: grid;
+  grid-template-rows:
+    var(--titlebar-height)
+    32px
+    32px
+    36px
+    minmax(48px, 1fr)
+    var(--prompt-composer-height, 46px)
+    34px
+    52px;
+  overflow: hidden;
+  border-color: var(--line);
+  border-style: solid;
+  border-width: 1px 1px 0;
+  border-radius: var(--window-radius);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, var(--widget-opacity, 0.95)),
+      rgba(246, 248, 249, var(--widget-opacity, 0.95))
+    );
+  box-shadow:
+    0 10px 28px -18px var(--shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  -webkit-app-region: no-drag;
+}
+
+.widget-shell.is-maximized .widget-panel {
+  inset: 0;
+  border-radius: 0;
+}
+
+.widget-panel.is-overlay-mode {
+  grid-template-rows:
+    var(--titlebar-height)
+    32px
+    32px
+    36px
+    minmax(0, 1fr);
+}
+
+.resize-handle {
+  position: absolute;
+  z-index: 8;
+  pointer-events: auto;
+  background: transparent;
+  -webkit-app-region: no-drag;
+}
+
+.resize-handle::after {
+  content: "";
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(39, 119, 101, 0.28);
+  transition: opacity 120ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.resize-handle:hover::after {
+  opacity: 1;
+}
+
+.resize-n,
+.resize-s {
+  left: 18px;
+  right: 18px;
+  height: 12px;
+  cursor: ns-resize;
+}
+
+.resize-n {
+  top: 0;
+}
+
+.resize-s {
+  bottom: 0;
+}
+
+.resize-n::after,
+.resize-s::after {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.resize-n::after {
+  top: 0;
+}
+
+.resize-s::after {
+  bottom: 0;
+}
+
+.resize-e,
+.resize-w {
+  top: 18px;
+  bottom: 18px;
+  width: 10px;
+  cursor: ew-resize;
+}
+
+.resize-e {
+  right: -6px;
+}
+
+.resize-w {
+  left: -6px;
+}
+
+.resize-e::after,
+.resize-w::after {
+  top: 0;
+  bottom: 0;
+  width: 2px;
+}
+
+.resize-e::after {
+  right: 0;
+}
+
+.resize-w::after {
+  left: 0;
+}
+
+.resize-ne,
+.resize-nw,
+.resize-se,
+.resize-sw {
+  width: 24px;
+  height: 24px;
+}
+
+.resize-ne {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+
+.resize-nw {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+.resize-se {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+}
+
+.resize-sw {
+  left: 0;
+  bottom: 0;
+  cursor: nesw-resize;
+}
+
+.resize-ne::after,
+.resize-nw::after,
+.resize-se::after,
+.resize-sw::after {
+  width: 9px;
+  height: 9px;
+  border-color: rgba(39, 119, 101, 0.42);
+  border-style: solid;
+  background: transparent;
+}
+
+.resize-ne::after {
+  top: 4px;
+  right: 4px;
+  border-width: 1px 1px 0 0;
+}
+
+.resize-nw::after {
+  top: 4px;
+  left: 4px;
+  border-width: 1px 0 0 1px;
+}
+
+.resize-se::after {
+  right: 4px;
+  bottom: 4px;
+  border-width: 0 1px 1px 0;
+}
+
+.resize-sw::after {
+  left: 4px;
+  bottom: 4px;
+  border-width: 0 0 1px 1px;
+}
+
+.widget-shell.is-maximized .resize-handle {
+  display: none;
+}
+
+body.is-resizing-widget,
+body.is-resizing-widget *,
+body.is-resizing-prompt,
+body.is-resizing-prompt * {
+  user-select: none;
+}
+
+.titlebar {
+  min-width: 0;
+  min-height: var(--titlebar-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0;
+  height: var(--titlebar-height);
+  padding: 0 0 0 8px;
+  border-bottom: 1px solid var(--line-soft);
+  background: rgba(251, 252, 253, 0.96);
+  -webkit-app-region: no-drag;
+}
+
+.app-identity {
+  position: relative;
+  z-index: 9;
+  min-width: 0;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  gap: 8px;
+  -webkit-app-region: drag;
+}
+
+.titlebar-grip {
+  align-self: stretch;
+  flex: 1 1 auto;
+  min-width: 4px;
+  height: 100%;
+  -webkit-app-region: drag;
+}
+
+.app-favicon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  border-radius: 3px;
+  object-fit: contain;
+}
+
+.app-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.app-title strong {
+  max-width: 96px;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: var(--titlebar-height);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: var(--text-contrast-shadow);
+}
+
+.window-controls {
+  position: relative;
+  z-index: 9;
+  height: 100%;
+  display: inline-flex;
+  gap: 0;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-button,
+.pin-button,
+.icon-button,
+.auth-button,
+.mode,
+.send-button,
+.auth-panel-actions button,
+.model-field select {
+  border: 0;
+  cursor: pointer;
+  transition:
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    background 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-button:active,
+.pin-button:active,
+.icon-button:active,
+.auth-button:active,
+.mode:active,
+.send-button:active,
+.auth-panel-actions button:active,
+.model-field select:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.titlebar-button,
+.icon-button {
+  width: 34px;
+  height: 100%;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 0;
+  color: #48525f;
+  background: transparent;
+}
+
+.pin-button {
+  height: 100%;
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: 0;
+  color: #53606e;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pin-button:hover {
+  background: rgba(218, 226, 229, 0.96);
+}
+
+.pin-button.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.pin-button.active svg,
+.pin-button.active svg path {
+  fill: var(--accent);
+}
+
+.titlebar-button:hover,
+.icon-button:hover {
+  background: rgba(218, 226, 229, 0.96);
+}
+
+.titlebar-button.close:hover,
+.icon-button.danger:hover {
+  color: #ffffff;
+  background: var(--danger);
+}
+
+.titlebar-button.active {
+  color: #123f36;
+  background: var(--accent-soft);
+}
+
+.icon-button.active {
+  color: #123f36;
+  background: var(--accent-soft);
+}

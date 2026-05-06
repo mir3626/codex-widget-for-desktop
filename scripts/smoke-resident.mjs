@@ -1,8 +1,10 @@
 import WebSocket from "ws";
 import { startDaemon } from "../dist/daemon/server.js";
+import { useSmokeAppData } from "./smoke-isolation.mjs";
 
 process.env.CODEX_WIDGET_AUTH_MODE = "mock";
 
+const smokeAppData = useSmokeAppData("codex-widget-resident-smoke");
 const MAX_IDLE_RSS_MB = Number(process.env.CODEX_WIDGET_SMOKE_MAX_RSS_MB ?? 256);
 const daemon = await startDaemon({ port: 0 });
 const socket = new WebSocket(`ws://127.0.0.1:${daemon.port}`);
@@ -48,6 +50,9 @@ try {
   if ("lastError" in lastStatus.codexAppServer && typeof lastStatus.codexAppServer.lastError !== "string") {
     throw new Error(`Codex app-server lastError diagnostic should be a string when present.`);
   }
+  if (lastStatus.storage?.state !== "ready" || lastStatus.storage.integrity !== "not_checked") {
+    throw new Error(`Storage diagnostic missing or unhealthy: ${JSON.stringify(lastStatus.storage)}`);
+  }
 
   const rssMb = process.memoryUsage().rss / 1024 / 1024;
   if (rssMb > MAX_IDLE_RSS_MB) {
@@ -60,4 +65,5 @@ try {
 } finally {
   socket.close();
   await daemon.close();
+  smokeAppData.cleanup();
 }

@@ -107,7 +107,7 @@ export class ProviderRegistry {
         label: "Vision",
         state: this.screenSnapshot ? "ready" : "stub",
         detail: this.screenSnapshot ? readScreenDetail(this.screenSnapshot) : "Waiting for screen snapshot",
-        capabilities: ["capture", "crop", "diff", "ocr", "snapshot"]
+        capabilities: ["capture", "crop", "diff", "ocr", "snapshot", "webm-recording", "agent-stream"]
       },
       {
         mode: "terminal",

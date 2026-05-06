@@ -2,9 +2,11 @@ import WebSocket from "ws";
 import { startDaemon } from "../dist/daemon/server.js";
 import { buildTurnInput } from "../dist/daemon/codexAppServer.js";
 import { augmentRequestWithProviderContext, ProviderRegistry } from "../dist/daemon/providers/providerRegistry.js";
+import { useSmokeAppData } from "./smoke-isolation.mjs";
 
 process.env.CODEX_WIDGET_AUTH_MODE = "mock";
 
+const smokeAppData = useSmokeAppData("codex-widget-screen-smoke");
 const daemon = await startDaemon({ port: 0 });
 const marker = "screen-smoke-ocr-marker";
 const screenPayload = {
@@ -133,6 +135,11 @@ try {
   if (screenStatus?.state !== "ready") {
     throw new Error(`Screen provider was not ready: ${JSON.stringify(screenStatus)}`);
   }
+  const ledgerSnapshot = events.find((event) => event.type === "ledger.snapshot");
+  const visionHistory = ledgerSnapshot?.snapshot?.providerSnapshots?.find((snapshot) => snapshot.provider === "vision");
+  if (!visionHistory?.summary?.includes("Screen Smoke Snapshot") || visionHistory.data?.imageDataUrl) {
+    throw new Error(`Vision provider history was not persisted or redacted: ${JSON.stringify(ledgerSnapshot)}`);
+  }
 
   const toolOutput = events
     .filter((event) => event.type === "tool.output")
@@ -145,4 +152,5 @@ try {
 } finally {
   socket.close();
   await daemon.close();
+  smokeAppData.cleanup();
 }

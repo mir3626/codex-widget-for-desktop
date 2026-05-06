@@ -75,6 +75,19 @@ export type RuntimeStatus = {
   uptimeSeconds: number;
   clients: number;
   activeRequests: number;
+  storage: {
+    state: "ready" | "error";
+    databasePath: string;
+    blobDir: string;
+    schemaVersion: number;
+    latestSchemaVersion: number;
+    migrationsApplied: number;
+    tableCount: number;
+    journalMode: string;
+    foreignKeys: boolean;
+    integrity: string;
+    lastError?: string;
+  };
   codexAppServer: {
     state: "closed" | "starting" | "connected";
     pid?: number;
@@ -94,6 +107,23 @@ export type ScreenCrop = {
   height: number;
 };
 
+export type VisionStreamMode = "recording" | "agent_stream";
+
+export type VisionStreamStatus = "pending" | "recording" | "streaming" | "stopped" | "error";
+
+export type VisionStreamSummary = {
+  id: string;
+  sessionId?: string;
+  mode: VisionStreamMode;
+  status: VisionStreamStatus;
+  fps?: number;
+  frameIntervalMs?: number;
+  recordingBlobId?: string;
+  startedAt: string;
+  stoppedAt?: string;
+  detail?: unknown;
+};
+
 export type BranchContextMessage = {
   role: "user" | "assistant";
   text: string;
@@ -101,17 +131,144 @@ export type BranchContextMessage = {
 
 export type MessageSnapshotStatus = "pending" | "thinking" | "tooling" | "streaming" | "done" | "cancelled" | "error";
 
+export type SessionStatus = "active" | "archived" | "trashed";
+
+export type SessionSummary = {
+  id: string;
+  title: string;
+  status: SessionStatus;
+  createdAt: string;
+  updatedAt: string;
+  lastOpenedAt?: string;
+  parentSessionId?: string;
+  branchFromMessageId?: string;
+  activeModel?: ModelId;
+  activeReasoning?: ReasoningEffort;
+  activeMode?: WidgetMode;
+  artifactCount?: number;
+};
+
+export type SessionMessage = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  status?: MessageSnapshotStatus;
+};
+
+export type SessionSnapshot = {
+  activeSessionId: string;
+  sessions: SessionSummary[];
+  trashedSessions: SessionSummary[];
+  messages: SessionMessage[];
+};
+
+export type ArtifactKind = "generated" | "modified" | "deleted" | "external";
+
+export type ArtifactFileVersionSummary = {
+  id: string;
+  label?: string;
+  operation?: "create" | "modify" | "delete";
+  sourcePath?: string;
+  size?: number;
+  createdAt: string;
+  hasBefore: boolean;
+  hasAfter: boolean;
+  hasDiff: boolean;
+};
+
+export type ArtifactFilePreview = {
+  kind: "text" | "image";
+  mime: string;
+  data: string;
+  truncated?: boolean;
+  size?: number;
+};
+
+export type ArtifactFileSummary = {
+  id: string;
+  artifactId: string;
+  logicalPath: string;
+  displayName: string;
+  fileKind: string;
+  mime: string;
+  currentVersionId?: string;
+  currentVersionLabel?: string;
+  operation?: "create" | "modify" | "delete";
+  sourcePath?: string;
+  size?: number;
+  createdAt: string;
+  versions?: ArtifactFileVersionSummary[];
+  preview?: ArtifactFilePreview;
+};
+
+export type ArtifactSummary = {
+  id: string;
+  sessionId?: string;
+  messageId?: string;
+  title: string;
+  kind: ArtifactKind;
+  status: "active" | "trashed";
+  createdAt: string;
+  updatedAt: string;
+  files: ArtifactFileSummary[];
+};
+
+export type ActivityLogEntry = {
+  id: string;
+  sessionId?: string;
+  level: "debug" | "info" | "warn" | "error";
+  category: string;
+  summary: string;
+  detail?: unknown;
+  createdAt: string;
+};
+
+export type ProviderSnapshotProvider = "dom" | "vision" | "terminal";
+
+export type ProviderSnapshotSummary = {
+  id: string;
+  sessionId?: string;
+  messageId?: string;
+  provider: ProviderSnapshotProvider;
+  title: string;
+  summary: string;
+  data?: unknown;
+  capturedAt: string;
+};
+
+export type LedgerSnapshot = {
+  sessionId: string;
+  artifacts: ArtifactSummary[];
+  activities: ActivityLogEntry[];
+  providerSnapshots: ProviderSnapshotSummary[];
+};
+
+export type ArtifactFileChangePhase = "before" | "after";
+
+export type ArtifactFileChangeEvent = {
+  type: "artifact.fileChange";
+  id: string;
+  changeId: string;
+  phase: ArtifactFileChangePhase;
+  title: string;
+  operation: "create" | "modify" | "delete";
+  paths: string[];
+  detail?: unknown;
+};
+
 export type ClientMessage =
   | {
       type: "ask";
       id: string;
       text: string;
       mode: WidgetMode;
+      sessionId?: string;
       model?: ModelId;
       reasoningEffort?: ReasoningEffort;
       branchContext?: BranchContextMessage[];
       regenerate?: {
         dropTurns: number;
+        replaceFromMessageId?: string;
       };
     }
   | {
@@ -123,6 +280,40 @@ export type ClientMessage =
     }
   | {
       type: "session.branch";
+      messages?: BranchContextMessage[];
+      sourceMessageId?: string;
+      title?: string;
+      model?: ModelId;
+      reasoningEffort?: ReasoningEffort;
+      mode?: WidgetMode;
+    }
+  | {
+      type: "session.create";
+      title?: string;
+      model?: ModelId;
+      reasoningEffort?: ReasoningEffort;
+      mode?: WidgetMode;
+    }
+  | {
+      type: "session.open";
+      sessionId: string;
+    }
+  | {
+      type: "session.trash";
+      sessionId: string;
+    }
+  | {
+      type: "session.restore";
+      sessionId: string;
+    }
+  | {
+      type: "ledger.refresh";
+      sessionId?: string;
+    }
+  | {
+      type: "artifact.open";
+      artifactFileId: string;
+      versionId?: string;
     }
   | {
       type: "interaction.respond";
@@ -134,6 +325,34 @@ export type ClientMessage =
       type: "provider.captureScreen";
       description?: string;
       crop?: ScreenCrop;
+    }
+  | {
+      type: "provider.vision.start";
+      id: string;
+      mode: VisionStreamMode;
+      sessionId?: string;
+      fps?: number;
+      frameIntervalMs?: number;
+      maxDurationMs?: number;
+      detail?: Record<string, unknown>;
+    }
+  | {
+      type: "provider.vision.stop";
+      id: string;
+      reason?: string;
+    }
+  | {
+      type: "provider.vision.recording.complete";
+      id: string;
+      mime: string;
+      dataUrl: string;
+      durationMs?: number;
+      size?: number;
+    }
+  | {
+      type: "provider.vision.error";
+      id: string;
+      message: string;
     }
   | {
       type: "terminal.input";
@@ -227,6 +446,15 @@ export type ServerEvent =
       type: "session.reset";
     }
   | {
+      type: "session.snapshot";
+      snapshot: SessionSnapshot;
+    }
+  | {
+      type: "ledger.snapshot";
+      snapshot: LedgerSnapshot;
+    }
+  | ArtifactFileChangeEvent
+  | {
       type: "provider.status";
       providers: ProviderStatus[];
     }
@@ -234,6 +462,12 @@ export type ServerEvent =
       type: "provider.capture";
       mode: "screen";
       state: "started" | "completed" | "error";
+      message: string;
+    }
+  | {
+      type: "provider.vision";
+      state: "started" | "stopped" | "completed" | "error";
+      stream: VisionStreamSummary;
       message: string;
     }
   | {

@@ -148,7 +148,7 @@ describe('vibe-interview cli', () => {
     assert.ok((coverage[setDomain.dimension.id]?.ratio ?? 0) > 0);
   });
 
-  it('--record can terminate on the last uncovered required dimension and returns seedForProductMd', async () => {
+  it('--record opens a consensus check before returning seedForProductMd', async () => {
     const root = await makeTempDir('interview-cli-done-');
     await scaffoldInterviewProject(root);
 
@@ -200,8 +200,53 @@ describe('vibe-interview cli', () => {
       }),
     ]);
 
-    const payload = JSON.parse(stdout) as { phase: string; seedForProductMd: string };
-    assert.equal(payload.phase, 'done');
-    assert.match(payload.seedForProductMd, /Phase 3 답변 기록 \(native interview\)/);
+    const consensusPayload = JSON.parse(stdout) as {
+      phase: string;
+      consensusPrompt: string;
+      summary: { userCorrections: string[] };
+      consensus: { status: string; summaryHash: string };
+    };
+    assert.equal(consensusPayload.phase, 'consensus');
+    assert.equal(consensusPayload.consensus.status, 'pending');
+    assert.match(consensusPayload.consensusPrompt, /product context/);
+    assert.match(consensusPayload.consensus.summaryHash, /^[a-f0-9]{16}$/);
+
+    const correction = '최종 대상은 임대인과 중개사가 아니라 임차인 셀프 체크 사용자입니다.';
+    const revisedPayload = JSON.parse(
+      (
+        await runCli(root, [
+          '--consensus',
+          '--decision',
+          'revise',
+          '--correction',
+          correction,
+        ])
+      ).stdout,
+    ) as {
+      phase: string;
+      summary: { userCorrections: string[] };
+      consensus: { corrections: Array<{ text: string }> };
+    };
+    assert.equal(revisedPayload.phase, 'consensus');
+    assert.deepEqual(revisedPayload.summary.userCorrections, [correction]);
+    assert.equal(revisedPayload.consensus.corrections[0]?.text, correction);
+
+    const donePayload = JSON.parse(
+      (
+        await runCli(root, [
+          '--consensus',
+          '--decision',
+          'approve',
+          '--rationale',
+          'human confirmed revised intent',
+        ])
+      ).stdout,
+    ) as { phase: string; seedForProductMd: string; summary: { consensus: { status: string } } };
+    assert.equal(donePayload.phase, 'done');
+    assert.equal(donePayload.summary.consensus.status, 'approved');
+    assert.match(donePayload.seedForProductMd, /Phase 3 답변 기록 \(native interview\)/);
+    assert.match(donePayload.seedForProductMd, /Phase 3 Consensus Check/);
+    assert.match(donePayload.seedForProductMd, /status: approved/);
+    assert.match(donePayload.seedForProductMd, new RegExp(correction));
   });
 });
