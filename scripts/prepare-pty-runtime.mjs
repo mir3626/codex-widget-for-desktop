@@ -14,7 +14,7 @@ assertDirectory(packageDir, "node-pty package");
 rmSync(outdir, { recursive: true, force: true });
 mkdirSync(join(outdir, "node_modules"), { recursive: true });
 
-copyNodePtyRuntime(packageDir, join(outdir, "node_modules", "node-pty"));
+const nodePtyRuntime = copyNodePtyRuntime(packageDir, join(outdir, "node_modules", "node-pty"));
 if (existsSync(addonApiDir)) {
   copyPackageMetadata(addonApiDir, join(outdir, "node_modules", "node-addon-api"));
 }
@@ -22,16 +22,21 @@ if (existsSync(addonApiDir)) {
 const packageJson = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8"));
 const manifest = {
   engine: "node-pty",
-  available: true,
+  available: nodePtyRuntime.available,
   package: "node-pty",
   version: packageJson.version,
   platform: process.platform,
   arch: process.arch,
   modules: ["node-pty", existsSync(addonApiDir) ? "node-addon-api" : null].filter(Boolean),
+  reason: nodePtyRuntime.reason,
   preparedAt: new Date().toISOString()
 };
 writeFileSync(join(outdir, "pty-runtime.json"), JSON.stringify(manifest, null, 2));
-console.log(`pty runtime prepared at ${outdir} (${manifest.package}@${manifest.version})`);
+if (manifest.available) {
+  console.log(`pty runtime prepared at ${outdir} (${manifest.package}@${manifest.version})`);
+} else {
+  console.log(`pty runtime unavailable at ${outdir}: ${manifest.reason}`);
+}
 
 function copyPackageMetadata(source, target) {
   mkdirSync(target, { recursive: true });
@@ -48,8 +53,15 @@ function copyNodePtyRuntime(source, target) {
 
   const platformArch = `${process.platform}-${process.arch}`;
   const prebuildSource = join(source, "prebuilds", platformArch);
-  assertDirectory(prebuildSource, `node-pty prebuild ${platformArch}`);
+  if (!existsSync(prebuildSource) || !statSync(prebuildSource).isDirectory()) {
+    const reason = `node-pty prebuild ${platformArch} is not bundled by the installed package`;
+    if (process.platform === "win32" || process.env.CODEX_WIDGET_PTY_RUNTIME_STRICT === "1") {
+      throw new Error(`${reason}: ${prebuildSource}`);
+    }
+    return { available: false, reason };
+  }
   copyFiltered(prebuildSource, join(target, "prebuilds", platformArch), (path) => !path.toLowerCase().endsWith(".pdb"));
+  return { available: true };
 }
 
 function copyFiltered(source, target, include = () => true) {

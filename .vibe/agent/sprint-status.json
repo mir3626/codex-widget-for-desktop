@@ -34,7 +34,7 @@
   ],
   "handoff": {
     "currentSprintId": "iter-7-sprint-01-trash-activity-mascot-polish",
-    "lastActionSummary": "Synced vibe-doctor harness to v1.7.7, manually merged orchestration/provider conflicts to preserve this project's Codex role contract, and fixed GitHub CI entrypoints.",
+    "lastActionSummary": "Synced vibe-doctor harness to v1.7.7, manually merged orchestration/provider conflicts, fixed GitHub CI entrypoints, and made PTY runtime preparation pass on Ubuntu CI while preserving Windows strictness.",
     "openIssues": [
       "Codex app-server protocol remains experimental; stale persisted thread ids fall back safely, but live cross-process resume behavior needs dogfooding validation.",
       "Browser store account submission is deferred until after dogfooding.",
@@ -48,12 +48,12 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-06T15:25:39.389Z"
+    "updatedAt": "2026-05-06T15:31:30.893Z"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-06T15:25:39.389Z",
-  "verifiedAt": "2026-05-06T15:25:39.389Z"
+  "stateUpdatedAt": "2026-05-06T15:31:30.893Z",
+  "verifiedAt": "2026-05-06T15:31:30.893Z"
 }
