@@ -23,4 +23,4 @@ Result:
 - Thresholds: max working set 1,024 MB, max growth 256 MB
 - Log stderr: empty
 
-`npm run release:readiness` now passes the `multi-hour-soak` gate with `dist/reports/release-soak-latest.json` copied from this report. The only remaining release readiness manual blocker is browser store account submission.
+`npm run release:readiness` passes the `multi-hour-soak` gate with `dist/reports/release-soak-latest.json` copied from this report. Browser store account submission was later deferred until after dogfooding and is tracked in `docs/release/deferred-gates.json`.

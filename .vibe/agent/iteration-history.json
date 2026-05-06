@@ -27,7 +27,7 @@
       "id": "iter-2",
       "label": "Resident Runtime Expansion",
       "startedAt": "2026-05-05T12:42:04.335+09:00",
-      "completedAt": null,
+      "completedAt": "2026-05-06T08:56:59.660+09:00",
       "goal": "Expand the widget beyond one-off UI patches into a durable resident desktop Codex assistant with stable app-server protocol, interaction UI, persistent conversation state, provider contracts, and desktop operations hardening.",
       "plannedSprints": [
         "iter-2-sprint-01-runtime-protocol",
@@ -36,12 +36,13 @@
       ],
       "completedSprints": [
         "iter-2-sprint-01-runtime-protocol",
-        "iter-2-sprint-02-tool-provider-shell"
+        "iter-2-sprint-02-tool-provider-shell",
+        "iter-2-sprint-03-resident-desktop-ops"
       ],
       "carryover": "Iter-1 delivered the Tauri shell, Codex auth, streaming conversation UX, and app-server default runtime. Open carryover: app-server approvals/user input, real DOM/Vision/PTY providers, report/milestone files, and resident desktop ops.",
       "openRisks": [
         "Codex app-server protocol is experimental; keep exec fallback available.",
-        "Final browser store account submission requires an external Chrome Web Store or Microsoft Edge Add-ons dashboard action before live readiness can be marked complete."
+        "Browser store account submission is deferred until after dogfooding."
       ],
       "milestoneProgress": {
         "resident-widget-mvp": 0.86,
@@ -49,7 +50,7 @@
         "real-tool-providers": 0.98,
         "resident-desktop-readiness": 0.96
       },
-      "summary": "Iteration 2 has added runtime protocol durability, app-server interaction UI, app-server start/error diagnostics, fake app-server protocol smoke coverage for thread reuse/approval/rollback, optional live app-server smoke coverage for real CLI protocol drift, visible chat persistence, app-server-backed regenerate rollback, branch-safe session reset with one-shot branch context, reconnect response snapshot replay, renderer chat layout hardening with a Playwright smoke, provider status events, runtime health status, DOM snapshot ingress, an unpacked and zip-packaged browser DOM extension with local-only Options URL configuration plus an optional Chrome/Edge native messaging host and store-readiness metadata, Screen/Vision snapshot ingress, direct app-server Vision image input, a daemon-triggered Windows screen capture helper with Settings/env/visual-drag configured crop, optional OCR command support, OCR-only PNG preprocessing, image hash/change/diff metadata with configurable thresholding, bundled OCR runtime packaging, standard Windows Tesseract discovery/search roots, tessdata language acquisition, and bundled tessdata language defaults, explicit one-shot terminal execution, a persistent node-pty/ConPTY-backed /pty command/raw-input session, raw-input output drain, a renderer PTY viewport with terminal output accumulation, quick actions, and direct input controls, start-at-login settings, tray-oriented hide behavior, packaged-app daemon restart supervision with capped backoff, daemon parent-watchdog cleanup, renderer-visible native daemon diagnostics, bundled daemon JS, Node runtime, and PTY runtime resources for installed builds, installed `_up_` resource resolution, release exe launch smoke, NSIS install/uninstall plus daemon/app crash cleanup smoke, MSI install/launch/uninstall smoke, one-command release verification, release readiness audit, release exe longer soak with JSON evidence reports, serial smoke readiness gates, resident resource/soak smokes, a passed two-hour release soak, verified release installer builds, and a source-controlled browser store submission runbook. Final browser store account submission is the only known live-readiness blocker."
+      "summary": "Iteration 2 has added runtime protocol durability, app-server interaction UI, app-server start/error diagnostics, fake app-server protocol smoke coverage for thread reuse/approval/rollback, optional live app-server smoke coverage for real CLI protocol drift, visible chat persistence, app-server-backed regenerate rollback, branch-safe session reset with one-shot branch context, reconnect response snapshot replay, renderer chat layout hardening with a Playwright smoke, provider status events, runtime health status, DOM snapshot ingress, an unpacked and zip-packaged browser DOM extension with local-only Options URL configuration plus an optional Chrome/Edge native messaging host and store-readiness metadata, Screen/Vision snapshot ingress, direct app-server Vision image input, a daemon-triggered Windows screen capture helper with Settings/env/visual-drag configured crop, optional OCR command support, OCR-only PNG preprocessing, image hash/change/diff metadata with configurable thresholding, bundled OCR runtime packaging, standard Windows Tesseract discovery/search roots, tessdata language acquisition, and bundled tessdata language defaults, explicit one-shot terminal execution, a persistent node-pty/ConPTY-backed /pty command/raw-input session, raw-input output drain, a renderer PTY viewport with terminal output accumulation, quick actions, and direct input controls, start-at-login settings, tray-oriented hide behavior, packaged-app daemon restart supervision with capped backoff, daemon parent-watchdog cleanup, renderer-visible native daemon diagnostics, bundled daemon JS, Node runtime, and PTY runtime resources for installed builds, installed `_up_` resource resolution, release exe launch smoke, NSIS install/uninstall plus daemon/app crash cleanup smoke, MSI install/launch/uninstall smoke, one-command release verification, release readiness audit, release exe longer soak with JSON evidence reports, serial smoke readiness gates, resident resource/soak smokes, a passed two-hour release soak, verified release installer builds, and a source-controlled browser store submission runbook. The active development goal is complete for dogfooding; browser store account submission is deferred until after dogfooding."
     }
   ]
 }

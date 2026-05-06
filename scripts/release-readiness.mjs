@@ -19,9 +19,13 @@ const outputPath = resolve(
 const browserStoreSubmissionReportPath = resolve(
   process.env.CODEX_WIDGET_BROWSER_STORE_SUBMISSION_REPORT?.trim() || join(root, "dist", "reports", "browser-store-submission-confirmation.json")
 );
+const deferredGatesPath = resolve(
+  process.env.CODEX_WIDGET_RELEASE_DEFERRED_GATES?.trim() || join(root, "docs", "release", "deferred-gates.json")
+);
 
 const checks = [];
 const blockers = [];
+const deferredGates = readDeferredGates(deferredGatesPath);
 
 runCheck("browser-store-readiness", process.execPath, ["scripts/smoke-browser-store-readiness.mjs"]);
 runCheck("browser-store-submission-packet", process.execPath, ["scripts/prepare-browser-store-submission.mjs"]);
@@ -69,15 +73,17 @@ manualGate(
 
 const automatedFailed = checks.some((check) => check.status === "fail");
 const manualBlocked = blockers.length > 0;
+const deferred = checks.some((check) => check.status === "deferred");
 const summary = {
   generatedAt: new Date().toISOString(),
   version,
   strictManualGates,
   minSoakMs,
   multiHourSoakMs,
+  deferredGatesPath,
   checks,
   blockers,
-  status: automatedFailed ? "fail" : manualBlocked ? "manual-blocked" : "pass"
+  status: automatedFailed ? "fail" : manualBlocked ? "manual-blocked" : deferred ? "deferred" : "pass"
 };
 
 mkdirSync(dirname(outputPath), { recursive: true });
@@ -205,8 +211,78 @@ function manualGate(id, passed, reason) {
     return;
   }
 
+  const deferral = deferredGates.get(id);
+  if (deferral) {
+    const detail = [
+      `deferred: ${deferral.reason || reason}`,
+      deferral.resumeRunbook ? `resumeRunbook=${deferral.resumeRunbook}` : "",
+      deferral.deferredAt ? `deferredAt=${deferral.deferredAt}` : ""
+    ].filter(Boolean).join("; ");
+
+    checks.push({ id, status: strictManualGates ? "fail" : "deferred", detail });
+    if (strictManualGates) {
+      blockers.push({ id, reason: `Deferred gate still required in strict mode. ${detail}` });
+    }
+    return;
+  }
+
   blockers.push({ id, reason });
   checks.push({ id, status: strictManualGates ? "fail" : "manual", detail: reason });
+}
+
+function readDeferredGates(path) {
+  if (!existsSync(path)) {
+    return new Map();
+  }
+
+  const failures = [];
+  try {
+    const document = JSON.parse(readFileSync(path, "utf8"));
+    const gates = document?.gates && typeof document.gates === "object" ? document.gates : {};
+    const entries = new Map();
+
+    for (const [id, gate] of Object.entries(gates)) {
+      if (gate?.status !== "deferred") {
+        continue;
+      }
+      if (typeof gate.reason !== "string" || !gate.reason.trim()) {
+        failures.push(`${id}: reason is required`);
+        continue;
+      }
+      if (gate.deferredAt && Number.isNaN(Date.parse(gate.deferredAt))) {
+        failures.push(`${id}: deferredAt must be a valid timestamp`);
+        continue;
+      }
+      entries.set(id, {
+        reason: gate.reason.trim(),
+        deferredAt: String(gate.deferredAt ?? "").trim(),
+        resumeRunbook: String(gate.resumeRunbook ?? "").trim()
+      });
+    }
+
+    if (failures.length > 0) {
+      checks.push({
+        id: "deferred-gates",
+        status: "fail",
+        detail: failures.join("; ")
+      });
+      return new Map();
+    }
+
+    checks.push({
+      id: "deferred-gates",
+      status: "pass",
+      detail: `${path} gates=${entries.size}`
+    });
+    return entries;
+  } catch (error) {
+    checks.push({
+      id: "deferred-gates",
+      status: "fail",
+      detail: error instanceof Error ? error.message : "invalid JSON"
+    });
+    return new Map();
+  }
 }
 
 function readBrowserStoreSubmissionConfirmation(path) {

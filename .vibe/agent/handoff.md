@@ -6,10 +6,10 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 
 ## Current Readiness Snapshot
 
-- 2026-05-06T07:22:23.060+09:00 strict `node scripts/release-readiness.mjs --require-manual-gates` re-check passed all automated release, resource, store-packet, and two-hour soak gates.
-- The active `/vibe-iterate` objective is still not complete because strict readiness fails only on `browser-store-submission`: actual Chrome Web Store or Microsoft Edge Add-ons dashboard submission has not been confirmed.
+- 2026-05-06T07:22:23.060+09:00 strict `node scripts/release-readiness.mjs --require-manual-gates` re-check passed all automated release, resource, store-packet, and two-hour soak gates except the external browser-store submission gate.
+- 2026-05-06T08:56:59.660+09:00 product owner deferred actual Chrome Web Store / Microsoft Edge Add-ons dashboard submission until after dogfooding; the active `/vibe-iterate` development objective is complete with that release-channel task deferred.
 - Current dev widget run is live after clearing port `5173`: Vite is listening on `127.0.0.1:5173`, daemon/app-server on `127.0.0.1:4128`, and startup logs are under `dist/logs/widget-dev-20260506-071947.*.log`.
-- Browser store submission runbook is source-controlled at `docs/release/browser-store-submission.md`; use it to clear the final manual gate and then rerun strict readiness.
+- Browser store submission runbook is source-controlled at `docs/release/browser-store-submission.md`; deferral is recorded in `docs/release/deferred-gates.json`. Use the runbook after dogfooding to clear the deferred public-release gate and then rerun strict readiness.
 
 ## Branch And Harness
 
@@ -132,10 +132,11 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Added `npm run release:confirm-browser-store`:
   - After actual Chrome Web Store or Edge Add-ons dashboard submission, it writes `dist/reports/browser-store-submission-confirmation.json` with store name, submitted timestamp, submission id or listing URL, package name, and package SHA-256.
   - `release:readiness --require-manual-gates` validates that confirmation report, so the final manual gate has concrete evidence instead of only an env flag.
+- Added `docs/release/deferred-gates.json` and release-readiness deferred-gate reporting so default readiness can represent product-owner deferrals without conflating them with missing automated checks.
 
 ## Next Recommended Sprint
 
-`iter-2-sprint-04-provider-packaging`: continue packaging the snapshot providers into user-facing helpers, next with final browser store account submission and native packaging polish.
+Post-dogfooding release-channel follow-up: submit the DOM extension packet to Chrome Web Store or Microsoft Edge Add-ons using `docs/release/browser-store-submission.md`, then record confirmation with `npm run release:confirm-browser-store`.
 
 ## Open Issues
 
@@ -143,11 +144,11 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - App-server approval and tool-user-input requests now have renderer UI, but the exact Codex app-server protocol is still experimental and may require adapter changes as CLI releases evolve.
 - External OAuth provider/backend agent proxy support remains optional for non-Codex auth modes; this repo primarily implements the desktop widget/daemon client boundary.
 - OAuth refresh tokens are not persisted; users may need to sign in again when an access token expires.
-- Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge, local-only Options URL configuration, optional native messaging host, generated zip package, store-readiness metadata, and generated submission packet; final browser store account submission remains manual.
+- Browser DOM provider is snapshot-based and has an unpacked Chrome/Edge extension bridge, local-only Options URL configuration, optional native messaging host, generated zip package, store-readiness metadata, and generated submission packet; final browser store account submission is deferred until after dogfooding.
 - Screen capture/vision provider is snapshot-based and has a daemon-triggered Windows capture helper, Settings/env/visual-drag configured crop, optional OCR command hook, bundled OCR runtime packaging, standard Windows Tesseract discovery, bundled tessdata language acquisition/defaults, OCR-only PNG preprocessing, image hash/change/diff metadata with configurable thresholding, and direct app-server image input.
 - Terminal/PTY provider now has a node-pty/ConPTY command/raw-input backend, short raw-input output drain, direct `terminal.input` text/key/mouse input, idle PTY output broadcast, and a renderer PTY viewport with direct input controls.
-- Final browser store account submission remains open for live-service readiness. The two-hour release soak passed on 2026-05-05 with evidence in `docs/reports/release-soak-2026-05-05-2h.md`.
-- The live readiness completion audit is recorded in `docs/reports/live-readiness-audit-2026-05-06.md`; it maps the objective to concrete artifacts and confirms browser store account submission as the only remaining manual blocker.
+- Browser store account submission is deferred until after dogfooding. The two-hour release soak passed on 2026-05-05 with evidence in `docs/reports/release-soak-2026-05-05-2h.md`.
+- The live readiness completion audit is recorded in `docs/reports/live-readiness-audit-2026-05-06.md`; it maps the objective to concrete artifacts and records the browser store submission deferral decision.
 
 ## Verification
 
@@ -769,7 +770,8 @@ Completed after release readiness audit pass:
 - `node --check scripts/release-readiness.mjs`
 - `npm run release:readiness`
 - `node scripts/release-readiness.mjs --require-manual-gates` was run intentionally and failed as expected at that time because browser store submission and a true multi-hour soak had not been confirmed.
-- Default readiness audit initially reported manual blockers for browser store submission and multi-hour soak. The 2026-05-05 two-hour soak later cleared the multi-hour blocker; browser store account submission remains manual.
+- Default readiness audit initially reported manual blockers for browser store submission and multi-hour soak. The 2026-05-05 two-hour soak later cleared the multi-hour blocker, and the 2026-05-06 product-owner decision deferred browser store submission until after dogfooding.
+- After the 2026-05-06 product-owner deferral, default `npm run release:readiness` reports `status: deferred` for browser store submission via `docs/release/deferred-gates.json`; strict manual-gate mode still fails until actual store submission is confirmed.
 
 Completed after OCR preprocessing pass:
 

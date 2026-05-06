@@ -2,6 +2,8 @@
 
 This runbook clears the final manual release-readiness gate for the DOM snapshot browser extension.
 
+Current status: deferred until after dogfooding. The deferral is recorded in `docs/release/deferred-gates.json`.
+
 ## Scope
 
 - Store targets: Chrome Web Store or Microsoft Edge Add-ons.
@@ -25,7 +27,7 @@ Expected result:
 
 - `release:browser-store-packet` regenerates the submission packet.
 - `smoke:browser-store` passes metadata, privacy, permission-rationale, package, and packet checks.
-- `release:readiness` reports no automated blocker. It may still report `browser-store-submission` as a manual blocker.
+- `release:readiness` reports no automated blocker. While the gate is deferred, it reports `browser-store-submission` as `deferred`.
 
 ## Dashboard Submission
 
@@ -68,6 +70,8 @@ node scripts/release-readiness.mjs --require-manual-gates
 ```
 
 The active `/vibe-iterate` live-service objective can be marked complete only when strict readiness reports `status: pass`.
+
+If the store submission is intentionally deferred, keep the deferral in `docs/release/deferred-gates.json`. Default `npm run release:readiness` will report `status: deferred`, while `node scripts/release-readiness.mjs --require-manual-gates` will continue to fail until the store submission is actually confirmed.
 
 ## Failure Handling
 

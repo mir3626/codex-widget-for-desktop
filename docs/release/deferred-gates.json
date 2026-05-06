@@ -1,0 +1,13 @@
+{
+  "$schema": "./deferred-gates.schema.json",
+  "updatedAt": "2026-05-06T08:56:59.660+09:00",
+  "gates": {
+    "browser-store-submission": {
+      "status": "deferred",
+      "deferredAt": "2026-05-06T08:56:59.660+09:00",
+      "deferredBy": "product-owner",
+      "reason": "Dogfood the desktop widget before completing Chrome Web Store or Microsoft Edge Add-ons dashboard submission.",
+      "resumeRunbook": "docs/release/browser-store-submission.md"
+    }
+  }
+}
