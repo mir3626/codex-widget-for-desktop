@@ -1,0 +1,111 @@
+{
+  "$ref": "#/definitions/SidecarInput",
+  "definitions": {
+    "SidecarInput": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "sidecar": {
+          "type": "string",
+          "enum": [
+            "diff-reviewer"
+          ]
+        },
+        "sprintId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gitSha": {
+          "type": "string",
+          "minLength": 1
+        },
+        "inputHash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "promptSummary": {
+          "type": "string",
+          "maxLength": 12000
+        },
+        "diff": {
+          "type": "string"
+        },
+        "changedFiles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "maxItems": 300
+        },
+        "checklist": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "maxItems": 50
+        },
+        "relevantLogs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "maxItems": 20
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "maxItems": 50
+        },
+        "coverage": {
+          "type": "object",
+          "properties": {
+            "inputFilesSeen": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "diffBytesSeen": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "truncated": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "inputFilesSeen",
+            "diffBytesSeen",
+            "truncated"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "sidecar",
+        "sprintId",
+        "gitSha",
+        "inputHash",
+        "diff",
+        "changedFiles",
+        "checklist",
+        "relevantLogs",
+        "evidenceRefs",
+        "coverage"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

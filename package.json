@@ -79,6 +79,7 @@
     "vibe:report": "npx tsx .vibe/harness/src/commands/write-report.ts",
     "vibe:config-audit": "npx tsx .vibe/harness/src/commands/audit-config.ts",
     "vibe:run-agent": "npx tsx .vibe/harness/src/commands/run-agent.ts",
+    "vibe:sidecar-run": "node .vibe/harness/scripts/vibe-sidecar-run.mjs",
     "vibe:sync": "npx tsx .vibe/harness/src/commands/sync.ts",
     "vibe:gen-schemas": "node .vibe/harness/scripts/vibe-gen-schemas.mjs",
     "vibe:audit-lightweight": "node .vibe/harness/scripts/vibe-audit-lightweight.mjs",

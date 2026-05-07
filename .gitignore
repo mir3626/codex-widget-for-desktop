@@ -37,3 +37,6 @@ scripts/tmp-*.ts
 scripts/tmp-*.mjs
 # dashboard runtime artifacts (M14-B)
 # run-codex.sh unavailable signal (runtime artifact, auto-cleared on next success)
+
+# sidecar advisory artifacts (non-durable runtime output)
+.vibe/sidecars/

@@ -5,6 +5,8 @@
     "harness": [
       ".vibe/harness/src/**",
       ".vibe/harness/scripts/**",
+      ".vibe/harness/sidecars/**",
+      ".vibe/harness/schemas/**",
       ".vibe/harness/test/**",
       ".vibe/harness/migrations/**",
       ".vibe/harness/playwright.config.ts",
@@ -32,6 +34,7 @@
       ".codex/skills/**",
       "docs/context/codex-execution.md",
       "docs/context/orchestration.md",
+      "docs/context/sidecars.md",
       "docs/context/harness-gaps.md",
       "docs/orchestration/providers.md",
       "docs/release/**"

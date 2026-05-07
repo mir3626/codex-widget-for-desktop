@@ -1,0 +1,203 @@
+{
+  "$ref": "#/definitions/SidecarArtifact",
+  "definitions": {
+    "SidecarArtifact": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "sidecar": {
+          "type": "string",
+          "enum": [
+            "diff-reviewer"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "advisory",
+            "fail",
+            "error",
+            "unavailable"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ]
+              },
+              "confidence": {
+                "type": "string",
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ]
+              },
+              "file": {
+                "type": "string",
+                "minLength": 1
+              },
+              "line": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1200
+              },
+              "recommendation": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1200
+              }
+            },
+            "required": [
+              "severity",
+              "confidence",
+              "file",
+              "message",
+              "recommendation"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 20
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "maxItems": 10
+        },
+        "coverage": {
+          "type": "object",
+          "properties": {
+            "inputFilesSeen": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "diffBytesSeen": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "truncated": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "inputFilesSeen",
+            "diffBytesSeen",
+            "truncated"
+          ],
+          "additionalProperties": false
+        },
+        "provider": {
+          "type": "string",
+          "enum": [
+            "claude",
+            "codex",
+            "mock"
+          ]
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effort": {
+          "type": "string",
+          "enum": [
+            "high",
+            "xhigh"
+          ]
+        },
+        "sprintId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gitSha": {
+          "type": "string",
+          "minLength": 1
+        },
+        "inputHash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "exitCode": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stderrPreview": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "rawPreview": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "error": {
+          "type": "string",
+          "maxLength": 1000
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "sidecar",
+        "status",
+        "summary",
+        "findings",
+        "limitations",
+        "coverage",
+        "provider",
+        "model",
+        "effort",
+        "sprintId",
+        "gitSha",
+        "inputHash",
+        "createdAt",
+        "expiresAt",
+        "durationMs",
+        "exitCode"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

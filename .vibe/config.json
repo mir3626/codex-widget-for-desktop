@@ -1,10 +1,10 @@
 {
-  "harnessVersion": "1.7.8",
-  "harnessVersionInstalled": "1.7.8",
+  "harnessVersion": "1.7.9",
+  "harnessVersionInstalled": "1.7.9",
   "upstream": {
     "type": "git",
     "url": "https://github.com/mir3626/vibe-doctor",
-    "ref": "^v1.7.8"
+    "ref": "^v1.7.9"
   },
   "orchestrator": "codex",
   "sprintRoles": {

@@ -157,6 +157,7 @@ Orchestrator 단독 작성. 각 entry 필드:
 - 샌드박스 밖에서 `cmd //c "npm run typecheck && npm run test && npm run build"` 등 재검증
 - Generator report의 "Sandbox-only failures" 섹션은 sandbox 탓인지 실제 실패인지 교차 확인
 - 체크리스트 항목 × Generator 산출 × 재검증 결과를 매핑
+- 필요 시 `diff-reviewer` sidecar를 명시적으로 실행해 변경 diff의 회귀/누락 테스트/계약 위험을 advisory artifact로 받는다. Sidecar는 durable state를 쓰지 않으며, Orchestrator가 수용한 finding만 handoff/session-log에 인용할 수 있다. 상세 계약은 `docs/context/sidecars.md`.
 
 ### 5.5 Sprint 완료 단일 커밋 원칙 (v1.1.1+)
 

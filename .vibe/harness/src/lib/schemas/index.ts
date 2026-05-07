@@ -4,6 +4,7 @@ import { ProjectMapSchema } from './project-map.js';
 import { SprintApiContractsSchema } from './sprint-api-contracts.js';
 import { IterationHistorySchema } from './iteration-history.js';
 import { ModelRegistrySchema } from './model-registry.js';
+import { SidecarArtifactSchema, SidecarInputPacketSchema } from './sidecar.js';
 
 export const STATE_FILE_SCHEMAS = {
   'sprint-status.json': SprintStatusSchema,
@@ -11,6 +12,11 @@ export const STATE_FILE_SCHEMAS = {
   'sprint-api-contracts.json': SprintApiContractsSchema,
   'iteration-history.json': IterationHistorySchema,
   'model-registry.json': ModelRegistrySchema,
+} as const;
+
+export const GENERATED_ARTIFACT_SCHEMAS = {
+  'sidecar-input.json': SidecarInputPacketSchema,
+  'sidecar-artifact.json': SidecarArtifactSchema,
 } as const;
 
 export type StateFileName = keyof typeof STATE_FILE_SCHEMAS;
@@ -70,3 +76,22 @@ export { ProjectMapSchema, ProjectMapModuleSchema, ActivePlatformRuleSchema } fr
 export { SprintApiContractsSchema, SprintApiContractSchema } from './sprint-api-contracts.js';
 export { IterationHistorySchema, IterationEntrySchema } from './iteration-history.js';
 export { ModelRegistrySchema, ModelEntrySchema, ProviderRegistryEntrySchema } from './model-registry.js';
+export {
+  SidecarArtifactSchema,
+  SidecarCoverageSchema,
+  SidecarEffortSchema,
+  SidecarFindingSchema,
+  SidecarInputPacketSchema,
+  SidecarNameSchema,
+  SidecarProviderSchema,
+  SidecarReviewerOutputSchema,
+  SidecarReviewerStatusSchema,
+  SidecarSeveritySchema,
+  SidecarStatusSchema,
+  type SidecarArtifact,
+  type SidecarEffort,
+  type SidecarInputPacket,
+  type SidecarName,
+  type SidecarProvider,
+  type SidecarReviewerOutput,
+} from './sidecar.js';

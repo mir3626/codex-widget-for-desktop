@@ -46,14 +46,15 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - 2026-05-08T02:25:00.000+09:00 Iteration `iter-10` upgraded Browser Action from iter-9 MVP to production adapter/evaluate scope: adapter registry/status diagnostics, direct adapter execution, stale reobserve/retry, Playwright controlled-browser adapter, CDP remote-debugging adapter, Windows native desktop diagnostics boundary, explicit full_control_dev evaluate approval/credential safeguards, and real semantic dogfood evidence at `docs/reports/browser-action-dogfood-evidence-2026-05-08.md`.
 - 2026-05-08T02:25:00.000+09:00 Browser Action production verification passed `npm run lint`, `npm run build:web`, `npm run smoke`, Browser Action core/Playwright/CDP/evaluate/native smokes, extension/native-host/DOM/app-server smokes, `npm run dogfood:browser-action`, `cargo check --manifest-path src-tauri/Cargo.toml`, UTF-8/mojibake checks, `git diff --check`, and `npm run vibe:checkpoint`.
 - 2026-05-08T02:42:00.000+09:00 Added `docs/plans/browser-action-end-to-end-control-handoff.md` as the next Browser Action handoff. It scopes prompt-driven Agent tool integration, renderer UX, extension stability, managed browser/CDP operation, multi-step plans, browser-specific permission policy, Windows UI Automation fallback, and real dogfood matrix.
+- 2026-05-08T02:54:17.473+09:00 `/vibe-sync` advanced the harness to vibe-doctor `v1.7.9` and dogfooded the new manual `diff-reviewer` sidecar. Vanilla v1.7.9 failed Codex provider execution on Windows (`spawnSync codex ENOENT`), then downstream dogfood accepted hardening for Codex shim resolution, sealed-packet hash/coverage/status validation, `--cwd` path handling, artifact-root bounds, and secret-safe diff collection. Latest sidecar artifact `dogfood-sidecar-v179-codex-final6` is `advisory` with only a stale-reference note that was corrected after the run; report: `docs/reports/review-0-2026-05-08-v1.7.9-sidecar-dogfood.md`.
 - Current dev widget run is live after clearing port `5173`: Vite is listening on `127.0.0.1:5173`, daemon/app-server on `127.0.0.1:4128`, and startup logs are under `dist/logs/widget-dev-20260506-071947.*.log`.
 - Browser store submission runbook is source-controlled at `docs/release/browser-store-submission.md`; deferral is recorded in `docs/release/deferred-gates.json`. Use the runbook after dogfooding to clear the deferred public-release gate and then rerun strict readiness.
 
 ## Branch And Harness
 
 - Branch: `main`
-- Harness: vibe-doctor `v1.7.8`
-- Upstream ref: `^v1.7.8`
+- Harness: vibe-doctor `v1.7.9`
+- Upstream ref: `^v1.7.9`
 - Orchestrator: `codex`
 - Sprint roles: planner `codex`, generator `codex`, evaluator `codex`
 - Sprint mode: `extended` enabled in `.claude/settings.local.json`
@@ -89,7 +90,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Completed Iteration 8 focus: the Vision Context Interface now sits behind Agent screen sharing. The daemon can start/event/stop/cancel Vision Context sessions, collect timeline/provider observations, build TaskCapsules, render capsule markdown, convert to app-server `UserInput[]` with selected `localImage` evidence, delete raw video/audio temp files after processing, and send the result into the current Codex app-server thread. The transcription MVP includes mock ASR, sidecar boundary, lexicon correction, action-slot confidence, and clarification policy.
 - Vision Context semantic acceptance state: first dogfood evidence exists at `docs/reports/vision-context-dogfood-evidence-2026-05-07.md`; do not mark semantic acceptance complete until stronger live UI/live-model before-after evidence is collected or the product owner explicitly accepts this deterministic protocol artifact as sufficient.
 - Completed Iteration 9 focus: Browser Action now owns a typed, auditable browser actuator interface. The daemon can start/observe/execute/cancel Browser Action sessions, normalize active-tab DOM snapshots into structured observations with stable element ids, resolve exact/role-text/focused/bbox/ambiguous/low-confidence targets, enforce allow/confirm/block/clarify safety policy, queue typed commands for the extension, accept extension before/after results, verify outcomes, and record Activity audit rows without persisting sensitive page state.
-- Browser Action deferred state: CDP, Playwright, native desktop adapters, restricted-page coverage, and arbitrary JavaScript/evaluate are future expansions. Arbitrary JS remains reserved for explicit `full_control_dev` with code preview, approval, audit, and credential safeguards.
+- Browser Action deferred state: CDP, Playwright, and `full_control_dev` evaluate are implemented for the production interface scope. The remaining future boundary is executable Windows UI Automation/browser-chrome control through a scoped helper and broader end-to-end Agent tool UX from `docs/plans/browser-action-end-to-end-control-handoff.md`.
 
 ## Recent Work
 
