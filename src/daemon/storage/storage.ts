@@ -27,6 +27,7 @@ import type {
   VisionStreamSummary,
   WidgetMode
 } from "../../shared/protocol.js";
+import type { BrowserActionPolicy } from "../browser-action/types.js";
 
 export type StorageHealth = {
   state: "ready";
@@ -51,6 +52,9 @@ export type StorageService = {
   readExecutionPermissions: () => ExecutionPermissionSummary[];
   readExecutionPermissionDecision: (action: string) => ExecutionPermissionDecision;
   setExecutionPermission: (input: { action: string; decision: ExecutionPermissionDecision }) => ExecutionPermissionSummary[];
+  readBrowserActionPolicies: () => BrowserActionPolicy[];
+  setBrowserActionPolicy: (policy: BrowserActionPolicy) => BrowserActionPolicy[];
+  revokeBrowserActionPolicy: (policyId: string) => BrowserActionPolicy[];
   ensureSessionSnapshot: (defaults?: SessionDefaults) => SessionSnapshot;
   createSession: (input?: SessionDefaults) => SessionSnapshot;
   openSession: (sessionId: string) => SessionSnapshot;
@@ -215,6 +219,7 @@ export type ProviderSnapshotInput = {
 const SECRET_SETTING_PATTERN = /(?:access[_-]?token|refresh[_-]?token|api[_-]?key|secret|password|credential)/i;
 const ACTIVE_SESSION_SETTING_KEY = "session.active";
 const EXECUTION_PERMISSIONS_SETTING_KEY = "execution.permissions.v1";
+const BROWSER_ACTION_POLICIES_SETTING_KEY = "browser-action.policies.v1";
 const MAX_ARTIFACT_TEXT_PREVIEW_BYTES = 24 * 1024;
 const MAX_ARTIFACT_IMAGE_PREVIEW_BYTES = 512 * 1024;
 const DatabaseSync = loadDatabaseSync();
@@ -239,6 +244,9 @@ export function createStorageService(options: StorageServiceOptions = {}): Stora
     readExecutionPermissions: () => readExecutionPermissions(database),
     readExecutionPermissionDecision: (action) => readExecutionPermissionDecision(database, action),
     setExecutionPermission: (input) => setExecutionPermission(database, input),
+    readBrowserActionPolicies: () => readBrowserActionPolicies(database),
+    setBrowserActionPolicy: (policy) => setBrowserActionPolicy(database, policy),
+    revokeBrowserActionPolicy: (policyId) => revokeBrowserActionPolicy(database, policyId),
     ensureSessionSnapshot: (defaults = {}) => ensureSessionSnapshot(database, defaults),
     createSession: (input = {}) => createSession(database, input),
     openSession: (sessionId) => openSession(database, sessionId),
@@ -442,6 +450,55 @@ function readStoredExecutionPermissions(database: NodeDatabaseSync): Record<stri
 
 function normalizeExecutionPermissionAction(action: string): string {
   return action.replace(/\s+/g, " ").trim().slice(0, 240);
+}
+
+function readBrowserActionPolicies(database: NodeDatabaseSync): BrowserActionPolicy[] {
+  const stored = readAppSetting<BrowserActionPolicy[]>(database, BROWSER_ACTION_POLICIES_SETTING_KEY);
+  if (!Array.isArray(stored)) {
+    return [];
+  }
+  return stored
+    .filter(isStoredBrowserActionPolicy)
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || left.id.localeCompare(right.id));
+}
+
+function setBrowserActionPolicy(database: NodeDatabaseSync, policy: BrowserActionPolicy): BrowserActionPolicy[] {
+  const policies = readBrowserActionPolicies(database).filter((candidate) => candidate.id !== policy.id);
+  policies.unshift(policy);
+  writeAppSetting(database, BROWSER_ACTION_POLICIES_SETTING_KEY, policies.slice(0, 100));
+  return readBrowserActionPolicies(database);
+}
+
+function revokeBrowserActionPolicy(database: NodeDatabaseSync, policyId: string): BrowserActionPolicy[] {
+  const id = policyId.trim();
+  if (!id) {
+    throw new Error("Browser Action policy id is required.");
+  }
+  const now = new Date().toISOString();
+  const policies = readBrowserActionPolicies(database).map((policy) =>
+    policy.id === id
+      ? {
+          ...policy,
+          decision: "ask" as const,
+          revokedAt: now,
+          updatedAt: now
+        }
+      : policy
+  );
+  writeAppSetting(database, BROWSER_ACTION_POLICIES_SETTING_KEY, policies);
+  return readBrowserActionPolicies(database);
+}
+
+function isStoredBrowserActionPolicy(value: unknown): value is BrowserActionPolicy {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const record = value as Partial<BrowserActionPolicy>;
+  return typeof record.id === "string" &&
+    (record.decision === "ask" || record.decision === "allow" || record.decision === "deny") &&
+    typeof record.actionFamily === "string" &&
+    typeof record.createdAt === "string" &&
+    typeof record.updatedAt === "string";
 }
 
 function ensureSessionSnapshot(database: NodeDatabaseSync, defaults: SessionDefaults = {}): SessionSnapshot {

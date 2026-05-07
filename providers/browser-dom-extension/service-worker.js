@@ -76,9 +76,19 @@ async function pollAndExecuteBrowserAction(tab, daemonUrl) {
     return;
   }
 
-  const pollUrl = resolveDaemonActionUrl(daemonUrl, DEFAULT_BROWSER_ACTION_POLL_PATH);
+  const pollUrl = new URL(resolveDaemonActionUrl(daemonUrl, DEFAULT_BROWSER_ACTION_POLL_PATH));
+  pollUrl.searchParams.set("tabId", String(tab.id));
+  if (tab.windowId !== undefined) {
+    pollUrl.searchParams.set("windowId", String(tab.windowId));
+  }
+  if (tab.url) {
+    pollUrl.searchParams.set("url", tab.url);
+  }
+  if (tab.title) {
+    pollUrl.searchParams.set("title", tab.title);
+  }
   const resultUrl = resolveDaemonActionUrl(daemonUrl, DEFAULT_BROWSER_ACTION_RESULT_PATH);
-  const response = await fetch(pollUrl, { method: "GET" });
+  const response = await fetch(pollUrl.toString(), { method: "GET" });
   if (!response.ok) {
     throw new Error(`Browser Action poll failed (${response.status}).`);
   }
@@ -89,28 +99,38 @@ async function pollAndExecuteBrowserAction(tab, daemonUrl) {
     return;
   }
 
-  const before = await readSnapshotFromTab(tab.id);
-  const result = await executeBrowserActionCommand(tab, command);
+  const before = await safeReadSnapshotFromTab(tab.id);
+  const sourceMismatch = detectSourceMismatch(command.expectedSource, tab, before);
+  const result = sourceMismatch
+    ? {
+        ok: false,
+        error: sourceMismatch,
+        after: before,
+        metadata: { actualUrl: tab.url ?? before?.url, actualTitle: tab.title ?? before?.title }
+      }
+    : await executeBrowserActionCommand(tab, command);
   const after = result.after ?? await safeReadSnapshotFromTab(tab.id);
-  const post = await fetch(resultUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      requestId: command.requestId,
-      ok: result.ok,
-      before,
-      after,
-      error: result.error,
-      metadata: result.metadata
-    })
+  await postBrowserActionResultWithRetry(resultUrl, {
+    requestId: command.requestId,
+    ok: result.ok,
+    before,
+    after,
+    error: result.error,
+    metadata: {
+      ...result.metadata,
+      actualTab: {
+        tabId: tab.id,
+        windowId: tab.windowId,
+        url: tab.url,
+        title: tab.title
+      }
+    }
   });
-  if (!post.ok) {
-    throw new Error(`Browser Action result post failed (${post.status}).`);
-  }
 }
 
 async function executeBrowserActionCommand(tab, command) {
   try {
+    assertTabCanRunBrowserAction(tab);
     if (command.action?.type === "screenshot") {
       const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
       const after = await safeReadSnapshotFromTab(tab.id);
@@ -148,6 +168,8 @@ async function safeReadSnapshotFromTab(tabId) {
 }
 
 async function readSnapshotFromTab(tabId) {
+  const tab = await chrome.tabs.get(tabId);
+  assertTabCanRunBrowserAction(tab);
   const [injection] = await chrome.scripting.executeScript({
     target: { tabId },
     func: collectDomSnapshot
@@ -157,6 +179,73 @@ async function readSnapshotFromTab(tabId) {
     throw new Error("No DOM snapshot was returned from the active tab.");
   }
   return injection.result;
+}
+
+async function postBrowserActionResultWithRetry(url, payload) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const post = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...payload, metadata: { ...(payload.metadata ?? {}), postAttempt: attempt } })
+      });
+      if (post.ok) {
+        return;
+      }
+      lastError = new Error(`Browser Action result post failed (${post.status}).`);
+    } catch (error) {
+      lastError = error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+  }
+  throw lastError instanceof Error ? lastError : new Error("Browser Action result post failed.");
+}
+
+function detectSourceMismatch(expected, tab, before) {
+  if (!expected) {
+    return "";
+  }
+  const expectedTabId = expected.tabId ? String(expected.tabId) : "";
+  if (expectedTabId && expectedTabId !== String(tab.id)) {
+    return `Active tab mismatch: expected tab ${expectedTabId}, got ${tab.id}.`;
+  }
+  const expectedWindowId = expected.windowId ? String(expected.windowId) : "";
+  if (expectedWindowId && expectedWindowId !== String(tab.windowId)) {
+    return `Active window mismatch: expected window ${expectedWindowId}, got ${tab.windowId}.`;
+  }
+  const expectedUrl = expected.url || "";
+  const actualUrl = tab.url || before?.url || "";
+  if (expectedUrl && actualUrl && normalizeUrlForSource(expectedUrl) !== normalizeUrlForSource(actualUrl)) {
+    return `Active tab URL changed before Browser Action execution: expected ${expectedUrl}, got ${actualUrl}.`;
+  }
+  return "";
+}
+
+function normalizeUrlForSource(value) {
+  try {
+    const url = new URL(value);
+    url.hash = "";
+    return url.href;
+  } catch {
+    return String(value || "").replace(/#.*$/, "");
+  }
+}
+
+function assertTabCanRunBrowserAction(tab) {
+  const url = tab?.url || "";
+  if (!url) {
+    throw new Error("Browser Action cannot run because the active tab URL is unavailable.");
+  }
+  if (/^(chrome|edge|brave|vivaldi|opera|about|devtools):/i.test(url)) {
+    throw new Error(`Browser Action is not available on restricted browser pages (${url.split(":")[0]}://).`);
+  }
+  if (/^chrome-extension:/i.test(url)) {
+    throw new Error("Browser Action is not available on extension pages.");
+  }
+  if (/chromewebstore\.google\.com|microsoftedge\.microsoft\.com\/addons/i.test(url)) {
+    throw new Error("Browser Action is not available on browser extension store pages.");
+  }
 }
 
 function setBadge(tabId, text, color) {

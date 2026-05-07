@@ -1,5 +1,7 @@
 import type { ComponentPropsWithoutRef } from "react";
 import type {
+  BrowserActionAdapterStatus,
+  BrowserActionPolicySummary,
   RuntimeInteraction,
   ScreenCrop
 } from "../shared/protocol.js";
@@ -57,6 +59,18 @@ export type VisionFrameStats = {
   skipped: number;
   failed: number;
   lastSentAt: number | null;
+};
+
+export type BrowserActionUiState = {
+  actionSessionId: string | null;
+  adapters: BrowserActionAdapterStatus[];
+  policies: BrowserActionPolicySummary[];
+  observationSummary: unknown;
+  planSummary: unknown;
+  resultSummary: unknown;
+  progress: Array<{ id: string; status: string; detail?: unknown }>;
+  error: string | null;
+  safetyMode: "read_only" | "ask_before_action" | "auto_safe_actions" | "full_control_dev";
 };
 
 export type SpeechRecognitionResultLike = {

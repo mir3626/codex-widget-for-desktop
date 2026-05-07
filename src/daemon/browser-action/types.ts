@@ -150,8 +150,16 @@ export type BrowserAction =
 export type BrowserActionPlanStep = {
   id: string;
   action: BrowserAction;
+  targetSummary?: string;
+  reason?: string;
   expected?: BrowserExpectedState[];
-  status: "pending" | "running" | "succeeded" | "failed" | "skipped";
+  safety?: BrowserActionSafetyDecision;
+  status: "pending" | "running" | "awaiting_approval" | "awaiting_extension" | "succeeded" | "failed" | "skipped" | "cancelled";
+  attempts?: number;
+  resultId?: string;
+  error?: string;
+  startedAt?: string;
+  completedAt?: string;
 };
 
 export type BrowserActionPlan = {
@@ -159,7 +167,12 @@ export type BrowserActionPlan = {
   actionSessionId: string;
   createdAt: string;
   goal: string;
+  adapterId?: string;
+  status: "proposed" | "awaiting_approval" | "running" | "paused" | "completed" | "failed" | "cancelled";
   steps: BrowserActionPlanStep[];
+  expectedOutcome?: string;
+  confidence: number;
+  summary?: string;
 };
 
 export type BrowserExpectedState =
@@ -212,7 +225,7 @@ export type BrowserActionResult = {
 export type BrowserActionTimelineEvent = {
   id: string;
   t: number;
-  type: "start" | "observe" | "resolve" | "approval" | "execute" | "result" | "cancel" | "error";
+  type: "start" | "observe" | "resolve" | "approval" | "execute" | "result" | "cancel" | "error" | "plan" | "verify";
   summary: string;
   detail?: unknown;
 };
@@ -251,6 +264,32 @@ export type BrowserActionAuditEntry = {
   category: "observe" | "resolve" | "approval" | "execute" | "verify" | "safety";
   summary: string;
   detail?: unknown;
+};
+
+export type BrowserActionPolicyDecision = "ask" | "allow" | "deny";
+
+export type BrowserActionPolicyInput = {
+  id?: string;
+  decision: BrowserActionPolicyDecision;
+  actionFamily: BrowserAction["type"] | "safe_read_scroll" | "safe_click_type" | "all";
+  origin?: string;
+  targetRisk?: "low" | "medium" | "high" | "destructive" | "credential";
+  mode?: BrowserActionMode | "any";
+  expiresAt?: string;
+  note?: string;
+};
+
+export type BrowserActionPolicy = Required<Pick<BrowserActionPolicyInput, "id" | "decision" | "actionFamily">> &
+  Omit<BrowserActionPolicyInput, "id" | "decision" | "actionFamily"> & {
+    createdAt: string;
+    updatedAt: string;
+    revokedAt?: string;
+  };
+
+export type BrowserActionPolicyMatch = {
+  decision: BrowserActionPolicyDecision;
+  policy?: BrowserActionPolicy;
+  reason: string;
 };
 
 export type BrowserActionCapability =
@@ -323,5 +362,19 @@ export type BrowserQueuedCommand = {
   adapterId?: string;
   action: BrowserAction;
   target?: BrowserElement;
+  expectedSource?: BrowserActionSource;
   createdAt: string;
+  expiresAt?: string;
+};
+
+export type BrowserActionPromptPlan = {
+  id: string;
+  goal: string;
+  mode: BrowserActionMode;
+  adapterId?: string;
+  source?: Partial<BrowserActionSource>;
+  steps: Array<Omit<BrowserActionPlanStep, "status">>;
+  confidence: number;
+  simulatedTool: true;
+  reason: string;
 };

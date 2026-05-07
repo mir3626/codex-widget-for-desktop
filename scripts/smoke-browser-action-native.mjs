@@ -11,6 +11,9 @@ const session = {
 };
 
 const status = await nativeDesktopAdapter.getStatus({ session });
+if (status.diagnostics?.scope !== "browser_windows_only" || !status.diagnostics?.blocked?.requiredScopeExpansion) {
+  throw new Error(`Native desktop diagnostics must expose bounded scope and helper blocker: ${JSON.stringify(status)}`);
+}
 if (process.platform !== "win32") {
   assertEqual(status.state, "unavailable", "native desktop non-windows status");
 } else if (process.env.CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP === "1") {
@@ -25,8 +28,8 @@ if (process.platform !== "win32") {
     action: { type: "click", target: { kind: "focused" } }
   });
   assertEqual(execute.ok, false, "native desktop unsupported executable action");
-  if (!String(execute.error).includes("UI Automation")) {
-    throw new Error(`Native desktop unsupported path should name UI Automation scope: ${execute.error}`);
+  if (!String(execute.error).includes("BLOCKED") || !String(execute.error).includes("UI Automation")) {
+    throw new Error(`Native desktop unsupported path should name BLOCKED UI Automation scope: ${execute.error}`);
   }
 } else {
   assertEqual(status.state, "unavailable", "native desktop disabled status");

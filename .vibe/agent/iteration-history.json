@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-10",
+  "currentIteration": "iter-11",
   "iterations": [
     {
       "id": "iter-1",
@@ -326,6 +326,41 @@
         "durable-product-state": 0.99
       },
       "summary": "Iteration 10 completed the Browser Action production expansion beyond iter-9 MVP: adapter registry/status, direct controlled-adapter execution, stale reobserve/retry, functional Playwright and CDP adapters, bounded native desktop diagnostics with explicit UIA BLOCKED record, full_control_dev evaluate approval/hash/timeout/result-limit/credential safeguards, adapter/evaluate/native smokes, and real semantic dogfood evidence."
+    },
+    {
+      "id": "iter-11",
+      "label": "Browser Action End-to-End Control",
+      "startedAt": "2026-05-08T03:46:55.545+09:00",
+      "goal": "Complete docs/plans/browser-action-end-to-end-control-handoff.md through all eight workstreams: prompt-driven Browser Action, renderer UX, extension channel stability, managed browser/CDP operation, multi-step plans, browser-specific permission policy, bounded Windows fallback, and real dogfood matrix.",
+      "plannedSprints": [
+        "iter-11-sprint-01-prompt-tool-plan-and-policy-core",
+        "iter-11-sprint-02-renderer-browser-action-cockpit",
+        "iter-11-sprint-03-extension-channel-and-managed-browser-ops",
+        "iter-11-sprint-04-windows-fallback-and-dogfood-matrix",
+        "iter-11-sprint-05-completion-audit"
+      ],
+      "completedAt": "2026-05-08T04:10:24.000+09:00",
+      "completedSprints": [
+        "iter-11-sprint-01-prompt-tool-plan-and-policy-core",
+        "iter-11-sprint-02-renderer-browser-action-cockpit",
+        "iter-11-sprint-03-extension-channel-and-managed-browser-ops",
+        "iter-11-sprint-04-windows-fallback-and-dogfood-matrix",
+        "iter-11-sprint-05-completion-audit"
+      ],
+      "carryover": "Iter-10 completed the daemon-side Browser Action interface and controlled adapter baseline, but the live prompt-driven product path remains incomplete. Iter-11 carries forward the product-owner goal to make Browser Action usable from the widget prompt through a safe, auditable observe-plan-act-verify control experience.",
+      "openRisks": [
+        "First-class Codex app-server custom Browser Action tools remain BLOCKED on a stable app-server custom tool/client-tool contract; the implemented path is deterministic daemon-side simulation with visible Browser Action events, approval, audit, and chat result.",
+        "Windows UI Automation executable browser chrome control remains BLOCKED on a scoped Rust/.NET/PowerShell helper process; native adapter diagnostics record the attempted PowerShell browser-window enumeration path and required helper scope.",
+        "Restricted browser pages remain subject to browser/extension/CDP security boundaries and should surface unsupported-state diagnostics or use an explicitly configured fallback rather than bypass protections."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.97,
+        "durable-codex-runtime": 0.97,
+        "real-tool-providers": 1,
+        "resident-desktop-readiness": 0.95,
+        "durable-product-state": 0.99
+      },
+      "summary": "Iteration 11 completed the Browser Action end-to-end control layer. Widget browser prompts now route into a deterministic daemon Browser Action tool simulation, multi-step BrowserActionPlan execution applies safety/policies and can pause for approval or extension execution, browser-specific saved policies are persisted and surfaced in the renderer panel, extension commands carry expected source/expiry metadata with restricted-page/source-mismatch failure visibility, and real E2E dogfood evidence covers prompt-driven read, extension active-tab command, risky deny, non-submit fill, real Playwright navigation, CDP unavailable diagnostics, native boundary diagnostics, and restricted-page boundary evidence. First-class app-server custom tools and executable Windows UI Automation browser-chrome control remain precisely BLOCKED on upstream/helper scope."
     }
   ]
 }

@@ -1,0 +1,120 @@
+{
+  "date": "2026-05-08",
+  "promptAndExtension": {
+    "promptDriven": {
+      "completed": true,
+      "plan": {
+        "id": "browser-plan-f9048149-a8c3-4351-8883-9692c31296fb",
+        "actionSessionId": "browser-action-prompt-dogfood-prompt-read",
+        "goal": "브라우저 액션으로 현재 페이지 읽어줘",
+        "status": "completed",
+        "confidence": 0.78,
+        "summary": "Browser Action plan completed with 1 result(s).",
+        "steps": [
+          {
+            "id": "step-1",
+            "action": "read",
+            "status": "succeeded",
+            "safety": "allow",
+            "risk": "low",
+            "reason": "Read the current browser observation.",
+            "resultId": "browser-result-f85da471-4309-4762-b129-07607d427cb8"
+          }
+        ]
+      },
+      "answer": "Browser Action tool path executed.\n- plan: completed\n- steps: step-1:succeeded\n- latest result: succeeded; verification=passed; Read action returned the current browser observation."
+    },
+    "nonSubmitFill": {
+      "completed": true,
+      "requestId": "browser-command-70e3c857-97c9-45eb-a4bb-d2400c4b0bbe",
+      "expectedSource": {
+        "kind": "active_tab",
+        "browser": "unknown",
+        "url": "https://example.test/browser-action-e2e-dogfood",
+        "title": "Browser Action E2E Dogfood"
+      },
+      "expiresAt": "2026-05-07T19:08:58.973Z",
+      "verification": "passed"
+    },
+    "riskyDeny": {
+      "completed": true,
+      "safety": "confirm",
+      "reason": "User declined the browser action."
+    },
+    "extensionCommand": {
+      "completed": true,
+      "requestId": "browser-command-52a61216-4543-48bb-96de-3124c2d8b650",
+      "expectedSource": {
+        "kind": "active_tab",
+        "browser": "unknown",
+        "url": "https://example.test/browser-action-e2e-dogfood",
+        "title": "Browser Action E2E Dogfood"
+      },
+      "verification": "passed"
+    },
+    "restrictedBoundary": {
+      "completed": true,
+      "evidence": "Browser DOM extension rejects restricted chrome/about/devtools/add-ons pages through assertTabCanRunBrowserAction; smoke:extension validates the marker."
+    }
+  },
+  "playwright": {
+    "observe": {
+      "url": "https://example.com/",
+      "title": "Example Domain",
+      "textLength": 129,
+      "elements": 1
+    },
+    "screenshot": {
+      "completed": true,
+      "asset": "docs\\reports\\assets\\browser-action-e2e-dogfood-2026-05-08\\example-com-before.png"
+    },
+    "safeNavigation": {
+      "completed": true,
+      "target": {
+        "id": "el-1",
+        "text": "Learn more",
+        "label": "Learn more",
+        "confidence": 0.6200000000000001
+      },
+      "beforeUrl": "https://example.com/",
+      "afterUrl": "https://www.iana.org/help/example-domains",
+      "verification": {
+        "status": "passed",
+        "reason": "Action returned a refreshed browser observation."
+      }
+    }
+  },
+  "adapterDiagnostics": {
+    "cdp": {
+      "state": "unavailable",
+      "detail": "Configure one of CODEX_WIDGET_BROWSER_ACTION_CDP_URL, BROWSER_ACTION_CDP_URL, CDP_URL with a Chrome/Edge remote debugging URL."
+    },
+    "nativeDesktop": {
+      "state": "unavailable",
+      "detail": "Set CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP=1 to enable the bounded Windows browser-window diagnostics path.",
+      "diagnostics": {
+        "scope": "browser_windows_only",
+        "env": "CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP",
+        "blocked": {
+          "item": "Windows UI Automation executable Browser Action fallback",
+          "reason": "This repo currently has a bounded browser-window diagnostics path, but no signed Rust/.NET UI Automation helper or native input broker for browser chrome, permission prompts, file picker boundaries, or restricted pages.",
+          "attemptedPath": "Enumerate browser top-level windows with PowerShell Get-Process and expose them as normalized BrowserObservation window elements.",
+          "requiredScopeExpansion": "Add a dedicated Windows UI Automation helper process with cancellation, target scoping to browser windows, sensitive-field redaction, and approval/audit integration."
+        }
+      }
+    }
+  },
+  "semanticAcceptance": {
+    "promptDrivenToolPath": true,
+    "extensionActiveTabCommand": true,
+    "riskyApprovalDeny": true,
+    "nonSubmitFormFill": true,
+    "realPublicPageNavigation": true,
+    "restrictedBoundary": {
+      "completed": true,
+      "evidence": "Browser DOM extension rejects restricted chrome/about/devtools/add-ons pages through assertTabCanRunBrowserAction; smoke:extension validates the marker."
+    },
+    "cdpStatus": "unavailable",
+    "nativeBoundaryStatus": "unavailable"
+  }
+}

@@ -5,6 +5,12 @@ import type { BrowserActionAdapter, BrowserActionExecutionResult } from "../type
 
 const execFileAsync = promisify(execFile);
 const ENABLE_ENV = "CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP";
+const HELPER_BLOCKED = {
+  item: "Windows UI Automation executable Browser Action fallback",
+  reason: "This repo currently has a bounded browser-window diagnostics path, but no signed Rust/.NET UI Automation helper or native input broker for browser chrome, permission prompts, file picker boundaries, or restricted pages.",
+  attemptedPath: "Enumerate browser top-level windows with PowerShell Get-Process and expose them as normalized BrowserObservation window elements.",
+  requiredScopeExpansion: "Add a dedicated Windows UI Automation helper process with cancellation, target scoping to browser windows, sensitive-field redaction, and approval/audit integration."
+};
 
 export const nativeDesktopAdapter: BrowserActionAdapter = {
   id: "native-desktop",
@@ -21,7 +27,11 @@ export const nativeDesktopAdapter: BrowserActionAdapter = {
         state: "unavailable",
         capabilities: nativeDesktopAdapter.capabilities,
         detail: "Native desktop Browser Action is Windows-only.",
-        checkedAt: new Date().toISOString()
+        checkedAt: new Date().toISOString(),
+        diagnostics: {
+          scope: "browser_windows_only",
+          blocked: HELPER_BLOCKED
+        }
       };
     }
     if (process.env[ENABLE_ENV] !== "1") {
@@ -31,7 +41,12 @@ export const nativeDesktopAdapter: BrowserActionAdapter = {
         state: "unavailable",
         capabilities: nativeDesktopAdapter.capabilities,
         detail: `Set ${ENABLE_ENV}=1 to enable the bounded Windows browser-window diagnostics path.`,
-        checkedAt: new Date().toISOString()
+        checkedAt: new Date().toISOString(),
+        diagnostics: {
+          scope: "browser_windows_only",
+          env: ENABLE_ENV,
+          blocked: HELPER_BLOCKED
+        }
       };
     }
     const windows = await listBrowserWindows().catch((error) => [{ processName: "diagnostic-error", id: 0, title: error instanceof Error ? error.message : "Window enumeration failed." }]);
@@ -42,7 +57,11 @@ export const nativeDesktopAdapter: BrowserActionAdapter = {
       capabilities: nativeDesktopAdapter.capabilities,
       detail: `Native desktop boundary can enumerate ${windows.length} browser window(s); DOM actions require UI Automation helper scope.`,
       checkedAt: new Date().toISOString(),
-      diagnostics: { windows: windows.slice(0, 8) }
+      diagnostics: {
+        scope: "browser_windows_only",
+        windows: windows.slice(0, 8),
+        blocked: HELPER_BLOCKED
+      }
     };
   },
   async observe(input) {
@@ -84,7 +103,7 @@ export const nativeDesktopAdapter: BrowserActionAdapter = {
       requestId: "native-desktop",
       adapterId: "native-desktop",
       ok: false,
-      error: "Native desktop Browser Action currently provides Windows browser-window diagnostics only. UI Automation or a bounded native input helper is required for executable browser chrome actions."
+      error: `BLOCKED: ${HELPER_BLOCKED.item}. ${HELPER_BLOCKED.reason} Required scope expansion: ${HELPER_BLOCKED.requiredScopeExpansion}`
     };
   }
 };

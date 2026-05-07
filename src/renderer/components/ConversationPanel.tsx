@@ -7,9 +7,12 @@ import type {
   ProviderStatus,
   RuntimeInteraction,
   RuntimeInteractionDecision,
+  BrowserActionMode,
+  BrowserActionPolicyDecision,
   WidgetMode
 } from "../../shared/protocol.js";
 import type {
+  BrowserActionUiState,
   ChatMessage,
   InteractionDrafts,
   TerminalKeyName,
@@ -18,6 +21,7 @@ import type {
 import { assistantFallbackText, assistantStatusLabel, isAssistantWorking } from "../utils/chat";
 import { ArtifactLedger } from "./ArtifactLedger";
 import { AssistantResponseActions } from "./AssistantResponseActions";
+import { BrowserActionPanel } from "./BrowserActionPanel";
 import { InteractionCard } from "./InteractionCard";
 import { MarkdownPre, MarkdownTable } from "./MarkdownRenderers";
 import { TerminalViewport } from "./TerminalViewport";
@@ -42,6 +46,7 @@ type ConversationPanelProps = {
   terminalInput: string;
   terminalMouseEnabled: boolean;
   showTerminalGuide: boolean;
+  browserAction: BrowserActionUiState;
   onRunTerminalQuickAction: (command: string) => void;
   onClearTerminal: () => void;
   onOpenTerminalPopout: () => void;
@@ -51,6 +56,11 @@ type ConversationPanelProps = {
   onTerminalMouseEnabledChange: (enabled: boolean) => void;
   onTerminalMouseInput: (sequence: string, label: string) => void;
   onToggleTerminalGuide: () => void;
+  onBrowserActionStart: (mode: BrowserActionMode) => void;
+  onBrowserActionRefreshAdapters: () => void;
+  onBrowserActionObserve: () => void;
+  onBrowserActionCancel: () => void;
+  onBrowserActionPolicyChange: (decision: BrowserActionPolicyDecision) => void;
   onCopyCodeBlock: (code: string) => void;
   onCopyMessage: (messageId: string, text: string) => void;
   onRegenerateMessage: (messageId: string) => void;
@@ -82,6 +92,7 @@ export function ConversationPanel({
   terminalInput,
   terminalMouseEnabled,
   showTerminalGuide,
+  browserAction,
   onRunTerminalQuickAction,
   onClearTerminal,
   onOpenTerminalPopout,
@@ -91,6 +102,11 @@ export function ConversationPanel({
   onTerminalMouseEnabledChange,
   onTerminalMouseInput,
   onToggleTerminalGuide,
+  onBrowserActionStart,
+  onBrowserActionRefreshAdapters,
+  onBrowserActionObserve,
+  onBrowserActionCancel,
+  onBrowserActionPolicyChange,
   onCopyCodeBlock,
   onCopyMessage,
   onRegenerateMessage,
@@ -165,6 +181,16 @@ export function ConversationPanel({
           onToggleGuide={onToggleTerminalGuide}
         />
       ) : null}
+
+      <BrowserActionPanel
+        state={browserAction}
+        visible={mode === "browser" || Boolean(browserAction.actionSessionId)}
+        onStart={onBrowserActionStart}
+        onRefreshAdapters={onBrowserActionRefreshAdapters}
+        onObserve={onBrowserActionObserve}
+        onCancel={onBrowserActionCancel}
+        onPolicyChange={onBrowserActionPolicyChange}
+      />
 
       {chatMessages.length === 0 && interactions.length === 0 && mode !== "terminal" ? (
         <div className="empty-state">

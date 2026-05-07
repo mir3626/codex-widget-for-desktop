@@ -5,6 +5,7 @@ import { createTimelineEvent } from "./actionTimeline.js";
 import { buildElementGraph } from "./elementGraph.js";
 import { auditActionResult, auditObservation } from "./auditLog.js";
 import { BrowserActionAdapterRegistry, executeWithAdapter, observeWithAdapter } from "./adapterRegistry.js";
+import { applyBrowserActionPolicyToSafety, matchBrowserActionPolicy } from "./permissionPolicy.js";
 import { verifyBrowserAction } from "./resultVerifier.js";
 import { decideBrowserActionSafety } from "./safetyPolicy.js";
 import { resolveTarget } from "./targetResolver.js";
@@ -15,6 +16,9 @@ import type {
   BrowserActionAuditEntry,
   BrowserActionExecutionResult,
   BrowserActionMode,
+  BrowserActionPlan,
+  BrowserActionPolicy,
+  BrowserActionPolicyMatch,
   BrowserActionResult,
   BrowserActionSession,
   BrowserActionSource,
@@ -124,6 +128,8 @@ export class BrowserActionSessionManager {
     adapterId?: string;
     approved?: boolean;
     targetHint?: string;
+    policyMatch?: BrowserActionPolicyMatch;
+    policies?: BrowserActionPolicy[];
   }): Promise<{ session: BrowserActionSession; result: BrowserActionResult; command?: BrowserQueuedCommand; approval?: BrowserActionApproval; audit: BrowserActionAuditEntry }> {
     const session = this.requireSession(input.actionSessionId);
     const observation = session.latestObservation ?? buildBrowserObservation({ source: session.source, snapshot: input.snapshot });
@@ -134,12 +140,23 @@ export class BrowserActionSessionManager {
       target: readActionTarget(input.action),
       hint: input.targetHint
     });
-    const safety = decideBrowserActionSafety({
+    const baseSafety = decideBrowserActionSafety({
       action: input.action,
       target: targetResolution.primary,
       targetConfidence: targetResolution.confidence,
       mode: session.mode
     });
+    const policyMatch = input.policyMatch ?? (input.policies
+      ? matchBrowserActionPolicy({
+          policies: input.policies,
+          action: input.action,
+          target: targetResolution.primary,
+          observation,
+          mode: session.mode,
+          safety: baseSafety
+        })
+      : undefined);
+    const safety = applyBrowserActionPolicyToSafety({ safety: baseSafety, match: policyMatch });
     const result: BrowserActionResult = {
       id: `browser-result-${randomUUID()}`,
       actionSessionId: session.id,
@@ -208,7 +225,9 @@ export class BrowserActionSessionManager {
       resultId: result.id,
       adapterId: input.adapterId ?? "extension",
       action: input.action,
-      target: targetResolution.primary
+      target: targetResolution.primary,
+      expectedSource: session.source,
+      timeoutMs: readActionTimeoutMs(input.action)
     });
     this.commandResultIds.set(command.requestId, result.id);
     this.pendingCommands.push(command);
@@ -252,7 +271,9 @@ export class BrowserActionSessionManager {
       resultId: result.id,
       adapterId: approval.adapterId ?? "extension",
       action: approval.action,
-      target: approval.target
+      target: approval.target,
+      expectedSource: session.source,
+      timeoutMs: readActionTimeoutMs(approval.action)
     });
     this.commandResultIds.set(command.requestId, result.id);
     result.status = "pending";
@@ -263,8 +284,116 @@ export class BrowserActionSessionManager {
     return { handled: true, approved: true, approval, result: cloneResult(result), command };
   }
 
+  async executePlan(input: {
+    plan: BrowserActionPlan;
+    snapshot: unknown;
+    adapterId?: string;
+    approvedStepIds?: string[];
+    policyMatches?: Record<string, BrowserActionPolicyMatch | undefined>;
+    policies?: BrowserActionPolicy[];
+  }): Promise<{
+    session: BrowserActionSession;
+    plan: BrowserActionPlan;
+    results: BrowserActionResult[];
+    command?: BrowserQueuedCommand;
+    approval?: BrowserActionApproval;
+    audits: BrowserActionAuditEntry[];
+  }> {
+    const session = this.requireSession(input.plan.actionSessionId);
+    const plan = clonePlan({
+      ...input.plan,
+      adapterId: input.adapterId ?? input.plan.adapterId,
+      status: "running",
+      steps: input.plan.steps.map((step) => ({ ...step }))
+    });
+    const results: BrowserActionResult[] = [];
+    const audits: BrowserActionAuditEntry[] = [];
+    session.timeline.push(createTimelineEvent({
+      startedAt: session.startedAt,
+      type: "plan",
+      summary: `Browser Action plan started: ${plan.goal}`,
+      detail: { planId: plan.id, steps: plan.steps.length, adapterId: plan.adapterId }
+    }));
+
+    for (const step of plan.steps) {
+      if (session.status === "cancelled") {
+        step.status = "cancelled";
+        plan.status = "cancelled";
+        break;
+      }
+      if (step.status === "succeeded" || step.status === "skipped") {
+        continue;
+      }
+      step.status = "running";
+      step.startedAt = new Date().toISOString();
+      step.attempts = (step.attempts ?? 0) + 1;
+      const execution = await this.execute({
+        actionSessionId: session.id,
+        action: step.action,
+        snapshot: input.snapshot,
+        adapterId: plan.adapterId,
+        approved: input.approvedStepIds?.includes(step.id),
+        targetHint: step.targetSummary,
+        policyMatch: input.policyMatches?.[step.id],
+        policies: input.policies
+      });
+      audits.push(execution.audit);
+      results.push(execution.result);
+      step.resultId = execution.result.id;
+      step.safety = execution.result.safety;
+      if (execution.approval) {
+        step.status = "awaiting_approval";
+        step.completedAt = new Date().toISOString();
+        plan.status = "awaiting_approval";
+        plan.summary = `Plan paused for approval at ${step.id}.`;
+        return { session: cloneSession(session), plan, results: results.map(cloneResult), approval: execution.approval, audits };
+      }
+      if (execution.command) {
+        step.status = "awaiting_extension";
+        step.completedAt = new Date().toISOString();
+        plan.status = "paused";
+        plan.summary = `Plan paused while extension executes ${step.id}.`;
+        return { session: cloneSession(session), plan, results: results.map(cloneResult), command: execution.command, audits };
+      }
+      if (execution.result.status !== "succeeded") {
+        step.status = execution.result.status === "cancelled" ? "cancelled" : "failed";
+        step.error = execution.result.error ?? execution.result.verification.reason;
+        step.completedAt = new Date().toISOString();
+        plan.status = step.status === "cancelled" ? "cancelled" : "failed";
+        plan.summary = `Plan stopped at ${step.id}: ${step.error}`;
+        return { session: cloneSession(session), plan, results: results.map(cloneResult), audits };
+      }
+      step.status = "succeeded";
+      step.completedAt = new Date().toISOString();
+      session.timeline.push(createTimelineEvent({
+        startedAt: session.startedAt,
+        type: "verify",
+        summary: `Plan step verified: ${step.id}`,
+        detail: { resultId: execution.result.id, verification: execution.result.verification }
+      }));
+    }
+    plan.status = plan.steps.every((step) => step.status === "succeeded" || step.status === "skipped") ? "completed" : plan.status;
+    plan.summary = plan.status === "completed" ? `Browser Action plan completed with ${results.length} result(s).` : plan.summary;
+    session.timeline.push(createTimelineEvent({
+      startedAt: session.startedAt,
+      type: "plan",
+      summary: plan.summary ?? `Browser Action plan ${plan.status}`,
+      detail: { planId: plan.id, status: plan.status }
+    }));
+    return { session: cloneSession(session), plan, results: results.map(cloneResult), audits };
+  }
+
   pollExtensionCommand(): BrowserQueuedCommand | undefined {
-    return this.pendingCommands.shift();
+    const now = Date.now();
+    const command = this.pendingCommands.shift();
+    if (!command) {
+      return undefined;
+    }
+    if (command.expiresAt && Date.parse(command.expiresAt) <= now) {
+      this.failQueuedCommand(command, "Browser Action command timed out before the extension picked it up.");
+      return this.pollExtensionCommand();
+    }
+    return command;
   }
 
   completeExtensionCommand(input: BrowserActionExecutionResult): { session: BrowserActionSession; result: BrowserActionResult; audit: BrowserActionAuditEntry } {
@@ -317,6 +446,27 @@ export class BrowserActionSessionManager {
       }
     }
     return cloneSession(session);
+  }
+
+  private failQueuedCommand(command: BrowserQueuedCommand, error: string): void {
+    const result = this.results.get(command.resultId);
+    if (!result) {
+      return;
+    }
+    const session = this.sessions.get(command.actionSessionId);
+    result.status = "failed";
+    result.completedAt = new Date().toISOString();
+    result.error = error;
+    result.verification = { status: "failed", reason: error };
+    this.commandResultIds.delete(command.requestId);
+    if (session) {
+      session.timeline.push(createTimelineEvent({
+        startedAt: session.startedAt,
+        type: "error",
+        summary: error,
+        detail: { requestId: command.requestId, resultId: result.id }
+      }));
+    }
   }
 
   private requireSession(id: string): BrowserActionSession {
@@ -494,4 +644,8 @@ function cloneSession(session: BrowserActionSession): BrowserActionSession {
 
 function cloneResult(result: BrowserActionResult): BrowserActionResult {
   return JSON.parse(JSON.stringify(result)) as BrowserActionResult;
+}
+
+function clonePlan(plan: BrowserActionPlan): BrowserActionPlan {
+  return JSON.parse(JSON.stringify(plan)) as BrowserActionPlan;
 }

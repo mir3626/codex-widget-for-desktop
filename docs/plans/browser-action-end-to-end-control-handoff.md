@@ -1,6 +1,6 @@
 # Browser Action End-to-End Control Handoff
 
-Status: planned
+Status: implemented through `iter-11`; Windows executable UI Automation helper remains precisely `BLOCKED`
 Target repo: `C:\Users\Tony\Workspace\codex-widget-for-desktop`
 Primary dependency: `docs/plans/browser-action-interface-handoff.md`
 Current baseline: Iteration `iter-10` completed the production Browser Action interface module, including extension typed actions, Playwright and CDP adapters, native desktop diagnostics boundary, `full_control_dev` evaluate gating, smokes, and first real dogfood evidence.
@@ -77,16 +77,20 @@ Implemented already:
   - extension/native-host/DOM/app-server smokes
   - first dogfood report at `docs/reports/browser-action-dogfood-evidence-2026-05-08.md`
 
-Still incomplete for the live product:
+Completed in `iter-11`:
 
-- Natural prompt path does not yet reliably invoke Browser Action as a real tool.
-- Renderer UI is mostly event-log visibility rather than a full action cockpit.
-- Extension channel needs tab/frame/service-worker robustness.
-- Managed browser/CDP setup is not yet user-operable.
-- Multi-step plans are data-model-ready but not fully executable as plans.
-- Browser-specific saved policy is not complete.
-- Windows UI Automation is diagnostic-only and does not yet control browser chrome/restricted pages.
-- Dogfood coverage is a first proof, not a scenario matrix.
+- Natural browser prompts can route through a deterministic daemon-side Browser Action tool simulation when a stable Codex app-server custom-tool contract is unavailable.
+- Renderer now exposes a thin Browser Action cockpit with adapter status, session controls, safety mode, latest observation, plan/progress/result/error summaries, cancel, and browser-specific policy controls.
+- Extension active-tab commands include expected source metadata and expiry; the extension reports actual tab metadata, retries result posts, and surfaces restricted-page/source-mismatch failures.
+- Multi-step `BrowserActionPlan` execution supports step-level safety, approval pauses, extension waits, direct adapter execution, reobserve/verify summaries, failure, and cancellation boundaries.
+- Browser-specific saved policies are stored in daemon settings by action family, origin, risk class, mode, expiry/revocation, and are applied before execution without persisting secret values.
+- Managed Playwright and CDP operating modes remain functional and visible through adapter diagnostics/smokes; unavailable CDP endpoint state is reported explicitly.
+- Real E2E dogfood evidence exists at `docs/reports/browser-action-e2e-dogfood-evidence-2026-05-08.md`.
+
+Precisely blocked after `iter-11`:
+
+- Windows executable UI Automation/browser-chrome control is blocked on a scoped helper process. The attempted path is bounded browser-window enumeration through PowerShell `Get-Process`; required scope expansion is a signed Rust/.NET/PowerShell UIA/native input helper with cancellation, browser-window scoping, sensitive-field redaction, approval, and audit integration.
+- First-class Codex app-server custom Browser Action tools remain blocked on a stable app-server custom-tool/client-tool contract. The implemented fallback is daemon-owned prompt/tool simulation with visible protocol events, approval, action result, Activity audit, and chat response.
 
 ## 3. Non-Negotiable Rules
 
@@ -403,6 +407,28 @@ Reasoning:
 - Windows UI Automation should stay bounded by Browser Action semantics.
 - Dogfood evidence should close the loop only after the live path exists.
 
+## 12.1 Iteration iter-11 Completion Record
+
+Workstream status:
+
+1. Agent Tool Contract: implemented through deterministic daemon-side prompt/tool simulation. Stable app-server custom tools are `BLOCKED` on upstream contract availability, but prompt -> plan -> action -> Agent response is covered by `npm run smoke:browser-action:e2e-control`.
+2. Renderer Browser Action UX: implemented as `BrowserActionPanel` embedded in browser mode with adapter status, start/observe/cancel, safety mode, policy controls, plan/progress/result/error summaries, and existing approval cards for risky/evaluate actions.
+3. Extension Action Channel Stability: implemented source matching, expected/actual tab metadata, command expiry, restricted-page errors, result-post retry, and smoke markers while preserving snapshot packaging compatibility.
+4. Managed Browser and CDP Operating Model: Playwright controlled-browser and CDP remote-debugging adapters remain functional through existing smokes; renderer adapter status now exposes unavailable reasons.
+5. Multi-Step Plan Execution: implemented `executePlan` with step statuses, safety/policy decisions, approval/extension pauses, direct-adapter execution, result ids, reobserve/verify events, failure, and cancellation boundaries.
+6. Browser Safety Permission Policy: implemented browser-specific policies under daemon app settings with allow/ask/deny by action family, origin, risk, mode, expiry, revocation, and secret redaction helpers.
+7. Windows UI Automation Helper: bounded diagnostics implemented; executable browser chrome/restricted-page fallback is `BLOCKED` with attempted path and required helper scope recorded in native adapter diagnostics and smoke coverage.
+8. Real Dogfood Matrix: implemented `npm run dogfood:browser-action:e2e`, producing prompt-driven, extension-channel, risky-deny, non-submit-fill, real Playwright navigation, CDP-unavailable, native-boundary, and restricted-page evidence.
+
+New evidence:
+
+- `scripts/smoke-browser-action-e2e-control.mjs`
+- `scripts/smoke-browser-action-renderer.mjs`
+- `scripts/collect-browser-action-e2e-dogfood-evidence.mjs`
+- `docs/reports/browser-action-e2e-dogfood-evidence-2026-05-08.md`
+- `docs/reports/assets/browser-action-e2e-dogfood-2026-05-08/evidence.json`
+- `docs/reports/assets/browser-action-e2e-dogfood-2026-05-08/example-com-before.png`
+
 ## 13. Verification Gate
 
 Required commands unless a workstream records a precise `BLOCKED` item:
@@ -416,11 +442,14 @@ npm run smoke:browser-action:playwright
 npm run smoke:browser-action:cdp
 npm run smoke:browser-action:evaluate
 npm run smoke:browser-action:native
+npm run smoke:browser-action:e2e-control
+npm run smoke:browser-action:renderer
 npm run smoke:extension
 npm run smoke:browser-native-host
 npm run smoke:dom
 npm run smoke:app-server
 npm run dogfood:browser-action
+npm run dogfood:browser-action:e2e
 new prompt-driven Browser Action smokes
 new multi-step plan smokes
 new Browser Action renderer UX smoke

@@ -1,6 +1,6 @@
 # Browser Action Interface Module Handoff
 
-Status: production adapter/evaluate expansion implemented (Iteration `iter-10`, 2026-05-08)
+Status: production adapter/evaluate expansion implemented (Iteration `iter-10`, 2026-05-08); prompt-driven E2E control layer implemented in `iter-11`
 Target repo: `C:\Users\Tony\Workspace\codex-widget-for-desktop`
 Target integration: Tauri + React Codex Widget daemon, browser DOM extension, optional native host, Codex app-server runtime
 Primary goal: build an independent daemon-side interface module that lets the Agent observe, plan, execute, and verify browser actions through typed, auditable browser control adapters.
@@ -20,11 +20,21 @@ Implemented through Iteration `iter-10`:
 - Agent visibility is handled through widget context and fake app-server smoke coverage. A hidden custom app-server client-tool bridge remains `BLOCKED` on Codex app-server exposing a stable custom tool contract; current coverage uses daemon protocol/tool simulation instead of prompt-only claims.
 - Real semantic dogfood evidence exists at `docs/reports/browser-action-dogfood-evidence-2026-05-08.md`, with supporting JSON and screenshot assets under `docs/reports/assets/browser-action-dogfood-2026-05-08/`.
 
+Implemented in Iteration `iter-11` on top of this interface:
+
+- Natural browser prompts now enter a deterministic daemon-side Browser Action tool simulation when a stable Codex app-server custom-tool contract is unavailable.
+- `BrowserActionPlan` execution supports multi-step step status, safety/policy application, approval and extension pauses, result ids, reobserve/verify events, failure, and cancellation boundaries.
+- Browser-specific saved safety policies are persisted in daemon settings by action family, origin, risk, mode, expiry/revocation, and are surfaced in the renderer Browser Action panel.
+- The renderer exposes a Browser Action cockpit for adapter status, session start/observe/cancel, safety mode, latest observation, plan/progress/result/error summaries, and policy controls.
+- The extension action channel now carries expected source metadata and command expiry, reports actual tab metadata, retries result posts, and surfaces restricted-page/source-mismatch failures.
+- End-to-end semantic evidence exists at `docs/reports/browser-action-e2e-dogfood-evidence-2026-05-08.md`.
+
 Known `BLOCKED` or external-boundary items:
 
 - Native desktop executable browser chrome control requires a scoped Windows UI Automation or bounded native input helper. The current adapter intentionally reports this unsupported state rather than pretending desktop computer-use is complete.
 - Restricted browser pages such as browser settings, extension pages, Web Store pages, and browser PDF internals remain subject to browser/extension/CDP security boundaries. The module must report unsupported state or use a configured fallback adapter rather than bypassing browser security.
 - A first-class Codex app-server custom Browser Action tool remains blocked on a stable app-server custom-tool/client-tool contract; daemon protocol and fake app-server/widget-context smokes cover the current visible capability and simulated action/result flow.
+- Windows executable UI Automation/browser-chrome control remains blocked after iter-11 on a scoped helper process. The native adapter records the attempted PowerShell browser-window enumeration path and the required Rust/.NET/PowerShell UIA/native input helper scope in diagnostics.
 
 ## 1. Session Summary
 

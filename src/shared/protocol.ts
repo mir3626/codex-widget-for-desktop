@@ -223,6 +223,40 @@ export type BrowserActionAdapterStatus = {
   diagnostics?: Record<string, unknown>;
 };
 
+export type BrowserActionPlanStepInput = {
+  id?: string;
+  action: BrowserActionInput;
+  targetSummary?: string;
+  reason?: string;
+  expected?: unknown[];
+};
+
+export type BrowserActionPlanInput = {
+  id?: string;
+  goal: string;
+  mode?: BrowserActionMode;
+  adapterId?: string;
+  steps: BrowserActionPlanStepInput[];
+  expectedOutcome?: string;
+  confidence?: number;
+};
+
+export type BrowserActionPolicyDecision = "ask" | "allow" | "deny";
+
+export type BrowserActionPolicySummary = {
+  id: string;
+  decision: BrowserActionPolicyDecision;
+  actionFamily: BrowserActionInput["type"] | "safe_read_scroll" | "safe_click_type" | "all";
+  origin?: string;
+  targetRisk?: "low" | "medium" | "high" | "destructive" | "credential";
+  mode?: BrowserActionMode | "any";
+  expiresAt?: string;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+  revokedAt?: string;
+};
+
 export type MessageSnapshotStatus = "pending" | "thinking" | "tooling" | "streaming" | "done" | "cancelled" | "error";
 
 export type SessionStatus = "active" | "archived" | "trashed";
@@ -523,6 +557,24 @@ export type ClientMessage =
       targetHint?: string;
     }
   | {
+      type: "browserAction.plan";
+      actionSessionId?: string;
+      sessionId?: string;
+      plan: BrowserActionPlanInput;
+      requestId?: string;
+    }
+  | {
+      type: "browserAction.policy.list";
+    }
+  | {
+      type: "browserAction.policy.set";
+      policy: Omit<BrowserActionPolicySummary, "id" | "createdAt" | "updatedAt"> & { id?: string };
+    }
+  | {
+      type: "browserAction.policy.revoke";
+      policyId: string;
+    }
+  | {
       type: "browserAction.cancel";
       actionSessionId: string;
     }
@@ -702,6 +754,15 @@ export type ServerEvent =
       type: "browserAction.adapters";
       actionSessionId?: string;
       adapters: BrowserActionAdapterStatus[];
+    }
+  | {
+      type: "browserAction.plan";
+      actionSessionId: string;
+      plan: unknown;
+    }
+  | {
+      type: "browserAction.policies";
+      policies: BrowserActionPolicySummary[];
     }
   | {
       type: "browserAction.result";

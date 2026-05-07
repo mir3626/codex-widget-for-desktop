@@ -12,13 +12,19 @@ import { createStorageService, type StorageService } from "./storage/storage.js"
 import { getProviderStatuses } from "./tools.js";
 import {
   BrowserActionSessionManager,
+  normalizeBrowserActionPolicy,
+  planBrowserActionFromPrompt,
+  redactBrowserActionSecret,
   summarizeBrowserActionResult,
   summarizeBrowserActionSession,
   summarizeBrowserObservation,
   type BrowserAction,
   type BrowserActionAuditEntry,
   type BrowserActionExecutionResult,
-  type BrowserActionResult
+  type BrowserActionPlan,
+  type BrowserActionPolicy,
+  type BrowserActionResult,
+  type BrowserActionSource
 } from "./browser-action/index.js";
 import {
   VisionContextSessionManager,
@@ -96,6 +102,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     send(socket, { type: "provider.status", providers: getProviderStatuses(providers) });
     send(socket, { type: "runtime.status", status: readRuntimeStatus(startedAt, clients, controllers, codexAppServer, storage) });
     sendExecutionPermissions(socket, storage);
+    sendBrowserActionPolicies(socket, storage);
     sendSessionSnapshot(socket, storage);
     sendLedgerSnapshot(socket, storage);
     send(socket, { type: "session.state", state: "idle" });
@@ -659,7 +666,8 @@ async function handleMessage(
           storage,
           agentSession,
           codexAppServer,
-          providers
+          providers,
+          browserActions
         });
       }
     } catch (error) {
@@ -742,7 +750,8 @@ async function handleMessage(
         snapshot: providers.getDomSnapshot(),
         adapterId: message.adapterId,
         approved: message.approved,
-        targetHint: message.targetHint
+        targetHint: message.targetHint,
+        policies: storage.readBrowserActionPolicies()
       });
       recordBrowserActionAudit(storage, execution.audit);
       const sessionId = resolveClientSessionId(storage, execution.session.sessionId);
@@ -785,6 +794,104 @@ async function handleMessage(
         actionSessionId: message.actionSessionId,
         error: error instanceof Error ? error.message : "Unable to execute Browser Action."
       });
+    }
+    return;
+  }
+
+  if (message.type === "browserAction.plan") {
+    try {
+      const session = message.actionSessionId
+        ? browserActions.get(message.actionSessionId) ?? browserActions.start({ id: message.actionSessionId, sessionId: message.sessionId, mode: message.plan.mode })
+        : browserActions.start({ sessionId: message.sessionId, mode: message.plan.mode });
+      const plan = normalizeBrowserActionPlan({
+        actionSessionId: session.id,
+        input: message.plan
+      });
+      const execution = await browserActions.executePlan({
+        plan,
+        snapshot: providers.getDomSnapshot(),
+        adapterId: message.plan.adapterId,
+        policies: storage.readBrowserActionPolicies()
+      });
+      for (const audit of execution.audits) {
+        recordBrowserActionAudit(storage, audit);
+      }
+      const sessionId = resolveClientSessionId(storage, execution.session.sessionId);
+      broadcast(clients, { type: "browserAction.plan", actionSessionId: execution.session.id, plan: summarizeBrowserActionPlan(execution.plan) });
+      if (execution.approval) {
+        const latestResult = execution.results.at(-1);
+        broadcast(clients, {
+          type: "interaction.required",
+          interaction: {
+            id: execution.approval.id,
+            requestId: message.requestId,
+            kind: "approval",
+            title: "Browser action plan approval",
+            body: latestResult ? buildBrowserActionApprovalBody(latestResult) : "Browser Action plan requires approval.",
+            action: `Browser action plan: ${execution.approval.safety.actionLabel}`
+          }
+        });
+        broadcast(clients, {
+          type: "browserAction.progress",
+          actionSessionId: execution.session.id,
+          status: "plan_approval_required",
+          detail: summarizeBrowserActionPlan(execution.plan)
+        });
+      } else if (execution.command) {
+        broadcast(clients, {
+          type: "browserAction.progress",
+          actionSessionId: execution.session.id,
+          status: "plan_paused_for_extension",
+          detail: { requestId: execution.command.requestId, action: execution.command.action.type, plan: summarizeBrowserActionPlan(execution.plan) }
+        });
+      } else {
+        broadcast(clients, {
+          type: "browserAction.result",
+          actionSessionId: execution.session.id,
+          result: {
+            plan: summarizeBrowserActionPlan(execution.plan),
+            results: execution.results.map(summarizeBrowserActionResult)
+          }
+        });
+      }
+      recordRuntimeActivity(storage, sessionId, "info", "browser-action", `Browser Action plan ${execution.plan.status}`, summarizeBrowserActionPlan(execution.plan));
+      broadcastLedgerSnapshot(clients, storage, sessionId);
+    } catch (error) {
+      send(socket, {
+        type: "browserAction.error",
+        actionSessionId: message.actionSessionId ?? "",
+        error: error instanceof Error ? error.message : "Unable to execute Browser Action plan."
+      });
+    }
+    return;
+  }
+
+  if (message.type === "browserAction.policy.list") {
+    sendBrowserActionPolicies(socket, storage);
+    return;
+  }
+
+  if (message.type === "browserAction.policy.set") {
+    try {
+      const policy = normalizeBrowserActionPolicy(message.policy);
+      const policies = storage.setBrowserActionPolicy(policy);
+      broadcastBrowserActionPolicies(clients, policies);
+      recordRuntimeActivity(storage, storage.ensureSessionSnapshot().activeSessionId, "info", "browser-action-policy", `Browser Action policy ${policy.decision}: ${policy.actionFamily}`, policy);
+      broadcastLedgerSnapshot(clients, storage);
+    } catch (error) {
+      send(socket, { type: "error", message: error instanceof Error ? error.message : "Unable to save Browser Action policy." });
+    }
+    return;
+  }
+
+  if (message.type === "browserAction.policy.revoke") {
+    try {
+      const policies = storage.revokeBrowserActionPolicy(message.policyId);
+      broadcastBrowserActionPolicies(clients, policies);
+      recordRuntimeActivity(storage, storage.ensureSessionSnapshot().activeSessionId, "info", "browser-action-policy", `Browser Action policy revoked: ${message.policyId}`, { policyId: message.policyId });
+      broadcastLedgerSnapshot(clients, storage);
+    } catch (error) {
+      send(socket, { type: "error", message: error instanceof Error ? error.message : "Unable to revoke Browser Action policy." });
     }
     return;
   }
@@ -842,7 +949,8 @@ async function handleMessage(
     storage,
     agentSession,
     codexAppServer,
-    providers
+    providers,
+    browserActions
   });
 }
 
@@ -858,6 +966,7 @@ async function runAskMessage(input: {
   agentSession: AgentSessionState;
   codexAppServer: CodexAppServerBridge;
   providers: ProviderRegistry;
+  browserActions: BrowserActionSessionManager;
 }): Promise<void> {
   const {
     message,
@@ -870,7 +979,8 @@ async function runAskMessage(input: {
     storage,
     agentSession,
     codexAppServer,
-    providers
+    providers,
+    browserActions
   } = input;
   const controller = new AbortController();
   controllers.set(message.id, controller);
@@ -886,20 +996,33 @@ async function runAskMessage(input: {
   requestSessions.set(message.id, persistedAsk.sessionId);
   broadcast(clients, { type: "session.snapshot", snapshot: persistedAsk.snapshot });
   broadcastLedgerSnapshot(clients, storage, persistedAsk.sessionId);
+  const emitRuntimeEvent = (event: ServerEvent) => {
+    const ledgerChanged = persistRuntimeEvent(storage, persistedAsk.sessionId, event, {
+      toolOutputBuffers,
+      workspaceRoot: resolveCodexExecutionContext().workdir
+    });
+    retainAndBroadcast(clients, retainedMessages, event);
+    if (ledgerChanged) {
+      broadcastLedgerSnapshot(clients, storage, persistedAsk.sessionId);
+    }
+  };
 
   try {
+    const browserActionHandled = await tryRunBrowserActionPrompt({
+      message,
+      sessionId: persistedAsk.sessionId,
+      emit: emitRuntimeEvent,
+      clients,
+      storage,
+      providers,
+      browserActions
+    });
+    if (browserActionHandled) {
+      return;
+    }
     bindCodexAppServerThread(storage, persistedAsk.sessionId, codexAppServer);
     await prepareRegeneration(message, auth, codexAppServer);
-    await runAgentStream(message, (event) => {
-      const ledgerChanged = persistRuntimeEvent(storage, persistedAsk.sessionId, event, {
-        toolOutputBuffers,
-        workspaceRoot: resolveCodexExecutionContext().workdir
-      });
-      retainAndBroadcast(clients, retainedMessages, event);
-      if (ledgerChanged) {
-        broadcastLedgerSnapshot(clients, storage, persistedAsk.sessionId);
-      }
-    }, controller.signal, {
+    await runAgentStream(message, emitRuntimeEvent, controller.signal, {
       ...auth.getProxyCredentials(),
       authStatus: auth.getStatus(),
       session: agentSession,
@@ -932,6 +1055,209 @@ async function runAskMessage(input: {
     controllers.delete(message.id);
     requestSessions.delete(message.id);
   }
+}
+
+async function tryRunBrowserActionPrompt(input: {
+  message: Extract<ClientMessage, { type: "ask" }>;
+  sessionId: string;
+  emit: (event: ServerEvent) => void;
+  clients: Set<WebSocket>;
+  storage: StorageService;
+  providers: ProviderRegistry;
+  browserActions: BrowserActionSessionManager;
+}): Promise<boolean> {
+  const promptPlan = planBrowserActionFromPrompt({
+    text: input.message.text,
+    mode: input.message.mode,
+    source: readBrowserSourceFromSnapshot(input.providers.getDomSnapshot())
+  });
+  if (!promptPlan) {
+    return false;
+  }
+
+  const session = input.browserActions.start({
+    id: `browser-action-prompt-${input.message.id}`,
+    sessionId: input.sessionId,
+    mode: promptPlan.mode,
+    source: promptPlan.source
+  });
+  input.emit({ type: "session.state", state: "tooling", id: input.message.id });
+  broadcast(input.clients, { type: "browserAction.started", actionSessionId: session.id, summary: summarizeBrowserActionSession(session) });
+  recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", "Prompt-driven Browser Action started", {
+    requestId: input.message.id,
+    planId: promptPlan.id,
+    reason: promptPlan.reason
+  });
+
+  const snapshot = input.providers.getDomSnapshot();
+  const observed = input.browserActions.observe({ actionSessionId: session.id, snapshot });
+  recordBrowserActionAudit(input.storage, observed.audit);
+  broadcast(input.clients, {
+    type: "browserAction.observation",
+    actionSessionId: session.id,
+    observationSummary: summarizeBrowserObservation(observed.observation)
+  });
+
+  const plan = normalizeBrowserActionPlan({
+    actionSessionId: session.id,
+    input: {
+      id: promptPlan.id,
+      goal: promptPlan.goal,
+      adapterId: promptPlan.adapterId,
+      mode: promptPlan.mode,
+      steps: promptPlan.steps,
+      confidence: promptPlan.confidence
+    }
+  });
+  const execution = await input.browserActions.executePlan({
+    plan,
+    snapshot,
+    adapterId: promptPlan.adapterId,
+    policies: input.storage.readBrowserActionPolicies()
+  });
+  for (const audit of execution.audits) {
+    recordBrowserActionAudit(input.storage, audit);
+  }
+
+  broadcast(input.clients, { type: "browserAction.plan", actionSessionId: session.id, plan: summarizeBrowserActionPlan(execution.plan) });
+  if (execution.approval) {
+    const latestResult = execution.results.at(-1);
+    broadcast(input.clients, {
+      type: "interaction.required",
+      interaction: {
+        id: execution.approval.id,
+        requestId: input.message.id,
+        kind: "approval",
+        title: "Browser action approval",
+        body: latestResult ? buildBrowserActionApprovalBody(latestResult) : "Browser Action requires approval.",
+        action: `Browser action: ${execution.approval.safety.actionLabel}`
+      }
+    });
+    input.emit({
+      type: "message.completed",
+      id: input.message.id,
+      text: renderBrowserPromptResponse(execution.plan, execution.results, "approval_required")
+    });
+    input.emit({ type: "session.state", state: "idle", id: input.message.id });
+    broadcastLedgerSnapshot(input.clients, input.storage, input.sessionId);
+    return true;
+  }
+
+  if (execution.command) {
+    broadcast(input.clients, {
+      type: "browserAction.progress",
+      actionSessionId: session.id,
+      status: "plan_paused_for_extension",
+      detail: { requestId: execution.command.requestId, action: execution.command.action.type, plan: summarizeBrowserActionPlan(execution.plan) }
+    });
+    input.emit({
+      type: "message.completed",
+      id: input.message.id,
+      text: renderBrowserPromptResponse(execution.plan, execution.results, "extension_pending")
+    });
+    input.emit({ type: "session.state", state: "idle", id: input.message.id });
+    broadcastLedgerSnapshot(input.clients, input.storage, input.sessionId);
+    return true;
+  }
+
+  broadcast(input.clients, {
+    type: "browserAction.result",
+    actionSessionId: session.id,
+    result: {
+      plan: summarizeBrowserActionPlan(execution.plan),
+      results: execution.results.map(summarizeBrowserActionResult)
+    }
+  });
+  input.emit({
+    type: "message.completed",
+    id: input.message.id,
+    text: renderBrowserPromptResponse(execution.plan, execution.results, execution.plan.status)
+  });
+  input.emit({ type: "session.state", state: "idle", id: input.message.id });
+  recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", `Prompt Browser Action ${execution.plan.status}`, summarizeBrowserActionPlan(execution.plan));
+  broadcastLedgerSnapshot(input.clients, input.storage, input.sessionId);
+  return true;
+}
+
+function normalizeBrowserActionPlan(input: {
+  actionSessionId: string;
+  input: Extract<ClientMessage, { type: "browserAction.plan" }>["plan"];
+}): BrowserActionPlan {
+  const now = new Date().toISOString();
+  const id = typeof input.input.id === "string" && input.input.id.trim() ? input.input.id.trim() : `browser-plan-${cryptoRandomId()}`;
+  return {
+    id,
+    actionSessionId: input.actionSessionId,
+    createdAt: now,
+    goal: input.input.goal.trim().slice(0, 500) || "Browser Action plan",
+    adapterId: input.input.adapterId?.trim() || undefined,
+    status: "proposed",
+    expectedOutcome: typeof input.input.expectedOutcome === "string" ? input.input.expectedOutcome.slice(0, 500) : undefined,
+    confidence: clampUnit(Number(input.input.confidence ?? 0.7)),
+    steps: input.input.steps.map((step, index) => ({
+      id: step.id?.trim() || `step-${index + 1}`,
+      action: step.action as BrowserAction,
+      targetSummary: step.targetSummary?.slice(0, 240),
+      reason: step.reason?.slice(0, 500),
+      expected: [],
+      status: "pending"
+    }))
+  };
+}
+
+function summarizeBrowserActionPlan(plan: BrowserActionPlan): Record<string, unknown> {
+  return {
+    id: plan.id,
+    actionSessionId: plan.actionSessionId,
+    goal: plan.goal,
+    adapterId: plan.adapterId,
+    status: plan.status,
+    confidence: plan.confidence,
+    summary: plan.summary,
+    steps: plan.steps.map((step) => ({
+      id: step.id,
+      action: step.action.type,
+      status: step.status,
+      targetSummary: step.targetSummary,
+      safety: step.safety?.decision,
+      risk: step.safety?.risk,
+      reason: step.reason,
+      resultId: step.resultId,
+      error: step.error
+    }))
+  };
+}
+
+function renderBrowserPromptResponse(
+  plan: BrowserActionPlan,
+  results: BrowserActionResult[],
+  terminalStatus: string
+): string {
+  const latest = results.at(-1);
+  const lines = [
+    "Browser Action tool path executed.",
+    `- plan: ${plan.status}`,
+    `- steps: ${plan.steps.map((step) => `${step.id}:${step.status}`).join(", ")}`,
+    latest ? `- latest result: ${latest.status}; verification=${latest.verification.status}; ${latest.verification.reason}` : undefined,
+    terminalStatus === "approval_required" ? "- next: user approval is required before executing the risky step." : undefined,
+    terminalStatus === "extension_pending" ? "- next: the browser extension picked up path is pending; click the extension/snapshot action if the active tab is not polling." : undefined
+  ].filter(Boolean);
+  return lines.map((line) => String(redactBrowserActionSecret(line))).join("\n");
+}
+
+function readBrowserSourceFromSnapshot(snapshot: unknown): Partial<BrowserActionSource> | undefined {
+  const record = readRecord(snapshot);
+  const url = readOptionalString(record?.url);
+  const title = readOptionalString(record?.title);
+  if (!url && !title) {
+    return undefined;
+  }
+  return {
+    kind: "active_tab",
+    browser: "unknown",
+    ...(url ? { url } : {}),
+    ...(title ? { title } : {})
+  };
 }
 
 function normalizeVisionContextEvent(input: unknown): CaptureEvent {
@@ -1713,6 +2039,21 @@ function sendExecutionPermissions(socket: WebSocket, storage: StorageService): v
 
 function broadcastExecutionPermissions(clients: Set<WebSocket>, permissions: ExecutionPermissionSummary[]): void {
   broadcast(clients, { type: "execution.permissions", permissions });
+}
+
+function sendBrowserActionPolicies(socket: WebSocket, storage: StorageService): void {
+  try {
+    send(socket, { type: "browserAction.policies", policies: storage.readBrowserActionPolicies() });
+  } catch (error) {
+    send(socket, {
+      type: "error",
+      message: error instanceof Error ? error.message : "Unable to load Browser Action policies."
+    });
+  }
+}
+
+function broadcastBrowserActionPolicies(clients: Set<WebSocket>, policies: BrowserActionPolicy[]): void {
+  broadcast(clients, { type: "browserAction.policies", policies });
 }
 
 function sendLedgerSnapshot(socket: WebSocket, storage: StorageService, sessionId?: string): void {

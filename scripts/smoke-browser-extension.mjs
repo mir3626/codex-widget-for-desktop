@@ -50,7 +50,12 @@ for (const marker of [
   "document.body",
   "collectInteractiveElements",
   "executeBrowserActionInPage",
-  "chrome.tabs.captureVisibleTab"
+  "chrome.tabs.captureVisibleTab",
+  "expectedSource",
+  "detectSourceMismatch",
+  "postBrowserActionResultWithRetry",
+  "assertTabCanRunBrowserAction",
+  "restricted browser pages"
 ]) {
   if (!serviceWorker.includes(marker)) {
     throw new Error(`Extension service worker is missing marker: ${marker}`);

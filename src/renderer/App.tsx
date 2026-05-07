@@ -14,6 +14,8 @@ import {
   normalizeModelId,
   normalizeReasoningEffort,
   type AuthStatus,
+  type BrowserActionMode,
+  type BrowserActionPolicyDecision,
   type BranchContextMessage,
   type ClientMessage,
   type ExecutionPermissionDecision,
@@ -93,6 +95,7 @@ import {
 } from "./shell";
 import type {
   AssistantMessageStatus,
+  BrowserActionUiState,
   ChatMessage,
   InteractionDrafts,
   LogLine,
@@ -207,6 +210,17 @@ export function App() {
   const [interactions, setInteractions] = useState<RuntimeInteraction[]>([]);
   const [interactionDrafts, setInteractionDrafts] = useState<InteractionDrafts>({});
   const [executionPermissions, setExecutionPermissions] = useState<ExecutionPermissionSummary[]>([]);
+  const [browserAction, setBrowserAction] = useState<BrowserActionUiState>({
+    actionSessionId: null,
+    adapters: [],
+    policies: [],
+    observationSummary: null,
+    planSummary: null,
+    resultSummary: null,
+    progress: [],
+    error: null,
+    safetyMode: "auto_safe_actions"
+  });
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [branchContext, setBranchContext] = useState<BranchContextMessage[] | null>(() => readStoredBranchContext());
@@ -783,32 +797,91 @@ export function App() {
     }
 
     if (event.type === "browserAction.started") {
+      setBrowserAction((current) => ({
+        ...current,
+        actionSessionId: event.actionSessionId,
+        progress: [...current.progress.slice(-5), { id: crypto.randomUUID(), status: "started", detail: event.summary }],
+        error: null
+      }));
       appendLog("Browser Action started", "tool");
       return;
     }
 
     if (event.type === "browserAction.observation") {
+      setBrowserAction((current) => ({
+        ...current,
+        actionSessionId: event.actionSessionId,
+        observationSummary: event.observationSummary,
+        progress: [...current.progress.slice(-5), { id: crypto.randomUUID(), status: "observed", detail: event.observationSummary }],
+        error: null
+      }));
       appendLog("Browser Action observation ready", "tool");
       return;
     }
 
     if (event.type === "browserAction.progress") {
+      setBrowserAction((current) => ({
+        ...current,
+        actionSessionId: event.actionSessionId,
+        progress: [...current.progress.slice(-7), { id: crypto.randomUUID(), status: event.status, detail: event.detail }],
+        error: null
+      }));
       appendLog(`Browser Action ${event.status}`, "tool");
       return;
     }
 
     if (event.type === "browserAction.adapters") {
       const ready = event.adapters.filter((adapter) => adapter.state === "ready").map((adapter) => adapter.id).join(", ") || "none";
+      setBrowserAction((current) => ({
+        ...current,
+        actionSessionId: event.actionSessionId ?? current.actionSessionId,
+        adapters: event.adapters,
+        progress: [...current.progress.slice(-5), { id: crypto.randomUUID(), status: "adapters", detail: { ready } }],
+        error: null
+      }));
       appendLog(`Browser Action adapters ready: ${ready}`, "tool");
       return;
     }
 
+    if (event.type === "browserAction.plan") {
+      setBrowserAction((current) => ({
+        ...current,
+        actionSessionId: event.actionSessionId,
+        planSummary: event.plan,
+        progress: [...current.progress.slice(-7), { id: crypto.randomUUID(), status: "plan", detail: event.plan }],
+        error: null
+      }));
+      appendLog("Browser Action plan updated", "tool");
+      return;
+    }
+
+    if (event.type === "browserAction.policies") {
+      setBrowserAction((current) => ({
+        ...current,
+        policies: event.policies
+      }));
+      return;
+    }
+
     if (event.type === "browserAction.result") {
+      setBrowserAction((current) => ({
+        ...current,
+        actionSessionId: event.actionSessionId,
+        resultSummary: event.result,
+        progress: [...current.progress.slice(-7), { id: crypto.randomUUID(), status: "result", detail: event.result }],
+        error: null
+      }));
       appendLog("Browser Action result ready", "tool");
       return;
     }
 
     if (event.type === "browserAction.error") {
+      setBrowserAction((current) => ({
+        ...current,
+        actionSessionId: event.actionSessionId || current.actionSessionId,
+        error: event.error,
+        progress: [...current.progress.slice(-7), { id: crypto.randomUUID(), status: "error", detail: event.error }]
+      }));
       appendLog(event.error, "error");
       return;
     }
@@ -1268,6 +1341,60 @@ export function App() {
       type: "execution.permission.set",
       action,
       decision
+    });
+  }
+
+  function startBrowserAction(mode: BrowserActionMode) {
+    const actionSessionId = `browser-action-ui-${crypto.randomUUID()}`;
+    setBrowserAction((current) => ({
+      ...current,
+      actionSessionId,
+      safetyMode: mode,
+      progress: [...current.progress.slice(-5), { id: crypto.randomUUID(), status: "starting" }],
+      error: null
+    }));
+    send({
+      type: "browserAction.start",
+      actionSessionId,
+      sessionId: activeSessionId ?? undefined,
+      mode
+    });
+    send({ type: "browserAction.adapters", actionSessionId });
+  }
+
+  function refreshBrowserActionAdapters() {
+    send({ type: "browserAction.adapters", actionSessionId: browserAction.actionSessionId ?? undefined });
+  }
+
+  function observeBrowserAction() {
+    if (!browserAction.actionSessionId) {
+      startBrowserAction(browserAction.safetyMode);
+      return;
+    }
+    send({ type: "browserAction.observe", actionSessionId: browserAction.actionSessionId });
+  }
+
+  function cancelBrowserAction() {
+    if (!browserAction.actionSessionId) {
+      return;
+    }
+    send({ type: "browserAction.cancel", actionSessionId: browserAction.actionSessionId });
+    setBrowserAction((current) => ({
+      ...current,
+      progress: [...current.progress.slice(-5), { id: crypto.randomUUID(), status: "cancel_requested" }]
+    }));
+  }
+
+  function updateBrowserActionPolicy(decision: BrowserActionPolicyDecision) {
+    send({
+      type: "browserAction.policy.set",
+      policy: {
+        decision,
+        actionFamily: decision === "deny" ? "all" : decision === "allow" ? "safe_read_scroll" : "safe_click_type",
+        targetRisk: decision === "deny" ? "destructive" : "low",
+        mode: "any",
+        note: decision === "allow" ? "Renderer quick policy for safe Browser Action reads and scrolls." : "Renderer quick Browser Action policy."
+      }
     });
   }
 
@@ -2747,6 +2874,7 @@ export function App() {
             terminalInput={terminalInput}
             terminalMouseEnabled={terminalMouseEnabled}
             showTerminalGuide={showTerminalGuide}
+            browserAction={browserAction}
             onRunTerminalQuickAction={runTerminalQuickAction}
             onClearTerminal={clearTerminalViewport}
             onOpenTerminalPopout={openTerminalPopout}
@@ -2756,6 +2884,11 @@ export function App() {
             onTerminalMouseEnabledChange={setTerminalMouseEnabled}
             onTerminalMouseInput={sendTerminalRawInput}
             onToggleTerminalGuide={() => setShowTerminalGuide((current) => !current)}
+            onBrowserActionStart={startBrowserAction}
+            onBrowserActionRefreshAdapters={refreshBrowserActionAdapters}
+            onBrowserActionObserve={observeBrowserAction}
+            onBrowserActionCancel={cancelBrowserAction}
+            onBrowserActionPolicyChange={updateBrowserActionPolicy}
             onCopyCodeBlock={copyCodeBlock}
             onCopyMessage={copyMessage}
             onRegenerateMessage={retryAssistantMessage}
