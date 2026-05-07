@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-05-07T14:24:46.245Z",
+  "sourceReportPath": "docs/reports/review-0-2026-05-07-v1.7.8-dogfood.md",
+  "screenshotPath": "docs/reports/vision-context-dogfood-assets/semantic-acceptance-context.png",
+  "daemonPort": 14370,
+  "captureId": "vision-context-semantic-dogfood",
+  "capsuleSummary": {
+    "id": "capsule-cf8fcfdb-a16e-420e-b72a-b26502901785",
+    "intent": {
+      "kind": "summarize_content",
+      "summary": "Summarize the visible content.",
+      "confidence": 0.8
+    },
+    "evidenceCount": 3,
+    "deletedRawMedia": 2,
+    "userUtterance": "이 화면의 Semantic acceptance evidence 상태를 요약하고 complete로 표시해도 되는지 판단해줘."
+  },
+  "appServerResponse": "semantic-decision=hold-semantic-acceptance; local-images=1; residual=true; guidance=true; raw-media-mentioned=false",
+  "appServerInput": {
+    "inputTypes": [
+      "text",
+      "localImage"
+    ],
+    "localImagePaths": [
+      "docs/reports/vision-context-dogfood-assets/semantic-acceptance-context.png"
+    ],
+    "localImageCount": 1,
+    "textLength": 5171,
+    "containsSemanticResidual": true,
+    "containsSemanticGuidance": true,
+    "rawMediaPathMentioned": false,
+    "textExcerpt": "[mode=screen]\nCodex Widget desktop context:\nPurpose: a small resident Windows/Tauri desktop assistant widget for Codex. Use this section when the user asks what a button, mode, panel, session, artifact, or setting in the widget does.\nCurrent mode: screen\nCurrent model: gpt-5.5\nCurrent reasoning effort: medium\nAuth/runtime: mode=codex; configured=yes; authenticated=yes; signIn=codex\n\nMain UI controls:\n- Title bar: pin/unpin, opacity, minimize, maximize, close-to-tray, settings, sign in/out.\n- Session strip: internal chat tabs, New chat, Recovery Vault for archived/deleted sessions, and Branch in new chat from an assistant response.\n- Mode tabs: Agent for normal Codex conversation, DOM for browser tab context, Vision for screen capture/record/share, PTY for the resident terminal viewport.\n- Composer: Ask Codex textarea, send/stop button, model selector, reasoning selector, and resizable prompt area.\n- Activity: footer shows the latest widget action; the detail control opens the session activity log.\n- Artifacts: generated output and file-change artifacts appear in chat and can also be reviewed from trashed sessions.\n\nMode capabilities:\n- Agent (agent): state=ready; detail=Codex app-s"
+  },
+  "rawMediaDeleted": true
+}

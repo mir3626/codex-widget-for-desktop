@@ -40,14 +40,16 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - 2026-05-07T22:20:17.844+09:00 Iteration `iter-8` completed the Vision Context Interface MVP from `docs/plans/vision-context-interface-handoff.md`: daemon-side TaskCapsule/capture/resolver/retention modules, transcription MVP boundary, screen/browser/terminal observation adapters, shared `visionContext.*` protocol, renderer Share-with-Agent integration, app-server `localImage` override support, and smoke coverage for capsule generation, raw media deletion, resolver cases, lexicon correction, destructive clarification, and fake app-server localImage delivery.
 - 2026-05-07T22:33:11.196+09:00 `/vibe-review` wrote `docs/reports/review-0-2026-05-07.md`. Findings focus on harness review reliability: escaped-pipe parsing in the gap ledger, Findings heading/parser contract drift, context-audit observability before any prompt reduction, semantic acceptance evidence for agent-context features, and a project-decisions JSONL warning cleanup.
 - 2026-05-07T23:15:09.588+09:00 downstream dogfood verification synced the harness to vibe-doctor `v1.7.8` and wrote `docs/reports/review-0-2026-05-07-v1.7.8-dogfood.md`. The previous parser/input regressions are verified fixed; remaining notes are report-only context-audit observability and Vision Context semantic dogfood evidence.
+- 2026-05-07T23:25:13.064+09:00 first Vision Context semantic dogfood evidence collected in `docs/reports/vision-context-dogfood-evidence-2026-05-07.md`: the real v1.7.8 residual review section was converted through daemon `visionContext.*`, raw media was deleted, one screenshot was passed as `localImage`, and the app-server task decision correctly held semantic acceptance instead of marking it complete. This is evidence-collected, not final semantic acceptance.
+- 2026-05-08T00:13:57.067+09:00 planned the Browser Action Interface in `docs/plans/browser-action-interface-handoff.md`. The plan scopes a daemon-side browser actuator module for observe-plan-act-verify loops, typed browser actions, target resolution, safety policy, extension/native/CDP/Playwright adapters, renderer approval, audit logging, and future computer-use integration. No implementation has started.
 - Current dev widget run is live after clearing port `5173`: Vite is listening on `127.0.0.1:5173`, daemon/app-server on `127.0.0.1:4128`, and startup logs are under `dist/logs/widget-dev-20260506-071947.*.log`.
 - Browser store submission runbook is source-controlled at `docs/release/browser-store-submission.md`; deferral is recorded in `docs/release/deferred-gates.json`. Use the runbook after dogfooding to clear the deferred public-release gate and then rerun strict readiness.
 
 ## Branch And Harness
 
 - Branch: `main`
-- Harness: vibe-doctor `v1.7.7`
-- Upstream ref: `^v1.7.7`
+- Harness: vibe-doctor `v1.7.8`
+- Upstream ref: `^v1.7.8`
 - Orchestrator: `codex`
 - Sprint roles: planner `codex`, generator `codex`, evaluator `codex`
 - Sprint mode: `extended` enabled in `.claude/settings.local.json`
@@ -82,6 +84,8 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Completed Iteration 6 Sprint 01 focus: renderer frontend structure refactor. `App.tsx` now owns orchestration and side effects while UI surfaces live under `src/renderer/components`, shared behavior under `hooks` and `utils`, renderer constants/types in `config.ts`/`types.ts`, and CSS partials under `src/renderer/styles`.
 - Completed Iteration 7 Sprint 01 focus: trash artifact row alignment and compact Activity footer height are accepted. The frame-based mascot sprite animation using `src/renderer/assets/mascot-motion-sprite.png` was rejected as a proxy implementation; the replacement now uses status-specific sequential source sheets, component-extracted 30fps WebP sprite grids, single-layer playback, fixed lower-body anchoring, alpha-area scale stabilization, and no drop-shadow/crossfade/transform-wobble aura, with dogfood acceptance still pending.
 - Completed Iteration 8 focus: the Vision Context Interface now sits behind Agent screen sharing. The daemon can start/event/stop/cancel Vision Context sessions, collect timeline/provider observations, build TaskCapsules, render capsule markdown, convert to app-server `UserInput[]` with selected `localImage` evidence, delete raw video/audio temp files after processing, and send the result into the current Codex app-server thread. The transcription MVP includes mock ASR, sidecar boundary, lexicon correction, action-slot confidence, and clarification policy.
+- Vision Context semantic acceptance state: first dogfood evidence exists at `docs/reports/vision-context-dogfood-evidence-2026-05-07.md`; do not mark semantic acceptance complete until stronger live UI/live-model before-after evidence is collected or the product owner explicitly accepts this deterministic protocol artifact as sufficient.
+- Browser Action planning state: `docs/plans/browser-action-interface-handoff.md` is the authoritative planning handoff for future browser computer-use work. It should be treated as planning-only until a `/vibe-iterate` sprint explicitly starts implementation.
 
 ## Recent Work
 
