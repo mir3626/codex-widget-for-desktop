@@ -12,7 +12,7 @@ saveButton.addEventListener("click", () => {
 });
 
 resetButton.addEventListener("click", () => {
-  input.value = DEFAULT_DAEMON_DOM_SNAPSHOT_URL;
+  input.value = "http://127.0.0.1:4128";
   void saveOptions("Default URL restored.");
 });
 
@@ -24,9 +24,8 @@ async function loadOptions() {
 async function saveOptions(message = "Saved.") {
   const normalized = normalizeDaemonSnapshotUrl(input.value);
   if (normalized !== input.value.trim()) {
-    setStatus("Use a local HTTP URL ending in /providers/dom/snapshot.");
+    setStatus("Saved normalized local daemon URL.");
     input.value = normalized;
-    return;
   }
 
   await writeStorage({ daemonUrl: normalized });
@@ -54,6 +53,12 @@ function normalizeDaemonSnapshotUrl(value) {
     const url = new URL(value.trim());
     const isLocalHost = url.hostname === "127.0.0.1" || url.hostname === "localhost";
     const isHttp = url.protocol === "http:";
+    if (isLocalHost && isHttp && (url.pathname === "/" || url.pathname === "")) {
+      url.pathname = "/providers/dom/snapshot";
+      url.search = "";
+      url.hash = "";
+      return url.toString();
+    }
     if (isLocalHost && isHttp && url.pathname === "/providers/dom/snapshot") {
       return url.toString();
     }

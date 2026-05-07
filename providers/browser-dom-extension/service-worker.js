@@ -21,7 +21,14 @@ async function sendActiveTabSnapshot(tab) {
     if (!nativeResult.ok) {
       await postSnapshotToDaemon(snapshot, daemonUrl);
     }
-    await pollAndExecuteBrowserAction(tab, daemonUrl);
+    try {
+      await pollAndExecuteBrowserAction(tab, daemonUrl);
+    } catch (error) {
+      if (!isBrowserActionPollOnlyError(error)) {
+        throw error;
+      }
+      console.warn("[Codex Widget] Browser Action polling unavailable after snapshot.", error);
+    }
     setBadge(tab.id, "OK", "#0f766e");
   } catch (error) {
     console.error("[Codex Widget] DOM snapshot failed", error);
@@ -126,6 +133,11 @@ async function pollAndExecuteBrowserAction(tab, daemonUrl) {
       }
     }
   });
+}
+
+function isBrowserActionPollOnlyError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /^Browser Action poll failed \(\d+\)\.?$/.test(message) || /Failed to fetch/i.test(message);
 }
 
 async function executeBrowserActionCommand(tab, command) {
@@ -279,6 +291,12 @@ function normalizeDaemonSnapshotUrl(value) {
     const url = new URL(value.trim());
     const isLocalHost = url.hostname === "127.0.0.1" || url.hostname === "localhost";
     const isHttp = url.protocol === "http:";
+    if (isLocalHost && isHttp && (url.pathname === "/" || url.pathname === "")) {
+      url.pathname = "/providers/dom/snapshot";
+      url.search = "";
+      url.hash = "";
+      return url.toString();
+    }
     if (isLocalHost && isHttp && url.pathname === "/providers/dom/snapshot") {
       return url.toString();
     }

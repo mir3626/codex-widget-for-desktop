@@ -55,11 +55,17 @@ for (const marker of [
   "detectSourceMismatch",
   "postBrowserActionResultWithRetry",
   "assertTabCanRunBrowserAction",
-  "restricted browser pages"
+  "restricted browser pages",
+  "isBrowserActionPollOnlyError"
 ]) {
   if (!serviceWorker.includes(marker)) {
     throw new Error(`Extension service worker is missing marker: ${marker}`);
   }
+}
+
+const options = await readFile(optionsPath, "utf8");
+if (!options.includes("Saved normalized local daemon URL") || !options.includes('url.pathname = "/providers/dom/snapshot"')) {
+  throw new Error("Extension options should accept a daemon base URL and normalize it to the snapshot endpoint.");
 }
 
 const packageRun = spawnSync(process.execPath, ["scripts/package-browser-extension.mjs"], {
