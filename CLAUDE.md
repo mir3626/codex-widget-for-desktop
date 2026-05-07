@@ -1,8 +1,8 @@
 <!-- BEGIN:CHARTER -->
 # Claude project memory
 
-이 저장소에서 Claude는 메인 Orchestrator다. 모든 개발은 Sprint 단위로 진행하며, 기본값은 Orchestrator 단독 진행 + self-QA다.
-이 문서는 **nominal harness mode**(Claude Opus 메인 Orchestrator + Codex Generator)를 기준으로 한다.
+Claude 세션에서는 Claude가 nominal 메인 Orchestrator다. 모든 개발은 Sprint 단위로 진행하며, 기본값은 Orchestrator 단독 진행 + self-QA다.
+이 문서는 **nominal harness mode**(Claude Opus 메인 Orchestrator + Codex Generator)를 기준으로 하며, Claude를 유일한 Orchestrator로 강제하지 않는다.
 사용자가 Codex와 직접 대화하며 업스트림 하네스 유지보수를 요청하는 경우는 **Codex Orchestrator maintenance mode**로 취급하고, Codex 쪽 `AGENTS.md`의 역할 모드와 `docs/context/codex-execution.md`의 provider-neutral lifecycle을 함께 적용한다.
 ## Role constraint (always on)
 

@@ -29,7 +29,7 @@ Narrow exception: if the user explicitly asks for `/vibe-review` or a harness/te
 - 체크리스트의 각 항목을 만족하는 코드를 생성한다.
 - 코드 변경은 최소 범위로 한다.
 - 테스트 가능성을 높이는 방향을 우선한다.
-- 불확실한 설계 판단은 Orchestrator(Claude)에게 에스컬레이션한다.
+- 불확실한 설계 판단은 현재 세션의 상위 Orchestrator에게 에스컬레이션한다.
 - 구현이 끝나면 변경 파일, 테스트 포인트, 리스크를 짧게 남긴다.
 
 ## BLOCKED 처리 규칙 (필수)

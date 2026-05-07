@@ -48,14 +48,15 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - 2026-05-08T02:42:00.000+09:00 Added `docs/plans/browser-action-end-to-end-control-handoff.md` as the next Browser Action handoff. It scopes prompt-driven Agent tool integration, renderer UX, extension stability, managed browser/CDP operation, multi-step plans, browser-specific permission policy, Windows UI Automation fallback, and real dogfood matrix.
 - 2026-05-08T02:54:17.473+09:00 `/vibe-sync` advanced the harness to vibe-doctor `v1.7.9` and dogfooded the new manual `diff-reviewer` sidecar. Vanilla v1.7.9 failed Codex provider execution on Windows (`spawnSync codex ENOENT`), then downstream dogfood accepted hardening for Codex shim resolution, sealed-packet hash/coverage/status validation, `--cwd` path handling, artifact-root bounds, and secret-safe diff collection. Latest sidecar artifact `dogfood-sidecar-v179-codex-final6` is `advisory` with only a stale-reference note that was corrected after the run; report: `docs/reports/review-0-2026-05-08-v1.7.9-sidecar-dogfood.md`.
 - 2026-05-08T03:34:01.932+09:00 `/vibe-sync` advanced the harness from `v1.7.9` to `v1.7.11`. Forced conflict sync was used for the known sidecar/Codex-doc files, then this downstream's Codex Orchestrator/provider contract was re-applied. Verification passed `npm run vibe:typecheck`, bootstrap preflight, `npm run vibe:gen-schemas -- --check`, and focused schema/sidecar tests.
+- 2026-05-08T03:44:19.794+09:00 `/vibe-sync` advanced the harness from `v1.7.11` to `v1.7.12`. Dry-run found the two known downstream Codex orchestration doc conflicts, so forced sync was followed by re-applying the local Codex Orchestrator/provider contract. Verification passed `npm run vibe:typecheck`, bootstrap preflight, and `npm run vibe:gen-schemas -- --check`.
 - Current dev widget run is live after clearing port `5173`: Vite is listening on `127.0.0.1:5173`, daemon/app-server on `127.0.0.1:4128`, and startup logs are under `dist/logs/widget-dev-20260506-071947.*.log`.
 - Browser store submission runbook is source-controlled at `docs/release/browser-store-submission.md`; deferral is recorded in `docs/release/deferred-gates.json`. Use the runbook after dogfooding to clear the deferred public-release gate and then rerun strict readiness.
 
 ## Branch And Harness
 
 - Branch: `main`
-- Harness: vibe-doctor `v1.7.11`
-- Upstream ref: `^v1.7.11`
+- Harness: vibe-doctor `v1.7.12`
+- Upstream ref: `^v1.7.12`
 - Orchestrator: `codex`
 - Sprint roles: planner `codex`, generator `codex`, evaluator `codex`
 - Sprint mode: `extended` enabled in `.claude/settings.local.json`

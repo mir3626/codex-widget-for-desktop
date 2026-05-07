@@ -33,12 +33,12 @@ Sub-agent는 **specialization이 아니라 context checkpoint 메커니즘**이�
 
 | 역할 | 모델 / 도구 | 상주 여부 | 컨텍스트 특성 | 책임 |
 |---|---|---|---|---|
-| **Orchestrator** | Codex (메인 대화) | 상주 | 세션 전체 누적 | Phase 생명주기, 인터뷰 진행, Sprint 로드맵, 상태 유지, provider-neutral agent 호출, 사용자 소통 |
-| **Planner** | Codex CLI (`npm run vibe:run-agent -- --provider codex --role planner ...`) | Sprint 내 | **매 Sprint fresh** | Sprint 기술 사양(타입·시그니처·파일 구조) + 프롬프트 초안 + 완료 체크리스트 |
-| **Generator** | Codex CLI (`./.vibe/harness/scripts/run-codex.sh -`) | Sprint 내 | **매 호출 fresh** | 모든 소스코드 작성/수정 (.ts/.tsx/.py/.js/.mjs/.sh/.css 등) |
-| **Evaluator** | Codex CLI (`npm run vibe:run-agent -- --provider codex --role evaluator ...`) | Sprint 내 (트리거 시) | **매 호출 fresh** | 체크리스트 기반 합격/불합격 + 사유 리포트 |
+| **Orchestrator** | Codex 메인 대화 세션 | 상주 | 세션 전체 누적 | Phase 생명주기, 인터뷰 진행, Sprint 로드맵, 상태 유지, sub-agent/sidecar 소환, 사용자 소통 |
+| **Planner** | Codex (`npm run vibe:run-agent -- --provider codex --role planner`) | Sprint 내 | **매 Sprint fresh** | Sprint 기술 사양(타입·시그니처·파일 구조) + 프롬프트 초안 + 완료 체크리스트 |
+| **Generator** | Codex CLI (`.\.vibe\harness\scripts\run-codex.cmd` 또는 `./.vibe/harness/scripts/run-codex.sh -`) | Sprint 내 | **매 호출 fresh** | 모든 소스코드 작성/수정 (.ts/.tsx/.py/.js/.mjs/.sh/.css 등) |
+| **Evaluator** | Codex (`npm run vibe:run-agent -- --provider codex --role evaluator`) | Sprint 내 (트리거 시) | **매 소환 fresh** | 체크리스트 기반 합격/불합격 + 사유 리포트 |
 
-이 downstream 프로젝트의 기본 운영 모드는 **Codex Orchestrator + Codex Planner/Generator/Evaluator** 계약이다. Claude 전용 Agent 호출을 그대로 전제하지 말고, 사용자 지시 범위에서 provider-neutral fallback을 사용하며, 장기 상태는 `maintain-context` workflow로 보존한다. Sprint prompt가 Codex에 투입되면 해당 호출은 Generator 계약을 우선한다.
+이 downstream 프로젝트의 기본 운영 모드는 **Codex Orchestrator + Codex Planner/Generator/Evaluator** 계약이다. Claude 계열 provider는 사용자가 명시적으로 설정을 바꿀 때만 보조/fallback provider로 취급한다. Codex가 직접 대화 세션에서 하네스 유지보수나 저장소 운영을 수행하는 경우에는 Codex Orchestrator maintenance mode로 동작하며, 장기 상태는 `maintain-context` workflow와 `vibe:checkpoint`로 보존한다. Sprint prompt가 Codex에 투입되면 Generator 계약이 우선한다.
 
 ## 3. Phase × 역할 매트릭스
 
