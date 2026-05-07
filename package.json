@@ -44,6 +44,7 @@
     "smoke:release-soak": "node scripts/smoke-release-soak.mjs",
     "smoke:node-runtime": "npm run build:daemon-bundle && npm run build:node-runtime && node scripts/smoke-node-runtime.mjs",
     "smoke:screen": "npm run build:daemon && node scripts/smoke-screen-provider.mjs",
+    "smoke:vision-context": "npm run build:daemon && node scripts/smoke-vision-context.mjs",
     "smoke:screen-capture:live": "npm run build:daemon && node scripts/smoke-screen-capture-request.mjs",
     "smoke:screen-helper": "node scripts/smoke-screen-helper.mjs",
     "smoke:screen-helper:ocr": "node scripts/smoke-screen-helper-ocr.mjs",

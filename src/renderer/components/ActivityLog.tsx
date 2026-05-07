@@ -42,7 +42,7 @@ export function ActivityLog({
           ref={detailsButtonRef}
           type="button"
           className={showDetails ? "activity-detail-button active" : "activity-detail-button"}
-          title="Activity details"
+          data-tooltip="Activity details"
           aria-label="Activity details"
           aria-pressed={showDetails}
           onClick={onToggleDetails}
@@ -80,7 +80,7 @@ export function ActivityLog({
             >
               <div className="activity-popover-head">
                 <strong>Activity</strong>
-                <button type="button" title="Refresh activity" aria-label="Refresh activity" onClick={onRefresh}>
+                <button type="button" data-tooltip="Refresh activity" aria-label="Refresh activity" onClick={onRefresh}>
                   <RotateCw size={12} />
                 </button>
               </div>

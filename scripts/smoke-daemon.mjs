@@ -158,8 +158,12 @@ try {
   if (!ledgerSnapshots.some((event) => event.snapshot?.activities?.length > 0)) {
     throw new Error("Ledger activity snapshots were not emitted.");
   }
-  if (!ledgerSnapshots.some((event) => event.snapshot?.artifacts?.some((artifact) => artifact.files?.length > 0))) {
-    throw new Error("Tool output artifact was not recorded in the ledger.");
+  if (
+    ledgerSnapshots.some((event) =>
+      event.snapshot?.artifacts?.some((artifact) => ["Tool output", "DOM snapshot", "Screen snapshot"].includes(artifact.title))
+    )
+  ) {
+    throw new Error("Provider/tool context should not be promoted into artifacts.");
   }
   if (!events.some((event) => event.type === "provider.vision" && event.stream?.recordingBlobId)) {
     throw new Error("Vision recording completion did not persist blob metadata.");

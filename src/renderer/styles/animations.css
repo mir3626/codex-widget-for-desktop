@@ -1,3 +1,9 @@
+@property --model-select-draw {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
 @keyframes rise-in {
   from {
     opacity: 0;
@@ -22,26 +28,56 @@
   }
 }
 
-@keyframes model-row-session-pulse {
-  0% {
-    border-color: var(--line-soft);
-    background:
-      linear-gradient(90deg, rgba(39, 119, 101, 0), rgba(39, 119, 101, 0)),
-      transparent;
+@keyframes artifact-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.985);
   }
 
-  28% {
-    border-color: rgba(39, 119, 101, 0.36);
-    background:
-      linear-gradient(90deg, rgba(39, 119, 101, 0.08), rgba(83, 135, 122, 0.14), rgba(39, 119, 101, 0.08)),
-      rgba(249, 252, 251, 0.76);
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes vision-live-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(185, 67, 67, 0.24);
+    opacity: 0.72;
+    transform: scale(0.92);
+  }
+
+  48% {
+    box-shadow: 0 0 0 4px rgba(185, 67, 67, 0);
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes model-select-border-draw {
+  0% {
+    --model-select-draw: 0deg;
+    opacity: 0;
+  }
+
+  7% {
+    opacity: 1;
+  }
+
+  76% {
+    --model-select-draw: 360deg;
+    opacity: 1;
+  }
+
+  84% {
+    --model-select-draw: 360deg;
+    opacity: 1;
   }
 
   100% {
-    border-color: var(--line-soft);
-    background:
-      linear-gradient(90deg, rgba(39, 119, 101, 0), rgba(39, 119, 101, 0)),
-      transparent;
+    --model-select-draw: 360deg;
+    opacity: 0;
   }
 }
 
@@ -81,18 +117,8 @@
   }
 }
 
-@keyframes mascot-sprite-cycle {
-  from {
-    background-position-x: 0;
-  }
-
-  to {
-    background-position-x: calc(var(--mascot-render-size) * var(--mascot-frame-shift) * -1);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .mascot {
-    animation: none;
+  .mascot-frame {
+    will-change: auto;
   }
 }

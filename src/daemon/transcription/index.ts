@@ -1,0 +1,11 @@
+export { MockAsrEngine, SidecarAsrEngine } from "./asrEngine.js";
+export { AsrRouter } from "./asrRouter.js";
+export { applyLexiconCorrections } from "./correction.js";
+export { scoreActionSlots } from "./confidence.js";
+export { decideClarification } from "./consensus.js";
+export { MemoryLexiconStore, createProfileId } from "./lexiconStore.js";
+export { buildSessionLexicon } from "./sessionLexicon.js";
+export { buildTutorialLexiconEntries } from "./tutorialProfile.js";
+export { deleteRawAudioSegments } from "./retention.js";
+export { createMockVadSegments } from "./vad.js";
+export * from "./types.js";

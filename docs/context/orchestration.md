@@ -136,6 +136,7 @@ Orchestrator 단독 작성. 각 entry 필드:
 2. 완료 체크리스트 — 기계 검증 항목과 inspection/demo 항목을 분리. 기계 검증은 `tsc`, test, grep 등으로 확인하고, 제품 정체성·사용감·시각/상호작용 품질처럼 자동화하기 어려운 항목은 Evaluator 또는 사용자 inspection 대상으로 명시
    - frontend/game/visual/canvas/WebGL/Three.js/editor/dashboard 등 경험형 제품이면 screenshot, Playwright trace, browser-smoke output, 또는 playthrough note 중 하나 이상의 evidence item을 반드시 포함한다.
    - 해당 evidence item은 "무엇이 보이고/조작되고/느껴져야 하는가"를 product identity/payoff와 연결해야 하며, typecheck/test/build/browser-smoke 통과만으로 대체할 수 없다.
+   - semantic agent-context, multimodal, workflow-agent 기능이면 dogfood transcript, screen-share note, task-quality artifact, 또는 before/after task outcome 중 하나 이상의 evidence item을 반드시 포함한다. 단순 shape/smoke/mock 통과는 "dogfood ready" 신호일 뿐 semantic acceptance 를 증명하지 않는다.
 3. Sprint 프롬프트 본문 — Generator에 바로 투입 가능한 자기완결 형식
    - 공용 규칙은 `.vibe/agent/_common-rules.md` 준수 선언
    - Files Generator may touch 목록 (체크리스트 항목 완전 커버리지 고려)

@@ -19,6 +19,7 @@ type FloatingSurfaceOptions = {
   preferred?: FloatingPlacement;
   offset?: number;
   margin?: number;
+  updateKey?: unknown;
 };
 
 export type FloatingSurfaceStyle = CSSProperties & {
@@ -35,6 +36,7 @@ export function useFloatingSurface<T extends HTMLElement>(
   const preferred = options.preferred ?? "bottom-end";
   const offset = options.offset ?? 6;
   const margin = options.margin ?? 8;
+  const updateKey = options.updateKey;
 
   useLayoutEffect(() => {
     if (!open) {
@@ -82,7 +84,7 @@ export function useFloatingSurface<T extends HTMLElement>(
       window.visualViewport?.removeEventListener("resize", scheduleUpdate);
       window.visualViewport?.removeEventListener("scroll", scheduleUpdate);
     };
-  }, [anchorRef, margin, offset, open, preferred]);
+  }, [anchorRef, margin, offset, open, preferred, updateKey]);
 
   const style: FloatingSurfaceStyle = layout
     ? {
@@ -108,7 +110,7 @@ export function useFloatingSurface<T extends HTMLElement>(
 function calculateFloatingLayout(
   anchor: DOMRect,
   surface: DOMRect,
-  options: Required<FloatingSurfaceOptions>
+  options: { preferred: FloatingPlacement; offset: number; margin: number }
 ): FloatingLayout {
   const placements = readFloatingFallbacks(options.preferred);
   const viewportWidth = window.visualViewport?.width ?? window.innerWidth;

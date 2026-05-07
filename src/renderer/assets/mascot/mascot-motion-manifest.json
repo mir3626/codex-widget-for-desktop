@@ -1,0 +1,54 @@
+{
+  "fps": 30,
+  "frameSize": 256,
+  "statuses": {
+    "idle": {
+      "columns": 10,
+      "rows": 3,
+      "totalFrames": 30,
+      "patterns": [
+        {
+          "id": "sequential-loop",
+          "start": 0,
+          "length": 30
+        }
+      ]
+    },
+    "working": {
+      "columns": 10,
+      "rows": 3,
+      "totalFrames": 30,
+      "patterns": [
+        {
+          "id": "sequential-loop",
+          "start": 0,
+          "length": 30
+        }
+      ]
+    },
+    "vision": {
+      "columns": 10,
+      "rows": 3,
+      "totalFrames": 30,
+      "patterns": [
+        {
+          "id": "sequential-loop",
+          "start": 0,
+          "length": 30
+        }
+      ]
+    },
+    "offline": {
+      "columns": 10,
+      "rows": 3,
+      "totalFrames": 30,
+      "patterns": [
+        {
+          "id": "sequential-loop",
+          "start": 0,
+          "length": 30
+        }
+      ]
+    }
+  }
+}

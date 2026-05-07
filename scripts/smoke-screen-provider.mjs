@@ -140,6 +140,10 @@ try {
   if (!visionHistory?.summary?.includes("Screen Smoke Snapshot") || visionHistory.data?.imageDataUrl) {
     throw new Error(`Vision provider history was not persisted or redacted: ${JSON.stringify(ledgerSnapshot)}`);
   }
+  const latestLedgerSnapshot = events.filter((event) => event.type === "ledger.snapshot").at(-1);
+  if (latestLedgerSnapshot?.snapshot?.artifacts?.some((artifact) => artifact.title === "Screen snapshot")) {
+    throw new Error(`Screen provider context should not be promoted into artifacts: ${JSON.stringify(latestLedgerSnapshot)}`);
+  }
 
   const toolOutput = events
     .filter((event) => event.type === "tool.output")

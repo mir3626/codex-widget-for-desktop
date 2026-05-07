@@ -21,7 +21,7 @@ export function MarkdownPre({ children, onCopyCode, ...props }: MarkdownPreProps
     <div className="codeblock">
       <div className="codeblock-header">
         <span>{language}</span>
-        <button type="button" title="Copy code" aria-label="Copy code" onClick={() => onCopyCode(codeText)}>
+        <button type="button" data-tooltip="Copy code" aria-label="Copy code" onClick={() => onCopyCode(codeText)}>
           <Copy size={12} />
         </button>
       </div>

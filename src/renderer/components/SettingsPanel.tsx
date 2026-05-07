@@ -1,5 +1,11 @@
 import { Camera, Square } from "lucide-react";
-import type { ProviderStatus, RuntimeStatus, ScreenCrop } from "../../shared/protocol.js";
+import type {
+  ExecutionPermissionDecision,
+  ExecutionPermissionSummary,
+  ProviderStatus,
+  RuntimeStatus,
+  ScreenCrop
+} from "../../shared/protocol.js";
 import type { NativeDaemonStatus } from "../shell";
 import type { ScreenCropSettings } from "../types";
 import { formatRuntimeAge } from "../utils/format";
@@ -10,8 +16,10 @@ type SettingsPanelProps = {
   runtimeStatus: RuntimeStatus | null;
   nativeDaemonStatus: NativeDaemonStatus | null;
   providerStatuses: ProviderStatus[];
+  executionPermissions: ExecutionPermissionSummary[];
   screenCrop: ScreenCropSettings;
   onAutostartChange: (enabled: boolean) => void;
+  onExecutionPermissionChange: (action: string, decision: ExecutionPermissionDecision) => void;
   onCaptureScreen: () => void;
   onScreenCropEnabledChange: (enabled: boolean) => void;
   onScreenCropFieldChange: (field: keyof ScreenCrop, value: string) => void;
@@ -23,8 +31,10 @@ export function SettingsPanel({
   runtimeStatus,
   nativeDaemonStatus,
   providerStatuses,
+  executionPermissions,
   screenCrop,
   onAutostartChange,
+  onExecutionPermissionChange,
   onCaptureScreen,
   onScreenCropEnabledChange,
   onScreenCropFieldChange,
@@ -63,6 +73,38 @@ export function SettingsPanel({
         </div>
       </div>
 
+      <div className="settings-section execution-permission-settings">
+        <div className="settings-heading">
+          <strong>Execution permissions</strong>
+          <span>{executionPermissions.length ? `${executionPermissions.length} saved` : "Ask every time"}</span>
+        </div>
+        {executionPermissions.length > 0 ? (
+          <div className="execution-permission-list">
+            {executionPermissions.map((permission) => (
+              <label key={permission.action} className="execution-permission-row">
+                <span>
+                  <strong>{permission.action}</strong>
+                  <small>{formatPermissionUpdatedAt(permission.updatedAt)}</small>
+                </span>
+                <select
+                  value={permission.decision}
+                  aria-label={`Permission for ${permission.action}`}
+                  onChange={(event) =>
+                    onExecutionPermissionChange(permission.action, event.target.value as ExecutionPermissionDecision)
+                  }
+                >
+                  <option value="ask">Ask</option>
+                  <option value="allow">Always allow</option>
+                  <option value="deny">Deny</option>
+                </select>
+              </label>
+            ))}
+          </div>
+        ) : (
+          <p className="settings-empty-copy">No saved action permissions.</p>
+        )}
+      </div>
+
       <div className="settings-section provider-settings">
         <div className="settings-heading">
           <strong>Providers</strong>
@@ -74,7 +116,13 @@ export function SettingsPanel({
             <strong>{provider.label}</strong>
             <span>{provider.detail}</span>
             {provider.mode === "screen" ? (
-              <button type="button" className="provider-action" title="Capture snapshot" aria-label="Capture screen snapshot" onClick={onCaptureScreen}>
+              <button
+                type="button"
+                className="provider-action"
+                data-tooltip="Capture snapshot"
+                aria-label="Capture screen snapshot"
+                onClick={onCaptureScreen}
+              >
                 <Camera size={12} />
               </button>
             ) : null}
@@ -108,4 +156,17 @@ export function SettingsPanel({
       </div>
     </section>
   );
+}
+
+function formatPermissionUpdatedAt(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "saved";
+  }
+  return new Intl.DateTimeFormat(undefined, {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
 }

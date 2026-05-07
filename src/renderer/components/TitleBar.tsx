@@ -42,7 +42,7 @@ export function TitleBar({
 
       <label
         className={showOpacityValue ? "opacity-control titlebar-opacity is-editing" : "opacity-control titlebar-opacity"}
-        title="Opacity"
+        data-tooltip="Opacity"
       >
         <input
           type="range"
@@ -66,26 +66,26 @@ export function TitleBar({
       <div className="window-controls">
         <button
           className={pinned ? "pin-button active" : "pin-button"}
-          title={pinned ? "Pinned" : "Unpinned"}
+          data-tooltip={pinned ? "Pinned" : "Unpinned"}
           aria-label={pinned ? "Pinned" : "Unpinned"}
           aria-pressed={pinned}
           onClick={onTogglePin}
         >
           {pinned ? <Pin size={14} /> : <PinOff size={14} />}
         </button>
-        <button className="titlebar-button" title="Minimize" aria-label="Minimize" onClick={onMinimize}>
+        <button className="titlebar-button" data-tooltip="Minimize" aria-label="Minimize" onClick={onMinimize}>
           <Minus size={14} />
         </button>
         <button
           className={maximized ? "titlebar-button active" : "titlebar-button"}
-          title={maximized ? "Restore" : "Maximize"}
+          data-tooltip={maximized ? "Restore" : "Maximize"}
           aria-label={maximized ? "Restore" : "Maximize"}
           aria-pressed={maximized}
           onClick={onToggleMaximize}
         >
           <Square size={12} />
         </button>
-        <button className="titlebar-button close" title="Hide to tray" aria-label="Hide to tray" onClick={onClose}>
+        <button className="titlebar-button close" data-tooltip="Hide to tray" aria-label="Hide to tray" onClick={onClose}>
           <X size={14} />
         </button>
       </div>

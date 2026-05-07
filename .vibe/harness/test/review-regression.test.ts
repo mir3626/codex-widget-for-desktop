@@ -85,6 +85,29 @@ describe('prior review regression', () => {
     assert.equal(issues[1]?.severity, 'structural');
   });
 
+  it('loadPriorReviewIssues accepts the documented parenthesized findings heading', async () => {
+    const root = await makeTempDir('review-regression-parenthesized-heading-');
+    await writeText(
+      path.join(root, 'docs', 'reports', 'review-1-2026-05-07.md'),
+      [
+        '# Review',
+        '',
+        '## Findings (severity desc)',
+        '```yaml',
+        '- id: review-heading-contract',
+        '  severity: friction',
+        '  priority: P1',
+        '  proposal: Keep prior review findings parseable.',
+        '```',
+      ].join('\n'),
+    );
+
+    const issues = await loadPriorReviewIssues(root);
+
+    assert.equal(issues.length, 1);
+    assert.equal(issues[0]?.id, 'review-heading-contract');
+  });
+
   it('assessRegression classifies covered, partial, and open issues', async () => {
     const root = await makeTempDir('review-regression-assess-');
     await initGitRepo(root);

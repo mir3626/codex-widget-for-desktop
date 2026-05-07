@@ -30,6 +30,16 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - 2026-05-07T00:12:14.390+09:00 product-owner correction recorded: the generated sprite sheet is not accepted as "moving mascot" work because it derives from one static pose and only satisfies an automated-condition proxy. Future ambiguous UX requests require a consensus step before implementation, and mascot motion must be reworked with real authored pose/expression/state motion.
 - 2026-05-07T00:25:39.389+09:00 `/vibe-sync` advanced the harness from v1.7.4 to v1.7.7. Non-interactive sync failed without approval, so the two conflicted files were manually compared against upstream: `docs/context/orchestration.md` kept this project's Codex role contract while accepting the new Phase 3 consensus requirement, and `docs/orchestration/providers.md` kept the Windows/Codex provider contract while acknowledging configurable role assignment. GitHub CI was corrected to use `npm run build:web` and project-owned `typecheck`/`test` scripts.
 - 2026-05-07T00:31:30.893+09:00 GitHub CI follow-up fixed the Ubuntu `build:web` failure caused by missing `node-pty/prebuilds/linux-x64`: non-Windows PTY runtime preparation now writes an unavailable manifest when the package lacks the prebuild, while Windows/release strictness still fails on missing PTY prebuilds.
+- 2026-05-07T03:43:58.638+09:00 mascot motion rework was corrected from key-pose/proxy animation to true sequential source sheets: `$imagegen` produced idle/working/Vision/offline frame sheets, `scripts/build-mascot-assets.py` extracts 30 ordered character components per status, normalizes them to a shared bottom-center anchor, removes chroma/aura fringe, and emits 30fps WebP sprite grids plus a JSON manifest. `MascotSprite` now plays one discrete frame at a time with no transform wobble, crossfade layers, randomized pattern jumps, or normal-state drop-shadow.
+- 2026-05-07T06:37:23.227+09:00 mascot jitter stabilization follow-up completed after dogfood feedback: the asset builder now computes a warm-fur lower-body anchor plus alpha-area metric per frame, then normalizes each frame to a shared body anchor and near-constant apparent size. This specifically addresses residual "rattling" from per-frame component center/scale drift while keeping the single-layer no-aura playback path.
+- 2026-05-07T09:15:52.785+09:00 temporary dogfood FPS tuning control added: the system strip exposes a compact persisted `6-30fps` mascot playback slider so product-owner testing can compare slower frame rates without regenerating sprite assets. `MascotSprite` reads the FPS through a ref so slider changes do not restart the current frame loop.
+- 2026-05-07T09:47:23.116+09:00 the temporary mascot FPS dogfood slider now supports `1-30fps`; missing storage falls back to 30fps, while explicitly saved low values under 6fps are preserved for comparison.
+- 2026-05-07T20:34:31.614+09:00 app-server approval handling was hardened for dogfood browser-open failures: PowerShell `Start-Process` URL requests now map to external URL approvals and canonical PowerShell execution permissions, with smoke coverage for Google browser open and saved PowerShell allow reuse.
+- 2026-05-07T20:41:36.402+09:00 follow-up fixed the real CLI command shape: quoted absolute `pwsh.exe` paths are now recognized as PowerShell, existing exact-command saved allows are honored as legacy fallback, and smoke covers the quoted full-path Google open command.
+- 2026-05-07T21:25:07.309+09:00 follow-up corrected the actual app-server approval response protocol from `decision: "approve"` to `decision: "accept"`, which was why browser-open permissions were recorded as allowed in the widget but still surfaced as rejected in the assistant answer. Orphaned probe app-server processes were cleaned up and the daemon was restarted on `127.0.0.1:4128`.
+- 2026-05-07T22:20:17.844+09:00 Iteration `iter-8` completed the Vision Context Interface MVP from `docs/plans/vision-context-interface-handoff.md`: daemon-side TaskCapsule/capture/resolver/retention modules, transcription MVP boundary, screen/browser/terminal observation adapters, shared `visionContext.*` protocol, renderer Share-with-Agent integration, app-server `localImage` override support, and smoke coverage for capsule generation, raw media deletion, resolver cases, lexicon correction, destructive clarification, and fake app-server localImage delivery.
+- 2026-05-07T22:33:11.196+09:00 `/vibe-review` wrote `docs/reports/review-0-2026-05-07.md`. Findings focus on harness review reliability: escaped-pipe parsing in the gap ledger, Findings heading/parser contract drift, context-audit observability before any prompt reduction, semantic acceptance evidence for agent-context features, and a project-decisions JSONL warning cleanup.
+- 2026-05-07T23:15:09.588+09:00 downstream dogfood verification synced the harness to vibe-doctor `v1.7.8` and wrote `docs/reports/review-0-2026-05-07-v1.7.8-dogfood.md`. The previous parser/input regressions are verified fixed; remaining notes are report-only context-audit observability and Vision Context semantic dogfood evidence.
 - Current dev widget run is live after clearing port `5173`: Vite is listening on `127.0.0.1:5173`, daemon/app-server on `127.0.0.1:4128`, and startup logs are under `dist/logs/widget-dev-20260506-071947.*.log`.
 - Browser store submission runbook is source-controlled at `docs/release/browser-store-submission.md`; deferral is recorded in `docs/release/deferred-gates.json`. Use the runbook after dogfooding to clear the deferred public-release gate and then rerun strict readiness.
 
@@ -44,9 +54,15 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 
 ## Active Iteration
 
-- Current iteration: `iter-7` (`Dogfood UI Motion Polish`) partially accepted after dogfood review
+- Current iteration: `iter-8` (`Vision Context Interface`) completed; new Vision Context MVP is ready for dogfooding
 - Planned sprints:
-  - `iter-7-sprint-01-trash-activity-mascot-polish` (complete)
+  - `iter-8-sprint-01-types-capsule-and-app-server-adapter` (complete)
+  - `iter-8-sprint-02-capture-session-timeline-and-retention` (complete)
+  - `iter-8-sprint-03-reference-and-intent-resolver-mvp` (complete)
+  - `iter-8-sprint-04-transcription-interface-mvp` (complete)
+  - `iter-8-sprint-05-lexicon-correction-and-clarification` (complete)
+  - `iter-8-sprint-06-provider-adapter-expansion` (complete)
+  - `iter-8-sprint-07-renderer-protocol-and-completion-audit` (complete)
 - Iteration 3 status: complete as a foundation iteration only. It does not satisfy the product-wide `/goal`; it delivered SQLite storage, durable session tabs/trash, artifact/activity ledger, and Vision recording/streaming foundations.
 - Architecture boundary: daemon owns sessions, messages, app-server runtime metadata, provider snapshots, artifacts, activity logs, and durable preferences. Renderer remains UI/interaction focused.
 - Storage boundary: SQLite stores metadata and structured state; large screenshots, recordings, generated files, and before/after snapshots live in an app-data blob store referenced by hash/path metadata. OAuth/Codex credentials must not be stored in SQLite.
@@ -64,7 +80,8 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Completed Iteration 5 Sprint 03 focus: Vision stream resource cleanup, frame-overlap throttling, skipped-frame diagnostics, duplicate-stop prevention, and effective guardrail metadata are implemented.
 - Completed Iteration 5 Sprint 04 focus: final completion audit and readiness update. Remaining follow-up is dogfood-dependent long-run screen-share CPU/memory tuning, live app-server protocol validation across CLI/app-server restarts, and deferred browser store account submission after dogfooding.
 - Completed Iteration 6 Sprint 01 focus: renderer frontend structure refactor. `App.tsx` now owns orchestration and side effects while UI surfaces live under `src/renderer/components`, shared behavior under `hooks` and `utils`, renderer constants/types in `config.ts`/`types.ts`, and CSS partials under `src/renderer/styles`.
-- Completed Iteration 7 Sprint 01 focus: trash artifact row alignment and compact Activity footer height are accepted. The frame-based mascot sprite animation using `src/renderer/assets/mascot-motion-sprite.png` is rejected as a proxy implementation and must be replaced by real authored motion after consensus.
+- Completed Iteration 7 Sprint 01 focus: trash artifact row alignment and compact Activity footer height are accepted. The frame-based mascot sprite animation using `src/renderer/assets/mascot-motion-sprite.png` was rejected as a proxy implementation; the replacement now uses status-specific sequential source sheets, component-extracted 30fps WebP sprite grids, single-layer playback, fixed lower-body anchoring, alpha-area scale stabilization, and no drop-shadow/crossfade/transform-wobble aura, with dogfood acceptance still pending.
+- Completed Iteration 8 focus: the Vision Context Interface now sits behind Agent screen sharing. The daemon can start/event/stop/cancel Vision Context sessions, collect timeline/provider observations, build TaskCapsules, render capsule markdown, convert to app-server `UserInput[]` with selected `localImage` evidence, delete raw video/audio temp files after processing, and send the result into the current Codex app-server thread. The transcription MVP includes mock ASR, sidecar boundary, lexicon correction, action-slot confidence, and clarification policy.
 
 ## Recent Work
 
@@ -994,6 +1011,122 @@ Completed latest release build after PTY direct input pass:
 - `src-tauri/target/release/bundle/msi/Codex Widget_0.1.0_x64_en-US.msi` (39,501,824 bytes)
 - `src-tauri/target/release/bundle/nsis/Codex Widget_0.1.0_x64-setup.exe` (26,773,974 bytes)
 
+Completed after dogfood tooltip/activity/artifact polish:
+
+- Mascot playback is now fixed at 6fps and the temporary FPS tuning slider was removed from the system strip.
+- Activity detail count badges now use normal weight, expand for 100+ counts, and the detail/provider-history popover uses responsive row sizing so timestamps stay single-line.
+- Renderer native `title` attributes were removed in favor of the shared `data-tooltip`/`FloatingTooltipRoot` path; tooltip placement now recalculates when moving quickly between response action buttons.
+- Session artifacts now open from a bottom-left floating conversation button instead of staying pinned inline below the chat, and the panel closes on outside click/Escape.
+- Empty untouched `New chat` tabs now use `session.discard` and are deleted without entering trash; non-empty sessions still fall back to normal trash behavior.
+- Verification passed `npm run typecheck`, `npm run smoke:renderer-chat`, `npm run smoke:storage`, `npm run build:web`, `node scripts\smoke-daemon.mjs`, and `git diff --check`.
+
+Completed after floating artifact visual polish:
+
+- The active-session artifact popup now has a higher layer than widget buttons, explicit always-visible borders on both the trigger and popup, and a slightly lower sticky trigger position.
+- Generated artifact summary badges now show a file icon, extension code, semantic extension name, and extension-specific color treatment based on the generated file.
+- Renderer smoke now verifies artifact popup z-index/borders/button offset and generated Markdown badge icon/text/color behavior.
+- Verification passed `npm run typecheck`, `npm run smoke:renderer-chat`, `npm run build:web`, and `git diff --check`.
+
+Completed after trash/tab/model/artifact dogfood polish:
+
+- Trash counts now use normal weight, trash-popover hover tooltips were removed, and each trash row now has a Restore icon plus a permanent delete icon wired to daemon `session.delete`.
+- Active session tabs now use a thin full green border instead of a top-only green bar.
+- Session switch feedback moved from the whole model row to thicker animated select borders; the border uses a green conic gradient that rotates counterclockwise once and then clears.
+- Generated artifact badges now show only icon plus extension, with centered alignment and no tooltip; the floating artifact trigger moved further down.
+- Verification passed `npm run typecheck`, `npm run smoke:storage`, `npm run smoke:renderer-chat`, `npm run build:web`, `node scripts\smoke-daemon.mjs`, and `git diff --check`.
+
+Completed after execution permission and artifact policy dogfood polish:
+
+- Runtime approval cards now expose `Allow`, `Always allow`, and `Deny`; `Always allow` stores an action-level execution permission in daemon-owned SQLite `app_settings` and future matching Codex app-server approval requests are auto-applied before the renderer is prompted.
+- Settings now includes an `Execution permissions` section where saved action policies can be changed between `Ask`, `Always allow`, and `Deny`.
+- Tool/provider context output is no longer promoted into artifacts. Screen/DOM/Vision snapshots remain provider history/activity context; artifacts are reserved for user-requested generated/modified/deleted outputs such as app-server file changes.
+- Floating artifact badges were tightened again and artifact rows now show version/time metadata so duplicate titles can be compared by recency.
+- Model/Reason session-switch feedback now draws a green line from the select border near the 11 o'clock position counterclockwise, holds briefly, then fades out instead of rotating a full border background.
+- Verification passed `npm run typecheck`, `npm run build:daemon`, `node scripts\smoke-storage.mjs`, `node scripts\smoke-codex-app-server.mjs`, `node scripts\smoke-screen-provider.mjs`, `npm run smoke:renderer-chat`, `npm run build:web`, `node scripts\smoke-daemon.mjs`, and `git diff --check`.
+
+Completed after control alignment and daemon restart:
+
+- Model/Reason labels now share the select control vertical center, and Agent/DOM/Vision/PTY tabs keep icon/text centers aligned.
+- Renderer smoke now explicitly fails if those control centers drift at the minimum dogfood viewport.
+- No daemon listener was present on `4128`; a hidden manual daemon was started from `dist\daemon\standalone.js` and `/storage/health` reports ready SQLite storage under `C:\Users\Tony\AppData\Local\Codex Widget`.
+- Verification passed `npm run smoke:renderer-chat`, `/storage/health`, and `git diff --check`.
+
+Completed after Mode/Vision UX polish:
+
+- Model/Reason select-border animation now uses the same accent at the start and end of the gradient head, a softened moving endpoint, and an 1.8s timeline with the final 0.5s fading opacity to zero after the full loop.
+- DOM/Vision/PTY selected-state re-clicks are now no-ops and keep the current mode selected. Vision opens its action menu from the Mode bar when entering Vision mode.
+- The previous in-conversation Vision toolbar was removed. A Mode-bar-attached Vision status panel stays hidden by default, slides/fades in for screen capture, recording, and Agent screen sharing, shows a blinking red live dot for recording/streaming, and delays its fade-out after completion.
+- The active-session artifact floating trigger now sits lower at `bottom: -14px` while smoke still checks it stays above the prompt composer.
+- Verification passed `npm run typecheck`, `npm run smoke:renderer-chat`, `npm run build:renderer`, `node --check scripts\smoke-renderer-chat-layout.mjs`, and `git diff --check`. Follow-up no-op selected Mode re-click verification also passed `npm run typecheck`, `node --check scripts\smoke-renderer-chat-layout.mjs`, `npm run smoke:renderer-chat`, and `git diff --check`.
+
+Completed after external URL approval and Recovery Vault polish:
+
+- Browser-open app-server approval requests now produce a renderer `external.url` event after Allow/Always allow, including saved `allow` permission policies, so the existing Tauri `open_external_url` path actually opens the browser instead of only approving the request.
+- Deleted session UI now uses `Recovery Vault` language instead of Trash, uses an Archive icon for archive/recovery entry points, and uses an X icon for permanent delete inside the vault.
+- Verification passed `npm run typecheck`, `node --check scripts\smoke-codex-app-server.mjs`, `node --check scripts\smoke-renderer-chat-layout.mjs`, `npm run smoke:app-server`, `npm run smoke:renderer-chat`, `npm run build:renderer`, and `git diff --check`.
+
+Completed after artifact floating anchor correction:
+
+- The active-session artifact floating trigger no longer uses `position: sticky`; it is fixed against the widget lower-bar stack and visually sits 8px above the prompt composer.
+- Renderer smoke now measures the trigger-to-prompt gap and asserts the trigger remains non-sticky.
+- Verification passed `node --check scripts\smoke-renderer-chat-layout.mjs`, `npm run smoke:renderer-chat`, and `git diff --check`.
+
+Completed after artifact floating guard adjustment:
+
+- The active-session artifact floating trigger now visually sits 4px above the lower bar.
+- When a session has artifacts, the conversation gains a bottom guard spacer so the fixed artifact trigger cannot cover the final assistant response action buttons.
+- Verification passed `node --check scripts\smoke-renderer-chat-layout.mjs`, `npm run smoke:renderer-chat`, `npm run typecheck`, and `git diff --check`.
+
+Completed after model/reason animation origin adjustment:
+
+- The model/reason select-border draw now starts from an explicit top-left text-start origin (`0deg` at `12px 50%`) instead of the previous top-center-biased path, so the visual start point is around the first option character.
+- Renderer smoke now asserts the configured select-border start origin.
+- Verification passed `node --check scripts\smoke-renderer-chat-layout.mjs`, `npm run smoke:renderer-chat`, `npm run typecheck`, and `git diff --check`.
+
+Completed after model/reason animation tail adjustment:
+
+- After the model/reason select-border draw completes, the full gradient border now rotates counterclockwise for 0.5s at opacity 1, then holds that completed rotation for a separate 0.5s fade-out.
+- The tail phase is driven by `--model-select-spin`, leaving the draw phase and text-start origin intact; the total animation duration is now 2.3s.
+- Verification passed `node --check scripts\smoke-renderer-chat-layout.mjs`, `npm run smoke:renderer-chat`, `npm run typecheck`, and `git diff --check`.
+
+Completed after visible model/reason tail correction:
+
+- The model/reason select-border motion now uses separate pseudo-elements: `::after` draws the border and `::before` handles the completed-border tail.
+- The tail layer uses a full high-contrast conic gradient with a 1.3s delay, then rotates for 0.5s at opacity 1 and fades for the next 0.5s so the final motion is visible in the live widget.
+- Verification passed `node --check scripts\smoke-renderer-chat-layout.mjs`, `npm run smoke:renderer-chat`, `npm run typecheck`, and `git diff --check`.
+
+Completed after model/reason tail sequencing correction:
+
+- The tail layer no longer starts during the draw phase. Its base opacity is `0`, and the animation uses `forwards` rather than `both` so delay no longer backwards-fills the visible 0% frame.
+- Renderer smoke now asserts the tail fill mode and pre-delay opacity, which catches simultaneous draw/tail execution.
+- Verification passed `node --check scripts\smoke-renderer-chat-layout.mjs`, `npm run smoke:renderer-chat`, `npm run typecheck`, and `git diff --check`.
+
+Completed after model/reason tail visibility correction:
+
+- The completed-border tail no longer relies on custom-property conic angle changes, which were too subtle in the live WebView.
+- The tail pseudo-element now physically rotates with `transform: rotate(-360deg)` and a higher-contrast green gradient, while preserving the delayed start and fade-out sequencing.
+- Verification passed `node --check scripts\smoke-renderer-chat-layout.mjs`, `npm run smoke:renderer-chat`, `npm run typecheck`, and `git diff --check`.
+
+Completed after model/reason single-layer motion correction:
+
+- The draw/tail pseudo-element handoff was removed. Model/reason select-border draw, full-border spin, and fade-out now run in one `::after` animation layer.
+- The single-layer timeline prevents the drawn border from disappearing before a delayed tail layer becomes visible.
+- Verification passed `node --check scripts\smoke-renderer-chat-layout.mjs`, `npm run smoke:renderer-chat`, `npm run typecheck`, and `git diff --check`.
+
+Completed after model/reason simple draw fallback:
+
+- Product owner chose to stop pursuing the post-draw rotation. Model/reason select-border animation now only draws the border to completion, briefly holds it, and fades out.
+- Rotation/tail transform code was removed; renderer smoke now asserts a simple 1.6s no-transform draw/fade timeline.
+- Verification passed `node --check scripts\smoke-renderer-chat-layout.mjs`, `npm run smoke:renderer-chat`, `npm run typecheck`, and `git diff --check`.
+
+Completed after Codex app-server browser-open duplicate correction:
+
+- Browser-open approvals no longer emit a renderer `external.url` event from the app-server approval path.
+- The bridge still answers Codex app-server approvals with the required protocol payload `decision: "accept"`; Codex runtime now owns the actual browser/PowerShell `Start-Process` side effect, avoiding double opens.
+- App-server smoke now asserts approved direct URL and PowerShell browser-open actions do not generate widget-side URL open events.
+- Verification passed `node --check src\daemon\codexAppServer.ts`, `node --check scripts\smoke-codex-app-server.mjs`, `npm run smoke:app-server`, `npm run typecheck`, and `git diff --check`.
+- Manual daemon was restarted on `127.0.0.1:4128`; the stale pre-restart app-server chain was stopped, leaving only the current daemon-owned app-server process chain.
+
 ## Restart Steps
 
 1. Run `git status --short --untracked-files=all` and inspect the sync diff.
@@ -1006,7 +1139,7 @@ Completed latest release build after PTY direct input pass:
 8. Run `node .vibe/harness/scripts/vibe-sprint-mode.mjs status` to confirm whether extended mode is still active.
 9. Use `npm run dev` for renderer HMR plus daemon restart-on-change; use `npm run dev:services` only when testing the service loop without launching Tauri.
 10. Run `npm run smoke:all` after follow-up TypeScript/widget/provider changes; it includes fake Codex app-server thread/approval/rollback coverage. Use `npm run smoke:all:live` when validating Windows desktop capture behavior.
-11. For renderer UI work, run `npm run smoke:renderer-chat` and capture a `360x480` Playwright smoke against `http://127.0.0.1:5173/?daemonPort=4128` when a visual screenshot is needed. Model/reasoning selectors live between the status strip and mode tabs and persist to localStorage keys `codex-widget-model` and `codex-widget-reasoning-effort`.
+11. For renderer UI work, run `npm run smoke:renderer-chat` and capture a `360x480` Playwright smoke against `http://127.0.0.1:5173/?daemonPort=4128` when a visual screenshot is needed. Model/reasoning selectors live between the status strip and mode tabs and persist to localStorage keys `codex-widget-model` and `codex-widget-reasoning-effort`. For mascot asset updates, keep generated sequential source sheets under `src/renderer/assets/mascot/`, run `python scripts/build-mascot-assets.py`, then run `npm run build:web` and `npm run smoke:renderer-chat`.
 12. Renderer visible chat persists under `codex-widget-chat-messages:v1`; use the titlebar New chat control or `session.reset` protocol event to clear both UI and daemon session state.
 13. The titlebar close button hides the widget to tray; use tray Quit to exit the resident app.
 14. Run `npm run smoke:resident` when resident lifecycle, daemon health, or resource behavior changes.

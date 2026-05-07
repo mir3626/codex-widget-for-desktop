@@ -62,7 +62,7 @@ export function buildWidgetCapabilityContext(
     "",
     "Main UI controls:",
     "- Title bar: pin/unpin, opacity, minimize, maximize, close-to-tray, settings, sign in/out.",
-    "- Session strip: internal chat tabs, New chat, Session trash, and Branch in new chat from an assistant response.",
+    "- Session strip: internal chat tabs, New chat, Recovery Vault for archived/deleted sessions, and Branch in new chat from an assistant response.",
     "- Mode tabs: Agent for normal Codex conversation, DOM for browser tab context, Vision for screen capture/record/share, PTY for the resident terminal viewport.",
     "- Composer: Ask Codex textarea, send/stop button, model selector, reasoning selector, and resizable prompt area.",
     "- Activity: footer shows the latest widget action; the detail control opens the session activity log.",

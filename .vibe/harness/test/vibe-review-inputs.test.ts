@@ -141,6 +141,9 @@ async function scaffoldRepo(root: string): Promise<void> {
       '| gap-c | example | hook | partial | partial | +2 sprints |',
       '| gap-d | example | hook | under-review | partial | — |',
       '| gap-e | example | hook | covered | pending | O4 |',
+      '| gap-opt-in-visibility | bundle/browserSmoke opt-in 미인지 | `/vibe-review` detects `bundle.policy=automatic|custom|off` and replacement evidence. | covered | covered | — |',
+      '| gap-windows-hook-command-portability | PowerShell cannot run POSIX examples like `VAR=1 bash ...`, `2>/dev/null`, or `\\|\\| true`. | `.claude/statusline.mjs` + settings tests. | covered | covered | — |',
+      '| gap-archive-prompts-regex | archive filter missed prompt names. | `base === sprintId \\|\\| base.startsWith(`${sprintId}-`)` matching. | covered | covered | — |',
     ].join('\n'),
   );
   await writeText(path.join(root, 'docs', 'reports', 'review-1-2026-04-15.md'), '# review\n');

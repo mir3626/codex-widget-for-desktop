@@ -11,6 +11,8 @@ import type {
   ArtifactFilePreview,
   ArtifactKind,
   ArtifactSummary,
+  ExecutionPermissionDecision,
+  ExecutionPermissionSummary,
   LedgerSnapshot,
   MessageSnapshotStatus,
   ModelId,
@@ -46,9 +48,14 @@ export type StorageService = {
   health: (options?: { integrityCheck?: boolean }) => StorageHealth;
   getAppSetting: <T = unknown>(key: string) => T | null;
   setAppSetting: (key: string, value: unknown) => void;
+  readExecutionPermissions: () => ExecutionPermissionSummary[];
+  readExecutionPermissionDecision: (action: string) => ExecutionPermissionDecision;
+  setExecutionPermission: (input: { action: string; decision: ExecutionPermissionDecision }) => ExecutionPermissionSummary[];
   ensureSessionSnapshot: (defaults?: SessionDefaults) => SessionSnapshot;
   createSession: (input?: SessionDefaults) => SessionSnapshot;
   openSession: (sessionId: string) => SessionSnapshot;
+  discardSession: (sessionId: string) => SessionSnapshot;
+  deleteSession: (sessionId: string) => SessionSnapshot;
   trashSession: (sessionId: string) => SessionSnapshot;
   restoreSession: (sessionId: string) => SessionSnapshot;
   branchSession: (input: BranchSessionInput) => SessionSnapshot;
@@ -207,6 +214,7 @@ export type ProviderSnapshotInput = {
 
 const SECRET_SETTING_PATTERN = /(?:access[_-]?token|refresh[_-]?token|api[_-]?key|secret|password|credential)/i;
 const ACTIVE_SESSION_SETTING_KEY = "session.active";
+const EXECUTION_PERMISSIONS_SETTING_KEY = "execution.permissions.v1";
 const MAX_ARTIFACT_TEXT_PREVIEW_BYTES = 24 * 1024;
 const MAX_ARTIFACT_IMAGE_PREVIEW_BYTES = 512 * 1024;
 const DatabaseSync = loadDatabaseSync();
@@ -228,9 +236,14 @@ export function createStorageService(options: StorageServiceOptions = {}): Stora
     health: (healthOptions) => readStorageHealth(database, paths, healthOptions),
     getAppSetting: <T = unknown>(key: string): T | null => readAppSetting<T>(database, key),
     setAppSetting: (key: string, value: unknown) => writeAppSetting(database, key, value),
+    readExecutionPermissions: () => readExecutionPermissions(database),
+    readExecutionPermissionDecision: (action) => readExecutionPermissionDecision(database, action),
+    setExecutionPermission: (input) => setExecutionPermission(database, input),
     ensureSessionSnapshot: (defaults = {}) => ensureSessionSnapshot(database, defaults),
     createSession: (input = {}) => createSession(database, input),
     openSession: (sessionId) => openSession(database, sessionId),
+    discardSession: (sessionId) => discardSession(database, sessionId),
+    deleteSession: (sessionId) => deleteSession(database, sessionId),
     trashSession: (sessionId) => trashSession(database, sessionId),
     restoreSession: (sessionId) => restoreSession(database, sessionId),
     branchSession: (input) => branchSession(database, input),
@@ -358,6 +371,79 @@ function writeAppSetting(database: NodeDatabaseSync, key: string, value: unknown
     .run(key.trim(), JSON.stringify(value), now);
 }
 
+type StoredExecutionPermission = {
+  decision: ExecutionPermissionDecision;
+  updatedAt: string;
+};
+
+function readExecutionPermissions(database: NodeDatabaseSync): ExecutionPermissionSummary[] {
+  const stored = readStoredExecutionPermissions(database);
+  return Object.entries(stored)
+    .map(([action, record]) => ({
+      action,
+      decision: record.decision,
+      updatedAt: record.updatedAt
+    }))
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || left.action.localeCompare(right.action));
+}
+
+function readExecutionPermissionDecision(database: NodeDatabaseSync, action: string): ExecutionPermissionDecision {
+  const actionKey = normalizeExecutionPermissionAction(action);
+  if (!actionKey) {
+    return "ask";
+  }
+  const decision = readStoredExecutionPermissions(database)[actionKey]?.decision;
+  return decision === "allow" || decision === "deny" ? decision : "ask";
+}
+
+function setExecutionPermission(
+  database: NodeDatabaseSync,
+  input: { action: string; decision: ExecutionPermissionDecision }
+): ExecutionPermissionSummary[] {
+  const action = normalizeExecutionPermissionAction(input.action);
+  if (!action) {
+    throw new Error("Execution permission action is required.");
+  }
+  const stored = readStoredExecutionPermissions(database);
+  if (input.decision === "ask") {
+    delete stored[action];
+  } else {
+    stored[action] = {
+      decision: input.decision,
+      updatedAt: new Date().toISOString()
+    };
+  }
+  writeAppSetting(database, EXECUTION_PERMISSIONS_SETTING_KEY, stored);
+  return readExecutionPermissions(database);
+}
+
+function readStoredExecutionPermissions(database: NodeDatabaseSync): Record<string, StoredExecutionPermission> {
+  const stored = readAppSetting<Record<string, StoredExecutionPermission>>(database, EXECUTION_PERMISSIONS_SETTING_KEY);
+  const normalized: Record<string, StoredExecutionPermission> = {};
+  if (!stored || typeof stored !== "object") {
+    return normalized;
+  }
+  for (const [action, record] of Object.entries(stored)) {
+    const actionKey = normalizeExecutionPermissionAction(action);
+    if (!actionKey || typeof record !== "object" || record === null) {
+      continue;
+    }
+    const decision = record.decision === "allow" || record.decision === "deny" ? record.decision : undefined;
+    if (!decision) {
+      continue;
+    }
+    normalized[actionKey] = {
+      decision,
+      updatedAt: typeof record.updatedAt === "string" && record.updatedAt ? record.updatedAt : new Date().toISOString()
+    };
+  }
+  return normalized;
+}
+
+function normalizeExecutionPermissionAction(action: string): string {
+  return action.replace(/\s+/g, " ").trim().slice(0, 240);
+}
+
 function ensureSessionSnapshot(database: NodeDatabaseSync, defaults: SessionDefaults = {}): SessionSnapshot {
   const activeSessionId = readActiveSessionId(database);
   if (activeSessionId && isRestorableSession(database, activeSessionId)) {
@@ -402,6 +488,53 @@ function openSession(database: NodeDatabaseSync, sessionId: string): SessionSnap
   }
   touchSessionOpened(database, sessionId);
   return readSessionSnapshot(database, sessionId);
+}
+
+function discardSession(database: NodeDatabaseSync, sessionId: string): SessionSnapshot {
+  const row = database.prepare("SELECT id, title FROM sessions WHERE id = ? AND status = 'active'").get(sessionId);
+  if (typeof row?.id !== "string") {
+    return ensureSessionSnapshot(database);
+  }
+  const title = typeof row.title === "string" ? row.title.trim().toLowerCase() : "";
+  const messageCount = Number(readSingleValue(database, "SELECT COUNT(*) AS value FROM messages WHERE session_id = ?", "value", sessionId) ?? 0);
+  const artifactCount = Number(readSingleValue(database, "SELECT COUNT(*) AS value FROM artifacts WHERE session_id = ?", "value", sessionId) ?? 0);
+  if (title !== "new chat" || messageCount > 0 || artifactCount > 0) {
+    return trashSession(database, sessionId);
+  }
+
+  database.prepare("DELETE FROM trash_entries WHERE entity_type = 'session' AND entity_id = ?").run(sessionId);
+  database.prepare("DELETE FROM sessions WHERE id = ?").run(sessionId);
+
+  if (readActiveSessionId(database) !== sessionId) {
+    return ensureSessionSnapshot(database);
+  }
+
+  const next = database
+    .prepare(
+      `SELECT id FROM sessions
+       WHERE status = 'active'
+       ORDER BY COALESCE(last_opened_at, updated_at) DESC, updated_at DESC
+       LIMIT 1`
+    )
+    .get();
+  if (typeof next?.id === "string") {
+    return openSession(database, next.id);
+  }
+  return createSession(database);
+}
+
+function deleteSession(database: NodeDatabaseSync, sessionId: string): SessionSnapshot {
+  const row = database.prepare("SELECT id, status FROM sessions WHERE id = ?").get(sessionId);
+  if (typeof row?.id !== "string") {
+    return ensureSessionSnapshot(database);
+  }
+  if (row.status !== "trashed") {
+    return ensureSessionSnapshot(database);
+  }
+
+  database.prepare("DELETE FROM trash_entries WHERE entity_type = 'session' AND entity_id = ?").run(sessionId);
+  database.prepare("DELETE FROM sessions WHERE id = ?").run(sessionId);
+  return ensureSessionSnapshot(database);
 }
 
 function trashSession(database: NodeDatabaseSync, sessionId: string): SessionSnapshot {
@@ -667,7 +800,8 @@ function readSessionSnapshot(database: NodeDatabaseSync, activeSessionId: string
   const activeSessions = database
     .prepare(
       `SELECT sessions.*,
-              (SELECT COUNT(*) FROM artifacts WHERE artifacts.session_id = sessions.id AND artifacts.status = 'active') AS artifact_count
+              (SELECT COUNT(*) FROM artifacts WHERE artifacts.session_id = sessions.id AND artifacts.status = 'active') AS artifact_count,
+              (SELECT COUNT(*) FROM messages WHERE messages.session_id = sessions.id) AS message_count
        FROM sessions
        WHERE sessions.status <> 'trashed'
        ORDER BY COALESCE(last_opened_at, updated_at) DESC, updated_at DESC
@@ -677,7 +811,8 @@ function readSessionSnapshot(database: NodeDatabaseSync, activeSessionId: string
   const trashedSessions = database
     .prepare(
       `SELECT sessions.*,
-              (SELECT COUNT(*) FROM artifacts WHERE artifacts.session_id = sessions.id) AS artifact_count
+              (SELECT COUNT(*) FROM artifacts WHERE artifacts.session_id = sessions.id) AS artifact_count,
+              (SELECT COUNT(*) FROM messages WHERE messages.session_id = sessions.id) AS message_count
        FROM sessions
        WHERE sessions.status = 'trashed'
        ORDER BY COALESCE(trashed_at, updated_at) DESC
@@ -723,7 +858,8 @@ function readSessionSummary(value: unknown): SessionSummary[] {
       activeModel: optionalString(row.active_model) as ModelId | undefined,
       activeReasoning: optionalString(row.active_reasoning) as ReasoningEffort | undefined,
       activeMode: optionalString(row.active_mode) as WidgetMode | undefined,
-      artifactCount: typeof row.artifact_count === "number" ? row.artifact_count : Number(row.artifact_count ?? 0)
+      artifactCount: typeof row.artifact_count === "number" ? row.artifact_count : Number(row.artifact_count ?? 0),
+      messageCount: typeof row.message_count === "number" ? row.message_count : Number(row.message_count ?? 0)
     }
   ];
 }

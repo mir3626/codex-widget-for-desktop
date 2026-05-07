@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-7",
+  "currentIteration": "iter-8",
   "iterations": [
     {
       "id": "iter-1",
@@ -208,6 +208,46 @@
         "durable-product-state": 0.97
       },
       "summary": "Iteration 7 moved the trash artifact icon next to the count and reduced the Activity footer from the old 76px reserve to 52px. The generated 9-frame mascot sprite was later rejected by product-owner review because it derives from one static pose and does not meet the intent of a genuinely moving mascot. Future mascot motion work must begin with consensus on acceptance criteria and use real authored motion assets. The previous smoke coverage only proves the sprite path exists; it is not acceptance evidence for animation quality."
+    },
+    {
+      "id": "iter-8",
+      "label": "Vision Context Interface",
+      "startedAt": "2026-05-07T22:07:03.003+09:00",
+      "completedAt": "2026-05-07T22:20:17.844+09:00",
+      "goal": "Build the Vision Context Interface from docs/plans/vision-context-interface-handoff.md end-to-end: a daemon-side module that converts screen/browser/user capture into TaskCapsule markdown plus selected Codex app-server localImage inputs, without ever sending raw WebM/audio to app-server.",
+      "plannedSprints": [
+        "iter-8-sprint-01-types-capsule-and-app-server-adapter",
+        "iter-8-sprint-02-capture-session-timeline-and-retention",
+        "iter-8-sprint-03-reference-and-intent-resolver-mvp",
+        "iter-8-sprint-04-transcription-interface-mvp",
+        "iter-8-sprint-05-lexicon-correction-and-clarification",
+        "iter-8-sprint-06-provider-adapter-expansion",
+        "iter-8-sprint-07-renderer-protocol-and-completion-audit"
+      ],
+      "completedSprints": [
+        "iter-8-sprint-01-types-capsule-and-app-server-adapter",
+        "iter-8-sprint-02-capture-session-timeline-and-retention",
+        "iter-8-sprint-03-reference-and-intent-resolver-mvp",
+        "iter-8-sprint-04-transcription-interface-mvp",
+        "iter-8-sprint-05-lexicon-correction-and-clarification",
+        "iter-8-sprint-06-provider-adapter-expansion",
+        "iter-8-sprint-07-renderer-protocol-and-completion-audit"
+      ],
+      "carryover": "Iter-7 dogfood UI motion work is no longer the active implementation focus. The product owner supplied docs/plans/vision-context-interface-handoff.md as the authoritative handoff for a new Vision Context feature iteration. The durable decisions are that raw WebM/audio are temporary processing material only, the model-visible product is TaskCapsule text plus selected localImage evidence, and deterministic interfaces should precede real ASR complexity.",
+      "openRisks": [
+        "Codex app-server video input is not available; the implementation must stay on UserInput text/image variants.",
+        "Raw media deletion must run on both successful and failed processing paths.",
+        "Real local ASR production support may require a sidecar or installed model and should remain optional behind an interface until dogfooding validates the backend choice.",
+        "Destructive low-confidence requests require clarification rather than silent action."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.96,
+        "durable-codex-runtime": 0.95,
+        "real-tool-providers": 1,
+        "resident-desktop-readiness": 0.94,
+        "durable-product-state": 0.98
+      },
+      "summary": "Iteration 8 implemented the Vision Context Interface MVP. The daemon now has src/daemon/vision-context with TaskCapsule schemas, capture session timeline, evidence graph, reference and intent resolvers, capsule markdown rendering, retention/raw deletion policy, app-server UserInput adapter, built-in screen/browser/terminal adapters, and placeholder IDE/document/accessibility adapters. src/daemon/transcription now provides transcript/audio schemas, mock ASR, sidecar ASR boundary, VAD fixture helper, lexicon correction, action-slot confidence, and clarification policy. The shared protocol includes visionContext start/event/stop/cancel plus progress/capsule/sent/error events, AgentRequest supports appServerInput overrides, Codex app-server turns accept localImage inputs, and the renderer starts/stops Vision Context around Share with Agent. Smoke coverage verifies capsule generation, pointer/no-pointer/temporal resolver behavior, raw media deletion, lexicon correction, destructive clarification, and fake app-server localImage delivery."
     }
   ]
 }

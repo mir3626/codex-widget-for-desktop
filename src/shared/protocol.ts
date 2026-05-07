@@ -48,6 +48,8 @@ export type AuthStatus = {
 
 export type RuntimeInteractionKind = "approval" | "input";
 
+export type RuntimeInteractionDecision = "approve" | "always_allow" | "decline" | "submit";
+
 export type RuntimeInteraction = {
   id: string;
   requestId?: string;
@@ -61,6 +63,14 @@ export type RuntimeInteraction = {
     placeholder?: string;
     multiline?: boolean;
   }>;
+};
+
+export type ExecutionPermissionDecision = "ask" | "allow" | "deny";
+
+export type ExecutionPermissionSummary = {
+  action: string;
+  decision: ExecutionPermissionDecision;
+  updatedAt: string;
 };
 
 export type ProviderStatus = {
@@ -129,6 +139,40 @@ export type BranchContextMessage = {
   text: string;
 };
 
+export type CodexUserInput =
+  | {
+      type: "text";
+      text: string;
+      text_elements: [];
+    }
+  | {
+      type: "image";
+      url: string;
+    }
+  | {
+      type: "localImage";
+      path: string;
+    };
+
+export type VisionContextSourceRequest = {
+  kind?: "screen" | "window" | "browser_tab" | "app";
+  appName?: string;
+  windowTitle?: string;
+  url?: string;
+  viewport?: {
+    width: number;
+    height: number;
+    devicePixelRatio?: number;
+  };
+};
+
+export type VisionContextEventInput = {
+  id?: string;
+  t?: number;
+  type: string;
+  [key: string]: unknown;
+};
+
 export type MessageSnapshotStatus = "pending" | "thinking" | "tooling" | "streaming" | "done" | "cancelled" | "error";
 
 export type SessionStatus = "active" | "archived" | "trashed";
@@ -146,6 +190,7 @@ export type SessionSummary = {
   activeReasoning?: ReasoningEffort;
   activeMode?: WidgetMode;
   artifactCount?: number;
+  messageCount?: number;
 };
 
 export type SessionMessage = {
@@ -266,6 +311,7 @@ export type ClientMessage =
       model?: ModelId;
       reasoningEffort?: ReasoningEffort;
       branchContext?: BranchContextMessage[];
+      appServerInput?: CodexUserInput[];
       regenerate?: {
         dropTurns: number;
         replaceFromMessageId?: string;
@@ -303,6 +349,14 @@ export type ClientMessage =
       sessionId: string;
     }
   | {
+      type: "session.discard";
+      sessionId: string;
+    }
+  | {
+      type: "session.delete";
+      sessionId: string;
+    }
+  | {
       type: "session.restore";
       sessionId: string;
     }
@@ -318,8 +372,17 @@ export type ClientMessage =
   | {
       type: "interaction.respond";
       id: string;
-      decision: "approve" | "decline" | "submit";
+      decision: RuntimeInteractionDecision;
+      action?: string;
       answers?: Record<string, string>;
+    }
+  | {
+      type: "execution.permissions.refresh";
+    }
+  | {
+      type: "execution.permission.set";
+      action: string;
+      decision: ExecutionPermissionDecision;
     }
   | {
       type: "provider.captureScreen";
@@ -353,6 +416,36 @@ export type ClientMessage =
       type: "provider.vision.error";
       id: string;
       message: string;
+    }
+  | {
+      type: "visionContext.start";
+      captureId?: string;
+      sessionId?: string;
+      source?: VisionContextSourceRequest;
+      retention?: "default" | "privacy";
+      rawMedia?: {
+        videoPath?: string;
+        audioPath?: string;
+        segmentPaths?: string[];
+      };
+    }
+  | {
+      type: "visionContext.event";
+      captureId: string;
+      event: VisionContextEventInput;
+    }
+  | {
+      type: "visionContext.stop";
+      captureId: string;
+      sendToAgent: boolean;
+      requestId?: string;
+      sessionId?: string;
+      model?: ModelId;
+      reasoningEffort?: ReasoningEffort;
+    }
+  | {
+      type: "visionContext.cancel";
+      captureId: string;
     }
   | {
       type: "terminal.input";
@@ -393,6 +486,11 @@ export type ServerEvent =
   | {
       type: "auth.url";
       url: string;
+    }
+  | {
+      type: "external.url";
+      url: string;
+      reason?: string;
     }
   | {
       type: "session.state";
@@ -443,6 +541,16 @@ export type ServerEvent =
       interaction: RuntimeInteraction;
     }
   | {
+      type: "execution.permissions";
+      permissions: ExecutionPermissionSummary[];
+    }
+  | {
+      type: "execution.permission.applied";
+      id: string;
+      action: string;
+      decision: Exclude<ExecutionPermissionDecision, "ask">;
+    }
+  | {
       type: "session.reset";
     }
   | {
@@ -469,6 +577,31 @@ export type ServerEvent =
       state: "started" | "stopped" | "completed" | "error";
       stream: VisionStreamSummary;
       message: string;
+    }
+  | {
+      type: "visionContext.started";
+      captureId: string;
+    }
+  | {
+      type: "visionContext.progress";
+      captureId: string;
+      status: string;
+      detail?: unknown;
+    }
+  | {
+      type: "visionContext.capsule";
+      captureId: string;
+      capsuleSummary: unknown;
+    }
+  | {
+      type: "visionContext.sent";
+      captureId: string;
+      requestId: string;
+    }
+  | {
+      type: "visionContext.error";
+      captureId: string;
+      error: string;
     }
   | {
       type: "terminal.output";

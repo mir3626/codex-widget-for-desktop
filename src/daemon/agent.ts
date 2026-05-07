@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { CodexAppServerBridge } from "./codexAppServer.js";
+import type { CodexAppServerBridge, ExecutionPermissionPolicy } from "./codexAppServer.js";
 import { spawnCodex } from "./codexCli.js";
 import { augmentRequestWithProviderContext, type ProviderRegistry } from "./providers/providerRegistry.js";
 import { maybeRunTerminalProvider } from "./providers/terminalProvider.js";
@@ -13,6 +13,7 @@ import {
 } from "./codexRuntime.js";
 import {
   DEFAULT_MODEL_ID,
+  type CodexUserInput,
   normalizeModelId,
   normalizeReasoningEffort,
   type AuthStatus,
@@ -32,6 +33,7 @@ export type AgentRequest = {
   model?: ModelId;
   reasoningEffort?: ReasoningEffort;
   imageDataUrls?: string[];
+  appServerInput?: CodexUserInput[];
   branchContext?: BranchContextMessage[];
   widgetContext?: string;
 };
@@ -42,6 +44,7 @@ export type AgentRuntimeOptions = {
   codexAuthenticated?: boolean;
   session?: AgentSessionState;
   codexAppServer?: CodexAppServerBridge;
+  executionPermissions?: ExecutionPermissionPolicy;
   providers?: ProviderRegistry;
   authStatus?: AuthStatus;
 };
@@ -73,7 +76,10 @@ export async function runAgentStream(
 
   if (options.codexAuthenticated) {
     if (shouldUseCodexAppServer(options.codexAppServer)) {
-      const handled = await tryStreamCodexAppServerResponse(effectiveRequest, emit, signal, options.codexAppServer);
+      const handled = await tryStreamCodexAppServerResponse(effectiveRequest, emit, signal, {
+        codexAppServer: options.codexAppServer,
+        executionPermissions: options.executionPermissions
+      });
       if (handled) {
         return;
       }
@@ -98,8 +104,12 @@ async function tryStreamCodexAppServerResponse(
   request: AgentRequest,
   emit: ToolEmitter,
   signal: AbortSignal,
-  codexAppServer: CodexAppServerBridge | undefined
+  options: {
+    codexAppServer?: CodexAppServerBridge;
+    executionPermissions?: ExecutionPermissionPolicy;
+  }
 ): Promise<boolean> {
+  const codexAppServer = options.codexAppServer;
   if (!codexAppServer) {
     return false;
   }
@@ -120,6 +130,7 @@ async function tryStreamCodexAppServerResponse(
       selection,
       context,
       emit: guardedEmit,
+      executionPermissions: options.executionPermissions,
       signal
     });
     return true;

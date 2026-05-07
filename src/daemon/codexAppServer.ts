@@ -10,7 +10,14 @@ import {
   terminateProcessTreeAndWait
 } from "./codexRuntime.js";
 import { renderWidgetContextSection } from "./widgetContext.js";
-import type { RuntimeInteraction, RuntimeStatus, ToolEmitter } from "../shared/protocol.js";
+import type {
+  CodexUserInput,
+  ExecutionPermissionDecision,
+  RuntimeInteraction,
+  RuntimeInteractionDecision,
+  RuntimeStatus,
+  ToolEmitter
+} from "../shared/protocol.js";
 
 type JsonRpcId = string;
 
@@ -36,6 +43,7 @@ type ActiveTurn = {
   turnId: string;
   fullText: string;
   emit: ToolEmitter;
+  executionPermissions?: ExecutionPermissionPolicy;
   resolve: () => void;
   reject: (error: Error) => void;
   cleanup: () => void;
@@ -44,8 +52,25 @@ type ActiveTurn = {
 type PendingInteraction = {
   rpcId: string | number;
   kind: RuntimeInteraction["kind"];
+  action?: string;
   timer: NodeJS.Timeout;
 };
+
+export type ExecutionPermissionPolicy = {
+  read: (action: string) => ExecutionPermissionDecision;
+};
+
+export type InteractionResponseResult =
+  | {
+      handled: false;
+    }
+  | {
+      handled: true;
+      kind: RuntimeInteraction["kind"];
+      action?: string;
+      decision: Exclude<RuntimeInteractionDecision, "always_allow">;
+      remember: boolean;
+    };
 
 type ThreadStartResponse = {
   thread?: {
@@ -134,26 +159,39 @@ export class CodexAppServerBridge {
 
   respondToInteraction(input: {
     id: string;
-    decision: "approve" | "decline" | "submit";
+    decision: RuntimeInteractionDecision;
     answers?: Record<string, string>;
-  }): boolean {
+  }): InteractionResponseResult {
     const pending = this.pendingInteractions.get(input.id);
     if (!pending) {
-      return false;
+      return { handled: false };
     }
 
     clearTimeout(pending.timer);
     this.pendingInteractions.delete(input.id);
 
     if (pending.kind === "input") {
-      this.respond(pending.rpcId, { answers: input.answers ?? {} });
-      return true;
+      this.respond(pending.rpcId, { answers: input.decision === "decline" ? {} : input.answers ?? {} });
+      return {
+        handled: true,
+        kind: pending.kind,
+        action: pending.action,
+        decision: input.decision === "decline" ? "decline" : "submit",
+        remember: false
+      };
     }
 
+    const decision = input.decision === "always_allow" ? "approve" : input.decision;
     this.respond(pending.rpcId, {
-      decision: input.decision === "approve" ? "approve" : "decline"
+      decision: decision === "approve" ? "accept" : "decline"
     });
-    return true;
+    return {
+      handled: true,
+      kind: pending.kind,
+      action: pending.action,
+      decision: decision === "approve" ? "approve" : "decline",
+      remember: input.decision === "always_allow"
+    };
   }
 
   async runTurn(input: {
@@ -161,6 +199,7 @@ export class CodexAppServerBridge {
     selection: AgentSelection;
     context: CodexExecutionContext;
     emit: ToolEmitter;
+    executionPermissions?: ExecutionPermissionPolicy;
     signal: AbortSignal;
   }): Promise<void> {
     if (this.activeTurn) {
@@ -169,20 +208,39 @@ export class CodexAppServerBridge {
 
     await this.ensureReady(input.context);
     let threadId = await this.ensureThread(input.selection, input.context);
+    const provisionalActiveTurn: ActiveTurn = {
+      widgetRequestId: input.request.id,
+      threadId,
+      turnId: "",
+      fullText: "",
+      emit: input.emit,
+      executionPermissions: input.executionPermissions,
+      resolve: () => undefined,
+      reject: () => undefined,
+      cleanup: () => undefined
+    };
+    this.activeTurn = provisionalActiveTurn;
     let turn: TurnStartResponse;
     try {
       turn = await this.startTurn(threadId, input);
     } catch (error) {
       if (!isRetryableThreadError(error)) {
+        if (this.activeTurn === provisionalActiveTurn) {
+          this.activeTurn = undefined;
+        }
         throw error;
       }
       this.threadId = undefined;
       threadId = await this.ensureThread(input.selection, input.context);
+      provisionalActiveTurn.threadId = threadId;
       turn = await this.startTurn(threadId, input);
     }
 
     const turnId = turn.turn?.id;
     if (!turnId) {
+      if (this.activeTurn === provisionalActiveTurn) {
+        this.activeTurn = undefined;
+      }
       throw new Error("Codex app-server did not return a turn id.");
     }
 
@@ -208,8 +266,9 @@ export class CodexAppServerBridge {
         widgetRequestId: input.request.id,
         threadId,
         turnId,
-        fullText: "",
+        fullText: provisionalActiveTurn.fullText,
         emit: input.emit,
+        executionPermissions: input.executionPermissions,
         resolve,
         reject,
         cleanup
@@ -498,6 +557,10 @@ export class CodexAppServerBridge {
         this.queueUserInputInteraction(id, message);
         return;
       default:
+        if (isExternalUrlApprovalRequest(message)) {
+          this.queueApprovalInteraction(id, message, "Open browser");
+          return;
+        }
         this.respondError(id, -32601, `Unsupported app-server request: ${message.method ?? "unknown"}`);
     }
   }
@@ -511,9 +574,25 @@ export class CodexAppServerBridge {
 
     const params = readRecord(message.params);
     const item = readRecord(params?.item) ?? params;
-    const action = readInteractionAction(item, fallbackTitle);
-    const reason = readInteractionReason(item, params, "Codex needs permission before continuing.");
-    const interactionId = this.storePendingInteraction(id, "approval");
+    const externalUrl = readExternalUrlApprovalTarget(message.method, params, item);
+    const action = readApprovalAction(item, fallbackTitle, externalUrl);
+    const reason =
+      externalUrl
+        ? `Codex wants to open ${externalUrl} in your browser.`
+        : readInteractionReason(item, params, "Codex needs permission before continuing.");
+    const savedDecision = readSavedApprovalDecision(active.executionPermissions, action, item, fallbackTitle);
+    if (savedDecision === "allow" || savedDecision === "deny") {
+      this.respond(id, { decision: savedDecision === "allow" ? "accept" : "decline" });
+      active.emit({
+        type: "execution.permission.applied",
+        id: active.widgetRequestId,
+        action,
+        decision: savedDecision
+      });
+      return;
+    }
+
+    const interactionId = this.storePendingInteraction(id, "approval", action);
 
     active.emit({
       type: "approval.required",
@@ -583,7 +662,8 @@ export class CodexAppServerBridge {
 
   private storePendingInteraction(
     rpcId: string | number,
-    kind: RuntimeInteraction["kind"]
+    kind: RuntimeInteraction["kind"],
+    action?: string
   ): string {
     const interactionId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     const timer = setTimeout(() => {
@@ -602,6 +682,7 @@ export class CodexAppServerBridge {
     this.pendingInteractions.set(interactionId, {
       rpcId,
       kind,
+      action,
       timer
     });
     return interactionId;
@@ -763,19 +844,12 @@ export class CodexAppServerBridge {
   }
 }
 
-type AppServerUserInput =
-  | {
-      type: "text";
-      text: string;
-      text_elements: [];
-    }
-  | {
-      type: "image";
-      url: string;
-    };
+export function buildTurnInput(request: AgentRequest): CodexUserInput[] {
+  if (request.appServerInput?.length) {
+    return mergeContextIntoOverride(request, request.appServerInput);
+  }
 
-export function buildTurnInput(request: AgentRequest): AppServerUserInput[] {
-  const input: AppServerUserInput[] = [
+  const input: CodexUserInput[] = [
     {
       type: "text",
       text: [
@@ -798,6 +872,51 @@ export function buildTurnInput(request: AgentRequest): AppServerUserInput[] {
   return input;
 }
 
+function mergeContextIntoOverride(request: AgentRequest, override: CodexUserInput[]): CodexUserInput[] {
+  const contextPrefix = [
+    `[mode=${request.mode}]`,
+    renderWidgetContextSection(request.widgetContext),
+    renderBranchContext(request.branchContext)
+  ].filter((part) => part !== "").join("\n");
+  const normalized = override.flatMap(normalizeUserInput);
+  if (!contextPrefix) {
+    return normalized;
+  }
+  const firstTextIndex = normalized.findIndex((item) => item.type === "text");
+  if (firstTextIndex < 0) {
+    return [
+      { type: "text", text: contextPrefix, text_elements: [] },
+      ...normalized
+    ];
+  }
+  return normalized.map((item, index) => {
+    if (index !== firstTextIndex || item.type !== "text") {
+      return item;
+    }
+    return {
+      ...item,
+      text: [contextPrefix, item.text].filter(Boolean).join("\n\n")
+    };
+  });
+}
+
+function normalizeUserInput(input: CodexUserInput): CodexUserInput[] {
+  if (input.type === "text") {
+    return [{
+      type: "text",
+      text: input.text,
+      text_elements: []
+    }];
+  }
+  if (input.type === "image" && isSupportedImageUrl(input.url)) {
+    return [input];
+  }
+  if (input.type === "localImage" && input.path.trim()) {
+    return [{ type: "localImage", path: input.path.trim() }];
+  }
+  return [];
+}
+
 function isSupportedImageUrl(value: string): boolean {
   return /^data:image\/[a-z0-9.+-]+;base64,/i.test(value) || /^https?:\/\//i.test(value);
 }
@@ -806,12 +925,25 @@ function readRecord(value: unknown): Record<string, unknown> | undefined {
   return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : undefined;
 }
 
+function readApprovalAction(item: Record<string, unknown> | undefined, fallback: string, externalUrl?: string): string {
+  if (externalUrl) {
+    return "Open external URL";
+  }
+
+  const command = readCommandText(item);
+  if (command && isPowerShellCommand(command)) {
+    return "PowerShell command";
+  }
+
+  return readInteractionAction(item, fallback);
+}
+
 function readInteractionAction(item: Record<string, unknown> | undefined, fallback: string): string {
   if (!item) {
     return fallback;
   }
 
-  for (const key of ["command", "path", "file", "title", "name", "tool"]) {
+  for (const key of ["command", "url", "uri", "href", "path", "file", "title", "name", "tool"]) {
     const value = item[key];
     if (typeof value === "string" && value.trim()) {
       return value.trim();
@@ -819,6 +951,169 @@ function readInteractionAction(item: Record<string, unknown> | undefined, fallba
   }
 
   return fallback;
+}
+
+function readCommandText(item: Record<string, unknown> | undefined): string {
+  const command = item?.command;
+  if (typeof command === "string") {
+    return command.trim();
+  }
+  if (Array.isArray(command)) {
+    return command.filter((part): part is string => typeof part === "string").join(" ").trim();
+  }
+  return "";
+}
+
+function isExternalUrlApprovalRequest(message: Pick<JsonRpcMessage, "method" | "params">): boolean {
+  const method = message.method?.toLowerCase() ?? "";
+  if (!method.includes("approval") && !method.includes("request")) {
+    return false;
+  }
+
+  const params = readRecord(message.params);
+  const item = readRecord(params?.item) ?? params;
+  return Boolean(readExternalUrlApprovalTarget(message.method, params, item));
+}
+
+function readExternalUrlApprovalTarget(
+  method: string | undefined,
+  params: Record<string, unknown> | undefined,
+  item: Record<string, unknown> | undefined
+): string | undefined {
+  const url = readFirstHttpUrl(item) ?? readFirstHttpUrl(params);
+  if (!url) {
+    return undefined;
+  }
+
+  const methodText = method?.toLowerCase() ?? "";
+  const typeText = [item?.type, item?.kind, item?.tool, item?.name, item?.title]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ")
+    .toLowerCase();
+  if (/(open|browser|external|url|link)/.test(`${methodText} ${typeText}`)) {
+    return url;
+  }
+
+  const command = readCommandText(item);
+  if (command && isBrowserOpenCommand(command, url)) {
+    return url;
+  }
+
+  return undefined;
+}
+
+function readFirstHttpUrl(record: Record<string, unknown> | undefined): string | undefined {
+  if (!record) {
+    return undefined;
+  }
+
+  const seen = new Set<unknown>();
+  const stack: unknown[] = [record];
+  while (stack.length > 0) {
+    const value = stack.shift();
+    if (!value || seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
+
+    if (typeof value === "string") {
+      const direct = normalizeHttpUrl(value);
+      if (direct) {
+        return direct;
+      }
+      const match = value.match(/https?:\/\/[^\s"'<>]+/i);
+      const embedded = match ? normalizeHttpUrl(match[0]) : undefined;
+      if (embedded) {
+        return embedded;
+      }
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      stack.push(...value);
+      continue;
+    }
+
+    const nested = readRecord(value);
+    if (nested) {
+      stack.push(...Object.values(nested));
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeHttpUrl(value: string): string | undefined {
+  const trimmed = value.trim().replace(/[),.;]+$/g, "");
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return undefined;
+  }
+  try {
+    const url = new URL(trimmed);
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function isBrowserOpenCommand(command: string, url: string): boolean {
+  const canonicalUrl = url.replace(/\/$/, "");
+  const escapedUrl = escapeRegex(canonicalUrl);
+  if (!new RegExp(`${escapedUrl}/?`, "i").test(command)) {
+    return false;
+  }
+
+  const normalized = command.replace(/\s+/g, " ").trim();
+  if (/^(?:start(?:\s+"[^"]*")?|cmd\s+\/c\s+start(?:\s+"[^"]*")?|open|xdg-open|explorer(?:\.exe)?|rundll32\s+url\.dll,FileProtocolHandler)\b/i.test(normalized)) {
+    return true;
+  }
+
+  return isPowerShellCommand(normalized) && /\b(?:start-process|start)\b/i.test(normalized);
+}
+
+function readSavedApprovalDecision(
+  permissions: ExecutionPermissionPolicy | undefined,
+  action: string,
+  item: Record<string, unknown> | undefined,
+  fallbackTitle: string
+): ExecutionPermissionDecision {
+  const savedDecision = permissions?.read(action) ?? "ask";
+  if (savedDecision === "allow" || savedDecision === "deny") {
+    return savedDecision;
+  }
+
+  const legacyAction = readInteractionAction(item, fallbackTitle);
+  if (legacyAction && legacyAction !== action) {
+    const legacyDecision = permissions?.read(legacyAction) ?? "ask";
+    if (legacyDecision === "allow" || legacyDecision === "deny") {
+      return legacyDecision;
+    }
+  }
+
+  return "ask";
+}
+
+function isPowerShellCommand(command: string): boolean {
+  const executable = readCommandExecutable(command).replace(/\//g, "\\");
+  return /(?:^|\\)(?:powershell|pwsh)(?:\.exe)?$/i.test(executable);
+}
+
+function readCommandExecutable(command: string): string {
+  const trimmed = command.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  if (trimmed.startsWith('"')) {
+    const closingQuote = trimmed.indexOf('"', 1);
+    return closingQuote > 1 ? trimmed.slice(1, closingQuote).trim() : trimmed;
+  }
+
+  return trimmed.split(/\s+/, 1)[0]?.trim() ?? "";
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function readInteractionReason(

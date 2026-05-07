@@ -10,7 +10,24 @@ import { ProviderRegistry, type DomSnapshot, type ScreenSnapshot } from "./provi
 import { subscribeTerminalSessionOutput, writeTerminalSessionInput } from "./providers/terminalSessionProvider.js";
 import { createStorageService, type StorageService } from "./storage/storage.js";
 import { getProviderStatuses } from "./tools.js";
-import type { ClientMessage, MessageSnapshotStatus, RuntimeStatus, ScreenCrop, ServerEvent, SessionSnapshot } from "../shared/protocol.js";
+import {
+  VisionContextSessionManager,
+  buildAppServerUserInput,
+  collectAdapterObservations,
+  renderVisibleUserMessage,
+  summarizeCaptureSession,
+  type CaptureEvent,
+  type VisionContextStartInput
+} from "./vision-context/index.js";
+import type {
+  ClientMessage,
+  ExecutionPermissionSummary,
+  MessageSnapshotStatus,
+  RuntimeStatus,
+  ScreenCrop,
+  ServerEvent,
+  SessionSnapshot
+} from "../shared/protocol.js";
 
 export type DaemonHandle = {
   port: number;
@@ -43,6 +60,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
   const auth = new OAuthSession(() => (serverRef ? getServerPort(serverRef) : 0));
   const codexAppServer = new CodexAppServerBridge();
   const providers = new ProviderRegistry();
+  const visionContext = new VisionContextSessionManager();
   const storage = createStorageService();
   const requestSessions = new Map<string, string>();
   const agentSession: AgentSessionState = {};
@@ -66,6 +84,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     send(socket, { type: "auth.status", auth: auth.getStatus() });
     send(socket, { type: "provider.status", providers: getProviderStatuses(providers) });
     send(socket, { type: "runtime.status", status: readRuntimeStatus(startedAt, clients, controllers, codexAppServer, storage) });
+    sendExecutionPermissions(socket, storage);
     sendSessionSnapshot(socket, storage);
     sendLedgerSnapshot(socket, storage);
     send(socket, { type: "session.state", state: "idle" });
@@ -85,6 +104,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
         agentSession,
         codexAppServer,
         providers,
+        visionContext,
         getServerPort(server)
       );
     });
@@ -152,6 +172,7 @@ async function handleMessage(
   agentSession: AgentSessionState,
   codexAppServer: CodexAppServerBridge,
   providers: ProviderRegistry,
+  visionContext: VisionContextSessionManager,
   daemonPort: number
 ): Promise<void> {
   let message: ClientMessage;
@@ -274,6 +295,18 @@ async function handleMessage(
     return;
   }
 
+  if (message.type === "session.discard") {
+    resetRuntimeSession(controllers, retainedMessages, agentSession, codexAppServer);
+    publishSessionMutation(socket, clients, storage, () => storage.discardSession(message.sessionId));
+    return;
+  }
+
+  if (message.type === "session.delete") {
+    resetRuntimeSession(controllers, retainedMessages, agentSession, codexAppServer);
+    publishSessionMutation(socket, clients, storage, () => storage.deleteSession(message.sessionId));
+    return;
+  }
+
   if (message.type === "session.restore") {
     resetRuntimeSession(controllers, retainedMessages, agentSession, codexAppServer);
     publishSessionMutation(socket, clients, storage, () => storage.restoreSession(message.sessionId));
@@ -303,11 +336,47 @@ async function handleMessage(
   }
 
   if (message.type === "interaction.respond") {
-    const handled = codexAppServer.respondToInteraction(message);
-    if (!handled) {
+    const result = codexAppServer.respondToInteraction(message);
+    if (!result.handled) {
       send(socket, {
         type: "error",
         message: "That Codex interaction is no longer active."
+      });
+      return;
+    }
+    const action = result.action ?? message.action;
+    if (result.remember && action) {
+      const permissions = storage.setExecutionPermission({ action, decision: "allow" });
+      broadcastExecutionPermissions(clients, permissions);
+      recordRuntimeActivity(storage, storage.ensureSessionSnapshot().activeSessionId, "info", "permission", `Always allow: ${action}`, {
+        action,
+        decision: "allow"
+      });
+    }
+    return;
+  }
+
+  if (message.type === "execution.permissions.refresh") {
+    sendExecutionPermissions(socket, storage);
+    return;
+  }
+
+  if (message.type === "execution.permission.set") {
+    try {
+      const permissions = storage.setExecutionPermission({
+        action: message.action,
+        decision: message.decision
+      });
+      broadcastExecutionPermissions(clients, permissions);
+      recordRuntimeActivity(storage, storage.ensureSessionSnapshot().activeSessionId, "info", "permission", `Permission ${message.decision}: ${message.action}`, {
+        action: message.action,
+        decision: message.decision
+      });
+      broadcastLedgerSnapshot(clients, storage);
+    } catch (error) {
+      send(socket, {
+        type: "error",
+        message: error instanceof Error ? error.message : "Unable to update execution permissions."
       });
     }
     return;
@@ -427,6 +496,143 @@ async function handleMessage(
     return;
   }
 
+  if (message.type === "visionContext.start") {
+    try {
+      const sessionId = resolveClientSessionId(storage, message.sessionId);
+      const session = visionContext.start({
+        id: message.captureId,
+        sessionId,
+        source: message.source,
+        retention: message.retention,
+        rawMedia: message.rawMedia
+      } satisfies VisionContextStartInput);
+      recordRuntimeActivity(storage, sessionId, "info", "vision-context", "Vision Context session started", summarizeCaptureSession(session));
+      broadcast(clients, { type: "visionContext.started", captureId: session.id });
+      broadcast(clients, {
+        type: "visionContext.progress",
+        captureId: session.id,
+        status: "started",
+        detail: summarizeCaptureSession(session)
+      });
+      broadcastLedgerSnapshot(clients, storage, sessionId);
+    } catch (error) {
+      send(socket, {
+        type: "visionContext.error",
+        captureId: message.captureId ?? "",
+        error: error instanceof Error ? error.message : "Unable to start Vision Context session."
+      });
+    }
+    return;
+  }
+
+  if (message.type === "visionContext.event") {
+    try {
+      const session = visionContext.addEvent(message.captureId, normalizeVisionContextEvent(message.event));
+      broadcast(clients, {
+        type: "visionContext.progress",
+        captureId: message.captureId,
+        status: "event",
+        detail: summarizeCaptureSession(session)
+      });
+    } catch (error) {
+      send(socket, {
+        type: "visionContext.error",
+        captureId: message.captureId,
+        error: error instanceof Error ? error.message : "Unable to record Vision Context event."
+      });
+    }
+    return;
+  }
+
+  if (message.type === "visionContext.cancel") {
+    try {
+      const session = visionContext.cancel(message.captureId);
+      recordRuntimeActivity(storage, resolveStreamSessionId(storage, session), "warn", "vision-context", "Vision Context session cancelled", summarizeCaptureSession(session));
+      broadcast(clients, {
+        type: "visionContext.progress",
+        captureId: message.captureId,
+        status: "cancelled",
+        detail: summarizeCaptureSession(session)
+      });
+    } catch (error) {
+      send(socket, {
+        type: "visionContext.error",
+        captureId: message.captureId,
+        error: error instanceof Error ? error.message : "Unable to cancel Vision Context session."
+      });
+    }
+    return;
+  }
+
+  if (message.type === "visionContext.stop") {
+    try {
+      const pending = visionContext.get(message.captureId);
+      if (!pending) {
+        throw new Error(`Vision Context session not found: ${message.captureId}`);
+      }
+      const observations = await collectAdapterObservations({
+        captureSession: pending,
+        timeRange: readVisionContextTimeRange(pending.timeline),
+        activeSource: pending.source,
+        hints: {
+          utterance: pending.timeline.filter((event) => event.type === "speech").map((event) => event.text).join(" "),
+          pointerEvents: pending.timeline.filter((event): event is Extract<CaptureEvent, { type: "pointer" }> => event.type === "pointer"),
+          currentMode: "screen"
+        },
+        providerState: {
+          screenSnapshot: providers.getScreenSnapshot(),
+          domSnapshot: providers.getDomSnapshot()
+        }
+      });
+      const completed = await visionContext.complete({ captureId: message.captureId, observations });
+      const sessionId = resolveClientSessionId(storage, message.sessionId ?? completed.session.sessionId);
+      const capsuleSummary = {
+        id: completed.capsule.id,
+        intent: completed.capsule.resolvedIntent,
+        evidenceCount: completed.capsule.evidence.length,
+        deletedRawMedia: completed.deletedRawMedia.length,
+        userUtterance: completed.capsule.userUtterance
+      };
+      recordRuntimeActivity(storage, sessionId, "info", "vision-context", "Vision Context capsule created", capsuleSummary);
+      broadcast(clients, { type: "visionContext.capsule", captureId: message.captureId, capsuleSummary });
+      broadcastLedgerSnapshot(clients, storage, sessionId);
+
+      if (message.sendToAgent) {
+        const requestId = message.requestId?.trim() || `vision-context:${message.captureId}`;
+        broadcast(clients, { type: "visionContext.sent", captureId: message.captureId, requestId });
+        await runAskMessage({
+          message: {
+            type: "ask",
+            id: requestId,
+            text: renderVisibleUserMessage(completed.capsule),
+            mode: "screen",
+            sessionId,
+            model: message.model,
+            reasoningEffort: message.reasoningEffort,
+            appServerInput: buildAppServerUserInput(completed.capsule)
+          },
+          controllers,
+          retainedMessages,
+          toolOutputBuffers,
+          auth,
+          clients,
+          requestSessions,
+          storage,
+          agentSession,
+          codexAppServer,
+          providers
+        });
+      }
+    } catch (error) {
+      send(socket, {
+        type: "visionContext.error",
+        captureId: message.captureId,
+        error: error instanceof Error ? error.message : "Unable to complete Vision Context session."
+      });
+    }
+    return;
+  }
+
   if (message.type === "terminal.input") {
     try {
       if (typeof message.data !== "string" || message.data.length > 4096) {
@@ -448,6 +654,47 @@ async function handleMessage(
     return;
   }
 
+  await runAskMessage({
+    message,
+    controllers,
+    retainedMessages,
+    toolOutputBuffers,
+    auth,
+    clients,
+    requestSessions,
+    storage,
+    agentSession,
+    codexAppServer,
+    providers
+  });
+}
+
+async function runAskMessage(input: {
+  message: Extract<ClientMessage, { type: "ask" }>;
+  controllers: Map<string, AbortController>;
+  retainedMessages: Map<string, RetainedMessage>;
+  toolOutputBuffers: Map<string, Map<string, string>>;
+  auth: OAuthSession;
+  clients: Set<WebSocket>;
+  requestSessions: Map<string, string>;
+  storage: StorageService;
+  agentSession: AgentSessionState;
+  codexAppServer: CodexAppServerBridge;
+  providers: ProviderRegistry;
+}): Promise<void> {
+  const {
+    message,
+    controllers,
+    retainedMessages,
+    toolOutputBuffers,
+    auth,
+    clients,
+    requestSessions,
+    storage,
+    agentSession,
+    codexAppServer,
+    providers
+  } = input;
   const controller = new AbortController();
   controllers.set(message.id, controller);
   const persistedAsk = storage.prepareAsk({
@@ -480,7 +727,10 @@ async function handleMessage(
       authStatus: auth.getStatus(),
       session: agentSession,
       codexAppServer,
-      providers
+      providers,
+      executionPermissions: {
+        read: (action) => storage.readExecutionPermissionDecision(action)
+      }
     });
     persistCodexAppServerThread(storage, persistedAsk.sessionId, codexAppServer);
   } catch (error) {
@@ -505,6 +755,111 @@ async function handleMessage(
     controllers.delete(message.id);
     requestSessions.delete(message.id);
   }
+}
+
+function normalizeVisionContextEvent(input: unknown): CaptureEvent {
+  const record = readRecord(input);
+  if (!record || typeof record.type !== "string") {
+    throw new Error("Vision Context event must include a type.");
+  }
+  const base = {
+    id: typeof record.id === "string" && record.id.trim() ? record.id.trim() : cryptoRandomId(),
+    t: Math.max(0, Math.floor(Number(record.t ?? 0)))
+  };
+  if (record.type === "speech") {
+    return {
+      ...base,
+      type: "speech",
+      text: readStringField(record.text),
+      confidence: clampUnit(Number(record.confidence ?? 0.75))
+    };
+  }
+  if (record.type === "screenshot") {
+    return {
+      ...base,
+      type: "screenshot",
+      path: readOptionalString(record.path),
+      dataUrl: readOptionalString(record.dataUrl),
+      cropOf: readOptionalString(record.cropOf),
+      bbox: readRect(record.bbox),
+      purpose: readScreenshotPurpose(record.purpose),
+      perceptualHash: readOptionalString(record.perceptualHash),
+      text: readOptionalString(record.text)
+    };
+  }
+  if (record.type === "pointer") {
+    return {
+      ...base,
+      type: "pointer",
+      action: readPointerAction(record.action),
+      x: Number(record.x ?? 0),
+      y: Number(record.y ?? 0),
+      toX: typeof record.toX === "number" ? record.toX : undefined,
+      toY: typeof record.toY === "number" ? record.toY : undefined,
+      bbox: readRect(record.bbox)
+    };
+  }
+  if (record.type === "active_window") {
+    return {
+      ...base,
+      type: "active_window",
+      appName: readOptionalString(record.appName),
+      windowTitle: readOptionalString(record.windowTitle),
+      url: readOptionalString(record.url)
+    };
+  }
+  if (record.type === "semantic") {
+    return {
+      ...base,
+      type: "semantic",
+      source: readObservationSource(record.source),
+      kind: readObservationKind(record.kind),
+      label: readOptionalString(record.label),
+      text: readOptionalString(record.text),
+      bbox: readRect(record.bbox),
+      path: readOptionalString(record.path),
+      metadata: readRecord(record.metadata),
+      confidence: clampUnit(Number(record.confidence ?? 0.68))
+    };
+  }
+  if (record.type === "keyboard") {
+    return {
+      ...base,
+      type: "keyboard",
+      action: readKeyboardAction(record.action),
+      text: readOptionalString(record.text),
+      key: readOptionalString(record.key)
+    };
+  }
+  if (record.type === "scroll") {
+    return {
+      ...base,
+      type: "scroll",
+      x: typeof record.x === "number" ? record.x : undefined,
+      y: typeof record.y === "number" ? record.y : undefined,
+      deltaX: typeof record.deltaX === "number" ? record.deltaX : undefined,
+      deltaY: typeof record.deltaY === "number" ? record.deltaY : undefined
+    };
+  }
+  if (record.type === "artifact") {
+    return {
+      ...base,
+      type: "artifact",
+      title: readStringField(record.title),
+      path: readOptionalString(record.path),
+      text: readOptionalString(record.text),
+      metadata: readRecord(record.metadata)
+    };
+  }
+  throw new Error(`Unsupported Vision Context event type: ${record.type}`);
+}
+
+function readVisionContextTimeRange(events: CaptureEvent[]): { startMs: number; endMs: number } {
+  if (events.length === 0) {
+    return { startMs: 0, endMs: 0 };
+  }
+  const times = events.map((event) => event.t);
+  return { startMs: Math.min(...times), endMs: Math.max(...times) };
 }
 
 async function captureScreenFromHelper(
@@ -593,6 +948,84 @@ function readRecord(value: unknown): Record<string, unknown> | undefined {
   return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : undefined;
 }
 
+function readStringField(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function readOptionalString(value: unknown): string | undefined {
+  const string = readStringField(value);
+  return string || undefined;
+}
+
+function readRect(value: unknown): { x: number; y: number; w: number; h: number } | undefined {
+  const record = readRecord(value);
+  if (!record) {
+    return undefined;
+  }
+  const width = Number(record.w ?? record.width);
+  const height = Number(record.h ?? record.height);
+  const x = Number(record.x);
+  const y = Number(record.y);
+  if (![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0) {
+    return undefined;
+  }
+  return { x, y, w: width, h: height };
+}
+
+function readScreenshotPurpose(value: unknown): Extract<CaptureEvent, { type: "screenshot" }>["purpose"] {
+  return value === "primary_media" ||
+    value === "referent_crop" ||
+    value === "temporal_evidence" ||
+    value === "error_evidence" ||
+    value === "full"
+    ? value
+    : "full";
+}
+
+function readPointerAction(value: unknown): Extract<CaptureEvent, { type: "pointer" }>["action"] {
+  return value === "move" || value === "click" || value === "drag" || value === "circle" || value === "highlight"
+    ? value
+    : "click";
+}
+
+function readKeyboardAction(value: unknown): Extract<CaptureEvent, { type: "keyboard" }>["action"] {
+  return value === "type" || value === "shortcut" || value === "submit" ? value : "type";
+}
+
+function readObservationSource(value: unknown): Extract<CaptureEvent, { type: "semantic" }>["source"] {
+  return value === "screen" ||
+    value === "ocr" ||
+    value === "browser" ||
+    value === "terminal" ||
+    value === "ide" ||
+    value === "document" ||
+    value === "accessibility" ||
+    value === "pointer" ||
+    value === "speech"
+    ? value
+    : "screen";
+}
+
+function readObservationKind(value: unknown): Extract<CaptureEvent, { type: "semantic" }>["kind"] {
+  return value === "image" ||
+    value === "text" ||
+    value === "ui_element" ||
+    value === "file" ||
+    value === "command" ||
+    value === "error" ||
+    value === "selection" ||
+    value === "media" ||
+    value === "page" ||
+    value === "window" ||
+    value === "gesture"
+    ? value
+    : "text";
+}
+
+function clampUnit(value: number): number {
+  return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
+}
+
 function persistRuntimeEvent(
   storage: StorageService,
   sessionId: string,
@@ -668,20 +1101,17 @@ function persistRuntimeEvent(
       messageId: event.id,
       status: "streaming"
     });
-    const output = consumeToolOutputBuffer(options.toolOutputBuffers, event.id, event.tool);
-    if (output.trim()) {
-      storage.recordTextArtifact({
-        sessionId,
-        messageId: event.id,
-        title: artifactTitleFromTool(event.tool),
-        text: output,
-        logicalPath: `${slugifyForPath(artifactTitleFromTool(event.tool))}.txt`,
-        displayName: `${slugifyForPath(artifactTitleFromTool(event.tool))}.txt`,
-        fileKind: "tool-output",
-        mime: "text/plain"
-      });
-    }
+    consumeToolOutputBuffer(options.toolOutputBuffers, event.id, event.tool);
     recordRuntimeActivity(storage, sessionId, "info", "tool", `${event.tool} completed`, { requestId: event.id, tool: event.tool });
+    return true;
+  }
+
+  if (event.type === "execution.permission.applied") {
+    recordRuntimeActivity(storage, sessionId, "info", "permission", `Saved permission ${event.decision}: ${event.action}`, {
+      requestId: event.id,
+      action: event.action,
+      decision: event.decision
+    });
     return true;
   }
 
@@ -1031,6 +1461,21 @@ function sendSessionSnapshot(socket: WebSocket, storage: StorageService): void {
   }
 }
 
+function sendExecutionPermissions(socket: WebSocket, storage: StorageService): void {
+  try {
+    send(socket, { type: "execution.permissions", permissions: storage.readExecutionPermissions() });
+  } catch (error) {
+    send(socket, {
+      type: "error",
+      message: error instanceof Error ? error.message : "Unable to load execution permissions."
+    });
+  }
+}
+
+function broadcastExecutionPermissions(clients: Set<WebSocket>, permissions: ExecutionPermissionSummary[]): void {
+  broadcast(clients, { type: "execution.permissions", permissions });
+}
+
 function sendLedgerSnapshot(socket: WebSocket, storage: StorageService, sessionId?: string): void {
   try {
     send(socket, { type: "ledger.snapshot", snapshot: storage.readLedgerSnapshot(sessionId) });
@@ -1105,32 +1550,12 @@ function consumeToolOutputBuffer(
   return output;
 }
 
-function artifactTitleFromTool(tool: string): string {
-  if (tool.startsWith("terminal-session:")) {
-    return "PTY output";
-  }
-  if (tool.startsWith("terminal:")) {
-    return "Terminal output";
-  }
-  if (tool === "browser.domSnapshot") {
-    return "DOM snapshot";
-  }
-  if (tool === "screen.capture") {
-    return "Screen snapshot";
-  }
-  return tool.includes("/") ? tool.split("/").filter(Boolean).slice(-1)[0] ?? "Tool output" : "Tool output";
-}
-
 function isTerminalProviderTool(tool: string): boolean {
   return tool === "terminal" || tool.startsWith("terminal:") || tool.startsWith("terminal-session:");
 }
 
 function terminalProviderLabel(tool: string): string {
   return tool.startsWith("terminal-session:") ? "PTY" : "Terminal";
-}
-
-function slugifyForPath(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "artifact";
 }
 
 function recordRuntimeActivity(

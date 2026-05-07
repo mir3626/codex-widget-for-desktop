@@ -220,7 +220,7 @@ async function readOptionalText(filePath: string): Promise<string> {
 }
 
 function extractFindingsSection(markdown: string): string {
-  const match = markdown.match(/^## Findings\s*$([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
+  const match = markdown.match(/^##\s+Findings(?:\s*\([^)]*\))?\s*$([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
   return match?.[1] ?? '';
 }
 
@@ -385,9 +385,63 @@ function proposalKeywords(proposal: string): string[] {
   ).slice(0, 8);
 }
 
+function splitMarkdownTableRow(row: string): string[] {
+  const cells: string[] = [];
+  let current = '';
+  let activeBacktickFenceLength = 0;
+
+  for (let index = 0; index < row.length; index += 1) {
+    const char = row[index];
+    if (char === undefined) {
+      continue;
+    }
+
+    if (char === '`') {
+      let runLength = 1;
+      while (row[index + runLength] === '`') {
+        runLength += 1;
+      }
+
+      current += '`'.repeat(runLength);
+      if (activeBacktickFenceLength === 0) {
+        activeBacktickFenceLength = runLength;
+      } else if (activeBacktickFenceLength === runLength) {
+        activeBacktickFenceLength = 0;
+      }
+      index += runLength - 1;
+      continue;
+    }
+
+    if (char === '\\' && row[index + 1] === '|') {
+      current += '|';
+      index += 1;
+      continue;
+    }
+
+    if (char === '|' && activeBacktickFenceLength === 0) {
+      cells.push(current.trim());
+      current = '';
+      continue;
+    }
+
+    current += char;
+  }
+
+  cells.push(current.trim());
+
+  if (cells[0] === '') {
+    cells.shift();
+  }
+
+  if (cells[cells.length - 1] === '') {
+    cells.pop();
+  }
+
+  return cells;
+}
+
 function rowHasCoveredStatus(row: string): boolean {
-  const cells = row
-    .split('|')
+  const cells = splitMarkdownTableRow(row)
     .map((cell) => cell.trim().toLowerCase())
     .filter(Boolean);
   return cells.includes('covered');
@@ -525,11 +579,7 @@ function parseHarnessGapRow(line: string, lineNumber: number): HarnessGapEntry |
     return null;
   }
 
-  const cells = trimmed
-    .replace(/^\|/, '')
-    .replace(/\|$/, '')
-    .split('|')
-    .map((cell) => cell.trim());
+  const cells = splitMarkdownTableRow(trimmed).map((cell) => cell.trim());
 
   if (cells.length < 4 || !/^gap-[a-z0-9-]+$/i.test(cells[0] ?? '')) {
     return null;

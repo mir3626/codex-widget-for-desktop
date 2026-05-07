@@ -1,4 +1,4 @@
-import { FileText, MessageSquarePlus, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, FileText, MessageSquarePlus, RotateCcw, X } from "lucide-react";
 import { useRef } from "react";
 import { createPortal } from "react-dom";
 import type { LedgerSnapshot, SessionSummary } from "../../shared/protocol.js";
@@ -19,6 +19,7 @@ type SessionStripProps = {
   onToggleTrash: () => void;
   onViewTrashArtifacts: (sessionId: string) => void;
   onRestoreSession: (sessionId: string) => void;
+  onDeleteSession: (sessionId: string) => void;
   onOpenArtifactFile: (artifactFileId: string, versionId?: string) => void;
 };
 
@@ -35,6 +36,7 @@ export function SessionStrip({
   onToggleTrash,
   onViewTrashArtifacts,
   onRestoreSession,
+  onDeleteSession,
   onOpenArtifactFile
 }: SessionStripProps) {
   const trashButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -48,7 +50,7 @@ export function SessionStrip({
             <div
               key={session.id}
               className={session.id === activeSessionId ? "session-tab active" : "session-tab"}
-              title={session.title}
+              data-tooltip={session.title}
             >
               <button
                 type="button"
@@ -62,11 +64,11 @@ export function SessionStrip({
               <button
                 type="button"
                 className="session-tab-trash"
-                title="Move session to trash"
-                aria-label={`Move ${session.title} to trash`}
+                data-tooltip={isDisposableNewChatSession(session) ? "Close" : "Archive"}
+                aria-label={isDisposableNewChatSession(session) ? `Close ${session.title}` : `Archive ${session.title}`}
                 onClick={() => onTrashSession(session.id)}
               >
-                <Trash2 size={11} />
+                {isDisposableNewChatSession(session) ? <X size={11} /> : <Archive size={11} />}
               </button>
             </div>
           ))
@@ -75,19 +77,19 @@ export function SessionStrip({
         )}
       </div>
       <div className="session-strip-actions">
-        <button type="button" title="New chat" aria-label="New chat" onClick={onCreateNewSession}>
+        <button type="button" data-tooltip="New chat" aria-label="New chat" onClick={onCreateNewSession}>
           <MessageSquarePlus size={13} />
         </button>
         <button
           ref={trashButtonRef}
           type="button"
           className={showSessionTrash ? "active" : ""}
-          title="Session trash"
-          aria-label="Session trash"
+          data-tooltip="Recovery vault"
+          aria-label="Recovery vault"
           aria-pressed={showSessionTrash}
           onClick={onToggleTrash}
         >
-          <Trash2 size={13} />
+          <Archive size={13} />
           {trashedSessions.length > 0 ? <span className="session-trash-count">{trashedSessions.length}</span> : null}
         </button>
       </div>
@@ -100,7 +102,7 @@ export function SessionStrip({
               role="menu"
             >
               <div className="session-trash-heading">
-                <strong>Trash</strong>
+                <strong>Recovery Vault</strong>
                 <span>{trashedSessions.length}</span>
               </div>
               {trashedSessions.length > 0 ? (
@@ -111,7 +113,6 @@ export function SessionStrip({
                         <button
                           type="button"
                           className={trashArtifactSessionId === session.id ? "session-trash-view active" : "session-trash-view"}
-                          title="View session artifacts"
                           aria-label={`View artifacts for ${session.title}`}
                           aria-pressed={trashArtifactSessionId === session.id}
                           onClick={() => onViewTrashArtifacts(session.id)}
@@ -123,7 +124,7 @@ export function SessionStrip({
                           </span>
                         </button>
                       ) : (
-                        <div className="session-trash-title" title={formatSessionTitle(session.title)}>
+                        <div className="session-trash-title">
                           <span>{formatSessionTitle(session.title)}</span>
                         </div>
                       )}
@@ -131,12 +132,19 @@ export function SessionStrip({
                         type="button"
                         className="session-trash-restore"
                         role="menuitem"
-                        title={`Restore ${formatSessionTitle(session.title)}`}
                         aria-label={`Restore ${formatSessionTitle(session.title)}`}
-                        data-tooltip="Restore"
                         onClick={() => onRestoreSession(session.id)}
                       >
                         <RotateCcw size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        className="session-trash-delete"
+                        role="menuitem"
+                        aria-label={`Permanently delete ${formatSessionTitle(session.title)}`}
+                        onClick={() => onDeleteSession(session.id)}
+                      >
+                        <X size={13} />
                       </button>
                     </div>
                     {trashArtifactSessionId === session.id ? (
@@ -151,12 +159,20 @@ export function SessionStrip({
                   </div>
                 ))
               ) : (
-                <p>No deleted sessions</p>
+                <p>No recoverable sessions</p>
               )}
             </div>,
             document.body
           )
         : null}
     </div>
+  );
+}
+
+function isDisposableNewChatSession(session: SessionSummary): boolean {
+  return (
+    session.title.trim().toLowerCase() === "new chat" &&
+    (session.messageCount ?? 0) === 0 &&
+    (session.artifactCount ?? 0) === 0
   );
 }

@@ -112,20 +112,8 @@
 }
 
 .session-tab.active {
-  border-color: rgba(39, 119, 101, 0.18);
+  border-color: rgba(39, 119, 101, 0.42);
   background: var(--accent-soft);
-}
-
-.session-tab.active::before {
-  content: "";
-  position: absolute;
-  left: 7px;
-  right: 7px;
-  top: 0;
-  height: 2px;
-  border-radius: 999px;
-  background: var(--accent);
-  opacity: 0.8;
 }
 
 .session-tab:hover {
@@ -214,7 +202,7 @@
   color: #ffffff;
   background: var(--danger);
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1;
 }
 
@@ -254,7 +242,7 @@
 
 .session-trash-heading span {
   color: #7a8490;
-  font-weight: 750;
+  font-weight: 500;
 }
 
 .session-trash-entry {
@@ -266,11 +254,12 @@
 .session-trash-entry-actions {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 30px;
+  grid-template-columns: minmax(0, 1fr) 30px 30px;
   gap: 5px;
 }
 
 .session-trash-restore,
+.session-trash-delete,
 .session-trash-view,
 .session-trash-title {
   min-width: 0;
@@ -295,6 +284,15 @@
   color: var(--accent);
 }
 
+.session-trash-delete {
+  position: relative;
+  width: 30px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: var(--danger);
+}
+
 .session-trash-view {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -310,9 +308,14 @@
 }
 
 .session-trash-restore:hover,
+.session-trash-delete:hover,
 .session-trash-view:hover,
 .session-trash-view.active {
   background: rgba(232, 237, 239, 0.86);
+}
+
+.session-trash-delete:hover {
+  background: rgba(163, 69, 67, 0.09);
 }
 
 .session-trash-title span,
@@ -335,36 +338,6 @@
 
 .session-trash-artifact-count svg {
   flex: 0 0 auto;
-}
-
-.session-trash-restore::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 6px);
-  z-index: 2;
-  padding: 5px 7px;
-  border-radius: 7px;
-  color: #ffffff;
-  background: #20242b;
-  box-shadow: 0 10px 20px -16px rgba(25, 33, 43, 0.6);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.15;
-  opacity: 0;
-  pointer-events: none;
-  text-shadow: none;
-  transform: translateY(3px);
-  transition:
-    opacity 120ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 120ms cubic-bezier(0.16, 1, 0.3, 1);
-  white-space: nowrap;
-}
-
-.session-trash-restore:hover::after,
-.session-trash-restore:focus-visible::after {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 .session-trash-artifacts {

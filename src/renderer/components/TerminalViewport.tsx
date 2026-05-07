@@ -158,40 +158,40 @@ export function TerminalViewport({
           <SquareTerminal size={14} />
           <strong>PTY</strong>
           <span className={`terminal-state-dot ${providerState}`} aria-hidden="true" />
-          <span className="terminal-detail" title={providerDetail}>
+          <span className="terminal-detail" data-tooltip={providerDetail}>
             {providerDetail}
           </span>
         </div>
         <div className="terminal-actions" aria-label="Terminal actions">
-          <button type="button" title="Start" aria-label="Start terminal session" disabled={busy} onClick={onStart}>
+          <button type="button" data-tooltip="Start" aria-label="Start terminal session" disabled={busy} onClick={onStart}>
             <Play size={13} />
           </button>
-          <button type="button" title="Status" aria-label="Show terminal status" disabled={busy} onClick={onStatus}>
+          <button type="button" data-tooltip="Status" aria-label="Show terminal status" disabled={busy} onClick={onStatus}>
             <Activity size={13} />
           </button>
-          <button type="button" title="Stop" aria-label="Stop terminal session" disabled={busy} onClick={onStop}>
+          <button type="button" data-tooltip="Stop" aria-label="Stop terminal session" disabled={busy} onClick={onStop}>
             <CircleStop size={13} />
           </button>
-          <button type="button" title="Clear" aria-label="Clear terminal viewport" onClick={onClear}>
+          <button type="button" data-tooltip="Clear" aria-label="Clear terminal viewport" onClick={onClear}>
             <Trash2 size={13} />
           </button>
           <button
             type="button"
             className={showGuide ? "is-active" : ""}
-            title="PTY guide"
+            data-tooltip="PTY guide"
             aria-label="Toggle PTY guide"
             aria-pressed={showGuide}
             onClick={onToggleGuide}
           >
             <Info size={13} />
           </button>
-          <button type="button" title="Open PTY popup" aria-label="Open PTY popup" onClick={onPopout}>
+          <button type="button" data-tooltip="Open PTY popup" aria-label="Open PTY popup" onClick={onPopout}>
             <ExternalLink size={13} />
           </button>
           <button
             type="button"
             className={mouseEnabled ? "is-active" : ""}
-            title={mouseEnabled ? "Mouse input on" : "Mouse input off"}
+            data-tooltip={mouseEnabled ? "Mouse input on" : "Mouse input off"}
             aria-label={mouseEnabled ? "Disable terminal mouse input" : "Enable terminal mouse input"}
             aria-pressed={mouseEnabled}
             onClick={() => onMouseEnabledChange(!mouseEnabled)}
@@ -258,19 +258,19 @@ export function TerminalViewport({
           onChange={(event) => onInputChange(event.target.value)}
           onKeyDown={submitInputFromKey}
         />
-        <button type="button" title="Tab" aria-label="Send Tab key" onClick={() => onKeySend("tab")}>
+        <button type="button" data-tooltip="Tab" aria-label="Send Tab key" onClick={() => onKeySend("tab")}>
           Tab
         </button>
-        <button type="button" title="Escape" aria-label="Send Escape key" onClick={() => onKeySend("escape")}>
+        <button type="button" data-tooltip="Escape" aria-label="Send Escape key" onClick={() => onKeySend("escape")}>
           Esc
         </button>
-        <button type="button" title="Ctrl+C" aria-label="Send Ctrl+C" onClick={() => onKeySend("ctrl-c")}>
+        <button type="button" data-tooltip="Ctrl+C" aria-label="Send Ctrl+C" onClick={() => onKeySend("ctrl-c")}>
           <Ban size={12} />
         </button>
-        <button type="button" title="Enter" aria-label="Send Enter key" onClick={() => onKeySend("enter")}>
+        <button type="button" data-tooltip="Enter" aria-label="Send Enter key" onClick={() => onKeySend("enter")}>
           <CornerDownLeft size={12} />
         </button>
-        <button type="submit" title="Send input" aria-label="Send PTY text" disabled={!inputValue.trim()}>
+        <button type="submit" data-tooltip="Send input" aria-label="Send PTY text" disabled={!inputValue.trim()}>
           <Send size={12} />
         </button>
       </form>

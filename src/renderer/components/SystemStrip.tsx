@@ -31,7 +31,7 @@ export function SystemStrip({
     <div className="system-strip">
       <div className="status-copy">
         <span className={`status-dot ${statusTone}`} />
-        <span className="status-text" title={statusTitle}>
+        <span className="status-text" data-tooltip={statusTitle}>
           {displayStatus}
         </span>
         {liveLabel ? <span className="model-label">{liveLabel}</span> : null}
@@ -39,7 +39,7 @@ export function SystemStrip({
       <button
         type="button"
         className={authenticated ? "auth-button signed-in" : "auth-button"}
-        title={authButtonTitle}
+        data-tooltip={authButtonTitle}
         aria-label={authLabel}
         disabled={authDisabled}
         onClick={onAuthAction}
@@ -50,7 +50,7 @@ export function SystemStrip({
       <button
         type="button"
         className={settingsOpen ? "icon-button active" : "icon-button"}
-        title="Settings"
+        data-tooltip="Settings"
         aria-label="Settings"
         aria-pressed={settingsOpen}
         onClick={onToggleSettings}

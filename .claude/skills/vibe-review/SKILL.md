@@ -74,6 +74,8 @@ Each finding is a Markdown heading followed by this YAML block and short evidenc
 - If `.vibe/config.json.bundle.policy === "automatic"` remains unresolved for a frontend/browser project, seed a Friction finding that the agent did not materialize the automatic bundle policy.
 - Read `openHarnessGapCount`, `uncoveredHarnessGaps[]`, and `deadlineHarnessGaps[]` from `vibe-review-inputs`. The helper parses the current six-column `docs/context/harness-gaps.md` ledger and treats `status in open|partial|under-review` or `script-gate != covered` as uncovered review evidence. If any of these fields are non-empty/non-zero, include at least one finding tied to ledger evidence.
 - If `uncoveredHarnessGaps[]` includes `gap-context-overhead-policy`, review recent dogfood for repeated handoff/session-log overhead, unsafe prompt/capsule reduction attempts, retrieval-only one-shot prompts, or missing durable-event markers. Do not recommend capsule/router prompt reduction until warning-only context coverage observability and fail-closed safeguards have dogfood evidence.
+- When reviewing `gap-context-overhead-policy`, include a compact context-audit summary if one was run (`contextBytes`, `references`, `missing`, `ambiguous`, and one sentence on whether findings are actionable). Keep it report-only; do not convert context-audit noise into a gate or recommend prompt/capsule reduction from size numbers alone.
+- If `uncoveredHarnessGaps[]` includes `gap-pass-only-product-identity`, also check semantic agent-context, multimodal, and workflow-agent features. These may need dogfood transcripts, screen-share notes, or task-quality artifacts; type/build/smoke checks alone do not prove the feature improves agent behavior.
 - If `pendingRiskRollups.length > 0`, summarize repeated open risks by rollup instead of repeating each old pendingRisk as separate background noise.
 - If `wiringDriftFindings.length > 0`, auto-seed one Blocker finding per entry:
   - `id: review-wiring-drift-<artifact basename>`
@@ -95,5 +97,7 @@ Avoid false positives when the adapter is explicitly mock-only or when explicit 
 2. `## Findings (severity desc)`
 3. `## Suggested next-sprint scope`
 4. `## Links`
+
+The prior-review parser accepts both exact `## Findings` and parenthesized `## Findings (...)`. Keep the heading text at level 2 and do not rename it.
 
 If there are no findings, write `none` under `## Findings` and include one or two residual-risk lines.

@@ -27,7 +27,7 @@ Evidence:
 
 Goal: use a long-lived Codex runtime boundary instead of prompt-injected one-shot calls, while preserving fallback and safe process cleanup.
 
-Current progress: 0.93
+Current progress: 0.95
 
 Evidence:
 - `CodexAppServerBridge` owns process startup, WebSocket JSON-RPC initialization, thread creation, turn streaming, interrupt, and shutdown.
@@ -44,12 +44,13 @@ Evidence:
 - Response Branch uses `session.branch` plus one-shot `branchContext` so branch UI state and app-server/proxy session state do not silently diverge.
 - Iteration 5 Sprint 01 persists Codex app-server thread ids per durable widget session and rebinds the bridge before app-server turns/regeneration; fake app-server smoke verifies separate internal sessions keep separate threads and return to the original thread when reopened.
 - Agent events are broadcast to connected clients and retained as bounded response snapshots for reconnect replay, reducing coupling between Codex turns and a single renderer socket.
+- Vision Context turns can override app-server input with capsule markdown plus selected `localImage` evidence, and fake app-server smoke verifies those image inputs reach `turn/start`.
 
 ## real-tool-providers
 
 Goal: replace Agent/DOM/Vision/PTY stubs with real desktop/browser/terminal context providers that stream tool events through one widget protocol.
 
-Current progress: 0.99
+Current progress: 1
 
 Evidence:
 - Provider modes and tool-event rendering exist.
@@ -63,6 +64,7 @@ Evidence:
 - The Screen/Vision registry computes image hash/change/diff metadata with configurable thresholding so repeated and below-threshold captures can be treated as unchanged context.
 - `npm run build:ocr-runtime`, `npm run ocr:fetch-languages`, and `npm run smoke:ocr-runtime` package and verify a Tesseract-compatible OCR runtime resource slot for installed builds, including standard Windows install discovery, `CODEX_WIDGET_TESSERACT_SEARCH_ROOTS`, tessdata language acquisition/manifesting, and bundled `eng+kor` auto-selection when both language packs exist.
 - Terminal/PTY mode executes explicit shell commands, supports a persistent node-pty/ConPTY-backed `/pty` command/raw-input session, drains output after raw input/key writes, streams output as tool events, displays terminal output in a dedicated renderer viewport with direct input controls, and forwards live text/key/mouse input through direct `terminal.input` protocol messages.
+- Vision Context Interface now normalizes screen/browser/terminal provider facts into observations, builds `TaskCapsule` context with reference/intent resolution, and sends text plus selected local images to Codex app-server without raw video/audio.
 - Final browser store account submission is deferred until after dogfooding; two-hour release soak evidence is recorded in `docs/reports/release-soak-2026-05-05-2h.md`.
 
 ## resident-desktop-readiness
@@ -99,7 +101,7 @@ Evidence:
 
 Goal: make sessions, tabs, branches, trash, artifacts, provider snapshots, activity logs, preferences, and future theme/mascot/module metadata durable through daemon-owned SQLite plus a file-backed blob store.
 
-Current progress: 0.97
+Current progress: 0.98
 
 Evidence:
 - Iteration 3 scopes a daemon-owned SQLite storage foundation instead of continuing to expand renderer-only localStorage.
@@ -123,3 +125,4 @@ Evidence:
 - `iter-5-sprint-03-vision-resource-and-retention-tuning` adds skipped-frame diagnostics, duplicate-stop prevention, media/frame cleanup on terminal Vision states, and effective guardrail metadata.
 - `iter-5-sprint-04-completion-audit-and-readiness-update` closes the current durable product-state iteration by aligning roadmap, milestones, handoff, session log, project report, and remaining risk classification.
 - Remaining durable-product-state follow-up is dogfood-dependent: longer screen-share CPU/memory tuning and eventual browser store account submission after dogfooding.
+- Iteration 8 adds a durable module boundary for future Vision Context state: capture sessions, timeline events, selected evidence, retention policy, and capsule summaries are daemon-owned concepts, with raw media explicitly excluded from durable storage.

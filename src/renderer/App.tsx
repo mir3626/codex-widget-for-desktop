@@ -16,12 +16,15 @@ import {
   type AuthStatus,
   type BranchContextMessage,
   type ClientMessage,
+  type ExecutionPermissionDecision,
+  type ExecutionPermissionSummary,
   type LedgerSnapshot,
   type MessageSnapshotStatus,
   type ModelId,
   type ProviderStatus,
   type ReasoningEffort,
   type RuntimeInteraction,
+  type RuntimeInteractionDecision,
   type RuntimeStatus,
   type ScreenCrop,
   type SessionMessage,
@@ -61,7 +64,7 @@ import {
 import { ActivityLog } from "./components/ActivityLog";
 import { ConversationPanel } from "./components/ConversationPanel";
 import { FloatingTooltipRoot } from "./components/FloatingTooltipRoot";
-import { MascotSprite } from "./components/MascotSprite";
+import { MascotSprite, type MascotMotionStatus } from "./components/MascotSprite";
 import { ModeTabs } from "./components/ModeTabs";
 import { ModelControls } from "./components/ModelControls";
 import { PromptComposer } from "./components/PromptComposer";
@@ -70,6 +73,8 @@ import { SettingsPanel } from "./components/SettingsPanel";
 import { SessionStrip } from "./components/SessionStrip";
 import { SystemStrip } from "./components/SystemStrip";
 import { TitleBar } from "./components/TitleBar";
+import { VisionActionMenu } from "./components/VisionActionMenu";
+import { VisionStatusPanel, type VisionNotice } from "./components/VisionStatusPanel";
 import {
   closeWidget,
   minimizeWidget,
@@ -201,6 +206,7 @@ export function App() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => readStoredChatMessages());
   const [interactions, setInteractions] = useState<RuntimeInteraction[]>([]);
   const [interactionDrafts, setInteractionDrafts] = useState<InteractionDrafts>({});
+  const [executionPermissions, setExecutionPermissions] = useState<ExecutionPermissionSummary[]>([]);
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [branchContext, setBranchContext] = useState<BranchContextMessage[] | null>(() => readStoredBranchContext());
@@ -215,6 +221,7 @@ export function App() {
   const [sessionControlsFlashing, setSessionControlsFlashing] = useState(false);
   const [showActivityDetails, setShowActivityDetails] = useState(false);
   const [showVisionMenu, setShowVisionMenu] = useState(false);
+  const [visionNotice, setVisionNotice] = useState<VisionNotice | null>(null);
   const [visionSession, setVisionSession] = useState<VisionStreamSummary | null>(null);
   const [visionStreamSettings, setVisionStreamSettings] = useState<VisionStreamSettings>(() => readStoredVisionStreamSettings());
   const [visionFrameStats, setVisionFrameStats] = useState<VisionFrameStats>({ sent: 0, skipped: 0, failed: 0, lastSentAt: null });
@@ -252,6 +259,9 @@ export function App() {
   const streamTypingTimerRef = useRef<number | null>(null);
   const speechRunIdRef = useRef(0);
   const promptInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const visionModeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const visionNoticeTimerRef = useRef<number | null>(null);
+  const visionNoticeHideTimerRef = useRef<number | null>(null);
   const promptResizeRef = useRef<PromptResizeState | null>(null);
   const screenCropPickerRef = useRef<ScreenCropPickerState | null>(null);
   const visionMediaStreamRef = useRef<MediaStream | null>(null);
@@ -340,6 +350,7 @@ export function App() {
       if (visionGuardTimerRef.current !== null) {
         window.clearTimeout(visionGuardTimerRef.current);
       }
+      clearVisionNoticeTimers();
       stopVisionFrameStreaming();
       stopVisionMediaTracks();
       voiceRecognitionRef.current?.abort();
@@ -433,7 +444,7 @@ export function App() {
 
     function closeVisionMenuFromOutside(event: MouseEvent | globalThis.PointerEvent) {
       const target = event.target;
-      if (target instanceof Element && target.closest(".vision-action-wrap, .vision-action-menu")) {
+      if (target instanceof Element && target.closest(".mode-row, .vision-action-wrap, .vision-action-menu")) {
         return;
       }
       setShowVisionMenu(false);
@@ -587,6 +598,12 @@ export function App() {
       return;
     }
 
+    if (event.type === "external.url") {
+      void openExternalUrl(event.url);
+      appendLog("opened browser", "tool");
+      return;
+    }
+
     if (event.type === "session.snapshot") {
       applySessionSnapshot(event.snapshot);
       return;
@@ -694,6 +711,16 @@ export function App() {
       return;
     }
 
+    if (event.type === "execution.permissions") {
+      setExecutionPermissions(event.permissions);
+      return;
+    }
+
+    if (event.type === "execution.permission.applied") {
+      appendLog(`${event.decision === "allow" ? "allowed" : "denied"} ${event.action}`, "tool");
+      return;
+    }
+
     if (event.type === "approval.required") {
       appendLog(event.action, "tool");
       return;
@@ -727,6 +754,31 @@ export function App() {
         stopVisionMediaTracks();
       }
       appendLog(event.message, event.state === "error" ? "error" : "tool");
+      return;
+    }
+
+    if (event.type === "visionContext.started") {
+      appendLog("Vision Context started", "tool");
+      return;
+    }
+
+    if (event.type === "visionContext.progress") {
+      appendLog(`Vision Context ${event.status}`, "tool");
+      return;
+    }
+
+    if (event.type === "visionContext.capsule") {
+      appendLog("Vision Context capsule ready", "tool");
+      return;
+    }
+
+    if (event.type === "visionContext.sent") {
+      appendLog("Vision Context sent to Agent", "tool");
+      return;
+    }
+
+    if (event.type === "visionContext.error") {
+      appendLog(event.error, "error");
       return;
     }
 
@@ -1089,6 +1141,10 @@ export function App() {
       setTrashArtifactSessionId(null);
       setTrashLedger(null);
     }
+    if (isDisposableNewChatSession(findSessionSummary(sessionId))) {
+      send({ type: "session.discard", sessionId });
+      return;
+    }
     send({ type: "session.trash", sessionId });
   }
 
@@ -1102,6 +1158,31 @@ export function App() {
       setTrashLedger(null);
     }
     send({ type: "session.restore", sessionId });
+  }
+
+  function deleteSession(sessionId: string) {
+    if (activeId) {
+      send({ type: "cancel", id: activeId });
+    }
+    if (trashArtifactSessionIdRef.current === sessionId) {
+      trashArtifactSessionIdRef.current = null;
+      setTrashArtifactSessionId(null);
+      setTrashLedger(null);
+    }
+    send({ type: "session.delete", sessionId });
+  }
+
+  function findSessionSummary(sessionId: string): SessionSummary | undefined {
+    return sessions.find((session) => session.id === sessionId) ?? trashedSessions.find((session) => session.id === sessionId);
+  }
+
+  function isDisposableNewChatSession(session: SessionSummary | undefined): boolean {
+    return Boolean(
+      session &&
+        session.title.trim().toLowerCase() === "new chat" &&
+        (session.messageCount ?? 0) === 0 &&
+        (session.artifactCount ?? 0) === 0
+    );
   }
 
   function resetVisibleSession(sendToDaemon = true) {
@@ -1132,13 +1213,14 @@ export function App() {
 
   function respondToInteraction(
     interaction: RuntimeInteraction,
-    decision: "approve" | "decline" | "submit"
+    decision: RuntimeInteractionDecision
   ) {
     const answers = interactionDrafts[interaction.id] ?? {};
     send({
       type: "interaction.respond",
       id: interaction.id,
       decision,
+      action: interaction.action,
       answers
     });
     setInteractions((current) => current.filter((item) => item.id !== interaction.id));
@@ -1147,7 +1229,15 @@ export function App() {
       delete next[interaction.id];
       return next;
     });
-    appendLog(decision === "approve" ? "approved" : decision === "decline" ? "declined" : "submitted", "tool");
+    appendLog(decision === "approve" || decision === "always_allow" ? "approved" : decision === "decline" ? "declined" : "submitted", "tool");
+  }
+
+  function updateExecutionPermission(action: string, decision: ExecutionPermissionDecision) {
+    send({
+      type: "execution.permission.set",
+      action,
+      decision
+    });
   }
 
   function updateInteractionDraft(interactionId: string, fieldId: string, value: string) {
@@ -1227,9 +1317,71 @@ export function App() {
     setActiveId(null);
   }
 
+  function selectMode(nextMode: WidgetMode) {
+    if (nextMode === mode) {
+      return;
+    }
+
+    if (nextMode === "screen") {
+      setMode("screen");
+      setShowVisionMenu(true);
+      return;
+    }
+
+    setShowVisionMenu(false);
+    setMode(nextMode);
+  }
+
+  function toggleVisionMenuFromModeBar() {
+    setShowVisionMenu((current) => !current);
+  }
+
+  function clearVisionNoticeTimers() {
+    if (visionNoticeTimerRef.current !== null) {
+      window.clearTimeout(visionNoticeTimerRef.current);
+      visionNoticeTimerRef.current = null;
+    }
+    if (visionNoticeHideTimerRef.current !== null) {
+      window.clearTimeout(visionNoticeHideTimerRef.current);
+      visionNoticeHideTimerRef.current = null;
+    }
+  }
+
+  function dismissVisionNotice() {
+    if (visionNoticeTimerRef.current !== null) {
+      window.clearTimeout(visionNoticeTimerRef.current);
+      visionNoticeTimerRef.current = null;
+    }
+    setVisionNotice((current) => (current ? { ...current, visible: false } : current));
+    if (visionNoticeHideTimerRef.current !== null) {
+      window.clearTimeout(visionNoticeHideTimerRef.current);
+    }
+    visionNoticeHideTimerRef.current = window.setTimeout(() => {
+      visionNoticeHideTimerRef.current = null;
+      setVisionNotice(null);
+    }, 260);
+  }
+
+  function showVisionNotice(notice: Omit<VisionNotice, "visible">, autoHideMs?: number) {
+    clearVisionNoticeTimers();
+    setVisionNotice({ ...notice, visible: true });
+    if (autoHideMs !== undefined) {
+      visionNoticeTimerRef.current = window.setTimeout(dismissVisionNotice, autoHideMs);
+    }
+  }
+
   function captureScreen() {
     setMode("screen");
     setShowVisionMenu(false);
+    showVisionNotice(
+      {
+        kind: "capture",
+        title: "Capturing screen",
+        detail: "A cropped snapshot is being sent to Vision context.",
+        live: false
+      },
+      2400
+    );
     send({
       type: "provider.captureScreen",
       description: input.trim() || undefined,
@@ -1314,6 +1466,34 @@ export function App() {
       await startVisionFrameStreaming(stream, id, visionStreamSettings.frameIntervalMs);
       setVisionGuardTimer(() => stopAgentScreenStream(id, "duration limit"), visionStreamSettings.maxDurationMs);
       send({
+        type: "visionContext.start",
+        captureId: id,
+        sessionId: activeSessionId ?? undefined,
+        source: {
+          kind: "screen",
+          appName: "Desktop screen share",
+          windowTitle: document.title,
+          viewport: {
+            width: window.innerWidth,
+            height: window.innerHeight,
+            devicePixelRatio: window.devicePixelRatio
+          }
+        },
+        retention: "default"
+      });
+      if (input.trim()) {
+        send({
+          type: "visionContext.event",
+          captureId: id,
+          event: {
+            type: "speech",
+            t: 0,
+            text: input.trim(),
+            confidence: 0.9
+          }
+        });
+      }
+      send({
         type: "provider.vision.start",
         id,
         mode: "agent_stream",
@@ -1363,6 +1543,14 @@ export function App() {
     if (id && !visionFinalizedIdsRef.current.has(id)) {
       visionFinalizedIdsRef.current.add(id);
       send({ type: "provider.vision.stop", id, reason });
+      send({
+        type: "visionContext.stop",
+        captureId: id,
+        sendToAgent: true,
+        sessionId: activeSessionId ?? undefined,
+        model: selectedModel,
+        reasoningEffort
+      });
     }
   }
 
@@ -2282,6 +2470,57 @@ export function App() {
       : visionSession?.status === "error"
         ? "Vision error"
         : "Vision ready";
+
+  useEffect(() => {
+    if (isVisionRecording) {
+      showVisionNotice({
+        kind: "recording",
+        title: "Recording screen",
+        detail: "WebM capture is running and will be saved locally.",
+        live: true
+      });
+      return;
+    }
+
+    if (isVisionStreaming) {
+      showVisionNotice({
+        kind: "streaming",
+        title: "Sharing with Agent",
+        detail: visionStreamStatusText,
+        live: true
+      });
+      return;
+    }
+
+    if (visionSession?.status === "stopped") {
+      showVisionNotice(
+        {
+          kind: "complete",
+          title: visionSession.mode === "recording" ? "Recording saved" : "Screen share stopped",
+          detail:
+            visionSession.mode === "recording"
+              ? "The local WebM recording is available from Vision history."
+              : "Live frame delivery to the Agent has ended.",
+          live: false
+        },
+        2600
+      );
+      return;
+    }
+
+    if (visionSession?.status === "error") {
+      showVisionNotice(
+        {
+          kind: "error",
+          title: "Vision action failed",
+          detail: "Check Activity details for the provider error.",
+          live: false
+        },
+        3200
+      );
+    }
+  }, [isVisionRecording, isVisionStreaming, visionSession?.mode, visionSession?.status, visionStreamStatusText]);
+
   const voiceInputAvailable = canUseVoiceInput();
   const mascotStateClass = [
     "mascot",
@@ -2292,6 +2531,15 @@ export function App() {
   ]
     .filter(Boolean)
     .join(" ");
+  const mascotMotionStatus: MascotMotionStatus = !connected
+    ? "offline"
+    : isVisionRecording
+      ? "recording"
+      : isVisionStreaming
+        ? "streaming"
+        : busy
+          ? "working"
+          : "idle";
 
   return (
     <main className={maximized ? "widget-shell is-maximized" : "widget-shell"} style={shellStyle}>
@@ -2355,6 +2603,7 @@ export function App() {
           onToggleTrash={() => setShowSessionTrash((current) => !current)}
           onViewTrashArtifacts={viewTrashArtifacts}
           onRestoreSession={restoreSession}
+          onDeleteSession={deleteSession}
           onOpenArtifactFile={openArtifactFile}
         />
 
@@ -2365,7 +2614,35 @@ export function App() {
           </div>
         ) : null}
 
-        <ModeTabs mode={mode} providerStatusByMode={providerStatusByMode} onModeChange={setMode} />
+        <ModeTabs
+          mode={mode}
+          providerStatusByMode={providerStatusByMode}
+          visionButtonRef={visionModeButtonRef}
+          onModeChange={selectMode}
+        />
+
+        <VisionActionMenu
+          open={showVisionMenu}
+          statusLabel={visionStateLabel}
+          recording={isVisionRecording}
+          streaming={isVisionStreaming}
+          settings={visionStreamSettings}
+          frameStats={visionFrameStats}
+          streamStatusText={visionStreamStatusText}
+          anchorRef={visionModeButtonRef}
+          renderTrigger={false}
+          onToggle={toggleVisionMenuFromModeBar}
+          onCapture={captureScreen}
+          onRecord={isVisionRecording ? () => stopVisionRecording() : startVisionRecording}
+          onStream={isVisionStreaming ? () => stopAgentScreenStream() : startAgentScreenStream}
+          onFrameIntervalChange={updateVisionFrameInterval}
+          onMaxDurationChange={updateVisionMaxDuration}
+        />
+
+        <VisionStatusPanel
+          notice={visionNotice}
+          onStopLive={isVisionRecording ? () => stopVisionRecording() : isVisionStreaming ? () => stopAgentScreenStream() : undefined}
+        />
 
         {showSettings ? (
           <SettingsPanel
@@ -2373,8 +2650,10 @@ export function App() {
             runtimeStatus={runtimeStatus}
             nativeDaemonStatus={nativeDaemonStatus}
             providerStatuses={providerStatuses}
+            executionPermissions={executionPermissions}
             screenCrop={screenCrop}
             onAutostartChange={updateAutostart}
+            onExecutionPermissionChange={updateExecutionPermission}
             onCaptureScreen={captureScreen}
             onScreenCropEnabledChange={(enabled) => setScreenCrop((current) => ({ ...current, enabled }))}
             onScreenCropFieldChange={updateScreenCropField}
@@ -2437,13 +2716,6 @@ export function App() {
             terminalInput={terminalInput}
             terminalMouseEnabled={terminalMouseEnabled}
             showTerminalGuide={showTerminalGuide}
-            showVisionMenu={showVisionMenu}
-            isVisionRecording={isVisionRecording}
-            isVisionStreaming={isVisionStreaming}
-            visionStateLabel={visionStateLabel}
-            visionStreamStatusText={visionStreamStatusText}
-            visionStreamSettings={visionStreamSettings}
-            visionFrameStats={visionFrameStats}
             onRunTerminalQuickAction={runTerminalQuickAction}
             onClearTerminal={clearTerminalViewport}
             onOpenTerminalPopout={openTerminalPopout}
@@ -2453,12 +2725,6 @@ export function App() {
             onTerminalMouseEnabledChange={setTerminalMouseEnabled}
             onTerminalMouseInput={sendTerminalRawInput}
             onToggleTerminalGuide={() => setShowTerminalGuide((current) => !current)}
-            onToggleVisionMenu={() => setShowVisionMenu((current) => !current)}
-            onCaptureScreen={captureScreen}
-            onRecordVision={isVisionRecording ? () => stopVisionRecording() : startVisionRecording}
-            onStreamVision={isVisionStreaming ? () => stopAgentScreenStream() : startAgentScreenStream}
-            onVisionFrameIntervalChange={updateVisionFrameInterval}
-            onVisionMaxDurationChange={updateVisionMaxDuration}
             onCopyCodeBlock={copyCodeBlock}
             onCopyMessage={copyMessage}
             onRegenerateMessage={retryAssistantMessage}
@@ -2515,6 +2781,7 @@ export function App() {
 
       <MascotSprite
         className={mascotStateClass}
+        status={mascotMotionStatus}
         onPointerDown={beginMascotDrag}
       />
       {screenCropPicker ? (

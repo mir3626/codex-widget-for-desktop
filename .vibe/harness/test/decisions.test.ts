@@ -70,6 +70,45 @@ describe('decisions ledger', () => {
     assert.equal(decisions[0]?.decision, 'ok');
   });
 
+  it('readDecisions normalizes legacy minimal bootstrap records', async () => {
+    const root = await makeTempDir('decisions-legacy-bootstrap-');
+    const filePath = path.join(root, '.vibe', 'agent', 'project-decisions.jsonl');
+    const errors: string[] = [];
+    const originalError = console.error;
+
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(
+      filePath,
+      JSON.stringify({
+        timestamp: '2026-05-07T00:00:00.000Z',
+        tag: 'bootstrap',
+        decision: 'initialized downstream project',
+        reason: 'legacy bootstrap record before project-decision schema',
+      }),
+      'utf8',
+    );
+
+    try {
+      console.error = (...args: unknown[]) => {
+        errors.push(args.map((arg) => String(arg)).join(' '));
+      };
+      const decisions = await readDecisions(root);
+
+      assert.deepEqual(errors, []);
+      assert.equal(decisions.length, 1);
+      assert.deepEqual(decisions[0], {
+        sprintId: 'legacy-bootstrap',
+        decision: 'initialized downstream project',
+        affectedFiles: [],
+        tag: 'decision',
+        text: '[legacy:bootstrap] legacy bootstrap record before project-decision schema',
+        createdAt: '2026-05-07T00:00:00.000Z',
+      });
+    } finally {
+      console.error = originalError;
+    }
+  });
+
   it('filterDecisionsByScope matches literals and globs without duplicates', () => {
     const decisions: ProjectDecision[] = [
       {

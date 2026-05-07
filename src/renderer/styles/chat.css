@@ -11,10 +11,6 @@
   -webkit-app-region: no-drag;
 }
 
-.model-row.is-session-updated {
-  animation: model-row-session-pulse 980ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
 .model-field {
   min-width: 0;
   min-height: 24px;
@@ -24,7 +20,10 @@
   gap: 6px;
 }
 
-.model-field span {
+.model-field > span:not(.model-select-shell) {
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
   color: #77818e;
   font-size: 10px;
   font-weight: 800;
@@ -48,6 +47,54 @@
   font-weight: 650;
   text-overflow: ellipsis;
   -webkit-app-region: no-drag;
+}
+
+.model-select-shell {
+  --model-select-draw: 0deg;
+  --model-select-start-angle: 0deg;
+  --model-select-start-x: 12px;
+  --model-select-start-y: 50%;
+  position: relative;
+  min-width: 0;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+}
+
+.model-select-shell::after {
+  content: none;
+}
+
+.model-row.is-session-updated .model-select-shell::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  z-index: 1;
+  border-radius: 9px;
+  padding: 2px;
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.model-row.is-session-updated .model-select-shell::after {
+  background:
+    conic-gradient(
+      from calc(var(--model-select-start-angle) - var(--model-select-draw)) at var(--model-select-start-x) var(--model-select-start-y),
+      rgba(39, 119, 101, 0.98) 0deg,
+      rgba(112, 173, 154, 0.92) calc(var(--model-select-draw) * 0.55),
+      rgba(39, 119, 101, 0.98) var(--model-select-draw),
+      rgba(39, 119, 101, 0.72) calc(var(--model-select-draw) + 4deg),
+      transparent calc(var(--model-select-draw) + 12deg) 360deg
+    );
+  animation: model-select-border-draw 1600ms cubic-bezier(0.37, 0, 0.2, 1) both;
 }
 
 .model-field select:hover {
@@ -89,6 +136,18 @@
   font-size: 11px;
   font-weight: 650;
   white-space: nowrap;
+}
+
+.mode svg {
+  flex: 0 0 auto;
+  display: block;
+}
+
+.mode > span:not(.mode-status-dot) {
+  height: 15px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 15px;
 }
 
 .mode:hover {
@@ -554,42 +613,6 @@
 .message-actions button:hover {
   color: #303842;
   background: rgba(229, 235, 237, 0.74);
-}
-
-.message-actions button::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 7px);
-  z-index: 9;
-  max-width: 180px;
-  padding: 5px 7px;
-  border-radius: 7px;
-  color: #ffffff;
-  background: #20242b;
-  box-shadow: 0 10px 20px -16px rgba(25, 33, 43, 0.6);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.15;
-  opacity: 0;
-  pointer-events: none;
-  text-align: center;
-  text-shadow: none;
-  transform: translate(-50%, 3px);
-  transition:
-    opacity 120ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 120ms cubic-bezier(0.16, 1, 0.3, 1);
-  white-space: nowrap;
-}
-
-.message-actions button:hover::after,
-.message-actions button:focus-visible::after {
-  opacity: 1;
-  transform: translate(-50%, 0);
-}
-
-.message-actions button:disabled::after {
-  display: none;
 }
 
 .message-actions button:active {

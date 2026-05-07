@@ -20,6 +20,14 @@ try {
 
   storage.setAppSetting("ui.opacity", { value: 0.72 });
   assertEqual(storage.getAppSetting("ui.opacity")?.value, 0.72, "persisted setting");
+  storage.setExecutionPermission({ action: "echo approved", decision: "allow" });
+  assertEqual(storage.readExecutionPermissionDecision("echo approved"), "allow", "execution permission decision");
+  assert(
+    storage.readExecutionPermissions().some((permission) => permission.action === "echo approved" && permission.decision === "allow"),
+    "execution permission summary should be durable"
+  );
+  storage.setExecutionPermission({ action: "echo approved", decision: "ask" });
+  assertEqual(storage.readExecutionPermissionDecision("echo approved"), "ask", "execution permission reset");
 
   const initialSnapshot = storage.ensureSessionSnapshot({ model: "gpt-5.5", reasoningEffort: "medium", mode: "agent" });
   assert(initialSnapshot.activeSessionId, "active session should be created");
@@ -86,6 +94,14 @@ try {
   assert(trashed.trashedSessions.some((session) => session.title === "smoke branch"), "trashed branch should appear in trash");
   const restored = storage.restoreSession(branch.activeSessionId);
   assertEqual(restored.activeSessionId, branch.activeSessionId, "restored active session");
+
+  const deleteCandidate = storage.createSession({ title: "delete me", model: "gpt-5.5", reasoningEffort: "medium", mode: "agent" });
+  storage.trashSession(deleteCandidate.activeSessionId);
+  const deleted = storage.deleteSession(deleteCandidate.activeSessionId);
+  assert(
+    !deleted.trashedSessions.some((session) => session.id === deleteCandidate.activeSessionId),
+    "permanently deleted session should leave trash"
+  );
 
   storage.recordProviderSnapshot({
     sessionId: restored.activeSessionId,

@@ -1,13 +1,15 @@
+import type { RefObject } from "react";
 import type { ProviderStatus, WidgetMode } from "../../shared/protocol.js";
 import { MODES } from "../config";
 
 type ModeTabsProps = {
   mode: WidgetMode;
   providerStatusByMode: Map<WidgetMode, ProviderStatus>;
+  visionButtonRef?: RefObject<HTMLButtonElement | null>;
   onModeChange: (mode: WidgetMode) => void;
 };
 
-export function ModeTabs({ mode, providerStatusByMode, onModeChange }: ModeTabsProps) {
+export function ModeTabs({ mode, providerStatusByMode, visionButtonRef, onModeChange }: ModeTabsProps) {
   return (
     <div className="mode-row" role="tablist" aria-label="Mode">
       {MODES.map((item) => {
@@ -16,8 +18,9 @@ export function ModeTabs({ mode, providerStatusByMode, onModeChange }: ModeTabsP
         return (
           <button
             key={item.mode}
+            ref={item.mode === "screen" ? visionButtonRef : undefined}
             className={mode === item.mode ? "mode active" : "mode"}
-            title={providerStatus ? `${item.label}: ${providerStatus.detail}` : item.label}
+            data-tooltip={providerStatus ? `${item.label}: ${providerStatus.detail}` : item.label}
             aria-pressed={mode === item.mode}
             onClick={() => onModeChange(item.mode)}
           >

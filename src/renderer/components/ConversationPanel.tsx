@@ -1,15 +1,19 @@
-import { Camera, type LucideIcon } from "lucide-react";
-import type { RefObject } from "react";
+import { FileText, type LucideIcon } from "lucide-react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { LedgerSnapshot, ProviderStatus, RuntimeInteraction, WidgetMode } from "../../shared/protocol.js";
+import type {
+  LedgerSnapshot,
+  ProviderStatus,
+  RuntimeInteraction,
+  RuntimeInteractionDecision,
+  WidgetMode
+} from "../../shared/protocol.js";
 import type {
   ChatMessage,
   InteractionDrafts,
   TerminalKeyName,
-  TerminalLine,
-  VisionFrameStats,
-  VisionStreamSettings
+  TerminalLine
 } from "../types";
 import { assistantFallbackText, assistantStatusLabel, isAssistantWorking } from "../utils/chat";
 import { ArtifactLedger } from "./ArtifactLedger";
@@ -17,7 +21,6 @@ import { AssistantResponseActions } from "./AssistantResponseActions";
 import { InteractionCard } from "./InteractionCard";
 import { MarkdownPre, MarkdownTable } from "./MarkdownRenderers";
 import { TerminalViewport } from "./TerminalViewport";
-import { VisionActionMenu } from "./VisionActionMenu";
 
 type ConversationPanelProps = {
   conversationRef: RefObject<HTMLElement | null>;
@@ -39,13 +42,6 @@ type ConversationPanelProps = {
   terminalInput: string;
   terminalMouseEnabled: boolean;
   showTerminalGuide: boolean;
-  showVisionMenu: boolean;
-  isVisionRecording: boolean;
-  isVisionStreaming: boolean;
-  visionStateLabel: string;
-  visionStreamStatusText: string;
-  visionStreamSettings: VisionStreamSettings;
-  visionFrameStats: VisionFrameStats;
   onRunTerminalQuickAction: (command: string) => void;
   onClearTerminal: () => void;
   onOpenTerminalPopout: () => void;
@@ -55,12 +51,6 @@ type ConversationPanelProps = {
   onTerminalMouseEnabledChange: (enabled: boolean) => void;
   onTerminalMouseInput: (sequence: string, label: string) => void;
   onToggleTerminalGuide: () => void;
-  onToggleVisionMenu: () => void;
-  onCaptureScreen: () => void;
-  onRecordVision: () => void;
-  onStreamVision: () => void;
-  onVisionFrameIntervalChange: (value: string) => void;
-  onVisionMaxDurationChange: (value: string) => void;
   onCopyCodeBlock: (code: string) => void;
   onCopyMessage: (messageId: string, text: string) => void;
   onRegenerateMessage: (messageId: string) => void;
@@ -69,7 +59,7 @@ type ConversationPanelProps = {
   onReadMessageAloud: (messageId: string, text: string) => void;
   onOpenArtifactFile: (artifactFileId: string, versionId?: string) => void;
   onInteractionChange: (interactionId: string, fieldId: string, value: string) => void;
-  onInteractionRespond: (interaction: RuntimeInteraction, decision: "approve" | "decline" | "submit") => void;
+  onInteractionRespond: (interaction: RuntimeInteraction, decision: RuntimeInteractionDecision) => void;
 };
 
 export function ConversationPanel({
@@ -92,13 +82,6 @@ export function ConversationPanel({
   terminalInput,
   terminalMouseEnabled,
   showTerminalGuide,
-  showVisionMenu,
-  isVisionRecording,
-  isVisionStreaming,
-  visionStateLabel,
-  visionStreamStatusText,
-  visionStreamSettings,
-  visionFrameStats,
   onRunTerminalQuickAction,
   onClearTerminal,
   onOpenTerminalPopout,
@@ -108,12 +91,6 @@ export function ConversationPanel({
   onTerminalMouseEnabledChange,
   onTerminalMouseInput,
   onToggleTerminalGuide,
-  onToggleVisionMenu,
-  onCaptureScreen,
-  onRecordVision,
-  onStreamVision,
-  onVisionFrameIntervalChange,
-  onVisionMaxDurationChange,
   onCopyCodeBlock,
   onCopyMessage,
   onRegenerateMessage,
@@ -124,8 +101,49 @@ export function ConversationPanel({
   onInteractionChange,
   onInteractionRespond
 }: ConversationPanelProps) {
+  const artifactCount = ledger?.artifacts.length ?? 0;
+  const [showArtifacts, setShowArtifacts] = useState(false);
+  const artifactFloatRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (artifactCount === 0) {
+      setShowArtifacts(false);
+    }
+  }, [artifactCount]);
+
+  useEffect(() => {
+    if (!showArtifacts) {
+      return undefined;
+    }
+
+    function closeFromOutside(event: MouseEvent | globalThis.PointerEvent) {
+      const target = event.target;
+      if (target instanceof Node && artifactFloatRef.current?.contains(target)) {
+        return;
+      }
+      setShowArtifacts(false);
+    }
+
+    function closeFromEscape(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        setShowArtifacts(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", closeFromOutside, true);
+    document.addEventListener("keydown", closeFromEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeFromOutside, true);
+      document.removeEventListener("keydown", closeFromEscape);
+    };
+  }, [showArtifacts]);
+
   return (
-    <section ref={conversationRef} className="conversation" aria-label="Conversation">
+    <section
+      ref={conversationRef}
+      className={artifactCount > 0 ? "conversation has-artifact-float" : "conversation"}
+      aria-label="Conversation"
+    >
       {mode === "terminal" ? (
         <TerminalViewport
           lines={terminalLines}
@@ -148,30 +166,6 @@ export function ConversationPanel({
         />
       ) : null}
 
-      {mode === "screen" ? (
-        <div className="vision-toolbar" aria-label="Vision tools">
-          <span className={isVisionRecording || isVisionStreaming ? "vision-live-label active" : "vision-live-label"}>
-            {isVisionStreaming ? visionStreamStatusText : visionStateLabel}
-          </span>
-          <VisionActionMenu
-            open={showVisionMenu}
-            statusLabel={visionStateLabel}
-            recording={isVisionRecording}
-            streaming={isVisionStreaming}
-            settings={visionStreamSettings}
-            frameStats={visionFrameStats}
-            streamStatusText={visionStreamStatusText}
-            onToggle={onToggleVisionMenu}
-            onCapture={onCaptureScreen}
-            onRecord={onRecordVision}
-            onStream={onStreamVision}
-            onFrameIntervalChange={onVisionFrameIntervalChange}
-            onMaxDurationChange={onVisionMaxDurationChange}
-            expanded
-          />
-        </div>
-      ) : null}
-
       {chatMessages.length === 0 && interactions.length === 0 && mode !== "terminal" ? (
         <div className="empty-state">
           <span className="empty-icon">
@@ -179,12 +173,6 @@ export function ConversationPanel({
           </span>
           <strong>{authAuthenticated ? "Ready" : "Sign in required"}</strong>
           <span>{activeProviderStatus?.state === "stub" ? "Provider pending" : activeModeLabel}</span>
-          {mode === "screen" ? (
-            <button type="button" className="empty-action" onClick={onToggleVisionMenu}>
-              <Camera size={13} />
-              <span>Vision tools</span>
-            </button>
-          ) : null}
         </div>
       ) : (
         <>
@@ -248,7 +236,6 @@ export function ConversationPanel({
               </article>
             )
           )}
-          {ledger?.artifacts.length ? <ArtifactLedger artifacts={ledger.artifacts} onOpenFile={onOpenArtifactFile} /> : null}
           {interactions.map((interaction) => (
             <InteractionCard
               key={interaction.id}
@@ -260,6 +247,26 @@ export function ConversationPanel({
           ))}
         </>
       )}
+      {artifactCount > 0 ? (
+        <div ref={artifactFloatRef} className={showArtifacts ? "conversation-artifact-float open" : "conversation-artifact-float"}>
+          <button
+            type="button"
+            className="conversation-artifact-button"
+            data-tooltip="Artifacts"
+            aria-label="Artifacts"
+            aria-expanded={showArtifacts}
+            onClick={() => setShowArtifacts((current) => !current)}
+          >
+            <FileText size={14} />
+            <span>{artifactCount}</span>
+          </button>
+          {showArtifacts && ledger ? (
+            <div className="conversation-artifact-panel" role="dialog" aria-label="Session artifacts">
+              <ArtifactLedger artifacts={ledger.artifacts} onOpenFile={onOpenArtifactFile} />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }

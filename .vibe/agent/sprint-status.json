@@ -33,12 +33,13 @@
     }
   ],
   "handoff": {
-    "currentSprintId": "iter-7-sprint-01-trash-activity-mascot-polish",
-    "lastActionSummary": "Synced vibe-doctor harness to v1.7.7, manually merged orchestration/provider conflicts, fixed GitHub CI entrypoints, and made PTY runtime preparation pass on Ubuntu CI while preserving Windows strictness.",
+    "currentSprintId": "iter-8-sprint-07-renderer-protocol-and-completion-audit",
+    "lastActionSummary": "Completed Iteration 8 Vision Context Interface MVP with daemon TaskCapsule/capture/resolver/retention modules, transcription MVP, provider adapters, renderer visionContext protocol integration, and app-server localImage input smoke coverage.",
     "openIssues": [
       "Codex app-server protocol remains experimental; stale persisted thread ids fall back safely, but live cross-process resume behavior needs dogfooding validation.",
       "Browser store account submission is deferred until after dogfooding.",
-      "Vision recording/screen streaming has consent, retention, history, cleanup, skipped-frame diagnostics, and resource guardrails; longer CPU/memory tuning remains dogfood-dependent.",
+      "Vision recording/screen streaming has consent, retention, history, cleanup, skipped-frame diagnostics, resource guardrails, and Vision Context capsule preprocessing; longer CPU/memory tuning remains dogfood-dependent.",
+      "Vision Context real local ASR production backend remains behind the transcription sidecar interface until dogfooding chooses the first installed model/runtime.",
       "Mascot motion must be reworked with real authored pose/expression/state animation assets; generated static-pose sprites are not accepted."
     ],
     "orchestratorContextBudget": "medium",
@@ -48,12 +49,12 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-06T15:31:30.893Z"
+    "updatedAt": "2026-05-07T22:20:17.844+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-06T15:31:30.893Z",
-  "verifiedAt": "2026-05-06T15:31:30.893Z"
+  "stateUpdatedAt": "2026-05-07T22:20:17.844+09:00",
+  "verifiedAt": "2026-05-07T22:20:17.844+09:00"
 }

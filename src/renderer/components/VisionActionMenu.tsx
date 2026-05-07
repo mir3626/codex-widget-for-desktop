@@ -1,5 +1,5 @@
 import { Camera, CircleDot, CircleStop, Eye } from "lucide-react";
-import { useRef } from "react";
+import { useRef, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { VISION_FRAME_INTERVAL_OPTIONS, VISION_MAX_DURATION_OPTIONS } from "../config";
 import { useFloatingSurface } from "../hooks/useFloatingSurface";
@@ -14,6 +14,8 @@ type VisionActionMenuProps = {
   frameStats: VisionFrameStats;
   streamStatusText: string;
   expanded?: boolean;
+  anchorRef?: RefObject<HTMLButtonElement | null>;
+  renderTrigger?: boolean;
   onToggle: () => void;
   onCapture: () => void;
   onRecord: () => void;
@@ -31,6 +33,8 @@ export function VisionActionMenu({
   frameStats,
   streamStatusText,
   expanded = false,
+  anchorRef,
+  renderTrigger = true,
   onToggle,
   onCapture,
   onRecord,
@@ -38,24 +42,28 @@ export function VisionActionMenu({
   onFrameIntervalChange,
   onMaxDurationChange
 }: VisionActionMenuProps) {
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const floating = useFloatingSurface(open, triggerRef, { preferred: "bottom-start", offset: 6, margin: 8 });
+  const internalTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const floating = useFloatingSurface(open, anchorRef ?? internalTriggerRef, { preferred: "bottom-end", offset: 6, margin: 8 });
+
+  const wrapClass = renderTrigger ? (expanded ? "vision-action-wrap expanded" : "vision-action-wrap") : "vision-action-wrap headless";
 
   return (
-    <div className={expanded ? "vision-action-wrap expanded" : "vision-action-wrap"}>
-      <button
-        ref={triggerRef}
-        type="button"
-        className={expanded ? "vision-menu-trigger expanded" : "provider-action vision-menu-trigger"}
-        title="Vision tools"
-        aria-label="Vision tools"
-        aria-controls="vision-action-menu"
-        aria-expanded={open}
-        onClick={onToggle}
-      >
-        <Camera size={12} />
-        {expanded ? <span>Vision</span> : null}
-      </button>
+    <div className={wrapClass}>
+      {renderTrigger ? (
+        <button
+          ref={internalTriggerRef}
+          type="button"
+          className={expanded ? "vision-menu-trigger expanded" : "provider-action vision-menu-trigger"}
+          data-tooltip="Vision tools"
+          aria-label="Vision tools"
+          aria-controls="vision-action-menu"
+          aria-expanded={open}
+          onClick={onToggle}
+        >
+          <Camera size={12} />
+          {expanded ? <span>Vision</span> : null}
+        </button>
+      ) : null}
       {open
         ? createPortal(
             <div

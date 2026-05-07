@@ -61,7 +61,7 @@ export function PromptComposer({
       <button
         type="button"
         className={voiceListening ? "voice-button active" : "voice-button"}
-        title={voiceInputAvailable ? (voiceListening ? "Stop voice prompt" : "Voice prompt") : "Voice prompt unavailable"}
+        data-tooltip={voiceInputAvailable ? (voiceListening ? "Stop voice prompt" : "Voice prompt") : "Voice prompt unavailable"}
         aria-label="Voice prompt"
         aria-pressed={voiceListening}
         disabled={!voiceInputAvailable || busy}
@@ -70,11 +70,11 @@ export function PromptComposer({
         <Mic size={15} />
       </button>
       {busy ? (
-        <button type="button" className="send-button stop" title="Stop" aria-label="Stop response" onClick={onCancel}>
+        <button type="button" className="send-button stop" data-tooltip="Stop" aria-label="Stop response" onClick={onCancel}>
           <CircleDot size={17} />
         </button>
       ) : (
-        <button type="submit" className="send-button" title="Send" aria-label="Send prompt" disabled={!connected || !value.trim()}>
+        <button type="submit" className="send-button" data-tooltip="Send" aria-label="Send prompt" disabled={!connected || !value.trim()}>
           <Send size={17} />
         </button>
       )}

@@ -4,8 +4,14 @@ import { useFloatingSurface } from "../hooks/useFloatingSurface";
 
 export function FloatingTooltipRoot() {
   const anchorRef = useRef<HTMLElement | null>(null);
-  const [tooltip, setTooltip] = useState<{ text: string } | null>(null);
-  const floating = useFloatingSurface(Boolean(tooltip), anchorRef, { preferred: "top", offset: 7, margin: 6 });
+  const sequenceRef = useRef(0);
+  const [tooltip, setTooltip] = useState<{ text: string; key: number } | null>(null);
+  const floating = useFloatingSurface(Boolean(tooltip), anchorRef, {
+    preferred: "top",
+    offset: 7,
+    margin: 6,
+    updateKey: tooltip?.key
+  });
 
   useEffect(() => {
     function showTooltip(event: Event) {
@@ -17,8 +23,12 @@ export function FloatingTooltipRoot() {
       if (!text) {
         return;
       }
+      if (anchorRef.current === target && tooltipTextMatches(text)) {
+        return;
+      }
       anchorRef.current = target;
-      setTooltip({ text });
+      sequenceRef.current += 1;
+      setTooltip({ text, key: sequenceRef.current });
     }
 
     function hideTooltip(event: Event) {
@@ -29,6 +39,10 @@ export function FloatingTooltipRoot() {
       }
       anchorRef.current = null;
       setTooltip(null);
+    }
+
+    function tooltipTextMatches(text: string) {
+      return anchorRef.current?.getAttribute("data-tooltip") === text;
     }
 
     document.addEventListener("pointerover", showTooltip, true);

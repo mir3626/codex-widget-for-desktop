@@ -24,6 +24,15 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
 }
 
+function normalizeDecisionTag(value: unknown): ProjectDecision['tag'] {
+  return value === 'decision' ||
+    value === 'discovery' ||
+    value === 'deviation' ||
+    value === 'risk'
+    ? value
+    : 'decision';
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -78,6 +87,34 @@ export function isProjectDecision(value: unknown): value is ProjectDecision {
   );
 }
 
+function normalizeLegacyDecision(value: unknown): ProjectDecision | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  if (
+    typeof value.timestamp !== 'string' ||
+    typeof value.decision !== 'string' ||
+    typeof value.reason !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    sprintId: typeof value.sprintId === 'string' ? value.sprintId : 'legacy-bootstrap',
+    decision: value.decision,
+    affectedFiles: isStringArray(value.affectedFiles)
+      ? value.affectedFiles.map((entry) => normalizeScopeEntry(entry))
+      : [],
+    tag: normalizeDecisionTag(value.tag),
+    text:
+      typeof value.tag === 'string' && !['decision', 'discovery', 'deviation', 'risk'].includes(value.tag)
+        ? `[legacy:${value.tag}] ${value.reason}`
+        : value.reason,
+    createdAt: value.timestamp,
+  };
+}
+
 export async function appendDecision(
   input: Omit<ProjectDecision, 'createdAt'> & { createdAt?: string },
   root?: string,
@@ -102,7 +139,8 @@ export async function readDecisions(root?: string): Promise<ProjectDecision[]> {
   const decisions: ProjectDecision[] = [];
   const lines = text.split(/\r?\n/);
 
-  for (const line of lines) {
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? '';
     const trimmed = line.trim();
     if (trimmed.length === 0) {
       continue;
@@ -111,7 +149,14 @@ export async function readDecisions(root?: string): Promise<ProjectDecision[]> {
     try {
       const parsed = JSON.parse(trimmed) as unknown;
       if (!isProjectDecision(parsed)) {
-        console.error(`[decisions] invalid record skipped: ${trimmed}`);
+        const legacy = normalizeLegacyDecision(parsed);
+        if (legacy) {
+          decisions.push(legacy);
+          continue;
+        }
+        console.error(
+          `[decisions] invalid record skipped at ${filePath}:${index + 1}; expected sprintId, decision, affectedFiles[], tag, text, createdAt: ${trimmed}`,
+        );
         continue;
       }
       decisions.push({
@@ -120,7 +165,7 @@ export async function readDecisions(root?: string): Promise<ProjectDecision[]> {
       });
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      console.error(`[decisions] failed to parse record: ${reason}`);
+      console.error(`[decisions] failed to parse record at ${filePath}:${index + 1}: ${reason}`);
     }
   }
 

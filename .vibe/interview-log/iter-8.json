@@ -1,0 +1,532 @@
+{
+  "sessionId": "2026-05-07T13-05-38-304Z-236f8b",
+  "createdAt": "2026-05-07T13:05:38.307Z",
+  "lang": "ko",
+  "maxRounds": 1,
+  "oneLiner": "Build the Vision Context Interface from docs/plans/vision-context-interface-handoff.md end-to-end. Carry over iter-7 as complete dogfood UI work; this new iteration focuses on daemon-side TaskCapsule, app-server UserInput adapter, capture timeline, resolver, transcription MVP, lexicon/correction, provider adapters, renderer protocol integration, and smoke coverage. Preserve raw media deletion and never send raw WebM/audio to Codex app-server.",
+  "inferredDomain": "Local-first desktop agent vision-context preprocessing for a Tauri React Node daemon, adjacent to screen capture, OCR, local ASR, browser/terminal provider context, privacy-preserving retention, and Codex app-server protocol adaptation.",
+  "domainConfidence": null,
+  "adjacentDomains": [],
+  "dimensions": [
+    {
+      "id": "goal",
+      "label": "프로젝트 목표 / 한 줄 정의",
+      "weight": 1,
+      "subFields": [
+        "one_liner",
+        "primary_value"
+      ],
+      "required": true
+    },
+    {
+      "id": "target_user",
+      "label": "핵심 사용자 및 이해관계자",
+      "weight": 0.9,
+      "subFields": [
+        "primary_persona",
+        "secondary_stakeholders",
+        "user_scale"
+      ],
+      "required": true
+    },
+    {
+      "id": "platform",
+      "label": "플랫폼 / 배포 대상",
+      "weight": 0.7,
+      "subFields": [
+        "platform_type",
+        "runtime_constraints"
+      ],
+      "required": true
+    },
+    {
+      "id": "data_model",
+      "label": "주요 도메인 엔티티 및 관계",
+      "weight": 0.9,
+      "subFields": [
+        "entities",
+        "key_relations",
+        "invariants"
+      ],
+      "required": true
+    },
+    {
+      "id": "primary_interaction",
+      "label": "핵심 사용자 시나리오",
+      "weight": 0.9,
+      "subFields": [
+        "happy_path",
+        "failure_paths"
+      ],
+      "required": true
+    },
+    {
+      "id": "success_metric",
+      "label": "성공 기준 / 측정 지표",
+      "weight": 0.8,
+      "subFields": [
+        "acceptance_criteria",
+        "kpi"
+      ],
+      "required": true
+    },
+    {
+      "id": "non_goals",
+      "label": "v1 의도적 제외 (non-goals)",
+      "weight": 0.5,
+      "subFields": [],
+      "required": false
+    },
+    {
+      "id": "constraints",
+      "label": "법·규제·비용·보안 제약",
+      "weight": 0.8,
+      "subFields": [
+        "legal_regulatory",
+        "budget",
+        "security_privacy"
+      ],
+      "required": true
+    },
+    {
+      "id": "tech_stack",
+      "label": "기술 스택 선호·제약",
+      "weight": 0.6,
+      "subFields": [
+        "language_runtime",
+        "framework",
+        "datastore",
+        "hosting"
+      ],
+      "required": false
+    },
+    {
+      "id": "domain_specifics",
+      "label": "도메인 특화 이슈 (전문가 probing)",
+      "weight": 1,
+      "subFields": [],
+      "required": true
+    }
+  ],
+  "coverage": {
+    "goal": {
+      "ratio": 0.955,
+      "subFields": {
+        "one_liner": {
+          "value": "Build an independent daemon-side Vision Context Interface that converts desktop/browser/user capture into TaskCapsule context and Codex app-server text plus selected localImage inputs.",
+          "confidence": 0.96,
+          "deferred": false
+        },
+        "primary_value": {
+          "value": "Let users share visual context naturally while staying compatible with current app-server text/image modalities and enforcing raw WebM/audio privacy boundaries.",
+          "confidence": 0.95,
+          "deferred": false
+        }
+      }
+    },
+    "target_user": {
+      "ratio": 0,
+      "subFields": {
+        "primary_persona": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "secondary_stakeholders": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "user_scale": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        }
+      }
+    },
+    "platform": {
+      "ratio": 0,
+      "subFields": {
+        "platform_type": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "runtime_constraints": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        }
+      }
+    },
+    "data_model": {
+      "ratio": 0.08333333333333333,
+      "subFields": {
+        "entities": {
+          "value": "Core entities are VisionCaptureSession, CaptureEvent, Observation, EvidenceGraph, ContextEntity, TaskCapsule, CapsuleEvidence, and CodexUserInput.",
+          "confidence": 0.25,
+          "deferred": false
+        },
+        "key_relations": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "invariants": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        }
+      }
+    },
+    "primary_interaction": {
+      "ratio": 0.125,
+      "subFields": {
+        "happy_path": {
+          "value": "The happy path is Vision share start, capture interaction, stop, capsule generation, UserInput conversion, and turn/start send.",
+          "confidence": 0.25,
+          "deferred": false
+        },
+        "failure_paths": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        }
+      }
+    },
+    "success_metric": {
+      "ratio": 0,
+      "subFields": {
+        "acceptance_criteria": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "kpi": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        }
+      }
+    },
+    "non_goals": {
+      "ratio": 0,
+      "subFields": {}
+    },
+    "constraints": {
+      "ratio": 0.16666666666666666,
+      "subFields": {
+        "legal_regulatory": {
+          "value": "Raw video/audio must never be sent to app-server and must be deleted after processing.",
+          "confidence": 0.25,
+          "deferred": false
+        },
+        "budget": {
+          "value": "The value depends on never sending raw WebM/audio and deleting raw media after processing.",
+          "confidence": 0.25,
+          "deferred": false
+        },
+        "security_privacy": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        }
+      }
+    },
+    "tech_stack": {
+      "ratio": 0,
+      "subFields": {
+        "language_runtime": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "framework": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "datastore": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "hosting": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        }
+      }
+    },
+    "domain_specifics": {
+      "ratio": 1,
+      "subFields": {
+        "free_form": {
+          "value": "Vision Context is a local preprocessing layer, not raw video model input. It converts screen/browser/user capture into TaskCapsule markdown plus selected localImage inputs, prioritizes deterministic capsule/resolver/app-server adapter work before real ASR, and enforces raw WebM/audio deletion on success and failure.",
+          "confidence": 0.95,
+          "deferred": false
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "roundNumber": 1,
+      "dimensionId": "domain_specifics",
+      "questions": [
+        "[Questions were synthesized by the Orchestrator from the prior prompt; exact text was not echoed back to the engine.]"
+      ],
+      "answer": "이번 iteration의 결론은 이미 handoff에 정의되어 있습니다. 도메인 특화 결정은 다음과 같습니다. Vision Context는 실시간 비디오 모델 입력 기능이 아니라, 사용자가 화면을 공유하는 듯한 UX를 제공하면서 내부적으로 텍스트 capsule과 선택 이미지(localImage)로 변환하는 로컬 전처리 계층입니다. 원본 WebM/audio는 처리 중 임시 센서 입력일 뿐이고 성공/실패 모두에서 삭제해야 합니다. 핵심 데이터 모델은 VisionCaptureSession, CaptureEvent, Observation, EvidenceGraph, ContextEntity, TaskCapsule, CapsuleEvidence, CodexUserInput입니다. 첫 구현은 real ASR보다 결정적 schema/capsule/resolver/app-server adapter를 우선합니다. 사용자 시나리오는 Vision > Share with Agent 시작, 화면/창/탭 선택, 말하기/포인터/스크롤/입력, stop, daemon TaskCapsule 생성, UserInput[] 변환, turn/start 전송입니다. 성공 기준은 mock/real capture input에서 deterministic capsule markdown 생성, localImage adapter smoke, raw media deletion smoke, pointer/no-pointer/temporal resolver tests, transcription mock/lexicon correction tests, existing lint/build/smoke pass입니다. 비목표는 raw video attachment, unofficial ChatGPT web session use, API key exposure, adapters rendering final prompts입니다. 기술 스택은 기존 Tauri React Node daemon, TypeScript ES modules, SQLite/blob storage, existing DOM/Vision/PTY providers, fake app-server smoke harness를 유지합니다.",
+      "attribution": {
+        "attribution": {
+          "free_form": {
+            "value": "Vision Context is a local preprocessing layer, not raw video model input. It converts screen/browser/user capture into TaskCapsule markdown plus selected localImage inputs, prioritizes deterministic capsule/resolver/app-server adapter work before real ASR, and enforces raw WebM/audio deletion on success and failure.",
+            "confidence": 0.95,
+            "deferred": false
+          }
+        },
+        "cross_dimension_signals": [
+          {
+            "dimensionId": "data_model",
+            "note": "Core entities are VisionCaptureSession, CaptureEvent, Observation, EvidenceGraph, ContextEntity, TaskCapsule, CapsuleEvidence, and CodexUserInput."
+          },
+          {
+            "dimensionId": "primary_interaction",
+            "note": "The happy path is Vision share start, capture interaction, stop, capsule generation, UserInput conversion, and turn/start send."
+          },
+          {
+            "dimensionId": "constraints",
+            "note": "Raw video/audio must never be sent to app-server and must be deleted after processing."
+          }
+        ],
+        "normalized_slugs": [],
+        "rationale": "The answer directly encodes the handoff-specific product and protocol decisions for the iteration."
+      },
+      "crossDimensionSignals": [
+        {
+          "dimensionId": "data_model",
+          "note": "Core entities are VisionCaptureSession, CaptureEvent, Observation, EvidenceGraph, ContextEntity, TaskCapsule, CapsuleEvidence, and CodexUserInput."
+        },
+        {
+          "dimensionId": "primary_interaction",
+          "note": "The happy path is Vision share start, capture interaction, stop, capsule generation, UserInput conversion, and turn/start send."
+        },
+        {
+          "dimensionId": "constraints",
+          "note": "Raw video/audio must never be sent to app-server and must be deleted after processing."
+        }
+      ],
+      "timestamp": "2026-05-07T13:06:08.696Z"
+    },
+    {
+      "roundNumber": 2,
+      "dimensionId": "goal",
+      "questions": [
+        "[Questions were synthesized by the Orchestrator from the prior prompt; exact text was not echoed back to the engine.]"
+      ],
+      "answer": "한 줄 목표는 desktop/browser/user capture를 daemon-side TaskCapsule로 변환하고 Codex app-server UserInput text + localImage 입력으로 보내는 독립 Vision Context Interface를 만드는 것입니다. 핵심 가치는 사용자가 Agent에게 시각 맥락을 자연스럽게 공유하되, 현재 app-server의 text/image modality와 호환하고 raw WebM/audio privacy boundary를 지키는 것입니다.",
+      "attribution": {
+        "attribution": {
+          "one_liner": {
+            "value": "Build an independent daemon-side Vision Context Interface that converts desktop/browser/user capture into TaskCapsule context and Codex app-server text plus selected localImage inputs.",
+            "confidence": 0.96,
+            "deferred": false
+          },
+          "primary_value": {
+            "value": "Let users share visual context naturally while staying compatible with current app-server text/image modalities and enforcing raw WebM/audio privacy boundaries.",
+            "confidence": 0.95,
+            "deferred": false
+          }
+        },
+        "cross_dimension_signals": [
+          {
+            "dimensionId": "constraints",
+            "note": "The value depends on never sending raw WebM/audio and deleting raw media after processing."
+          }
+        ],
+        "normalized_slugs": [],
+        "rationale": "The answer directly states the iteration goal and user value."
+      },
+      "crossDimensionSignals": [
+        {
+          "dimensionId": "constraints",
+          "note": "The value depends on never sending raw WebM/audio and deleting raw media after processing."
+        }
+      ],
+      "timestamp": "2026-05-07T13:06:33.710Z"
+    }
+  ],
+  "ambiguityTrace": [
+    0.8451646090534979,
+    0.7190329218106994
+  ],
+  "consensus": {
+    "status": "approved",
+    "promptedAt": "2026-05-07T13:06:33.712Z",
+    "decidedAt": "2026-05-07T13:06:37.323Z",
+    "summaryHash": "5486276f55a00b3c",
+    "terminationReason": "max-rounds",
+    "ambiguityFinal": 0.7190329218106994,
+    "summary": {
+      "oneLiner": "Build the Vision Context Interface from docs/plans/vision-context-interface-handoff.md end-to-end. Carry over iter-7 as complete dogfood UI work; this new iteration focuses on daemon-side TaskCapsule, app-server UserInput adapter, capture timeline, resolver, transcription MVP, lexicon/correction, provider adapters, renderer protocol integration, and smoke coverage. Preserve raw media deletion and never send raw WebM/audio to Codex app-server.",
+      "inferredDomain": "Local-first desktop agent vision-context preprocessing for a Tauri React Node daemon, adjacent to screen capture, OCR, local ASR, browser/terminal provider context, privacy-preserving retention, and Codex app-server protocol adaptation.",
+      "terminationReason": "max-rounds",
+      "ambiguityFinal": 0.719,
+      "agentUnderstanding": [
+        {
+          "id": "goal",
+          "label": "프로젝트 목표 / 한 줄 정의",
+          "ratio": 0.955,
+          "details": [
+            "one_liner: Build an independent daemon-side Vision Context Interface that converts desktop/browser/user capture into TaskCapsule context and Codex app-server text plus selected localImage inputs.",
+            "primary_value: Let users share visual context naturally while staying compatible with current app-server text/image modalities and enforcing raw WebM/audio privacy boundaries."
+          ]
+        },
+        {
+          "id": "data_model",
+          "label": "주요 도메인 엔티티 및 관계",
+          "ratio": 0.0833,
+          "details": [
+            "entities: Core entities are VisionCaptureSession, CaptureEvent, Observation, EvidenceGraph, ContextEntity, TaskCapsule, CapsuleEvidence, and CodexUserInput."
+          ]
+        },
+        {
+          "id": "primary_interaction",
+          "label": "핵심 사용자 시나리오",
+          "ratio": 0.125,
+          "details": [
+            "happy_path: The happy path is Vision share start, capture interaction, stop, capsule generation, UserInput conversion, and turn/start send."
+          ]
+        },
+        {
+          "id": "constraints",
+          "label": "법·규제·비용·보안 제약",
+          "ratio": 0.1667,
+          "details": [
+            "legal_regulatory: Raw video/audio must never be sent to app-server and must be deleted after processing.",
+            "budget: The value depends on never sending raw WebM/audio and deleting raw media after processing."
+          ]
+        },
+        {
+          "id": "domain_specifics",
+          "label": "도메인 특화 이슈 (전문가 probing)",
+          "ratio": 1,
+          "details": [
+            "Vision Context is a local preprocessing layer, not raw video model input. It converts screen/browser/user capture into TaskCapsule markdown plus selected localImage inputs, prioritizes deterministic capsule/resolver/app-server adapter work before real ASR, and enforces raw WebM/audio deletion on success and failure."
+          ]
+        }
+      ],
+      "unresolvedDimensions": [
+        {
+          "id": "goal",
+          "label": "프로젝트 목표 / 한 줄 정의",
+          "ratio": 0.955,
+          "pending": [
+            "one_liner",
+            "primary_value"
+          ]
+        },
+        {
+          "id": "target_user",
+          "label": "핵심 사용자 및 이해관계자",
+          "ratio": 0,
+          "pending": [
+            "primary_persona",
+            "secondary_stakeholders",
+            "user_scale"
+          ]
+        },
+        {
+          "id": "platform",
+          "label": "플랫폼 / 배포 대상",
+          "ratio": 0,
+          "pending": [
+            "platform_type",
+            "runtime_constraints"
+          ]
+        },
+        {
+          "id": "data_model",
+          "label": "주요 도메인 엔티티 및 관계",
+          "ratio": 0.0833,
+          "pending": [
+            "entities",
+            "key_relations",
+            "invariants"
+          ]
+        },
+        {
+          "id": "primary_interaction",
+          "label": "핵심 사용자 시나리오",
+          "ratio": 0.125,
+          "pending": [
+            "happy_path",
+            "failure_paths"
+          ]
+        },
+        {
+          "id": "success_metric",
+          "label": "성공 기준 / 측정 지표",
+          "ratio": 0,
+          "pending": [
+            "acceptance_criteria",
+            "kpi"
+          ]
+        },
+        {
+          "id": "non_goals",
+          "label": "v1 의도적 제외 (non-goals)",
+          "ratio": 0,
+          "pending": [
+            "free_form"
+          ]
+        },
+        {
+          "id": "constraints",
+          "label": "법·규제·비용·보안 제약",
+          "ratio": 0.1667,
+          "pending": [
+            "legal_regulatory",
+            "budget",
+            "security_privacy"
+          ]
+        },
+        {
+          "id": "tech_stack",
+          "label": "기술 스택 선호·제약",
+          "ratio": 0,
+          "pending": [
+            "language_runtime",
+            "framework",
+            "datastore",
+            "hosting"
+          ]
+        }
+      ],
+      "deferredItems": [],
+      "nonGoals": [],
+      "terms": [
+        "domain_specifics: Vision Context is a local preprocessing layer, not raw video model input. It converts screen/browser/user capture into TaskCapsule markdown plus selected localImage inputs, prioritizes deterministic capsule/resolver/app-server adapter work before real ASR, and enforces raw WebM/audio deletion on success and failure."
+      ],
+      "userCorrections": []
+    },
+    "corrections": [],
+    "decision": "approve",
+    "rationale": "The user supplied a detailed /goal prompt and docs/plans/vision-context-interface-handoff.md is authoritative for unresolved dimensions."
+  },
+  "terminatedAt": "2026-05-07T13:06:37.323Z",
+  "terminationReason": "max-rounds",
+  "outputPath": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\.vibe\\interview-log\\iter-8.json",
+  "meta": {
+    "orchestratorModel": {
+      "provider": "codex",
+      "familyAlias": "codex",
+      "apiId": "codex",
+      "legacy": true
+    },
+    "interviewMode": "iterate",
+    "carryoverIterationId": "iter-7",
+    "priorIterationCarryover": "## Prior iteration carryover\n\nCarryover iteration: iter-7\n\nRecent session entries:\n- 2026-05-04T04:20:24.000Z [decision][bootstrap] Initialized vibe-doctor state for codex-widget-for-desktop without importing vibe-doctor template product context.\n- 2026-05-04T04:20:24.000Z [decision][architecture] Keep daemon-owned session architecture. Renderer connects over local WebSocket; OpenAI credentials stay out of renderer code.\n- 2026-05-04T04:20:24.000Z [decision][roadmap] Next iteration begins with auth architecture before real browser/screen/terminal providers.\n- 2026-05-04T04:21:48.000Z [checkpoint][bootstrap] Synced vibe-doctor v1.7.2 harness from local upstream at C:\\Users\\Tony\\Workspace\\vibe-doctor.\n- 2026-05-04T04:22:48.000Z [decision][windows-provider] Set Codex provider command to .\\.vibe\\harness\\scripts\\run-codex.cmd because this downstream runs under Windows PowerShell.\n- 2026-05-04T04:24:57.000Z [verification][bootstrap] Passed npm run vibe:doctor, bootstrap preflight, npm run lint, npm run build:web, npm run smoke, and Tauri cargo check with MSVC environment loaded.\n- 2026-05-04T04:25:52.000Z [decision][dependency] Pinned zod to v3 range because vibe-doctor v1.7.2 harness schemas use zod v3 typing; npm run vibe:typecheck passes after the downgrade.\n- 2026-05-04T04:38:55.590Z [checkpoint][sync] Ran /vibe-sync to upstream v1.7.2 with --force to establish missing sync history; backup created at .vibe/sync-backup/2026-05-04T04-37-12-648Z; harness typecheck and bootstrap preflight passed.\n- 2026-05-04T04:46:18.556Z [decision][orchestration] Set Codex as the main Orchestrator and default Planner/Generator/Evaluator provider in .vibe/config.json; Claude providers are fallback-only unless explicitly reconfigured.\n- 2026-05-04T04:51:00.478Z [decision][sprint-mode-tier] Enabled /vibe-sprint-mode extended tier; .claude/settings.local.json now has 71/71 preset allow rules active.\n- 2026-05-04T05:20:46.183Z [decision][auth] Converted the widget from direct API-key OpenAI SDK use to OAuth PKCE sign-in plus Bearer-token backend proxy streaming; mock streaming remains the no-config fallback.\n- 2026-05-04T05:29:04.167Z [decision][dev-workflow] Added scripts/dev-hot.mjs so npm run dev uses Vite HMR plus daemon TypeScript watch/restart; Tauri dev no longer spawns a duplicate daemon by default.\n- 2026-05-04T05:47:42.687Z [decision][auth-token-config] Added gitignored .env token mode so the daemon can use CODEX_WIDGET_OAUTH_ACCESS_TOKEN directly against CODEX_WIDGET_AGENT_PROXY_URL for local OAuth-token development.\n- 2026-05-04T06:10:57.119Z [decision][auth-ux] Implemented token-mode Sign in so the widget writes OAuth access token/proxy settings into gitignored .env automatically.\n- 2026-05-04T06:31:07.151Z [fix][auth-ux] Replaced Tauri window.open token-page flow with an inline widget token form because popups did not visibly open from the WebView.\n- 2026-05-04T06:39:52.616Z [decision][auth-social-login] Switched local auth config to PKCE/social-login mode and opened OAuth authorize URLs through the OS browser via a Tauri command; actual login completion requires the configured OAuth backend/proxy.\n- 2026-05-04T06:53:03.674Z [fix][dev-auth-proxy] Added and started a local dev OAuth/proxy server on 127.0.0.1:8787; verified PKCE callback, token exchange, authenticated daemon status, and Bearer proxy streaming end-to-end.\n- 2026-05-04T07:11:25.966Z [fix][codex-auth] Replaced the default mock OAuth proxy flow with Codex CLI OpenAI/ChatGPT auth: Sign in delegates to `codex login`, auth status reads `codex login status`, and prompts stream through `codex exec --json`.\n- 2026-05-04T07:11:25.966Z [safety][codex-auth] Codex-mode Sign out now disconnects only the widget session and does not run global `codex logout`.\n- 2026-05-04T07:31:04.929Z [ui][renderer] Applied taste-skill cleanup to the widget renderer: Windows-style titlebar/panel, clearer auth/status controls, structured conversation area, labeled token form, activity log, composer, and smaller companion mascot layout.\n\nHandoff snapshot:\n# Handoff\n\n## Current State\n\nThe project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.\n\n## Current Readiness Snapshot\n\n- 2026-05-06T07:22:23.060+09:00 strict `node scripts/release-readiness.mjs --require-manual-gates` re-check passed all automated release, resource, store-packet, and two-hour soak gates except the external browser-store submission gate.\n- 2026-05-06T08:56:59.660+09:00 product owner deferred actual Chrome Web Store / Microsoft Edge Add-ons dashboard submission until after dogfooding; the release-channel readiness objective closed with that task deferred.\n- 2026-05-06T12:27:12.372+09:00 a new active goal was registered: all follow-up work should proceed through `/vibe-iterate`, with Iteration `iter-3` focused on daemon-owned SQLite state, recoverable sessions/tabs/trash, artifact history, activity logs, Vision recording/streaming, and extensible theme/mascot/module foundations.\n- 2026-05-06T13:37:00.000+09:00 `iter-3-sprint-03-artifact-activity-ledger` completed: daemon-owned artifact/activity ledger APIs, blob-backed tool-output and file-change artifact records, chat and trash artifact viewers, activity detail UI, and storage/daemon/renderer smoke coverage are in place. Next active sprint is `iter-3-sprint-04-vision-streaming-and-ux-foundation`.\n- 2026-05-06T14:07:59.836+09:00 `iter-3-sprint-04-vision-streaming-and-ux-foundation` completed: Vision popup actions, WebM recording metadata/blob preservation, metadata-only Agent screen stream with low-frequency frame delivery to the daemon Vision snapshot endpoint, guardrails, and status-aware mascot hooks are implemented. The planned Iteration 3 sprint set is complete.\n- 2026-05-06T14:44:38.519+09:00 product owner clarified that the `/goal` directive means repeated `/vibe-iterate` execution until the categorized dogfooding backlog is actually closed, not stopping after Iteration 3. Durable state now treats Iteration 4 as active; the external goal tool was prematurely marked complete and cannot be reverted from the available API.\n- 2026-05-06T14:58:00.000+09:00 `iter-4-sprint-01-ui-polish-and-tab-interactions` completed: resize hit areas, minimum-width model/reason controls, 12px user bubbles, active session tab polish, branch-to-new-session toast, and model/reason session-switch pulse are implemented with renderer smoke coverage.\n- 2026-05-06T15:12:00.000+09:00 `iter-4-sprint-02-widget-context-agent-awareness` completed: each Agent turn now receives a daemon-owned widget capability context covering current mode, model/reasoning, sanitized auth, provider statuses, controls, Vision/DOM/PTY use cases, and safety boundaries across app-server, exec, and OAuth proxy paths.\n- 2026-05-06T15:19:22.339+09:00 `iter-4-sprint-03-artifact-rendering-and-version-browser` completed: artifact files now include file type icons, bounded text/image previews, current-version metadata, version accordions, and versioned open requests reused by both chat and trash artifact viewers.\n- 2026-05-06T15:34:46.947+09:00 `iter-4-sprint-04-vision-voice-interactive-loop` completed: Vision tools now separate snapshot/WebM recording/Agent share, persist cadence and duration controls, retain consent/retention metadata in daemon stream records, dismiss on outside click/Escape, and expose a Web Speech API voice prompt input boundary.\n- 2026-05-06T15:43:32.772+09:00 `iter-4-sprint-05-pty-popup-and-mascot-persona` completed: PTY now has an inline use-case/connection guide, a terminal-focused popout entry point on the same daemon port, and Default Dog mascot persona/tone is injected into Agent widget context. The Iteration 4 planned sprint set is complete.\n- 2026-05-06T16:04:18.953+09:00 Iteration `iter-5` started to close the remaining feasible backlog: durable app-server thread rebinding, provider snapshot history UI, Vision resource tuning, and final completion audit.\n- 2026-05-06T16:22:00.000+09:00 `iter-5-sprint-01-durable-app-server-thread-rebinding` completed: the daemon now persists and rebinds Codex app-server thread ids per durable session, retries stale thread ids safely, and smoke coverage verifies separate internal sessions keep separate app-server threads.\n- 2026-05-06T16:38:00.000+09:00 `iter-5-sprint-02-provider-snapshot-history-ui` completed: DOM, Vision, and Terminal provider snapshots are now stored as redacted ledger history and rendered in the Activity detail popover.\n- 2026-05-06T16:52:00.000+09:00 `iter-5-sprint-03-vision-resource-and-retention-tuning` completed: Agent screen share now drops overlapping frame ticks, reports skipped frames, avoids duplicate stop messages, cleans up media/frame resources on terminal provider states, and records effective guardrail metadata.\n- 2026-05-06T16:53:00.000+09:00 `iter-5-sprint-04-completion-audit-and-readiness-update` completed: roadmap, milestones, iteration history, handoff, session log, and project report state now classify all remaining work. The active vibe-iterate goal has no further feasible non-dogfood implementation backlog.\n\nMilestones:\n# Project Milestones\n\n## resident-widget-mvp\n\nGoal: keep a small Tauri desktop widget resident on Windows with reliable window controls, prompt/chat UX, streaming Codex responses, session reset, and recoverable daemon lifecycle.\n\nCurrent progress: 0.96\n\nEvidence:\n- Tauri shell, borderless resize, pin, opacity, mascot drag, and model/reasoning controls are implemented.\n- Daemon WebSocket streaming works with Codex CLI auth.\n- Default runtime now uses daemon-owned `codex app-server` with `exec` fallback.\n- Visible chat history is now replayed from daemon-owned SQLite session snapshots; renderer localStorage remains only as a temporary fallback.\n- Multi-turn chat layout, GFM tables, prompt resizing, and response action menu placement are covered by a Playwright renderer smoke.\n- Response Branch is covered by smoke tests and now creates a new durable internal session tab before sending a one-shot branch seed with the next prompt.\n- Iteration 4 Sprint 01 closed the first dogfooding UI polish slice: resize handles are easier to hit, minimum-width model/reason controls no longer overlap, user prompt bubbles use 12px radius, session tabs have clearer active affordance, branch creates a visible new-session toast, and model/reason controls pulse when the active session changes.\n- Iteration 4 Sprint 03 improves the artifact/chat UX with inline artifact previews, version accordions, and versioned open requests from both chat and trash surfaces.\n- Iteration 4 Sprint 05 makes PTY feel like an intentional widget module by adding an inline guide and a terminal-focused popout entry point on the same daemon port.\n- Reconnecting renderer clients receive retained daemon response snapshots, and active requests continue after the original WebSocket closes.\n- The widget hides to tray, stays off the taskbar, and exposes resident settings.\n- Packaged Tauri builds now supervise the Node daemon and restart it after unexpected exits.\n- Native daemon supervisor diagnostics are visible in the renderer status strip and Settings runtime grid.\n- Packaged Tauri builds include a bundled daemon JS entry and bundled Node runtime resource for daemon startup.\n- Iteration 5 Sprint 04 audited the remaining backlog and found no additional feasible non-dogfood MVP work beyond dogfood-dependent tuning and deferred external release submission.\n\nRoadmap pointer:\n# Sprint Roadmap\n\n## Iteration 1: Resident Agent Widget Foundation\n\n### sprint-01-auth-architecture\n\nGoal: replace the current API-key-first mental model with a documented OAuth-ready auth/backend boundary while preserving local mock and daemon development.\n\nDependencies: current Tauri widget and daemon.\n\nExpected scope: docs, config, daemon auth boundary notes, optional local token abstraction.\n\n### sprint-02-browser-dom-bridge\n\nGoal: add the first real browser provider contract for active-tab DOM selection and element metadata.\n\n\nIteration history:\n{\n  \"$schema\": \"./iteration-history.schema.json\",\n  \"currentIteration\": \"iter-7\",\n  \"iterations\": [\n    {\n      \"id\": \"iter-1\",\n      \"label\": \"Resident Agent Widget Foundation\",\n      \"startedAt\": \"2026-05-04T00:00:00.000Z\",\n      \"completedAt\": \"2026-05-06T16:53:00.000+09:00\",\n      \"goal\": \"Continue development of the Tauri desktop Codex-style resident agent widget through vibe-doctor sprints.\",\n      \"plannedSprints\": [\n        \"sprint-01-auth-architecture\",\n        \"sprint-02-browser-dom-bridge\",\n        \"sprint-03-terminal-pty-provider\",\n        \"sprint-04-screen-vision-provider\",\n        \"sprint-05-packaging-and-startup\"\n      ],\n      \"completedSprints\": [],\n      \"milestoneProgress\": {\n        \"resident-widget-mvp\": 0.6,\n        \"real-tool-providers\": 0.1,\n        \"oauth-ready-auth\": 0\n      },\n      \"summary\": \"The MVP shell, UI, and daemon stream exist. Next work should harden auth architecture and replace provider stubs with real integrations.\"\n    },\n    {\n      \"id\": \"iter-2\",\n      \"label\": \"Resident Runtime Expansion\",\n      \"startedAt\": \"2026-05-05T12:42:04.335+09:00\",\n      \"completedAt\": \"2026-05-06T08:56:59.660+09:00\",\n      \"goal\": \"Expand the widget beyond one-off UI patches into a durable resident desktop Codex assistant with stable app-server protocol, interaction UI, persistent conversation state, provider contracts, and desktop operations hardening.\",\n      \"plannedSprints\": [\n        \"iter-2-sprint-01-runtime-protocol\",\n        \"iter-2-sprint-02-tool-provider-shell\",\n        \"iter-2-sprint-03-resident-desktop-ops\"\n      ],\n      \"completedSprints\": [\n        \"iter-2-sprint-01-runtime-protocol\",\n        \"iter-2-sprint-02-tool-provider-shell\",\n        \"iter-2-sprint-03-resident-desktop-ops\"\n      ],\n      \"carryover\": \"Iter-1 delivered the Tauri shell, Codex auth, streaming conversation UX, and app-server default runtime. Open carryover: app-server approvals/user input, real DOM/Vision/PTY providers, report/milestone files, and resident desk\n\nPrior report text signals:\nProduct Context report :root{color-scheme:light;--bg-0:#f1efea;--bg-1:#eae7e1;--bg-2:#e2ded7;--frame-bg:rgba(255,255,255,0.35);--text:#1c1c1e;--secondary:rgba(60,60,67,0.82);--muted:rgba(60,60,67,0.58);--border:rgba(60,60,67,0.14);--border-strong:rgba(60,60,67,0.22);--accent:#007aff;--accent-subtle:rgba(0,122,255,0.12);--glass-bg:rgba(255,255,255,0.72);--glass-bg-flat:rgba(255,255,255,0.78);--glass-highlight:inset 0 1px 0 rgba(255,255,255,0.85),inset 0 -1px 0 rgba(0,0,0,0.03);--glass-depth:0 1px 2px rgba(60,60,67,0.06),0 4px 14px rgba(60,60,67,0.08),0 18px 40px rgba(60,60,67,0.06);--complete-bg:rgba(52,199,89,0.18);--complete-text:#1f7a36;--progress-bg:rgba(0,122,255,0.16);--progress-text:#0057b3;--partial-bg:rgba(255,149,0,0.2);--partial-text:#aa5c00;--failed-bg:rgba(255,59,48,0.18);--failed-text:#a9211b;--idle-bg:rgba(120,120,128,0.16);--idle-text:rgba(60,60,67,0.72);--loc-add:#1f7a36;--loc-del:#a9211b;--loc-net-neutral:rgba(60,60,67,0.7)} *{box-sizing:border-box} body{margin:0;min-height:100vh;background:linear-gradient(180deg,#edeae3 0%,#e6e2db 60%,#deded6 100%);background-attachment:fixed;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,\"SF Pro Display\",Inter,\"Segoe UI\",Roboto,\"Helvetica Neue\",sans-serif;font-size:15px;line-height:1.65;padding:0;font-variant-numeric:tabular-nums} a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline;text-underline-offset:3px} button{font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer} button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px} code,time{font-family:\"JetBrains Mono\",\"SF Mono\",Menlo,Consolas,monospace;font-size:13px;font-weight:500} .skip-link{position:absolute;left:32px;top:24px;z-index:20;transform:translateY(-160%);background:var(--glass-bg-flat);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 16px;backdrop-filter:blur(24px);-webkit-backdrop-"
+  },
+  "pending": null
+}
