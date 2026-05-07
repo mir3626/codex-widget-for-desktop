@@ -147,8 +147,7 @@
           "format": "date-time"
         },
         "expiresAt": {
-          "type": "string",
-          "format": "date-time"
+          "$ref": "#/definitions/SidecarArtifact/properties/createdAt"
         },
         "durationMs": {
           "type": "integer",

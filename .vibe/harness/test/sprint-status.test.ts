@@ -299,6 +299,43 @@ describe('sprint-status', () => {
     assert.equal(isSprintStatus({ project: { name: 'x' } }), false);
   });
 
+  it('accepts ISO datetime values with explicit timezone offsets', async () => {
+    const base = makeLegacyStatus();
+    const status = withDefaults({
+      ...base,
+      project: {
+        name: 'demo',
+        createdAt: '2026-05-08T02:25:00.000+09:00',
+        runtime: 'node24',
+        framework: 'test',
+      },
+      handoff: {
+        currentSprintId: 'idle',
+        lastActionSummary: 'offset',
+        orchestratorContextBudget: 'low',
+        preferencesActive: [],
+        handoffDocPath: '.vibe/agent/handoff.md',
+        updatedAt: '2026-05-08T02:25:00.000+09:00',
+      },
+      pendingRisks: [
+        {
+          id: 'risk-offset',
+          raisedBy: 'test',
+          targetSprint: '*',
+          text: 'offset',
+          status: 'resolved',
+          createdAt: '2026-05-08T02:20:00.000+09:00',
+          statusUpdatedAt: '2026-05-08T02:25:00.000+09:00',
+          resolvedAt: '2026-05-08T02:25:00.000+09:00',
+        },
+      ],
+      stateUpdatedAt: '2026-05-08T02:25:00.000+09:00',
+      verifiedAt: '2026-05-08T02:25:00.000+09:00',
+    });
+
+    assert.equal(isSprintStatus(status), true);
+  });
+
   it('touchStateUpdated persists an explicit timestamp bump', async () => {
     const root = await makeTempDir('sprint-status-touch-');
     await writeJson(

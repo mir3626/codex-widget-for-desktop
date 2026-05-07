@@ -19,10 +19,16 @@ the single-writer contract.
   only.
 - The wrapper validates sidecar stdout against the sidecar schema and writes
   non-durable artifacts under `.vibe/sidecars/artifacts/<sprintId>/`.
+- The wrapper owns packet coverage and sealed-packet integrity. Reviewer stdout
+  cannot change coverage counters, clear truncation flags, or override the
+  packet hash.
+- Sidecars receive redacted/omitted placeholders for sensitive paths. Untracked
+  file contents are omitted by default, and non-text or unsafe-control content is
+  still omitted when untracked content is explicitly included for local debugging.
 - Sidecar `status: "fail"` is still advisory. It means "high-severity finding
   reported"; the Orchestrator decides rework, escalation, or rejection.
-- `timeout`, non-zero exit, parse failure, or schema mismatch is recorded as
-  `unavailable` or `error`, never as pass.
+- `timeout`, non-zero exit, parse failure, schema mismatch, or semantic status
+  mismatch is recorded as `unavailable` or `error`, never as pass.
 
 ## Current Sidecar
 
@@ -50,6 +56,13 @@ Useful options:
 - `--importance critical` (uses `xhigh`; default effort is `high`)
 - `--effort high|xhigh`
 - `--timeout-ms 120000`
+- `--input-file <packet.json>` (hash is recomputed before execution)
+- `--include-untracked-content` (local debugging only; default omits untracked
+  contents)
+
+`--input-file` packets are immutable sealed inputs. The wrapper rejects saved or
+hand-edited packets when `inputHash` no longer matches the packet body. Regenerate
+the packet instead of editing it in place.
 
 Artifacts are intentionally ignored by git:
 

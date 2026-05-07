@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { IsoDateTimeSchema } from './datetime.js';
 
 export const ProjectMapModuleSchema = z.object({
   exports: z.array(z.string()),
@@ -15,7 +16,7 @@ export const ActivePlatformRuleSchema = z.object({
 export const ProjectMapSchema = z.object({
   $schema: z.string().optional(),
   schemaVersion: z.literal('0.1'),
-  updatedAt: z.string().datetime(),
+  updatedAt: IsoDateTimeSchema,
   lastSprintId: z.string().optional(),
   modules: z.record(ProjectMapModuleSchema),
   activePlatformRules: z.array(ActivePlatformRuleSchema),

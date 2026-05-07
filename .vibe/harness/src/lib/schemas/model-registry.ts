@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { IsoDateTimeSchema } from './datetime.js';
 
 export const ModelEntrySchema = z.object({
   apiId: z.string(),
@@ -19,7 +20,7 @@ export const ProviderRegistryEntrySchema = z.object({
 export const ModelRegistrySchema = z.object({
   $schema: z.string().optional(),
   schemaVersion: z.literal(1),
-  updatedAt: z.string().datetime(),
+  updatedAt: IsoDateTimeSchema,
   source: z.string(),
   providers: z.record(ProviderRegistryEntrySchema),
 });

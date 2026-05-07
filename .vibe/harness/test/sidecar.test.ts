@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -14,6 +15,23 @@ const wrapperPath = path.join(process.cwd(), '.vibe', 'harness', 'scripts', 'vib
 async function writeJson(filePath: string, value: unknown): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+}
+
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableStringify(entry)).join(',')}]`;
+  }
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
+      left.localeCompare(right),
+    );
+    return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${stableStringify(entry)}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function packetHash(packetWithoutHash: Record<string, unknown>): string {
+  return `sha256:${createHash('sha256').update(stableStringify(packetWithoutHash)).digest('hex')}`;
 }
 
 async function makeProjectRoot(): Promise<string> {
@@ -193,6 +211,45 @@ describe('vibe-sidecar-run', () => {
     }
   });
 
+  it('resolves input packet paths relative to --cwd and verifies their hash', async () => {
+    const root = await makeProjectRoot();
+    try {
+      await writeJson(path.join(root, 'relative-output.json'), {
+        schemaVersion: 1,
+        sidecar: 'diff-reviewer',
+        status: 'pass',
+        summary: 'No issues.',
+        findings: [],
+        limitations: ['Static diff review only.'],
+        coverage: { inputFilesSeen: 0, diffBytesSeen: 0, truncated: false },
+      });
+      const packetWithoutHash = {
+        schemaVersion: 1,
+        sidecar: 'diff-reviewer',
+        sprintId: 'sprint-sidecar',
+        gitSha: 'fixture',
+        diff: '',
+        changedFiles: [],
+        checklist: [],
+        relevantLogs: [],
+        evidenceRefs: [],
+        coverage: { inputFilesSeen: 0, diffBytesSeen: 0, truncated: false },
+      };
+      await writeJson(path.join(root, 'packet.json'), {
+        ...packetWithoutHash,
+        inputHash: packetHash(packetWithoutHash),
+      });
+
+      await runWrapper(root, ['--input-file', 'packet.json', '--mock-output-file', 'relative-output.json']);
+      const artifactPath = path.join(root, '.vibe', 'sidecars', 'artifacts', 'sprint-sidecar', 'diff-reviewer.json');
+      const artifact = SidecarArtifactSchema.parse(JSON.parse(await readFile(artifactPath, 'utf8')));
+      assert.equal(artifact.status, 'pass');
+      assert.equal(artifact.inputHash, packetHash(packetWithoutHash));
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it('rejects input packets whose inputHash no longer matches packet content', async () => {
     const root = await makeProjectRoot();
     try {
@@ -213,6 +270,71 @@ describe('vibe-sidecar-run', () => {
 
       await assert.rejects(runWrapper(root, ['--input-file', packetPath, '--mock-output-file', 'missing']));
       assert.equal(existsSync(path.join(root, '.vibe', 'sidecars')), false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('marks omitted sensitive and untracked diff content as truncated wrapper coverage', async () => {
+    const root = await makeProjectRoot();
+    try {
+      await execFileAsync('git', ['init'], { cwd: root });
+      await execFileAsync('git', ['config', 'user.email', 'sidecar@example.com'], { cwd: root });
+      await execFileAsync('git', ['config', 'user.name', 'Sidecar Test'], { cwd: root });
+      await mkdir(path.join(root, 'src'), { recursive: true });
+      await writeFile(path.join(root, 'src', 'example.ts'), 'export const value = 1;\n', 'utf8');
+      await execFileAsync('git', ['add', 'src/example.ts'], { cwd: root });
+      await execFileAsync('git', ['commit', '-m', 'seed'], { cwd: root });
+      await writeFile(path.join(root, 'src', 'example.ts'), 'export const value = 2;\n', 'utf8');
+      await writeFile(path.join(root, '.env.local'), 'TOKEN=secret\n', 'utf8');
+      await writeFile(path.join(root, 'notes.txt'), 'untracked local note\n', 'utf8');
+
+      const mockOutput = path.join(root, 'mock-output.json');
+      await writeJson(mockOutput, {
+        schemaVersion: 1,
+        sidecar: 'diff-reviewer',
+        status: 'pass',
+        summary: 'No issues.',
+        findings: [],
+        limitations: ['Static diff review only.'],
+        coverage: { inputFilesSeen: 0, diffBytesSeen: 0, truncated: false },
+      });
+
+      await runWrapper(root, ['--mock-output-file', mockOutput]);
+      const artifactPath = path.join(root, '.vibe', 'sidecars', 'artifacts', 'sprint-sidecar', 'diff-reviewer.json');
+      const artifact = SidecarArtifactSchema.parse(JSON.parse(await readFile(artifactPath, 'utf8')));
+      assert.equal(artifact.status, 'pass');
+      assert.equal(artifact.coverage.inputFilesSeen >= 3, true);
+      assert.equal(artifact.coverage.truncated, true);
+      assert.equal(artifact.coverage.diffBytesSeen > 0, true);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('omits non-text untracked content even when untracked content is explicitly included', async () => {
+    const root = await makeProjectRoot();
+    try {
+      await execFileAsync('git', ['init'], { cwd: root });
+      await writeFile(path.join(root, 'asset.dat'), Buffer.from([0xff, 0xfe, 0xfd]));
+
+      const mockOutput = path.join(root, 'mock-output.json');
+      await writeJson(mockOutput, {
+        schemaVersion: 1,
+        sidecar: 'diff-reviewer',
+        status: 'pass',
+        summary: 'No issues.',
+        findings: [],
+        limitations: ['Static diff review only.'],
+        coverage: { inputFilesSeen: 0, diffBytesSeen: 0, truncated: false },
+      });
+
+      await runWrapper(root, ['--mock-output-file', mockOutput, '--include-untracked-content']);
+      const artifactPath = path.join(root, '.vibe', 'sidecars', 'artifacts', 'sprint-sidecar', 'diff-reviewer.json');
+      const artifact = SidecarArtifactSchema.parse(JSON.parse(await readFile(artifactPath, 'utf8')));
+      assert.equal(artifact.status, 'pass');
+      assert.equal(artifact.coverage.truncated, true);
+      assert.equal(artifact.coverage.diffBytesSeen > 0, true);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

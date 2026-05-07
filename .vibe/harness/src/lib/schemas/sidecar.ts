@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { IsoDateTimeSchema } from './datetime.js';
 
 export const SidecarNameSchema = z.enum(['diff-reviewer']);
 export const SidecarProviderSchema = z.enum(['claude', 'codex', 'mock']);
@@ -62,8 +63,8 @@ export const SidecarArtifactSchema = z.object({
   sprintId: z.string().min(1),
   gitSha: z.string().min(1),
   inputHash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
-  createdAt: z.string().datetime({ offset: true }),
-  expiresAt: z.string().datetime({ offset: true }),
+  createdAt: IsoDateTimeSchema,
+  expiresAt: IsoDateTimeSchema,
   durationMs: z.number().int().min(0),
   exitCode: z.number().int().nullable(),
   stderrPreview: z.string().max(4000).optional(),

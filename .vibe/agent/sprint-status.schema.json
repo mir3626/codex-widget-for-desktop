@@ -185,8 +185,7 @@
               "type": "string"
             },
             "updatedAt": {
-              "type": "string",
-              "format": "date-time"
+              "$ref": "#/definitions/SprintStatus/properties/project/properties/createdAt"
             }
           },
           "required": [
@@ -262,34 +261,28 @@
                 ]
               },
               "createdAt": {
-                "type": "string",
-                "format": "date-time"
+                "$ref": "#/definitions/SprintStatus/properties/project/properties/createdAt"
               },
               "statusReason": {
                 "type": "string"
               },
               "statusUpdatedAt": {
-                "type": "string",
-                "format": "date-time"
+                "$ref": "#/definitions/SprintStatus/properties/project/properties/createdAt"
               },
               "acceptedAt": {
-                "type": "string",
-                "format": "date-time"
+                "$ref": "#/definitions/SprintStatus/properties/project/properties/createdAt"
               },
               "deferredAt": {
-                "type": "string",
-                "format": "date-time"
+                "$ref": "#/definitions/SprintStatus/properties/project/properties/createdAt"
               },
               "deferredUntil": {
                 "type": "string"
               },
               "closedAt": {
-                "type": "string",
-                "format": "date-time"
+                "$ref": "#/definitions/SprintStatus/properties/project/properties/createdAt"
               },
               "resolvedAt": {
-                "type": "string",
-                "format": "date-time"
+                "$ref": "#/definitions/SprintStatus/properties/project/properties/createdAt"
               }
             },
             "required": [
@@ -324,14 +317,12 @@
           "default": 0
         },
         "stateUpdatedAt": {
-          "type": "string",
-          "format": "date-time"
+          "$ref": "#/definitions/SprintStatus/properties/project/properties/createdAt"
         },
         "verifiedAt": {
           "anyOf": [
             {
-              "type": "string",
-              "format": "date-time"
+              "$ref": "#/definitions/SprintStatus/properties/project/properties/createdAt"
             },
             {
               "type": "null"

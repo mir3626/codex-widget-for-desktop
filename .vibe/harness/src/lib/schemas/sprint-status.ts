@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { IsoDateTimeSchema } from './datetime.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -70,14 +71,14 @@ export const PendingRiskSchema = z.object({
   code: z.string().optional(),
   message: z.string().optional(),
   status: PendingRiskStatusSchema,
-  createdAt: z.string().datetime(),
+  createdAt: IsoDateTimeSchema,
   statusReason: z.string().optional(),
-  statusUpdatedAt: z.string().datetime().optional(),
-  acceptedAt: z.string().datetime().optional(),
-  deferredAt: z.string().datetime().optional(),
+  statusUpdatedAt: IsoDateTimeSchema.optional(),
+  acceptedAt: IsoDateTimeSchema.optional(),
+  deferredAt: IsoDateTimeSchema.optional(),
   deferredUntil: z.string().optional(),
-  closedAt: z.string().datetime().optional(),
-  resolvedAt: z.string().datetime().optional(),
+  closedAt: IsoDateTimeSchema.optional(),
+  resolvedAt: IsoDateTimeSchema.optional(),
 });
 
 export const VerificationCommandSchema = z.object({
@@ -121,7 +122,7 @@ export const HandoffBlockSchema = z
         orchestratorContextBudget: z.enum(['low', 'medium', 'high']),
         preferencesActive: z.array(z.string()),
         handoffDocPath: z.string().optional(),
-        updatedAt: z.string().datetime().optional(),
+        updatedAt: IsoDateTimeSchema.optional(),
       })
       .passthrough(),
   );
@@ -140,7 +141,7 @@ export const SprintStatusSchema = z.preprocess(
       schemaVersion: z.literal('0.1'),
       project: z.object({
         name: z.string(),
-        createdAt: z.string().datetime(),
+        createdAt: IsoDateTimeSchema,
         runtime: z.string().optional(),
         framework: z.string().optional(),
       }),
@@ -152,8 +153,8 @@ export const SprintStatusSchema = z.preprocess(
       lastSprintScope: z.array(z.string()).default([]),
       lastSprintScopeGlob: z.array(z.string()).default([]),
       sprintsSinceLastAudit: z.number().int().min(0).default(0),
-      stateUpdatedAt: z.string().datetime().optional(),
-      verifiedAt: z.string().datetime().nullable().optional(),
+      stateUpdatedAt: IsoDateTimeSchema.optional(),
+      verifiedAt: IsoDateTimeSchema.nullable().optional(),
     })
     .passthrough(),
 );

@@ -14,6 +14,7 @@ import {
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TextDecoder } from 'node:util';
 import { parseArgs, getBooleanFlag, getStringFlag } from '../src/lib/args.js';
 import {
   SidecarArtifactSchema,
@@ -35,8 +36,10 @@ const DEFAULT_EXPIRY_DAYS = 14;
 const MAX_UNTRACKED_FILE_BYTES = 32 * 1024;
 const CODEX_LATEST_MODEL = 'gpt-5.5';
 const CLAUDE_LATEST_MODEL = 'opus';
-const SECRET_PATH_PATTERN = /(^|[/\\])(?:\.env(?:\.|$)|.*(?:secret|token|credential|password|passwd|cookie|private[-_]?key).*)/i;
+const SECRET_PATH_PATTERN = /(^|[/\\])(?:\.env[^/\\]*|.*(?:secret|token|credential|password|passwd|cookie|private[-_]?key).*)/i;
 const SECRET_EXTENSION_PATTERN = /\.(?:pem|pfx|p12|key|keystore)$/i;
+const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
+const UNSAFE_TEXT_CONTROL_PATTERN = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/;
 
 interface CommandResult {
   stdout: string;
@@ -205,12 +208,21 @@ function isSensitivePath(value: string): boolean {
 function omittedFileDiff(displayPath: string, reason: string): string {
   return [
     `diff --git a/${displayPath} b/${displayPath}`,
-    'new file mode 100644',
-    '--- /dev/null',
-    `+++ b/${displayPath}`,
-    '@@ -0,0 +1,1 @@',
-    `+[sidecar omitted file content: ${reason}]`,
+    `[sidecar omitted file content: ${reason}; no line-level patch available]`,
   ].join('\n');
+}
+
+function decodeSafeUtf8Text(data: Buffer): string | null {
+  let content: string;
+  try {
+    content = UTF8_DECODER.decode(data);
+  } catch {
+    return null;
+  }
+  if (!Buffer.from(content, 'utf8').equals(data) || UNSAFE_TEXT_CONTROL_PATTERN.test(content)) {
+    return null;
+  }
+  return content;
 }
 
 function trackedDiff(cwd: string, baseArgs: string[], files: string[], sensitiveReason: string): string {
@@ -266,12 +278,11 @@ function untrackedDiff(cwd: string, includeContent: boolean): string {
       continue;
     }
 
-    if (data.includes(0)) {
-      chunks.push(`diff --git a/${displayPath} b/${displayPath}\nnew file mode 100644\nBinary files /dev/null and b/${displayPath} differ`);
+    const content = decodeSafeUtf8Text(data);
+    if (content === null) {
+      chunks.push(omittedFileDiff(displayPath, 'non-text or unsafe text content'));
       continue;
     }
-
-    const content = data.toString('utf8');
     const lines = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
     if (lines.at(-1) === '') {
       lines.pop();
