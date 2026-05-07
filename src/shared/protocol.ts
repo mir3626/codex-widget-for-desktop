@@ -173,6 +173,56 @@ export type VisionContextEventInput = {
   [key: string]: unknown;
 };
 
+export type BrowserActionMode = "read_only" | "ask_before_action" | "auto_safe_actions" | "full_control_dev";
+
+export type BrowserActionSourceRequest = {
+  kind?: "active_tab" | "tab" | "controlled_browser" | "debug_target";
+  browser?: "chrome" | "edge" | "chromium" | "unknown";
+  tabId?: string;
+  url?: string;
+  title?: string;
+  windowId?: string;
+};
+
+export type BrowserActionTargetInput =
+  | { kind: "element_id"; id: string }
+  | { kind: "selector"; selector: string }
+  | { kind: "text"; text: string; role?: string }
+  | { kind: "bbox"; bbox: { x: number; y: number; w: number; h: number } }
+  | { kind: "focused" };
+
+export type BrowserActionInput =
+  | { type: "read"; reason?: string }
+  | { type: "click"; target: BrowserActionTargetInput; button?: "left" | "middle" | "right" }
+  | { type: "type"; target: BrowserActionTargetInput; text: string; clearFirst?: boolean; submit?: boolean }
+  | { type: "select"; target: BrowserActionTargetInput; value: string }
+  | { type: "check"; target: BrowserActionTargetInput; checked: boolean }
+  | { type: "scroll"; direction: "up" | "down" | "left" | "right"; amount?: "small" | "medium" | "large" | number; target?: BrowserActionTargetInput }
+  | { type: "navigate"; url: string }
+  | { type: "back" }
+  | { type: "forward" }
+  | { type: "reload" }
+  | { type: "hotkey"; keys: string[] }
+  | { type: "screenshot"; fullPage?: boolean }
+  | {
+      type: "evaluate";
+      code: string;
+      target?: BrowserActionTargetInput;
+      timeoutMs?: number;
+      resultLimitBytes?: number;
+      allowCredentialAccess?: boolean;
+    };
+
+export type BrowserActionAdapterStatus = {
+  id: string;
+  label: string;
+  state: "ready" | "unavailable" | "error";
+  capabilities: string[];
+  detail: string;
+  checkedAt: string;
+  diagnostics?: Record<string, unknown>;
+};
+
 export type MessageSnapshotStatus = "pending" | "thinking" | "tooling" | "streaming" | "done" | "cancelled" | "error";
 
 export type SessionStatus = "active" | "archived" | "trashed";
@@ -448,6 +498,35 @@ export type ClientMessage =
       captureId: string;
     }
   | {
+      type: "browserAction.start";
+      actionSessionId?: string;
+      sessionId?: string;
+      mode?: BrowserActionMode;
+      source?: BrowserActionSourceRequest;
+    }
+  | {
+      type: "browserAction.adapters";
+      actionSessionId?: string;
+    }
+  | {
+      type: "browserAction.observe";
+      actionSessionId: string;
+      adapterId?: string;
+    }
+  | {
+      type: "browserAction.execute";
+      actionSessionId: string;
+      action: BrowserActionInput;
+      requestId?: string;
+      adapterId?: string;
+      approved?: boolean;
+      targetHint?: string;
+    }
+  | {
+      type: "browserAction.cancel";
+      actionSessionId: string;
+    }
+  | {
       type: "terminal.input";
       id: string;
       data: string;
@@ -601,6 +680,37 @@ export type ServerEvent =
   | {
       type: "visionContext.error";
       captureId: string;
+      error: string;
+    }
+  | {
+      type: "browserAction.started";
+      actionSessionId: string;
+      summary: unknown;
+    }
+  | {
+      type: "browserAction.observation";
+      actionSessionId: string;
+      observationSummary: unknown;
+    }
+  | {
+      type: "browserAction.progress";
+      actionSessionId: string;
+      status: string;
+      detail?: unknown;
+    }
+  | {
+      type: "browserAction.adapters";
+      actionSessionId?: string;
+      adapters: BrowserActionAdapterStatus[];
+    }
+  | {
+      type: "browserAction.result";
+      actionSessionId: string;
+      result: unknown;
+    }
+  | {
+      type: "browserAction.error";
+      actionSessionId: string;
       error: string;
     }
   | {

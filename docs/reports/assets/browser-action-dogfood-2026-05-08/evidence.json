@@ -1,0 +1,61 @@
+{
+  "date": "2026-05-08",
+  "adapter": "playwright",
+  "startUrl": "https://example.com/",
+  "transcript": [
+    {
+      "step": "observe",
+      "adapter": "playwright",
+      "url": "https://example.com/",
+      "title": "Example Domain",
+      "textLength": 129,
+      "elements": [
+        {
+          "id": "el-1",
+          "role": "link",
+          "label": "Learn more",
+          "text": "Learn more",
+          "selector": "a"
+        }
+      ]
+    },
+    {
+      "step": "screenshot",
+      "adapter": "playwright",
+      "ok": true,
+      "safety": "allow",
+      "verification": {
+        "status": "passed",
+        "reason": "Action returned a refreshed browser observation."
+      },
+      "asset": "docs\\reports\\assets\\browser-action-dogfood-2026-05-08\\example-com-before.png"
+    },
+    {
+      "step": "click",
+      "adapter": "playwright",
+      "target": {
+        "id": "el-1",
+        "selector": "a",
+        "label": "Learn more",
+        "text": "Learn more",
+        "confidence": 0.99
+      },
+      "ok": true,
+      "safety": "allow",
+      "beforeUrl": "https://example.com/",
+      "afterUrl": "https://www.iana.org/help/example-domains",
+      "afterTitle": "Example Domains",
+      "verification": {
+        "status": "passed",
+        "reason": "Action returned a refreshed browser observation."
+      }
+    }
+  ],
+  "semanticAcceptance": {
+    "observedRealSite": true,
+    "executedSafeAction": true,
+    "capturedBeforeAfter": true,
+    "screenshotAsset": "docs\\reports\\assets\\browser-action-dogfood-2026-05-08\\example-com-before.png",
+    "notes": "Safe read/screenshot/link navigation against public Example Domain; no credentials or form submission."
+  }
+}

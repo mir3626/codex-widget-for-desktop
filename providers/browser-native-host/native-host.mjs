@@ -50,7 +50,11 @@ function normalizeSnapshot(value) {
     url: normalizeString(value.url, 2048),
     title: normalizeString(value.title, 512),
     selection: normalizeString(value.selection, 4000),
-    text: normalizeString(value.text, MAX_TEXT_CHARS)
+    text: normalizeString(value.text, MAX_TEXT_CHARS),
+    readyState: normalizeString(value.readyState, 32),
+    focusedElementId: normalizeString(value.focusedElementId, 256),
+    viewport: value.viewport && typeof value.viewport === "object" ? value.viewport : undefined,
+    elements: Array.isArray(value.elements) ? value.elements.slice(0, 220) : []
   };
 }
 

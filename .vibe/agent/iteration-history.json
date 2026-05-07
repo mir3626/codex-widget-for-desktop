@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-8",
+  "currentIteration": "iter-10",
   "iterations": [
     {
       "id": "iter-1",
@@ -15,7 +15,13 @@
         "sprint-04-screen-vision-provider",
         "sprint-05-packaging-and-startup"
       ],
-      "completedSprints": [],
+      "completedSprints": [
+        "iter-9-sprint-01-types-observation-and-targeting",
+        "iter-9-sprint-02-safety-policy-and-action-executor",
+        "iter-9-sprint-03-extension-observation-and-typed-actions",
+        "iter-9-sprint-04-daemon-protocol-and-renderer-approval",
+        "iter-9-sprint-05-agent-integration-and-completion-audit"
+      ],
       "milestoneProgress": {
         "resident-widget-mvp": 0.6,
         "real-tool-providers": 0.1,
@@ -248,6 +254,78 @@
         "durable-product-state": 0.98
       },
       "summary": "Iteration 8 implemented the Vision Context Interface MVP. The daemon now has src/daemon/vision-context with TaskCapsule schemas, capture session timeline, evidence graph, reference and intent resolvers, capsule markdown rendering, retention/raw deletion policy, app-server UserInput adapter, built-in screen/browser/terminal adapters, and placeholder IDE/document/accessibility adapters. src/daemon/transcription now provides transcript/audio schemas, mock ASR, sidecar ASR boundary, VAD fixture helper, lexicon correction, action-slot confidence, and clarification policy. The shared protocol includes visionContext start/event/stop/cancel plus progress/capsule/sent/error events, AgentRequest supports appServerInput overrides, Codex app-server turns accept localImage inputs, and the renderer starts/stops Vision Context around Share with Agent. Smoke coverage verifies capsule generation, pointer/no-pointer/temporal resolver behavior, raw media deletion, lexicon correction, destructive clarification, and fake app-server localImage delivery."
+    },
+    {
+      "id": "iter-9",
+      "label": "Browser Action Interface",
+      "startedAt": "2026-05-08T00:29:35.396+09:00",
+      "completedAt": "2026-05-08T01:20:00.000+09:00",
+      "goal": "Implement the Browser Action Interface from docs/plans/browser-action-interface-handoff.md: a daemon-side browser observe-plan-act-verify actuator with typed actions, target resolution, safety policy, extension/native integration, renderer approval, app-server smoke coverage, audit logging, and future adapter scaffolds.",
+      "plannedSprints": [
+        "iter-9-sprint-01-types-observation-and-targeting",
+        "iter-9-sprint-02-safety-policy-and-action-executor",
+        "iter-9-sprint-03-extension-observation-and-typed-actions",
+        "iter-9-sprint-04-daemon-protocol-and-renderer-approval",
+        "iter-9-sprint-05-agent-integration-and-completion-audit"
+      ],
+      "completedSprints": [
+        "iter-9-sprint-01-types-observation-and-targeting",
+        "iter-9-sprint-02-safety-policy-and-action-executor",
+        "iter-9-sprint-03-extension-observation-and-typed-actions",
+        "iter-9-sprint-04-daemon-protocol-and-renderer-approval",
+        "iter-9-sprint-05-agent-integration-and-completion-audit"
+      ],
+      "carryover": "Iter-8 completed Vision Context. The product owner now wants the browser actuator layer that can later connect to Windows computer-use. The authoritative handoff is docs/plans/browser-action-interface-handoff.md. Keep arbitrary JavaScript out of the default path; build typed, verified, auditable browser actions first.",
+      "openRisks": [
+        "Live semantic dogfood on real websites is still needed before claiming Windows computer-use parity or UX-level browser automation acceptance.",
+        "CDP, Playwright, and native desktop adapters are scaffolds/placeholders until a future expansion sprint.",
+        "Arbitrary JavaScript/evaluate remains deferred to a future full_control_dev capability with visible code preview, approval, audit logging, and credential safeguards.",
+        "Chrome/Edge restricted pages may remain unsupported until CDP/native desktop adapters are added."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.96,
+        "durable-codex-runtime": 0.96,
+        "real-tool-providers": 1,
+        "resident-desktop-readiness": 0.94,
+        "durable-product-state": 0.99
+      },
+      "summary": "Iteration 9 implemented the Browser Action Interface MVP. The daemon now has src/daemon/browser-action with normalized observations, stable element ids, element graph, target resolver, safety policy, typed action queue/executor model, result verifier, audit helpers, extension adapter, and future CDP/Playwright/native desktop placeholders. The DOM extension preserves snapshot behavior while adding structured interactive elements and typed action execution. Shared protocol and daemon handlers support browserAction start/observe/execute/cancel, extension poll/result HTTP endpoints, approval UI reuse, progress/result/error events, renderer Activity visibility, app-server widget-context visibility, and smoke coverage for resolver/safety/approval/extension-result/audit paths. This is explicitly incomplete for the production-level Browser Action goal because CDP/Playwright/native adapter implementations, full_control_dev evaluate, stronger adapter diagnostics, and live dogfood evidence remain open."
+    },
+    {
+      "id": "iter-10",
+      "label": "Browser Action Production Completion",
+      "startedAt": "2026-05-08T01:04:15.160+09:00",
+      "goal": "Complete Browser Action beyond the iter-9 MVP: functional controlled-browser adapters, adapter registry/status, full_control_dev evaluate with approval/audit/credential safeguards, stronger verification/reobserve/cancel behavior, app-server/action smoke flow, and real dogfood evidence or precise BLOCKED records.",
+      "plannedSprints": [
+        "iter-10-sprint-01-adapter-registry-verification-and-evaluate-core",
+        "iter-10-sprint-02-playwright-and-cdp-controlled-adapters",
+        "iter-10-sprint-03-native-desktop-boundary-and-unavailable-paths",
+        "iter-10-sprint-04-agent-protocol-smokes-and-dogfood-evidence",
+        "iter-10-sprint-05-production-completion-audit"
+      ],
+      "completedSprints": [],
+      "carryover": "Iter-9 shipped a deterministic Browser Action MVP but intentionally left CDP, Playwright, native desktop, full_control_dev evaluate, and semantic dogfood evidence incomplete. The product owner clarified that the original goal was production-level interface completion, not MVP closure. This iteration treats iter-9 as a partial baseline and implements or precisely blocks the remaining production adapter surfaces.",
+      "completedAt": "2026-05-08T02:25:00.000+09:00",
+      "completedSprints": [
+        "iter-10-sprint-01-adapter-registry-verification-and-evaluate-core",
+        "iter-10-sprint-02-playwright-and-cdp-controlled-adapters",
+        "iter-10-sprint-03-native-desktop-boundary-and-unavailable-paths",
+        "iter-10-sprint-04-agent-protocol-smokes-and-dogfood-evidence",
+        "iter-10-sprint-05-production-completion-audit"
+      ],
+      "openRisks": [
+        "Native desktop executable browser chrome control remains BLOCKED on a scoped Windows UI Automation or bounded native input helper; the current adapter reports diagnostics and unsupported-action errors.",
+        "First-class Browser Action custom tool integration remains BLOCKED on a stable Codex app-server custom tool/client-tool contract; daemon protocol simulation and widget context cover current agent visibility.",
+        "Restricted browser pages remain subject to browser/extension/CDP security boundaries and should report unsupported state rather than bypassing protections."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.97,
+        "durable-codex-runtime": 0.97,
+        "real-tool-providers": 1,
+        "resident-desktop-readiness": 0.95,
+        "durable-product-state": 0.99
+      },
+      "summary": "Iteration 10 completed the Browser Action production expansion beyond iter-9 MVP: adapter registry/status, direct controlled-adapter execution, stale reobserve/retry, functional Playwright and CDP adapters, bounded native desktop diagnostics with explicit UIA BLOCKED record, full_control_dev evaluate approval/hash/timeout/result-limit/credential safeguards, adapter/evaluate/native smokes, and real semantic dogfood evidence."
     }
   ]
 }

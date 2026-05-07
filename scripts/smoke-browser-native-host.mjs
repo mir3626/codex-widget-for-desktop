@@ -41,7 +41,24 @@ try {
       url: "https://example.test/native",
       title: "Native Host Smoke",
       selection: "selected text",
-      text: "document body"
+      text: "document body",
+      readyState: "complete",
+      focusedElementId: "native-button",
+      viewport: { width: 900, height: 700, scrollX: 0, scrollY: 12 },
+      elements: [
+        {
+          id: "native-button",
+          role: "button",
+          tagName: "button",
+          label: "Native Button",
+          selector: "#native-button",
+          visible: true,
+          enabled: true,
+          editable: false,
+          confidence: 0.96,
+          riskHints: []
+        }
+      ]
     }
   });
 
@@ -50,6 +67,9 @@ try {
   }
   if (serverState.body?.title !== "Native Host Smoke" || serverState.body?.selection !== "selected text") {
     throw new Error(`Native host did not post the DOM snapshot: ${JSON.stringify(serverState.body)}`);
+  }
+  if (serverState.body?.elements?.[0]?.id !== "native-button" || serverState.body?.focusedElementId !== "native-button") {
+    throw new Error(`Native host dropped structured DOM observation data: ${JSON.stringify(serverState.body)}`);
   }
 
   const wrapper = readFileSync(hostWrapper, "utf8");

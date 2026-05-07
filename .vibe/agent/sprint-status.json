@@ -26,6 +26,42 @@
       "expectStdoutContains": "daemon smoke ok"
     },
     {
+      "id": "smoke-browser-action",
+      "command": "npm run smoke:browser-action",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser action smoke ok"
+    },
+    {
+      "id": "smoke-browser-action-playwright",
+      "command": "npm run smoke:browser-action:playwright",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser action playwright smoke ok"
+    },
+    {
+      "id": "smoke-browser-action-cdp",
+      "command": "npm run smoke:browser-action:cdp",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser action cdp smoke ok"
+    },
+    {
+      "id": "smoke-browser-action-evaluate",
+      "command": "npm run smoke:browser-action:evaluate",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser action evaluate smoke ok"
+    },
+    {
+      "id": "smoke-browser-action-native",
+      "command": "npm run smoke:browser-action:native",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser action native smoke ok"
+    },
+    {
+      "id": "dogfood-browser-action",
+      "command": "npm run dogfood:browser-action",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser action dogfood evidence written"
+    },
+    {
       "id": "cargo-check",
       "command": "powershell -NoProfile -ExecutionPolicy Bypass -Command \". .\\scripts\\use-msvc-env.ps1; Push-Location src-tauri; cargo check --no-default-features; Pop-Location\"",
       "expectExitCode": 0,
@@ -33,14 +69,17 @@
     }
   ],
   "handoff": {
-    "currentSprintId": "iter-8-sprint-07-renderer-protocol-and-completion-audit",
-    "lastActionSummary": "Completed Iteration 8 Vision Context Interface MVP with daemon TaskCapsule/capture/resolver/retention modules, transcription MVP, provider adapters, renderer visionContext protocol integration, and app-server localImage input smoke coverage.",
+    "currentSprintId": "iter-10-sprint-05-production-completion-audit",
+    "lastActionSummary": "Iteration 10 upgraded Browser Action beyond the iter-9 MVP: adapter registry/status, direct adapter execution, Playwright and CDP functional adapters, native desktop diagnostics boundary, full_control_dev evaluate gating, stronger stale reobserve/retry behavior, adapter/evaluate smokes, and real dogfood evidence.",
     "openIssues": [
       "Codex app-server protocol remains experimental; stale persisted thread ids fall back safely, but live cross-process resume behavior needs dogfooding validation.",
       "Browser store account submission is deferred until after dogfooding.",
       "Vision recording/screen streaming has consent, retention, history, cleanup, skipped-frame diagnostics, resource guardrails, and Vision Context capsule preprocessing; longer CPU/memory tuning remains dogfood-dependent.",
       "Vision Context real local ASR production backend remains behind the transcription sidecar interface until dogfooding chooses the first installed model/runtime.",
-      "Mascot motion must be reworked with real authored pose/expression/state animation assets; generated static-pose sprites are not accepted."
+      "Mascot motion must be reworked with real authored pose/expression/state animation assets; generated static-pose sprites are not accepted.",
+      "Browser Action native desktop executable browser chrome control is BLOCKED on a scoped Windows UI Automation or bounded native input helper; current adapter reports diagnostics and unsupported-action errors.",
+      "Browser Action custom Codex app-server tool bridge is BLOCKED on a stable app-server custom tool/client-tool contract; current coverage uses daemon protocol simulation and widget-context visibility.",
+      "Restricted browser pages remain subject to browser/extension/CDP security boundaries and should report unsupported state rather than bypassing protections."
     ],
     "orchestratorContextBudget": "medium",
     "preferencesActive": [
@@ -49,12 +88,12 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-07T22:20:17.844+09:00"
+    "updatedAt": "2026-05-08T02:25:00.000+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-07T22:20:17.844+09:00",
-  "verifiedAt": "2026-05-07T22:20:17.844+09:00"
+  "stateUpdatedAt": "2026-05-08T02:25:00.000+09:00",
+  "verifiedAt": "2026-05-08T02:25:00.000+09:00"
 }

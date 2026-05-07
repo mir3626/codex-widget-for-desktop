@@ -6,6 +6,10 @@ export type DomSnapshot = {
   title: string;
   selection: string;
   text: string;
+  elements: unknown[];
+  focusedElementId?: string;
+  readyState?: string;
+  viewport?: unknown;
   capturedAt: string;
 };
 
@@ -39,6 +43,10 @@ export class ProviderRegistry {
       title: trimField(record?.title, MAX_PROVIDER_FIELD_LENGTH),
       selection: trimField(record?.selection, MAX_DOM_TEXT_LENGTH),
       text: trimField(record?.text, MAX_DOM_TEXT_LENGTH),
+      elements: Array.isArray(record?.elements) ? record.elements.slice(0, 220) : [],
+      focusedElementId: trimField(record?.focusedElementId, MAX_PROVIDER_FIELD_LENGTH) || undefined,
+      readyState: trimField(record?.readyState, MAX_PROVIDER_FIELD_LENGTH) || undefined,
+      viewport: typeof record?.viewport === "object" && record.viewport !== null ? record.viewport : undefined,
       capturedAt: new Date().toISOString()
     };
 
@@ -100,7 +108,7 @@ export class ProviderRegistry {
         label: "DOM",
         state: this.domSnapshot ? "ready" : "stub",
         detail: this.domSnapshot ? readDomDetail(this.domSnapshot) : "Waiting for DOM snapshot",
-        capabilities: ["active-tab", "selection", "metadata", "snapshot"]
+        capabilities: ["active-tab", "selection", "metadata", "snapshot", "structured-elements", "browser-action", "typed-actions"]
       },
       {
         mode: "screen",
@@ -172,6 +180,7 @@ export function augmentRequestWithProviderContext<T extends {
       `Title: ${snapshot.title || "(unknown)"}`,
       snapshot.selection ? `Selection:\n${snapshot.selection}` : "",
       snapshot.text ? `Page text excerpt:\n${snapshot.text}` : "",
+      snapshot.elements.length > 0 ? `Interactive elements: ${snapshot.elements.length} structured candidates attached.` : "",
       "",
       "User request:",
       input.text
@@ -210,7 +219,8 @@ export function renderDomSnapshotToolOutput(snapshot: DomSnapshot | null): strin
     `Title: ${snapshot.title || "(unknown)"}`,
     `Captured: ${snapshot.capturedAt}`,
     snapshot.selection ? `Selection:\n${snapshot.selection}` : "",
-    snapshot.text ? `Page text excerpt:\n${snapshot.text.slice(0, 3000)}` : ""
+    snapshot.text ? `Page text excerpt:\n${snapshot.text.slice(0, 3000)}` : "",
+    snapshot.elements.length > 0 ? `Interactive elements: ${snapshot.elements.length} structured candidates attached.` : ""
   ]
     .filter(Boolean)
     .join("\n\n");

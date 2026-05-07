@@ -11,6 +11,16 @@ import { subscribeTerminalSessionOutput, writeTerminalSessionInput } from "./pro
 import { createStorageService, type StorageService } from "./storage/storage.js";
 import { getProviderStatuses } from "./tools.js";
 import {
+  BrowserActionSessionManager,
+  summarizeBrowserActionResult,
+  summarizeBrowserActionSession,
+  summarizeBrowserObservation,
+  type BrowserAction,
+  type BrowserActionAuditEntry,
+  type BrowserActionExecutionResult,
+  type BrowserActionResult
+} from "./browser-action/index.js";
+import {
   VisionContextSessionManager,
   buildAppServerUserInput,
   collectAdapterObservations,
@@ -61,6 +71,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
   const codexAppServer = new CodexAppServerBridge();
   const providers = new ProviderRegistry();
   const visionContext = new VisionContextSessionManager();
+  const browserActions = new BrowserActionSessionManager();
   const storage = createStorageService();
   const requestSessions = new Map<string, string>();
   const agentSession: AgentSessionState = {};
@@ -73,7 +84,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
   };
 
   const server = createServer((request, response) => {
-    void handleHttpRequest(request, response, auth, onAuthChanged, providers, clients, storage);
+    void handleHttpRequest(request, response, auth, onAuthChanged, providers, browserActions, clients, storage);
   });
   serverRef = server;
   const wss = new WebSocketServer({ server });
@@ -105,6 +116,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
         codexAppServer,
         providers,
         visionContext,
+        browserActions,
         getServerPort(server)
       );
     });
@@ -173,6 +185,7 @@ async function handleMessage(
   codexAppServer: CodexAppServerBridge,
   providers: ProviderRegistry,
   visionContext: VisionContextSessionManager,
+  browserActions: BrowserActionSessionManager,
   daemonPort: number
 ): Promise<void> {
   let message: ClientMessage;
@@ -336,6 +349,32 @@ async function handleMessage(
   }
 
   if (message.type === "interaction.respond") {
+    const browserActionResponse = await browserActions.respondToInteraction({ id: message.id, decision: message.decision });
+    if (browserActionResponse.handled) {
+      const session = browserActionResponse.approval ? browserActions.get(browserActionResponse.approval.actionSessionId) : undefined;
+      if (browserActionResponse.command && session) {
+        broadcast(clients, {
+          type: "browserAction.progress",
+          actionSessionId: session.id,
+          status: "queued",
+          detail: { requestId: browserActionResponse.command.requestId, action: browserActionResponse.command.action.type }
+        });
+        recordRuntimeActivity(storage, resolveClientSessionId(storage, session.sessionId), "info", "browser-action", "Browser action approved and queued", {
+          requestId: browserActionResponse.command.requestId,
+          action: browserActionResponse.command.action.type
+        });
+      }
+      if (browserActionResponse.result && session && !browserActionResponse.command) {
+        broadcast(clients, {
+          type: "browserAction.result",
+          actionSessionId: session.id,
+          result: summarizeBrowserActionResult(browserActionResponse.result)
+        });
+        recordRuntimeActivity(storage, resolveClientSessionId(storage, session.sessionId), "info", "browser-action", "Browser action approval resolved", summarizeBrowserActionResult(browserActionResponse.result));
+        broadcastLedgerSnapshot(clients, storage, resolveClientSessionId(storage, session.sessionId));
+      }
+      return;
+    }
     const result = codexAppServer.respondToInteraction(message);
     if (!result.handled) {
       send(socket, {
@@ -628,6 +667,144 @@ async function handleMessage(
         type: "visionContext.error",
         captureId: message.captureId,
         error: error instanceof Error ? error.message : "Unable to complete Vision Context session."
+      });
+    }
+    return;
+  }
+
+  if (message.type === "browserAction.start") {
+    try {
+      const sessionId = resolveClientSessionId(storage, message.sessionId);
+      const session = browserActions.start({
+        id: message.actionSessionId,
+        sessionId,
+        mode: message.mode,
+        source: message.source
+      });
+      recordRuntimeActivity(storage, sessionId, "info", "browser-action", "Browser Action session started", summarizeBrowserActionSession(session));
+      broadcast(clients, { type: "browserAction.started", actionSessionId: session.id, summary: summarizeBrowserActionSession(session) });
+      broadcastLedgerSnapshot(clients, storage, sessionId);
+    } catch (error) {
+      send(socket, {
+        type: "browserAction.error",
+        actionSessionId: message.actionSessionId ?? "",
+        error: error instanceof Error ? error.message : "Unable to start Browser Action session."
+      });
+    }
+    return;
+  }
+
+  if (message.type === "browserAction.adapters") {
+    try {
+      const adapters = await browserActions.getAdapterStatuses(message.actionSessionId);
+      send(socket, {
+        type: "browserAction.adapters",
+        actionSessionId: message.actionSessionId,
+        adapters
+      });
+    } catch (error) {
+      send(socket, {
+        type: "browserAction.error",
+        actionSessionId: message.actionSessionId ?? "",
+        error: error instanceof Error ? error.message : "Unable to read Browser Action adapter status."
+      });
+    }
+    return;
+  }
+
+  if (message.type === "browserAction.observe") {
+    try {
+      const observed = message.adapterId && message.adapterId !== "extension"
+        ? await browserActions.observeViaAdapter({ actionSessionId: message.actionSessionId, adapterId: message.adapterId })
+        : browserActions.observe({ actionSessionId: message.actionSessionId, snapshot: providers.getDomSnapshot() });
+      recordBrowserActionAudit(storage, observed.audit);
+      broadcast(clients, {
+        type: "browserAction.observation",
+        actionSessionId: message.actionSessionId,
+        observationSummary: summarizeBrowserObservation(observed.observation)
+      });
+      broadcastLedgerSnapshot(clients, storage, resolveClientSessionId(storage, observed.session.sessionId));
+    } catch (error) {
+      send(socket, {
+        type: "browserAction.error",
+        actionSessionId: message.actionSessionId,
+        error: error instanceof Error ? error.message : "Unable to observe browser state."
+      });
+    }
+    return;
+  }
+
+  if (message.type === "browserAction.execute") {
+    try {
+      const execution = await browserActions.execute({
+        actionSessionId: message.actionSessionId,
+        action: message.action as BrowserAction,
+        snapshot: providers.getDomSnapshot(),
+        adapterId: message.adapterId,
+        approved: message.approved,
+        targetHint: message.targetHint
+      });
+      recordBrowserActionAudit(storage, execution.audit);
+      const sessionId = resolveClientSessionId(storage, execution.session.sessionId);
+      if (execution.approval) {
+        broadcast(clients, {
+          type: "interaction.required",
+          interaction: {
+            id: execution.approval.id,
+            requestId: message.requestId,
+            kind: "approval",
+            title: "Browser action approval",
+            body: buildBrowserActionApprovalBody(execution.result),
+            action: `Browser action: ${execution.result.safety.actionLabel}`
+          }
+        });
+        broadcast(clients, {
+          type: "browserAction.progress",
+          actionSessionId: message.actionSessionId,
+          status: "approval_required",
+          detail: summarizeBrowserActionResult(execution.result)
+        });
+      } else if (execution.command) {
+        broadcast(clients, {
+          type: "browserAction.progress",
+          actionSessionId: message.actionSessionId,
+          status: "queued",
+          detail: { requestId: execution.command.requestId, action: execution.command.action.type }
+        });
+      } else {
+        broadcast(clients, {
+          type: "browserAction.result",
+          actionSessionId: message.actionSessionId,
+          result: summarizeBrowserActionResult(execution.result)
+        });
+      }
+      broadcastLedgerSnapshot(clients, storage, sessionId);
+    } catch (error) {
+      send(socket, {
+        type: "browserAction.error",
+        actionSessionId: message.actionSessionId,
+        error: error instanceof Error ? error.message : "Unable to execute Browser Action."
+      });
+    }
+    return;
+  }
+
+  if (message.type === "browserAction.cancel") {
+    try {
+      const session = browserActions.cancel(message.actionSessionId);
+      recordRuntimeActivity(storage, resolveClientSessionId(storage, session.sessionId), "warn", "browser-action", "Browser Action session cancelled", summarizeBrowserActionSession(session));
+      broadcast(clients, {
+        type: "browserAction.progress",
+        actionSessionId: message.actionSessionId,
+        status: "cancelled",
+        detail: summarizeBrowserActionSession(session)
+      });
+      broadcastLedgerSnapshot(clients, storage, resolveClientSessionId(storage, session.sessionId));
+    } catch (error) {
+      send(socket, {
+        type: "browserAction.error",
+        actionSessionId: message.actionSessionId,
+        error: error instanceof Error ? error.message : "Unable to cancel Browser Action session."
       });
     }
     return;
@@ -1196,6 +1373,7 @@ async function handleHttpRequest(
   auth: OAuthSession,
   onAuthChanged: () => void,
   providers: ProviderRegistry,
+  browserActions: BrowserActionSessionManager,
   clients: Set<WebSocket>,
   storage: StorageService
 ): Promise<void> {
@@ -1205,7 +1383,7 @@ async function handleHttpRequest(
   }
 
   const url = new URL(request.url, `http://${request.headers.host ?? "127.0.0.1"}`);
-  if (request.method === "OPTIONS" && isProviderSnapshotPath(url.pathname)) {
+  if (request.method === "OPTIONS" && (isProviderSnapshotPath(url.pathname) || isBrowserActionPath(url.pathname))) {
     response
       .writeHead(204, {
         "Access-Control-Allow-Origin": "*",
@@ -1213,6 +1391,31 @@ async function handleHttpRequest(
         "Access-Control-Allow-Headers": "content-type"
       })
       .end();
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/browser-action/extension/poll") {
+    writeJsonResponse(response, 200, { ok: true, command: browserActions.pollExtensionCommand() ?? null });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/browser-action/extension/result") {
+    try {
+      const completed = browserActions.completeExtensionCommand(JSON.parse(await readRequestBody(request, 512 * 1024)) as BrowserActionExecutionResult);
+      recordBrowserActionAudit(storage, completed.audit);
+      broadcast(clients, {
+        type: "browserAction.result",
+        actionSessionId: completed.session.id,
+        result: summarizeBrowserActionResult(completed.result)
+      });
+      broadcastLedgerSnapshot(clients, storage, resolveClientSessionId(storage, completed.session.sessionId));
+      writeJsonResponse(response, 200, { ok: true, result: summarizeBrowserActionResult(completed.result) });
+    } catch (error) {
+      writeJsonResponse(response, 400, {
+        ok: false,
+        error: error instanceof Error ? error.message : "Invalid browser action result."
+      });
+    }
     return;
   }
 
@@ -1343,6 +1546,39 @@ function isProviderSnapshotPath(pathname: string): boolean {
   return pathname === "/providers/dom/snapshot" || pathname === "/providers/screen/snapshot";
 }
 
+function isBrowserActionPath(pathname: string): boolean {
+  return pathname.startsWith("/browser-action/");
+}
+
+function recordBrowserActionAudit(storage: StorageService, audit: BrowserActionAuditEntry): void {
+  recordRuntimeActivity(
+    storage,
+    resolveClientSessionId(storage, audit.sessionId),
+    audit.level,
+    "browser-action",
+    audit.summary,
+    audit.detail
+  );
+}
+
+function buildBrowserActionApprovalBody(result: BrowserActionResult): string {
+  const metadata = result.safety.metadata ?? {};
+  const codePreview = typeof metadata.codePreview === "string" ? metadata.codePreview : "";
+  const codeHash = typeof metadata.codeHash === "string" ? metadata.codeHash : "";
+  const timeoutMs = typeof metadata.timeoutMs === "number" ? metadata.timeoutMs : undefined;
+  const resultLimitBytes = typeof metadata.resultLimitBytes === "number" ? metadata.resultLimitBytes : undefined;
+  return [
+    result.safety.actionLabel,
+    result.safety.targetSummary ? `Target: ${result.safety.targetSummary}` : "",
+    `Risk: ${result.safety.risk}`,
+    result.safety.reason,
+    codeHash ? `Code SHA-256: ${codeHash}` : "",
+    timeoutMs ? `Timeout: ${timeoutMs}ms` : "",
+    resultLimitBytes ? `Result limit: ${resultLimitBytes} bytes` : "",
+    codePreview ? `Code preview:\n${codePreview}` : ""
+  ].filter(Boolean).join("\n");
+}
+
 function summarizeScreenSnapshot(snapshot: ScreenSnapshot): Omit<ScreenSnapshot, "imageDataUrl"> & {
   imageDataUrlLength: number;
 } {
@@ -1365,7 +1601,8 @@ function summarizeDomSnapshot(snapshot: DomSnapshot): string {
   const label = snapshot.title || readUrlHost(snapshot.url) || "DOM snapshot";
   const selected = snapshot.selection ? `${snapshot.selection.length} selected chars` : "";
   const text = snapshot.text ? `${snapshot.text.length} page chars` : "";
-  return [label, selected, text].filter(Boolean).join(" · ");
+  const elements = snapshot.elements.length > 0 ? `${snapshot.elements.length} elements` : "";
+  return [label, selected, text, elements].filter(Boolean).join(" · ");
 }
 
 function summarizeDomSnapshotData(snapshot: DomSnapshot): Record<string, unknown> {
@@ -1374,6 +1611,8 @@ function summarizeDomSnapshotData(snapshot: DomSnapshot): Record<string, unknown
     title: snapshot.title || undefined,
     selectionLength: snapshot.selection.length,
     textLength: snapshot.text.length,
+    elementCount: snapshot.elements.length,
+    focusedElementId: snapshot.focusedElementId,
     selectionPreview: snapshot.selection ? snapshot.selection.slice(0, 240) : undefined,
     capturedAt: snapshot.capturedAt
   };

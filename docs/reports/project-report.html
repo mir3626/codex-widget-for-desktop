@@ -163,9 +163,9 @@ dd{margin:0;min-width:0;word-break:break-word;color:var(--secondary);font-size:1
     <li><a href="#verification">Verification</a></li>
   </ul>
   <div class="nav-meta">
-    <span>iter-8</span>
+    <span>iter-9</span>
     <span>/</span>
-    <span>2026-05-07</span>
+    <span>2026-05-08</span>
   </div>
 </nav>
 <main id="content" class="container">
@@ -174,9 +174,9 @@ dd{margin:0;min-width:0;word-break:break-word;color:var(--secondary);font-size:1
   <h1>Product Context</h1>
   <p class="subtitle">Codex Widget for Desktop is a resident desktop assistant widget: a small mascot-style Tauri app that stays off the taskbar, streams agent responses in real time, and can grow into browser, screen, terminal, and local-workspace automation.</p>
   <div class="meta-row" aria-label="Report metadata">
-    <span>Generated 2026-05-07 22:21:49 KST</span>
+    <span>Generated 2026-05-08 00:53:18 KST</span>
     <span>Platform: unspecified</span>
-    <span>Status: <span class="status-badge" data-status="in-progress">iter-8-in-progress</span></span>
+    <span>Status: <span class="status-badge" data-status="in-progress">iter-9-in-progress</span></span>
   </div>
 </section>
 <div class="report-grid">
@@ -187,8 +187,8 @@ dd{margin:0;min-width:0;word-break:break-word;color:var(--secondary);font-size:1
         <span>0 recorded</span>
       </article><article class="metric-card">
         <p>TOTAL ITERATIONS</p>
-        <strong>8</strong>
-        <span>iter-8</span>
+        <strong>9</strong>
+        <span>iter-9</span>
       </article><article class="metric-card">
         <p>TOTAL LOC</p>
         <strong>+0</strong>
@@ -233,13 +233,23 @@ dd{margin:0;min-width:0;word-break:break-word;color:var(--secondary);font-size:1
         <span class="timeline-label">iter-7</span>
         <span class="timeline-status">complete</span>
         <time datetime="2026-05-06T23:39:18.331+09:00">2026-05-06</time>
-      </li><li class="timeline-item" data-status="current">
+      </li><li class="timeline-item" data-status="complete">
         <button class="timeline-dot" type="button" aria-label="Vision Context Interface: Build the Vision Context Interface from docs/plans/vision-context-interface-handoff.md end-to-end: a daemon-side module that converts screen/browser/user capture into TaskCapsule markdown plus selected Codex app-server localImage inputs, without ever sending raw WebM/audio to app-server." title="Build the Vision Context Interface from docs/plans/vision-context-interface-handoff.md end-to-end: a daemon-side module that converts screen/browser/user capture into TaskCapsule markdown plus selected Codex app-server localImage inputs, without ever sending raw WebM/audio to app-server."></button>
         <span class="timeline-label">iter-8</span>
-        <span class="timeline-status">current</span>
+        <span class="timeline-status">complete</span>
         <time datetime="2026-05-07T22:20:17.844+09:00">2026-05-07</time>
+      </li><li class="timeline-item" data-status="complete">
+        <button class="timeline-dot" type="button" aria-label="Browser Action Interface: Implement the Browser Action Interface from docs/plans/browser-action-interface-handoff.md: a daemon-side browser observe-plan-act-verify actuator with typed actions, target resolution, safety policy, extension/native integration, renderer approval, app-server smoke coverage, audit logging, and future adapter scaffolds." title="Implement the Browser Action Interface from docs/plans/browser-action-interface-handoff.md: a daemon-side browser observe-plan-act-verify actuator with typed actions, target resolution, safety policy, extension/native integration, renderer approval, app-server smoke coverage, audit logging, and future adapter scaffolds."></button>
+        <span class="timeline-label">iter-9</span>
+        <span class="timeline-status">complete</span>
+        <time datetime="2026-05-08T01:20:00.000+09:00">2026-05-08</time>
+      </li><li class="timeline-item" data-status="current">
+        <button class="timeline-dot" type="button" aria-label="Browser Action Production Completion: Complete Browser Action beyond the iter-9 MVP with adapter registry/status, Playwright and CDP functional adapters, native desktop diagnostics, full_control_dev evaluate safeguards, and real dogfood evidence." title="Complete Browser Action beyond the iter-9 MVP with adapter registry/status, Playwright and CDP functional adapters, native desktop diagnostics, full_control_dev evaluate safeguards, and real dogfood evidence."></button>
+        <span class="timeline-label">iter-10</span>
+        <span class="timeline-status">complete</span>
+        <time datetime="2026-05-08T02:25:00.000+09:00">2026-05-08</time>
       </li></ol></section>
-    <section id="sprints" data-section="sprints" class="report-section wrap"><div class="section-heading"><h2>Sprint Outputs</h2><span>0 sprints across 8 iterations</span></div><div class="empty-preview" data-demo="true">
+    <section id="sprints" data-section="sprints" class="report-section wrap"><div class="section-heading"><h2>Sprint Outputs</h2><span>0 sprints across 10 iterations</span></div><div class="empty-preview" data-demo="true">
     <p class="empty-state">No project sprint outputs to show yet. Showing a layout-safe preview.</p>
     <div class="sprint-grid demo-grid"><article class="sprint-card" data-sprint-id="sprint-contract" data-demo="true">
           <div class="card-head">
@@ -279,6 +289,10 @@ dd{margin:0;min-width:0;word-break:break-word;color:var(--secondary);font-size:1
         <span class="status-badge" data-status="idle">recorded</span>
         <span>unknown</span>
       </article><article class="verification-row">
+        <code>npm run smoke:browser-action</code>
+        <span class="status-badge" data-status="idle">recorded</span>
+        <span>unknown</span>
+      </article><article class="verification-row">
         <code>powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;. .\scripts\use-msvc-env.ps1; Push-Location src-tauri; cargo check --no-default-features; Pop-Location&quot;</code>
         <span class="status-badge" data-status="idle">recorded</span>
         <span>unknown</span>
@@ -299,7 +313,7 @@ dd{margin:0;min-width:0;word-break:break-word;color:var(--secondary);font-size:1
         <span class="status-badge" data-status="idle">idle</span>
         <span>tsc --noEmit -p tsconfig.json &amp;&amp; tsc --noEmit -p tsconfig.node.json</span>
       </article></div></section>
-    <section id="next-steps" data-section="next-steps" class="report-section wrap"><div class="section-heading"><h2>Next Steps</h2></div><ol class="next-steps"><li>Continue iter-8 with the next roadmap slot.</li></ol></section>
+    <section id="next-steps" data-section="next-steps" class="report-section wrap"><div class="section-heading"><h2>Next Steps</h2></div><ol class="next-steps"><li>Continue iter-9 with the next roadmap slot.</li></ol></section>
   </div>
   <aside class="col-side">
     <section id="decisions" data-section="decisions" class="report-section wrap decisions-section"><div class="section-heading"><h2>Key Decisions</h2><span>17 entries</span></div><div class="decision-tools" aria-label="Decision filters">
@@ -391,7 +405,7 @@ dd{margin:0;min-width:0;word-break:break-word;color:var(--secondary);font-size:1
 </div>
 </main>
 <footer class="site-footer">
-  <div class="container">Generated by vibe-doctor 0.1.0 / 2026-05-07 22:21:49 KST</div>
+  <div class="container">Generated by vibe-doctor 0.1.0 / 2026-05-08 00:53:18 KST</div>
 </footer>
 </div>
 <script>

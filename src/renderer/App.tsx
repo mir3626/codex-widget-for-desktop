@@ -782,6 +782,37 @@ export function App() {
       return;
     }
 
+    if (event.type === "browserAction.started") {
+      appendLog("Browser Action started", "tool");
+      return;
+    }
+
+    if (event.type === "browserAction.observation") {
+      appendLog("Browser Action observation ready", "tool");
+      return;
+    }
+
+    if (event.type === "browserAction.progress") {
+      appendLog(`Browser Action ${event.status}`, "tool");
+      return;
+    }
+
+    if (event.type === "browserAction.adapters") {
+      const ready = event.adapters.filter((adapter) => adapter.state === "ready").map((adapter) => adapter.id).join(", ") || "none";
+      appendLog(`Browser Action adapters ready: ${ready}`, "tool");
+      return;
+    }
+
+    if (event.type === "browserAction.result") {
+      appendLog("Browser Action result ready", "tool");
+      return;
+    }
+
+    if (event.type === "browserAction.error") {
+      appendLog(event.error, "error");
+      return;
+    }
+
     if (event.type === "terminal.output") {
       appendTerminalOutput(event.id, event.chunk);
       return;

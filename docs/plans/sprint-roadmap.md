@@ -319,3 +319,111 @@ Dependencies: Sprints 01-06, existing Vision menu/status UI, daemon WebSocket pr
 Expected scope: `visionContext.start/event/stop/cancel` client messages, daemon progress/capsule/sent/error events, renderer trigger path from Share with Agent, smoke coverage for capsule send into an app-server turn, standard verification, project report refresh, and context handoff/session-log updates.
 
 Status: implemented. Shared protocol and daemon handlers support `visionContext.start/event/stop/cancel` plus `started/progress/capsule/sent/error` events. The renderer starts Vision Context when Agent screen share begins and stops/sends it to Agent when sharing stops. Verification passed `npm run typecheck`, `npm run smoke:vision-context`, `npm run smoke:app-server`, `node scripts/smoke-daemon.mjs`, `npm run build:web`, and `npm run smoke`.
+
+## Iteration iter-9: Browser Action Interface
+
+Carryover: Iteration 8 completed Vision Context as the observation/capsule side of future computer-use. Iteration 9 implements the browser actuator side from `docs/plans/browser-action-interface-handoff.md`: typed browser actions, target resolution, safety policy, extension/native integration, renderer approval, app-server action smoke coverage, and audit evidence. Arbitrary JavaScript is reserved for future `full_control_dev`, not the default implementation path.
+
+### iter-9-sprint-01-types-observation-and-targeting
+
+Goal: establish the deterministic Browser Action core before extension execution complexity.
+
+Dependencies: `docs/plans/browser-action-interface-handoff.md`, existing DOM provider snapshot shape, shared protocol types.
+
+Expected scope: `src/daemon/browser-action` shared types, browser observation normalization, stable element ids, element graph, target resolver, intent/action planner boundary, result verifier scaffolding, and focused smoke coverage for exact/role/text/focused/bbox/ambiguous/low-confidence targeting.
+
+Status: implemented. `src/daemon/browser-action` now defines the Browser Action type surface, normalized `BrowserObservation`, stable element id normalization, `ElementGraph`, target resolver, intent boundary, result verifier, and smoke coverage for exact id, role/text, focused, bbox, ambiguous, and low-confidence resolution.
+
+### iter-9-sprint-02-safety-policy-and-action-executor
+
+Goal: add the safety and execution core for typed browser actions.
+
+Dependencies: Sprint 01 observation/targeting model.
+
+Expected scope: safe/confirm/block policy, sensitive value redaction, typed action executor, adapter contract, extension/native/CDP/Playwright/native-desktop placeholder adapters, audit log helpers, and smoke coverage for safe actions, risky confirmations, destructive clarification, and verification outcomes.
+
+Status: implemented. The module now includes allow/confirm/block/clarify safety decisions, sensitive target redaction, destructive/low-confidence clarification, typed queued action commands, audit helpers, extension adapter contracts, and CDP/Playwright/native desktop placeholders.
+
+### iter-9-sprint-03-extension-observation-and-typed-actions
+
+Goal: upgrade the existing DOM extension while preserving snapshot-only behavior.
+
+Dependencies: Sprints 01-02, `providers/browser-dom-extension`, `providers/browser-native-host`, extension packaging smoke.
+
+Expected scope: structured `elements[]` in DOM snapshots, stable element ids/selectors, typed action helper functions for read/click/type/check/select/scroll/navigate/back/forward/reload/screenshot where practical, native-host message compatibility, and browser extension smokes against a deterministic fake page.
+
+Status: implemented. The DOM extension keeps the existing snapshot button flow and now emits structured interactive element observations plus typed action execution for read, click, type, select/check, scroll, navigation controls, reload, and visible-tab screenshot where available. Extension packaging smoke verifies the new command/result endpoints and typed executor hooks.
+
+### iter-9-sprint-04-daemon-protocol-and-renderer-approval
+
+Goal: expose Browser Action lifecycle through the widget daemon and renderer.
+
+Dependencies: Sprints 01-03, existing WebSocket protocol, renderer interaction cards/activity surface.
+
+Expected scope: `browserAction.start/observe/execute/cancel` client messages, started/observation/progress/approval/result/error server events, daemon session manager integration, renderer approval cards, activity/audit visibility, and cancel/error handling.
+
+Status: implemented. Shared protocol and daemon handlers now support `browserAction.start/observe/execute/cancel`, progress/result/error events, local extension poll/result HTTP endpoints, approval reuse through `interaction.required`, Activity audit rows, renderer log visibility, and cancel/error handling.
+
+### iter-9-sprint-05-agent-integration-and-completion-audit
+
+Goal: connect Browser Action to the Agent path and close the iteration with production-level verification.
+
+Dependencies: Sprints 01-04, Codex app-server fake harness, existing smoke gates.
+
+Expected scope: Agent-visible or simulated browser action capability, fake app-server smoke proving action requests/results flow without hidden side effects, final documentation/context updates, project report refresh, and full verification including lint/build/smoke/extension/native-host/DOM/app-server/browser-action smokes.
+
+Status: implemented. Widget context exposes Browser Action capabilities to app-server turns, fake app-server smoke verifies that visibility, and `npm run smoke:browser-action` simulates the full daemon action path from request to approval, extension command polling, result verification, and audit evidence without hidden side effects. Full live app-server custom tool-call integration is deferred until Codex app-server exposes a stable client-tool contract.
+
+## Iteration iter-10: Browser Action Production Completion
+
+Carryover: Iteration 9 delivered a deterministic Browser Action MVP, but it is incomplete for the product owner's production-level goal. CDP, Playwright, native desktop, `full_control_dev` evaluate, adapter diagnostics, stronger reobserve/verification, action protocol evidence, and semantic dogfood evidence must be implemented or precisely marked `BLOCKED` with attempted paths.
+
+### iter-10-sprint-01-adapter-registry-verification-and-evaluate-core
+
+Goal: upgrade the daemon Browser Action core beyond MVP.
+
+Dependencies: iter-9 `src/daemon/browser-action`, shared `browserAction.*` protocol.
+
+Expected scope: adapter registry/selection/status, timeout/cancel/error normalization, multi-step plan types where scoped, stale reobserve/retry support, stronger verification result summaries, explicit non-default `evaluate` action type, `full_control_dev` safety gating, code preview approval metadata, code hash/audit, timeout/result-size limits, and credential/token/cookie extraction guards.
+
+Status: complete. Adapter registry/status protocol, direct adapter execution path, plan types, evaluate action schema, full_control_dev gating, approval preview metadata, code hash, timeout/result limits, and credential safeguards are implemented.
+
+### iter-10-sprint-02-playwright-and-cdp-controlled-adapters
+
+Goal: replace controlled-browser adapter placeholders with functional implementations where the local environment supports them.
+
+Dependencies: Sprint 01 adapter registry, Playwright dependency, local Chrome/Edge availability or precise unavailable diagnostics.
+
+Expected scope: functional Playwright controlled-page adapter, CDP adapter for configured/managed remote debugging targets, typed action execution through both where practical, console/network summaries where practical, deterministic local-page smokes, and precise `BLOCKED` records only for real environment constraints.
+
+Status: complete. Playwright and CDP adapters are functional with deterministic local-page smokes; CDP supports configured or managed Chrome/Edge remote debugging endpoints and reports clear unavailable diagnostics when not configured.
+
+### iter-10-sprint-03-native-desktop-boundary-and-unavailable-paths
+
+Goal: implement the native desktop adapter boundary to the maximum practical Browser Action scope.
+
+Dependencies: Sprint 01 registry/status, Windows runtime constraints.
+
+Expected scope: Windows-oriented native desktop adapter contract, availability diagnostics, browser-window scoped safety boundary, cancel/error behavior, helper/native-input or UI Automation path if practical, and tests for supported or unavailable behavior. Do not generalize into full arbitrary desktop computer-use.
+
+Status: complete with BLOCKED boundary. The native desktop adapter now provides Windows browser-window availability diagnostics and unsupported-action errors; executable browser chrome control is blocked on a scoped UI Automation/native input helper.
+
+### iter-10-sprint-04-agent-protocol-smokes-and-dogfood-evidence
+
+Goal: prove Agent/action flow and collect semantic evidence.
+
+Dependencies: Sprints 01-03, fake app-server smoke harness, safe browser dogfood target.
+
+Expected scope: simulated or tool-like Agent Browser Action request/result/error flow, evaluate approval preview flow, adapter-status protocol evidence, safe real browser/page dogfood evidence with before/after observations and verification transcript, and report under `docs/reports/browser-action-dogfood-evidence-<date>.md`.
+
+Status: complete. Adapter-status, evaluate approval, daemon action/result/error flow, and safe real-page dogfood evidence are covered by smokes and `docs/reports/browser-action-dogfood-evidence-2026-05-08.md`.
+
+### iter-10-sprint-05-production-completion-audit
+
+Goal: close production-level Browser Action state.
+
+Dependencies: Sprints 01-04 and all required verification.
+
+Expected scope: update Browser Action handoff completed/BLOCKED state, sprint roadmap, iteration history, sprint status, project milestones, handoff, session log, project report, run all required verification commands, and only mark the goal complete if production criteria are actually satisfied.
+
+Status: complete. Handoff, roadmap, milestones, sprint status, handoff/session log, dogfood report, and production verification commands were updated for the iter-10 Browser Action completion pass.

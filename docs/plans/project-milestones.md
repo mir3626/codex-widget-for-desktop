@@ -27,7 +27,7 @@ Evidence:
 
 Goal: use a long-lived Codex runtime boundary instead of prompt-injected one-shot calls, while preserving fallback and safe process cleanup.
 
-Current progress: 0.95
+Current progress: 0.96
 
 Evidence:
 - `CodexAppServerBridge` owns process startup, WebSocket JSON-RPC initialization, thread creation, turn streaming, interrupt, and shutdown.
@@ -45,6 +45,7 @@ Evidence:
 - Iteration 5 Sprint 01 persists Codex app-server thread ids per durable widget session and rebinds the bridge before app-server turns/regeneration; fake app-server smoke verifies separate internal sessions keep separate threads and return to the original thread when reopened.
 - Agent events are broadcast to connected clients and retained as bounded response snapshots for reconnect replay, reducing coupling between Codex turns and a single renderer socket.
 - Vision Context turns can override app-server input with capsule markdown plus selected `localImage` evidence, and fake app-server smoke verifies those image inputs reach `turn/start`.
+- Browser Action capabilities are now visible in app-server widget context, and fake app-server plus Browser Action smokes verify the Agent/daemon path sees typed actions, adapter status, approval boundaries, evaluate safeguards, and result/error flow without granting hidden browser side effects.
 
 ## real-tool-providers
 
@@ -56,6 +57,8 @@ Evidence:
 - Provider modes and tool-event rendering exist.
 - Browser DOM mode accepts live snapshots through the local daemon and injects them into model context.
 - An unpacked Chrome/Edge extension can send active-tab DOM snapshots to the daemon, exposes a local-only Options page for daemon URL changes, can use an optional Chrome/Edge native messaging host before falling back to HTTP, and `npm run package:extension` produces a zip package with icon assets. Store listing, privacy notes, review notes, permission rationales, `npm run release:browser-store-packet`, `npm run release:confirm-browser-store`, and `npm run smoke:browser-store` are in place.
+- Browser Action now upgrades the DOM provider into a typed, auditable browser actuator path: daemon-owned observations, stable interactive element ids, target resolution, safety policy, approval, extension command polling, Playwright/CDP controlled adapters, native desktop diagnostics, `full_control_dev` evaluate gating, action results, and audit activity are covered by `npm run smoke:browser-action` plus the adapter/evaluate/native smokes.
+- Real Browser Action semantic dogfood evidence is recorded in `docs/reports/browser-action-dogfood-evidence-2026-05-08.md`; native desktop executable browser chrome control remains explicitly blocked on a scoped Windows UI Automation/native input helper.
 - Screen/Vision mode accepts live snapshots through the local daemon, injects description/OCR context into model requests, and attaches image data to app-server Vision turns.
 - Iteration 4 Sprint 04 adds clearer Vision choices between snapshot, local WebM recording, and metadata-only Agent screen share; Agent share cadence/duration controls are persisted and sent through daemon Vision stream metadata.
 - Iteration 5 Sprint 02 persists redacted DOM, Vision, and Terminal provider snapshot history and surfaces it in the Activity detail popover.
@@ -101,7 +104,7 @@ Evidence:
 
 Goal: make sessions, tabs, branches, trash, artifacts, provider snapshots, activity logs, preferences, and future theme/mascot/module metadata durable through daemon-owned SQLite plus a file-backed blob store.
 
-Current progress: 0.98
+Current progress: 0.99
 
 Evidence:
 - Iteration 3 scopes a daemon-owned SQLite storage foundation instead of continuing to expand renderer-only localStorage.
@@ -126,3 +129,5 @@ Evidence:
 - `iter-5-sprint-04-completion-audit-and-readiness-update` closes the current durable product-state iteration by aligning roadmap, milestones, handoff, session log, project report, and remaining risk classification.
 - Remaining durable-product-state follow-up is dogfood-dependent: longer screen-share CPU/memory tuning and eventual browser store account submission after dogfooding.
 - Iteration 8 adds a durable module boundary for future Vision Context state: capture sessions, timeline events, selected evidence, retention policy, and capsule summaries are daemon-owned concepts, with raw media explicitly excluded from durable storage.
+- Iteration 9 adds a durable Browser Action module boundary: action sessions, normalized browser observations, element graphs, target resolutions, safety decisions, queued extension commands, verification results, and audit summaries are daemon-owned concepts, while full sensitive page state and credentials remain outside durable storage.
+- Iteration 10 completes the production Browser Action interface expansion: adapter registry/status, direct controlled-adapter execution, stale reobserve/retry, Playwright/CDP smokes, native diagnostics boundary, full_control_dev evaluate approval/credential safeguards, and real dogfood evidence.

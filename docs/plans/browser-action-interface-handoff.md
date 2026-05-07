@@ -1,9 +1,30 @@
 # Browser Action Interface Module Handoff
 
-Status: planning handoff
+Status: production adapter/evaluate expansion implemented (Iteration `iter-10`, 2026-05-08)
 Target repo: `C:\Users\Tony\Workspace\codex-widget-for-desktop`
 Target integration: Tauri + React Codex Widget daemon, browser DOM extension, optional native host, Codex app-server runtime
 Primary goal: build an independent daemon-side interface module that lets the Agent observe, plan, execute, and verify browser actions through typed, auditable browser control adapters.
+
+## 0. Implementation Status
+
+Implemented through Iteration `iter-10`:
+
+- `src/daemon/browser-action/` owns shared types, session/timeline state, normalized `BrowserObservation`, `ElementGraph`, target resolver, intent boundary, safety policy, adapter registry/status diagnostics, timeout/error normalization, extension/direct adapter execution paths, result verifier, audit helpers, and production adapter surfaces.
+- The extension adapter preserves the original snapshot button behavior while adding structured `elements[]`, stable element ids/selectors, focused element metadata, viewport metadata, and typed action execution for read, click, type, select, check, scroll, navigate, back, forward, reload, screenshot, and approved `full_control_dev` evaluate.
+- The Playwright adapter is functional for controlled-browser sessions. It can observe deterministic/local/real pages, execute typed read/click/type/select/check/scroll/navigate/back/forward/reload/screenshot/evaluate where safe, and return before/after verification evidence.
+- The CDP adapter is functional when `CODEX_WIDGET_BROWSER_ACTION_CDP_URL`, `BROWSER_ACTION_CDP_URL`, or `CDP_URL` points to a Chrome/Edge remote-debugging endpoint or page WebSocket. It can observe DOM metadata, execute typed actions, capture screenshots, and returns clear unavailable/error diagnostics when remote debugging is not configured.
+- The Windows native desktop adapter is a bounded browser-window diagnostics boundary, not a placeholder. It can report Windows browser-window availability when `CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP=1`; executable browser chrome actions are `BLOCKED` until a scoped UI Automation/native input helper is added.
+- `full_control_dev` evaluate is implemented as an explicit non-default capability. Normal Browser Action mode rejects evaluate. Full-control mode requires visible approval with code preview, code hash, timeout, result limit, and credential/cookie/token/password/payment extraction safeguards. Audit stores metadata such as code hash without persisting code preview or secret values.
+- The daemon exposes `browserAction.start/adapters/observe/execute/cancel` over WebSocket and `/browser-action/extension/poll` plus `/browser-action/extension/result` over local HTTP for the extension/native-host-compatible command loop.
+- Renderer protocol handling records Browser Action started/adapter-status/observation/progress/result/error events in Activity, and risky Browser Actions reuse the existing `interaction.required` approval UI. Evaluate approvals show code preview and hash.
+- Agent visibility is handled through widget context and fake app-server smoke coverage. A hidden custom app-server client-tool bridge remains `BLOCKED` on Codex app-server exposing a stable custom tool contract; current coverage uses daemon protocol/tool simulation instead of prompt-only claims.
+- Real semantic dogfood evidence exists at `docs/reports/browser-action-dogfood-evidence-2026-05-08.md`, with supporting JSON and screenshot assets under `docs/reports/assets/browser-action-dogfood-2026-05-08/`.
+
+Known `BLOCKED` or external-boundary items:
+
+- Native desktop executable browser chrome control requires a scoped Windows UI Automation or bounded native input helper. The current adapter intentionally reports this unsupported state rather than pretending desktop computer-use is complete.
+- Restricted browser pages such as browser settings, extension pages, Web Store pages, and browser PDF internals remain subject to browser/extension/CDP security boundaries. The module must report unsupported state or use a configured fallback adapter rather than bypassing browser security.
+- A first-class Codex app-server custom Browser Action tool remains blocked on a stable app-server custom-tool/client-tool contract; daemon protocol and fake app-server/widget-context smokes cover the current visible capability and simulated action/result flow.
 
 ## 1. Session Summary
 
@@ -56,7 +77,7 @@ The user-facing goal is not "run arbitrary scripts in my browser." The user-faci
 
 This module is not the full Windows computer-use implementation.
 
-Out of scope for the Browser Action MVP:
+Out of scope for the Browser Action Interface:
 
 - controlling arbitrary desktop apps outside the browser
 - OS-level mouse/keyboard automation
@@ -68,7 +89,7 @@ Out of scope for the Browser Action MVP:
 - arbitrary JavaScript as the default execution path
 - bypassing browser, site, extension, or OS security restrictions
 
-The module can reserve interfaces for future full-control/dev capabilities, but the MVP should be typed, auditable, and deterministic.
+The module includes explicit full-control/dev capability gates, but the normal path remains typed, auditable, and deterministic.
 
 ## 4. High-Level Architecture
 
@@ -218,7 +239,7 @@ export type BrowserObservation = {
 };
 ```
 
-MVP observation should prioritize:
+Observation should prioritize:
 
 - URL
 - title
@@ -306,7 +327,7 @@ The graph should help answer:
 
 ### 7.1 Typed Browser Actions
 
-MVP action schema:
+Production action schema:
 
 ```ts
 export type BrowserAction =
@@ -321,7 +342,8 @@ export type BrowserAction =
   | { type: "forward" }
   | { type: "reload" }
   | { type: "hotkey"; keys: string[] }
-  | { type: "screenshot"; fullPage?: boolean };
+  | { type: "screenshot"; fullPage?: boolean }
+  | { type: "evaluate"; code: string; target?: ElementTarget; timeoutMs?: number; resultLimitBytes?: number };
 ```
 
 ```ts
@@ -335,9 +357,9 @@ export type ElementTarget =
 
 The preferred target form is `element_id`. Selector and bbox targets are fallbacks.
 
-### 7.2 Future Dev Action
+### 7.2 Full-Control Dev Action
 
-Arbitrary JavaScript should be a separate high-risk capability.
+Arbitrary JavaScript is a separate high-risk capability, not the default abstraction.
 
 ```ts
 export type BrowserDevAction = {
@@ -348,12 +370,12 @@ export type BrowserDevAction = {
 };
 ```
 
-Rules:
+Implemented rules:
 
-- never use `evaluate` as the MVP default
+- never use `evaluate` as the normal Browser Action default
 - require explicit `full_control_dev` mode
 - show code and expected effect before execution
-- log code hash and result
+- log code hash/result metadata without persisting code preview or secret values
 - block obvious credential/cookie/token extraction by default unless the user explicitly overrides
 
 ## 8. Action Plan
@@ -382,7 +404,7 @@ export type BrowserActionStep = {
 };
 ```
 
-Initial MVP can execute one action at a time, but the data model should support multi-step plans.
+Current implementation executes one action at a time through the session manager and keeps the data model ready for multi-step plans.
 
 ## 9. Safety Policy
 
@@ -493,7 +515,7 @@ Adapters must not render final Agent prompts. They only return observations, exe
 
 ### 11.1 Extension Adapter
 
-MVP adapter.
+Implemented active-tab adapter.
 
 Responsibilities:
 
@@ -509,11 +531,11 @@ Implementation options:
 2. extension opens a local WebSocket to daemon
 3. native host keeps a request/response pipe between daemon and extension
 
-Recommended MVP:
+Implemented path:
 
 - keep HTTP snapshot path for backwards compatibility
-- add an extension-initiated WebSocket client to daemon for action sessions if Manifest V3 service worker lifetime allows it reliably
-- otherwise use short polling while the action panel/session is active
+- use daemon polling from the extension service worker for queued typed actions
+- return before/after observation evidence through `/browser-action/extension/result`
 
 ### 11.2 Native Host Adapter
 
@@ -532,7 +554,7 @@ The native host should not decide final prompts or safety policy.
 
 ### 11.3 CDP Adapter
 
-Future advanced adapter.
+Implemented advanced adapter when remote debugging is configured.
 
 Useful for:
 
@@ -548,10 +570,11 @@ Constraints:
 - needs a browser launched with remote debugging or attached through allowed debugging path
 - may not control the user's existing default profile unless explicitly launched/configured
 - strong but more invasive than extension-only action
+- reports clear unavailable diagnostics when no endpoint is configured
 
 ### 11.4 Playwright Adapter
 
-Future test and controlled-browser adapter.
+Implemented test and controlled-browser adapter.
 
 Useful for:
 
@@ -566,36 +589,37 @@ Constraint:
 
 ### 11.5 Native Desktop Adapter
 
-Placeholder for later Windows computer-use.
+Implemented bounded Windows browser-window diagnostics boundary.
 
-Future responsibilities:
+Blocked future responsibilities:
 
 - Windows UI Automation
 - mouse/keyboard injection
 - OCR/Vision fallback
 - browser chrome controls outside page DOM
 
-It should share the action/result/audit model but is not part of Browser Action MVP.
+It shares the action/result/audit model and reports unsupported executable actions clearly. Production browser chrome control is blocked until a scoped UI Automation/native input helper is added.
 
 ## 12. Extension Protocol
 
 The current extension only sends snapshots. Browser Action needs bidirectional commands.
 
-Suggested daemon events:
+Implemented daemon events:
 
 ```ts
 type ClientMessage =
   | { type: "browserAction.start"; actionSessionId?: string; sessionId?: string; mode?: BrowserActionMode }
-  | { type: "browserAction.observe"; actionSessionId: string }
-  | { type: "browserAction.execute"; actionSessionId: string; action: BrowserAction; requestId?: string }
+  | { type: "browserAction.adapters"; actionSessionId?: string }
+  | { type: "browserAction.observe"; actionSessionId: string; adapterId?: string }
+  | { type: "browserAction.execute"; actionSessionId: string; action: BrowserAction; requestId?: string; adapterId?: string }
   | { type: "browserAction.cancel"; actionSessionId: string };
 ```
 
 ```ts
 type ServerEvent =
   | { type: "browserAction.started"; actionSessionId: string }
+  | { type: "browserAction.adapters"; actionSessionId?: string; adapters: BrowserActionAdapterStatus[] }
   | { type: "browserAction.observation"; actionSessionId: string; observationSummary: unknown }
-  | { type: "browserAction.approvalRequired"; actionSessionId: string; decision: BrowserActionSafetyDecision }
   | { type: "browserAction.progress"; actionSessionId: string; status: string; detail?: unknown }
   | { type: "browserAction.result"; actionSessionId: string; result: BrowserActionResultSummary }
   | { type: "browserAction.error"; actionSessionId: string; error: string };
@@ -927,22 +951,22 @@ Required behavior:
 
 Arbitrary JavaScript is powerful and similar in broad capability to userscript tools like Tampermonkey, but Agent-generated code changes the risk profile.
 
-MVP policy:
+Normal-mode policy:
 
 - no arbitrary JS action in normal Browser Action mode
 - typed actions only
 - extension-owned helper functions only
 
-Future dev policy:
+Implemented dev policy:
 
 - explicit `full_control_dev` mode
 - renderer confirmation with code preview
 - code hash in audit log
 - result size limit
 - block credential/token/cookie extraction by default
-- user can override only with a visible high-risk approval
+- user can proceed only with a visible high-risk approval; credential-extraction safeguards block by default
 
-The architecture should leave room for `evaluate`, but not depend on it.
+The architecture includes `evaluate`, but normal Browser Action operation does not depend on it.
 
 ## 22. Integration with Existing Repo
 
@@ -966,7 +990,16 @@ Relevant existing files:
 
 Existing provider registry can keep the latest DOM snapshot, but Browser Action should own action sessions and action audit state.
 
-## 23. MVP Implementation Sprints
+## 23. Completed Implementation Sprints
+
+Iteration `iter-9` delivered the deterministic daemon/extension baseline below. Iteration `iter-10` completed the production adapter/evaluate expansion:
+
+- adapter registry, adapter status protocol, timeout/error normalization, and direct adapter execution path
+- Playwright controlled-browser adapter with real observe/execute/screenshot smoke coverage
+- CDP remote-debugging adapter with managed Chromium smoke coverage
+- Windows native desktop boundary with availability diagnostics and explicit UI Automation `BLOCKED` record
+- explicit `full_control_dev` evaluate gate with normal-mode rejection, approval preview/hash, result limits, timeout limits, and credential safeguards
+- semantic dogfood evidence on a real public page in `docs/reports/browser-action-dogfood-evidence-2026-05-08.md`
 
 ### Sprint 1: Types and Observation Model
 
@@ -1111,6 +1144,11 @@ scripts/smoke-browser-action-observe.mjs
 scripts/smoke-browser-action-execute.mjs
 scripts/smoke-browser-action-approval.mjs
 scripts/smoke-browser-action-app-server.mjs
+scripts/smoke-browser-action-playwright.mjs
+scripts/smoke-browser-action-cdp.mjs
+scripts/smoke-browser-action-evaluate.mjs
+scripts/smoke-browser-action-native.mjs
+scripts/collect-browser-action-dogfood-evidence.mjs
 ```
 
 Scenarios:
@@ -1198,9 +1236,9 @@ Result:
 7. Should Vision Context bbox targeting be in MVP or Sprint 2 after typed action basics?
 8. What is the first acceptable live dogfood task for semantic browser action acceptance?
 
-## 27. Recommended First Technical Decision
+## 27. Implementation Order Used
 
-Start with typed action interfaces before arbitrary JavaScript or CDP.
+The implementation started with typed action interfaces before arbitrary JavaScript or CDP, then expanded into controlled adapters and full-control gating.
 
 Order:
 

@@ -16,6 +16,7 @@ await build({
   format: "esm",
   platform: "node",
   target: "node24",
+  external: ["@playwright/test", "playwright-core", "chromium-bidi/*"],
   banner: {
     js: 'import { createRequire } from "node:module";\nconst require = createRequire(import.meta.url);'
   },

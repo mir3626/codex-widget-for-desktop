@@ -166,6 +166,8 @@ async function runTurn(socket, pendingClientResponses, threadId, thread, turnId,
   const hasBeta = history.includes("beta");
   const text = inputText.includes("what can the PTY button do")
     ? \`widgetContext=\${inputText.includes("Codex Widget desktop context:")}; pty=\${inputText.includes("PTY button/use cases")}; controls=\${inputText.includes("Mode tabs: Agent")}; persona=\${inputText.includes("Default Dog")}\`
+    : inputText.includes("what can Browser Action do")
+    ? \`browserAction=\${inputText.includes("Browser Action can observe structured interactive elements")}; typed=\${inputText.includes("typed actions")}; approval=\${inputText.includes("require user approval or clarification")}\`
     : inputText.includes("session beta isolated")
     ? \`thread=\${threadId}; history=\${thread?.inputs.length ?? 0}; alpha=\${hasAlpha}; beta=\${hasBeta}\`
     : inputText.includes("session alpha rebound")
@@ -396,6 +398,22 @@ try {
   );
   if (!fourth.text.includes("widgetContext=true") || !fourth.text.includes("pty=true") || !fourth.text.includes("controls=true") || !fourth.text.includes("persona=true")) {
     throw new Error(`Widget context was not injected into app-server turns: ${fourth.text}`);
+  }
+
+  socket.send(
+    JSON.stringify({
+      type: "ask",
+      id: "app-browser-action-context",
+      text: "what can Browser Action do?",
+      mode: "browser"
+    })
+  );
+  const browserActionContext = await waitForEvent(
+    (event) => event.type === "message.completed" && event.id === "app-browser-action-context",
+    "browser action widget context app-server completion"
+  );
+  if (!browserActionContext.text.includes("browserAction=true") || !browserActionContext.text.includes("typed=true") || !browserActionContext.text.includes("approval=true")) {
+    throw new Error(`Browser Action capability was not visible to app-server turns: ${browserActionContext.text}`);
   }
 
   const externalUrlEventsBeforeBrowserOpen = events.filter((event) => event.type === "external.url").length;

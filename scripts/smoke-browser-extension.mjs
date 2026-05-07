@@ -44,8 +44,13 @@ for (const marker of [
   "chrome.runtime.sendNativeMessage",
   "com.mir3626.codex_widget_dom",
   "/providers/dom/snapshot",
+  "/browser-action/extension/poll",
+  "/browser-action/extension/result",
   "window.getSelection",
-  "document.body"
+  "document.body",
+  "collectInteractiveElements",
+  "executeBrowserActionInPage",
+  "chrome.tabs.captureVisibleTab"
 ]) {
   if (!serviceWorker.includes(marker)) {
     throw new Error(`Extension service worker is missing marker: ${marker}`);
