@@ -45,6 +45,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - 2026-05-08T01:20:00.000+09:00 Iteration `iter-9` implemented the Browser Action Interface MVP: `src/daemon/browser-action` core module, structured extension observations, typed extension action execution, shared `browserAction.*` protocol, daemon extension poll/result endpoints, renderer progress/result logging, existing approval UI reuse, app-server widget-context visibility, and smoke coverage for resolver/safety/approval/extension-result/audit paths.
 - 2026-05-08T02:25:00.000+09:00 Iteration `iter-10` upgraded Browser Action from iter-9 MVP to production adapter/evaluate scope: adapter registry/status diagnostics, direct adapter execution, stale reobserve/retry, Playwright controlled-browser adapter, CDP remote-debugging adapter, Windows native desktop diagnostics boundary, explicit full_control_dev evaluate approval/credential safeguards, and real semantic dogfood evidence at `docs/reports/browser-action-dogfood-evidence-2026-05-08.md`.
 - 2026-05-08T02:25:00.000+09:00 Browser Action production verification passed `npm run lint`, `npm run build:web`, `npm run smoke`, Browser Action core/Playwright/CDP/evaluate/native smokes, extension/native-host/DOM/app-server smokes, `npm run dogfood:browser-action`, `cargo check --manifest-path src-tauri/Cargo.toml`, UTF-8/mojibake checks, `git diff --check`, and `npm run vibe:checkpoint`.
+- 2026-05-08T02:42:00.000+09:00 Added `docs/plans/browser-action-end-to-end-control-handoff.md` as the next Browser Action handoff. It scopes prompt-driven Agent tool integration, renderer UX, extension stability, managed browser/CDP operation, multi-step plans, browser-specific permission policy, Windows UI Automation fallback, and real dogfood matrix.
 - Current dev widget run is live after clearing port `5173`: Vite is listening on `127.0.0.1:5173`, daemon/app-server on `127.0.0.1:4128`, and startup logs are under `dist/logs/widget-dev-20260506-071947.*.log`.
 - Browser store submission runbook is source-controlled at `docs/release/browser-store-submission.md`; deferral is recorded in `docs/release/deferred-gates.json`. Use the runbook after dogfooding to clear the deferred public-release gate and then rerun strict readiness.
 
@@ -60,6 +61,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 ## Active Iteration
 
 - Current iteration: `iter-10` (`Browser Action Production Completion`) complete; Browser Action production adapter/evaluate implementation is in place except the documented native desktop UIA/custom app-server tool boundaries
+- Next recommended iteration source: `docs/plans/browser-action-end-to-end-control-handoff.md`
 - Planned sprints:
   - `iter-10-sprint-01-adapter-registry-verification-and-evaluate-core` (complete)
   - `iter-10-sprint-02-playwright-and-cdp-controlled-adapters` (complete)
