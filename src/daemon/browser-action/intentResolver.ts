@@ -101,6 +101,7 @@ export function extractTargetPhrase(text: string): string | undefined {
     return normalizeTargetPhrase(quoted);
   }
   const patterns = [
+    /^(.{1,80}?)(?:을|를)?\s*(?:눌러서|클릭해서|누르고|클릭하고|press(?:ing)?\s+(?:and|then)|click(?:ing)?\s+(?:and|then))/i,
     /(?:에서|on)\s+(.{1,80}?)(?:을|를)?\s*(?:눌러|클릭|click|press|펼쳐|expand)/i,
     /(.{1,80}?)(?:\s*링크|\s*버튼|\s*button|\s*link)(?:을|를)?\s*(?:눌러|클릭|click|press)?/i,
     /^(.{1,80}?)(?:을|를)?\s*(?:눌러(?:줘|주세요|봐|봐줘)?|클릭(?:해|해줘|해주세요)?|click|press|펼쳐(?:줘|주세요)?|expand)(?:\s*(?:줘|주세요|해줘|해주세요|please))?\.?$/i,

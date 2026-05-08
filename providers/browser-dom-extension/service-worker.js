@@ -792,13 +792,41 @@ function collectDomSnapshot() {
       "[aria-label]",
       "[title]",
       "[contenteditable='true']",
-      "[data-testid]"
+      "[data-testid]",
+      "[onclick]",
+      "[tabindex]"
     ].join(",");
     return Array.from(document.querySelectorAll(selector))
       .filter((element) => element instanceof HTMLElement)
       .map((element, index) => serializeElement(element, index))
       .filter((element) => element.visible || Boolean(element.label || element.text || element.selector))
+      .sort(compareSnapshotElements)
       .slice(0, limit);
+  }
+
+  function compareSnapshotElements(left, right) {
+    const visibleDelta = Number(Boolean(right.visible)) - Number(Boolean(left.visible));
+    if (visibleDelta !== 0) {
+      return visibleDelta;
+    }
+    const leftInteractive = isActionableSnapshotElement(left);
+    const rightInteractive = isActionableSnapshotElement(right);
+    const interactiveDelta = Number(rightInteractive) - Number(leftInteractive);
+    if (interactiveDelta !== 0) {
+      return interactiveDelta;
+    }
+    const leftY = Number(left.bbox?.y ?? 0);
+    const rightY = Number(right.bbox?.y ?? 0);
+    return leftY - rightY;
+  }
+
+  function isActionableSnapshotElement(element) {
+    const role = String(element.role ?? "").toLowerCase();
+    const tagName = String(element.tagName ?? "").toLowerCase();
+    return Boolean(element.href) ||
+      Boolean(element.editable) ||
+      ["button", "link", "textbox", "searchbox", "checkbox", "radio", "combobox", "option", "menuitem", "tab", "switch"].includes(role) ||
+      ["a", "button", "input", "textarea", "select", "option", "summary", "label"].includes(tagName);
   }
 
   function serializeElement(element, index) {
@@ -885,6 +913,9 @@ function collectDomSnapshot() {
         return "button";
       }
       return "textbox";
+    }
+    if (element.getAttribute("onclick") || element.hasAttribute("tabindex")) {
+      return "button";
     }
     return undefined;
   }
@@ -1196,7 +1227,7 @@ async function executeBrowserActionInPage(command) {
     const text = candidate.kind === "text" ? candidate.text : candidate.text || candidate.label || candidate.ariaLabel;
     if (text) {
       const normalized = normalizeText(text).toLowerCase();
-      return Array.from(document.querySelectorAll("a,button,input,textarea,select,[role],[aria-label],[title],[contenteditable='true']"))
+      return Array.from(document.querySelectorAll("a,button,input,textarea,select,[role],[aria-label],[title],[contenteditable='true'],[onclick],[tabindex]"))
         .find((element) => {
           const haystack = normalizeText([
             element.getAttribute("aria-label"),
@@ -1278,14 +1309,13 @@ async function executeBrowserActionInPage(command) {
   }
 
   function collectElements() {
-    return Array.from(document.querySelectorAll("a[href],button,input,textarea,select,option,summary,label,[role],[aria-label],[title],[contenteditable='true'],[data-testid]"))
+    return Array.from(document.querySelectorAll("a[href],button,input,textarea,select,option,summary,label,[role],[aria-label],[title],[contenteditable='true'],[data-testid],[onclick],[tabindex]"))
       .filter((element) => element instanceof HTMLElement)
-      .slice(0, 220)
       .map((element, index) => {
         const rect = element.getBoundingClientRect();
         return {
           id: `el-${index + 1}`,
-          role: element.getAttribute("role") || undefined,
+          role: readBasicRole(element),
           tagName: element.tagName.toLowerCase(),
           label: normalizeText(element.getAttribute("aria-label") || element.getAttribute("title") || element.getAttribute("placeholder") || element.textContent || "").slice(0, 500) || undefined,
           text: normalizeText(element.innerText || element.textContent || "").slice(0, 500) || undefined,
@@ -1302,12 +1332,73 @@ async function executeBrowserActionInPage(command) {
           confidence: 0.8,
           riskHints: []
         };
-      });
+      })
+      .sort(compareSnapshotElements)
+      .slice(0, 220);
+  }
+
+  function compareSnapshotElements(left, right) {
+    const visibleDelta = Number(Boolean(right.visible)) - Number(Boolean(left.visible));
+    if (visibleDelta !== 0) {
+      return visibleDelta;
+    }
+    const leftInteractive = isActionableSnapshotElement(left);
+    const rightInteractive = isActionableSnapshotElement(right);
+    const interactiveDelta = Number(rightInteractive) - Number(leftInteractive);
+    if (interactiveDelta !== 0) {
+      return interactiveDelta;
+    }
+    const leftY = Number(left.bbox?.y ?? 0);
+    const rightY = Number(right.bbox?.y ?? 0);
+    return leftY - rightY;
+  }
+
+  function isActionableSnapshotElement(element) {
+    const role = String(element.role ?? "").toLowerCase();
+    const tagName = String(element.tagName ?? "").toLowerCase();
+    return Boolean(element.href) ||
+      Boolean(element.editable) ||
+      ["button", "link", "textbox", "searchbox", "checkbox", "radio", "combobox", "option", "menuitem", "tab", "switch"].includes(role) ||
+      ["a", "button", "input", "textarea", "select", "option", "summary", "label"].includes(tagName);
   }
 
   function readValue(element) {
     if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) {
       return normalizeText(element.value).slice(0, 500) || undefined;
+    }
+    return undefined;
+  }
+
+  function readBasicRole(element) {
+    const explicit = element.getAttribute("role");
+    if (explicit) {
+      return explicit;
+    }
+    const tagName = element.tagName.toLowerCase();
+    if (tagName === "a" || element instanceof HTMLAnchorElement) {
+      return "link";
+    }
+    if (tagName === "button" || tagName === "summary" || element.getAttribute("onclick") || element.hasAttribute("tabindex")) {
+      return "button";
+    }
+    if (tagName === "textarea") {
+      return "textbox";
+    }
+    if (tagName === "select") {
+      return "combobox";
+    }
+    if (tagName === "input") {
+      const type = element.getAttribute("type")?.toLowerCase() || "text";
+      if (type === "checkbox") {
+        return "checkbox";
+      }
+      if (type === "radio") {
+        return "radio";
+      }
+      if (["button", "submit", "reset"].includes(type)) {
+        return "button";
+      }
+      return "textbox";
     }
     return undefined;
   }

@@ -143,6 +143,15 @@ function verifyResolverAndSafety(snapshot) {
   if (newChat.confidence < 0.9) {
     throw new Error(`Korean new chat target should resolve with high confidence: ${JSON.stringify(newChat)}`);
   }
+  const dcConceptPrompt = planBrowserActionFromPrompt({ text: "개념글 눌러서 재밌어보이는 글 보여줘", mode: "browser" });
+  if (!dcConceptPrompt || dcConceptPrompt.steps[0].action.type !== "click" || dcConceptPrompt.steps[0].targetSummary !== "개념글") {
+    throw new Error(`Korean connective click prompt should extract the first target phrase: ${JSON.stringify(dcConceptPrompt)}`);
+  }
+  const concept = resolveTarget({ graph, target: dcConceptPrompt.steps[0].action.target, hint: dcConceptPrompt.steps[0].targetSummary });
+  assertEqual(concept.primary?.id, "concept-posts", "Korean concept posts target");
+  if (concept.confidence < 0.9) {
+    throw new Error(`Korean concept target should resolve with high confidence: ${JSON.stringify(concept)}`);
+  }
   const fallback = resolveTarget({ graph });
   if (fallback.confidence > 0.55) {
     throw new Error(`No-hint target should be low confidence: ${JSON.stringify(fallback)}`);
@@ -347,6 +356,21 @@ function createSnapshot(state) {
         ariaLabel: "채팅",
         selector: "a[aria-label=\"채팅\"]",
         bbox: { x: 160, y: 200, w: 90, h: 36 },
+        visible: true,
+        enabled: true,
+        editable: false,
+        confidence: 0.96,
+        riskHints: []
+      },
+      {
+        id: "concept-posts",
+        role: "link",
+        tagName: "a",
+        label: "개념글",
+        text: "개념글",
+        selector: "a[href=\"/mgallery/board/lists/?id=thesingularity&exception_mode=recommend\"]",
+        href: "https://gall.dcinside.com/mgallery/board/lists/?id=thesingularity&exception_mode=recommend",
+        bbox: { x: 260, y: 200, w: 80, h: 36 },
         visible: true,
         enabled: true,
         editable: false,

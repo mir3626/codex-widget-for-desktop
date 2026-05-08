@@ -14,6 +14,7 @@ assertPlan("describe the current page", "browser", ["read"]);
 assertPlan("Summarize the attached selection.", "browser", ["read"]);
 assertPlan("현재 페이지에서 Learn more 링크 눌러줘", "browser", ["click"]);
 assertPlan("새 채팅 눌러줘", "browser", ["click"], undefined, "새 채팅");
+assertPlan("개념글 눌러서 재밌어보이는 글 보여줘", "browser", ["click"], undefined, "개념글");
 assertPlan("검색창에 \"codex app-server\" 입력하고 검색해줘", "browser", ["type", "click"]);
 assertPlan("playwright로 https://example.com 열어줘", "browser", ["navigate"], "playwright");
 assertPlan("cdp로 새로고침해줘", "browser", ["reload"], "cdp");
