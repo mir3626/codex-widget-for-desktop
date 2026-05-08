@@ -68,6 +68,18 @@
       "expectStdoutContains": "browser action renderer smoke ok"
     },
     {
+      "id": "smoke-browser-action-direct-menu",
+      "command": "npm run smoke:browser-action:direct-menu",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser action direct menu smoke ok"
+    },
+    {
+      "id": "smoke-browser-action-prompt-classification",
+      "command": "npm run smoke:browser-action:prompt-classification",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser action prompt classification smoke ok"
+    },
+    {
       "id": "dogfood-browser-action",
       "command": "npm run dogfood:browser-action",
       "expectExitCode": 0,
@@ -87,8 +99,8 @@
     }
   ],
   "handoff": {
-    "currentSprintId": "iter-11-sprint-05-completion-audit",
-    "lastActionSummary": "Iteration 11 completed the Browser Action end-to-end control layer: deterministic prompt/tool simulation, multi-step plan execution, browser-specific saved policies, renderer Browser Action panel, hardened extension active-tab channel, native helper BLOCKED diagnostics, and real E2E dogfood evidence.",
+    "currentSprintId": "iter-12-sprint-04-verification-and-dogfood-evidence",
+    "lastActionSummary": "Iteration 12 completed the Browser Action control surface: Vision-like direct popup/menu, shared browserAction.command protocol, daemon direct command to BrowserActionPlan pipeline, prompt classification hardening, direct-menu and prompt-classification smokes, and refreshed E2E dogfood evidence.",
     "openIssues": [
       "Codex app-server protocol remains experimental; stale persisted thread ids fall back safely, but live cross-process resume behavior needs dogfooding validation.",
       "Browser store account submission is deferred until after dogfooding.",
@@ -106,12 +118,12 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-08T04:10:24.000+09:00"
+    "updatedAt": "2026-05-08T09:09:48.942+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-08T04:10:24.000+09:00",
-  "verifiedAt": "2026-05-08T04:10:24.000+09:00"
+  "stateUpdatedAt": "2026-05-08T09:09:48.942+09:00",
+  "verifiedAt": "2026-05-08T09:09:48.942+09:00"
 }

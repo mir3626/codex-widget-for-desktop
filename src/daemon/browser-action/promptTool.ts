@@ -104,7 +104,10 @@ function inferPromptActions(text: string): BrowserAction[] {
 }
 
 function isInformationalBrowserActionQuestion(text: string): boolean {
-  return /(what\s+can|what\s+is|explain|help|capabilit|기능|무엇|뭐|어떤).*(browser\s*action|브라우저\s*액션)/i.test(text);
+  return (
+    /(what\s+can|what\s+is|explain|help|capabilit|기능|무엇|뭐|뭔|어떤|설명).*(browser\s*action|브라우저\s*액션)/i.test(text) ||
+    /(browser\s*action|브라우저\s*액션).*(what\s+can|what\s+is|explain|help|capabilit|기능|무엇|뭐|뭔|어떤|설명)/i.test(text)
+  );
 }
 
 function extractTargetPhrase(text: string): string | undefined {

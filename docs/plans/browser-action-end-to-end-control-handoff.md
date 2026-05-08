@@ -1,6 +1,6 @@
 # Browser Action End-to-End Control Handoff
 
-Status: implemented through `iter-11`; Windows executable UI Automation helper remains precisely `BLOCKED`
+Status: implemented through `iter-12`; Windows executable UI Automation helper remains precisely `BLOCKED`
 Target repo: `C:\Users\Tony\Workspace\codex-widget-for-desktop`
 Primary dependency: `docs/plans/browser-action-interface-handoff.md`
 Current baseline: Iteration `iter-10` completed the production Browser Action interface module, including extension typed actions, Playwright and CDP adapters, native desktop diagnostics boundary, `full_control_dev` evaluate gating, smokes, and first real dogfood evidence.
@@ -86,6 +86,16 @@ Completed in `iter-11`:
 - Browser-specific saved policies are stored in daemon settings by action family, origin, risk class, mode, expiry/revocation, and are applied before execution without persisting secret values.
 - Managed Playwright and CDP operating modes remain functional and visible through adapter diagnostics/smokes; unavailable CDP endpoint state is reported explicitly.
 - Real E2E dogfood evidence exists at `docs/reports/browser-action-e2e-dogfood-evidence-2026-05-08.md`.
+
+Completed in `iter-12`:
+
+- Added `docs/plans/browser-action-control-surface-handoff.md` as the direct invocation handoff.
+- Added shared `browserAction.command` protocol and daemon direct command handling.
+- Direct UI commands now reuse the same BrowserActionPlan, safety, approval, adapter, verification, audit, and Activity pipeline as natural-language Browser prompts.
+- Renderer has a Vision-like Browser Action popup anchored to the Browser mode button, with direct controls for observe/read/click/type/search/scroll/navigate/back/forward/reload/screenshot/status/session/policy actions.
+- Prompt classification now keeps informational Browser Action questions in normal Agent context.
+- New smokes cover direct-menu rendering/request dispatch and prompt classification.
+- E2E dogfood evidence now includes direct UI-style observe, read, and safe action evidence.
 
 Precisely blocked after `iter-11`:
 

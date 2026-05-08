@@ -2,8 +2,8 @@
 
 ## Scope
 
-- Goal: prompt-driven Browser Action end-to-end control evidence.
-- Coverage: prompt tool path, extension active-tab command channel, approval deny, non-submit form fill, Playwright controlled-browser real page navigation, CDP diagnostics, native Windows fallback boundary, restricted-page boundary.
+- Goal: prompt-driven and direct UI Browser Action end-to-end control evidence.
+- Coverage: direct UI observe/read/action commands, prompt tool path, extension active-tab command channel, approval deny, non-submit form fill, Playwright controlled-browser real page navigation, CDP diagnostics, native Windows fallback boundary, restricted-page boundary.
 - Safety: no credentials, no submit, no account mutation, no arbitrary JavaScript as default action.
 
 ## Prompt-Driven Path
@@ -15,12 +15,20 @@
 - steps: step-1:succeeded
 - latest result: succeeded; verification=passed; Read action returned the current browser observation.
 
+## Direct UI Command Path
+
+- Observe completed: true
+- Read completed: true
+- Safe action completed: true
+- Safe action request: browser-command-97e45cd3-b764-4f83-97c7-5f9be64004ed
+- Safe action verification: passed
+
 ## Extension Active-Tab Channel
 
 - Non-submit fill completed: true
-- Fill request: browser-command-70e3c857-97c9-45eb-a4bb-d2400c4b0bbe
+- Fill request: browser-command-d3fc9150-c96f-45c8-b35b-a084e2b48c06
 - Fill expected source URL: https://example.test/browser-action-e2e-dogfood
-- Fill command expiry: 2026-05-07T19:08:58.973Z
+- Fill command expiry: 2026-05-08T00:07:40.484Z
 - Safe expand completed: true
 - Safe expand verification: passed
 
@@ -55,4 +63,4 @@
 
 ## Semantic Acceptance
 
-This evidence demonstrates a real prompt-driven Browser Action request through the daemon, a typed extension command with source/expiry metadata, a user-denied risky action, a non-submitting field fill, and a controlled-browser task against a real public page with before/after verification. CDP/native unavailable paths are reported as diagnostics rather than silently marked complete.
+This evidence demonstrates direct UI-style Browser Action commands, a real prompt-driven Browser Action request through the daemon, a typed extension command with source/expiry metadata, a user-denied risky action, a non-submitting field fill, and a controlled-browser task against a real public page with before/after verification. CDP/native unavailable paths are reported as diagnostics rather than silently marked complete.

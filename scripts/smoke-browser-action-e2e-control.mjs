@@ -49,6 +49,20 @@ try {
   }
 
   send({
+    type: "browserAction.command",
+    requestId: "direct-read-request",
+    command: {
+      id: "direct-read-plan",
+      kind: "read",
+      adapterId: "extension",
+      sessionId: "browser-action-e2e-control-session",
+      mode: "auto_safe_actions"
+    }
+  });
+  const directRead = await waitFor((event) => event.type === "browserAction.result" && event.result?.plan?.id === "direct-read-plan", "direct read result");
+  assertEqual(directRead.result.plan.status, "completed", "direct read command plan");
+
+  send({
     type: "browserAction.policy.set",
     policy: {
       decision: "allow",
@@ -95,6 +109,32 @@ try {
   await postBrowserActionResult(command.requestId, true, beforeSnapshot, afterSnapshot);
   const extensionResult = await waitFor((event) => event.type === "browserAction.result" && event.result?.action === "click", "extension action result");
   assertEqual(extensionResult.result.status, "succeeded", "extension action status");
+
+  send({
+    type: "browserAction.command",
+    requestId: "direct-click-request",
+    command: {
+      id: "direct-click-plan",
+      kind: "click",
+      actionSessionId: "e2e-plan-session",
+      adapterId: "extension",
+      targetText: "Open details"
+    }
+  });
+  const directQueued = await waitFor((event) => event.type === "browserAction.progress" && event.status === "direct_paused_for_extension", "direct click queued");
+  const directCommand = await pollBrowserActionCommand();
+  assertEqual(directCommand?.requestId, directQueued.detail?.requestId, "direct command request id");
+  await postBrowserActionResult(directCommand.requestId, true, beforeSnapshot, afterSnapshot);
+  const directClickResult = await waitFor(
+    (event) =>
+      event.type === "browserAction.result" &&
+      event.result?.action === "click" &&
+      event.result?.status === "succeeded" &&
+      event.result?.id !== extensionResult.result.id,
+    "direct click result"
+  );
+  assertEqual(directClickResult.result.verification, "passed", "direct click verification");
+
 
   send({
     type: "browserAction.policy.set",

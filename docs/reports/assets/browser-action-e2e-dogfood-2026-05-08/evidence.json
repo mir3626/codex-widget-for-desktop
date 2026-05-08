@@ -1,10 +1,17 @@
 {
   "date": "2026-05-08",
   "promptAndExtension": {
+    "directUi": {
+      "observeCompleted": true,
+      "readCompleted": true,
+      "safeActionCompleted": true,
+      "safeActionRequestId": "browser-command-97e45cd3-b764-4f83-97c7-5f9be64004ed",
+      "verification": "passed"
+    },
     "promptDriven": {
       "completed": true,
       "plan": {
-        "id": "browser-plan-f9048149-a8c3-4351-8883-9692c31296fb",
+        "id": "browser-plan-e37e8d56-5014-4309-9069-94bae5dbcdfa",
         "actionSessionId": "browser-action-prompt-dogfood-prompt-read",
         "goal": "브라우저 액션으로 현재 페이지 읽어줘",
         "status": "completed",
@@ -18,7 +25,7 @@
             "safety": "allow",
             "risk": "low",
             "reason": "Read the current browser observation.",
-            "resultId": "browser-result-f85da471-4309-4762-b129-07607d427cb8"
+            "resultId": "browser-result-bbe26cfb-3a5b-444d-925d-da8b28a9e79a"
           }
         ]
       },
@@ -26,14 +33,14 @@
     },
     "nonSubmitFill": {
       "completed": true,
-      "requestId": "browser-command-70e3c857-97c9-45eb-a4bb-d2400c4b0bbe",
+      "requestId": "browser-command-d3fc9150-c96f-45c8-b35b-a084e2b48c06",
       "expectedSource": {
         "kind": "active_tab",
         "browser": "unknown",
         "url": "https://example.test/browser-action-e2e-dogfood",
         "title": "Browser Action E2E Dogfood"
       },
-      "expiresAt": "2026-05-07T19:08:58.973Z",
+      "expiresAt": "2026-05-08T00:07:40.484Z",
       "verification": "passed"
     },
     "riskyDeny": {
@@ -43,7 +50,7 @@
     },
     "extensionCommand": {
       "completed": true,
-      "requestId": "browser-command-52a61216-4543-48bb-96de-3124c2d8b650",
+      "requestId": "browser-command-ad0f24f9-8a10-4082-b95e-5e1484ba9232",
       "expectedSource": {
         "kind": "active_tab",
         "browser": "unknown",
@@ -106,6 +113,8 @@
   },
   "semanticAcceptance": {
     "promptDrivenToolPath": true,
+    "directUiObserveRead": true,
+    "directUiSafeAction": true,
     "extensionActiveTabCommand": true,
     "riskyApprovalDeny": true,
     "nonSubmitFormFill": true,

@@ -2,6 +2,7 @@ export { BrowserActionSessionManager, summarizeBrowserActionSession } from "./ac
 export { BrowserActionAdapterRegistry, executeWithAdapter, observeWithAdapter, readAdapterStatus, withBrowserActionTimeout } from "./adapterRegistry.js";
 export { cdpAdapter, extensionAdapter, nativeDesktopAdapter, playwrightAdapter } from "./adapters/index.js";
 export { buildBrowserObservation, summarizeBrowserElement, summarizeBrowserObservation } from "./browserObservation.js";
+export { buildBrowserActionPlanFromCommand, isBrowserActionDirectExecutionCommand } from "./directCommand.js";
 export { inspectEvaluateCode, summarizeEvaluatePreview } from "./evaluatePolicy.js";
 export { buildElementGraph } from "./elementGraph.js";
 export { inferBrowserActionFromText } from "./intentToAction.js";

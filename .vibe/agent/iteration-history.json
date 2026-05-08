@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-11",
+  "currentIteration": "iter-12",
   "iterations": [
     {
       "id": "iter-1",
@@ -361,6 +361,39 @@
         "durable-product-state": 0.99
       },
       "summary": "Iteration 11 completed the Browser Action end-to-end control layer. Widget browser prompts now route into a deterministic daemon Browser Action tool simulation, multi-step BrowserActionPlan execution applies safety/policies and can pause for approval or extension execution, browser-specific saved policies are persisted and surfaced in the renderer panel, extension commands carry expected source/expiry metadata with restricted-page/source-mismatch failure visibility, and real E2E dogfood evidence covers prompt-driven read, extension active-tab command, risky deny, non-submit fill, real Playwright navigation, CDP unavailable diagnostics, native boundary diagnostics, and restricted-page boundary evidence. First-class app-server custom tools and executable Windows UI Automation browser-chrome control remain precisely BLOCKED on upstream/helper scope."
+    },
+    {
+      "id": "iter-12",
+      "label": "Browser Action Control Surface",
+      "startedAt": "2026-05-08T08:55:57.164+09:00",
+      "goal": "Complete the Browser Action user-facing control surface so each capability can be invoked directly from a Vision-like widget popup/menu and through natural-language Browser mode prompts, while both paths reuse the daemon BrowserActionPlan, safety, approval, adapter, verify, and audit pipeline.",
+      "plannedSprints": [
+        "iter-12-sprint-01-control-surface-handoff-and-command-contract",
+        "iter-12-sprint-02-daemon-direct-command-pipeline",
+        "iter-12-sprint-03-browser-action-popup-ui",
+        "iter-12-sprint-04-verification-and-dogfood-evidence"
+      ],
+      "completedAt": "2026-05-08T09:09:48.942+09:00",
+      "completedSprints": [
+        "iter-12-sprint-01-control-surface-handoff-and-command-contract",
+        "iter-12-sprint-02-daemon-direct-command-pipeline",
+        "iter-12-sprint-03-browser-action-popup-ui",
+        "iter-12-sprint-04-verification-and-dogfood-evidence"
+      ],
+      "carryover": "Iter-11 completed the daemon-side prompt/tool simulation and E2E Browser Action baseline, but direct user invocation is still incomplete. Iter-12 adds a Vision-like Browser Action popup/menu, deterministic direct UI command requests, prompt classification hardening, direct-menu and prompt-classification smokes, and refreshed dogfood evidence.",
+      "openRisks": [
+        "First-class Codex app-server custom Browser Action tools remain BLOCKED on a stable app-server custom tool/client-tool contract; direct UI work must continue using daemon-owned command/plan routing.",
+        "Windows UI Automation executable browser chrome control remains BLOCKED on a scoped helper; the control surface should expose native diagnostics without implying executable fallback support.",
+        "Direct UI actions must not create hidden side effects; risky or low-confidence side-effect actions must still go through approval or clarification."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.98,
+        "durable-codex-runtime": 0.97,
+        "real-tool-providers": 1,
+        "resident-desktop-readiness": 0.95,
+        "durable-product-state": 0.99
+      },
+      "summary": "Iteration 12 completed the Browser Action user-facing control surface. The widget now has a Vision-like Browser Action popup anchored to the Browser mode button, direct UI commands normalize into BrowserActionPlan execution through the existing daemon safety/approval/adapter/verify/audit pipeline, natural-language Browser prompt execution remains intact, informational Browser Action questions are no longer misclassified, and dogfood evidence now covers direct UI observe/read/safe-action plus prompt-driven and adapter-driven paths."
     }
   ]
 }

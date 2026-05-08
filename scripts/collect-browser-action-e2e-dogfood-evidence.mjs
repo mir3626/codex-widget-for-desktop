@@ -34,6 +34,8 @@ const evidence = {
   adapterDiagnostics,
   semanticAcceptance: {
     promptDrivenToolPath: promptAndExtension.promptDriven.completed,
+    directUiObserveRead: promptAndExtension.directUi.observeCompleted && promptAndExtension.directUi.readCompleted,
+    directUiSafeAction: promptAndExtension.directUi.safeActionCompleted,
     extensionActiveTabCommand: promptAndExtension.extensionCommand.completed,
     riskyApprovalDeny: promptAndExtension.riskyDeny.completed,
     nonSubmitFormFill: promptAndExtension.nonSubmitFill.completed,
@@ -78,6 +80,47 @@ async function collectPromptAndExtensionEvidence() {
     socket.send(JSON.stringify({ type: "browserAction.policy.list" }));
     await waitFor((event) => event.type === "browserAction.policies", "initial policies");
     await postDomSnapshot(baseUrl, beforeSnapshot);
+
+    socket.send(JSON.stringify({
+      type: "browserAction.command",
+      requestId: "dogfood-direct-observe",
+      command: {
+        id: "dogfood-direct-observe-plan",
+        kind: "observe",
+        actionSessionId: "dogfood-direct-session",
+        adapterId: "extension",
+        mode: "auto_safe_actions"
+      }
+    }));
+    const directObserve = await waitFor((event) => event.type === "browserAction.observation" && event.actionSessionId === "dogfood-direct-session", "direct UI observe");
+
+    socket.send(JSON.stringify({
+      type: "browserAction.command",
+      requestId: "dogfood-direct-read",
+      command: {
+        id: "dogfood-direct-read-plan",
+        kind: "read",
+        actionSessionId: "dogfood-direct-session",
+        adapterId: "extension"
+      }
+    }));
+    const directRead = await waitFor((event) => event.type === "browserAction.result" && event.result?.plan?.id === "dogfood-direct-read-plan", "direct UI read");
+
+    socket.send(JSON.stringify({
+      type: "browserAction.command",
+      requestId: "dogfood-direct-click",
+      command: {
+        id: "dogfood-direct-click-plan",
+        kind: "click",
+        actionSessionId: "dogfood-direct-session",
+        adapterId: "extension",
+        targetText: "Open details"
+      }
+    }));
+    const directClickQueued = await waitFor((event) => event.type === "browserAction.progress" && event.status === "direct_paused_for_extension", "direct UI safe action queued");
+    const directClickCommand = await pollBrowserActionCommand(baseUrl, beforeSnapshot);
+    await postBrowserActionResult(baseUrl, directClickCommand.requestId, true, beforeSnapshot, openedSnapshot, undefined, { action: "direct-ui-expand" });
+    const directClickResult = await waitFor((event) => event.type === "browserAction.result" && event.result?.id === directClickCommand.resultId, "direct UI safe action result");
 
     socket.send(JSON.stringify({
       type: "ask",
@@ -155,6 +198,13 @@ async function collectPromptAndExtensionEvidence() {
     const clickResult = await waitFor((event) => event.type === "browserAction.result" && event.result?.action === "click" && event.result?.status === "succeeded", "click result");
 
     return {
+      directUi: {
+        observeCompleted: directObserve.observationSummary?.url === beforeSnapshot.url,
+        readCompleted: directRead.result.plan.status === "completed",
+        safeActionCompleted: directClickResult.result.status === "succeeded",
+        safeActionRequestId: directClickQueued.detail?.requestId,
+        verification: directClickResult.result.verification
+      },
       promptDriven: {
         completed: promptPlan.plan.status === "completed" && promptAnswer.text.includes("Browser Action tool path executed"),
         plan: promptPlan.plan,
@@ -389,8 +439,8 @@ function renderReport(evidence) {
 
 ## Scope
 
-- Goal: prompt-driven Browser Action end-to-end control evidence.
-- Coverage: prompt tool path, extension active-tab command channel, approval deny, non-submit form fill, Playwright controlled-browser real page navigation, CDP diagnostics, native Windows fallback boundary, restricted-page boundary.
+- Goal: prompt-driven and direct UI Browser Action end-to-end control evidence.
+- Coverage: direct UI observe/read/action commands, prompt tool path, extension active-tab command channel, approval deny, non-submit form fill, Playwright controlled-browser real page navigation, CDP diagnostics, native Windows fallback boundary, restricted-page boundary.
 - Safety: no credentials, no submit, no account mutation, no arbitrary JavaScript as default action.
 
 ## Prompt-Driven Path
@@ -398,6 +448,14 @@ function renderReport(evidence) {
 - Completed: ${evidence.promptAndExtension.promptDriven.completed}
 - Plan status: ${evidence.promptAndExtension.promptDriven.plan.status}
 - Agent response: ${evidence.promptAndExtension.promptDriven.answer}
+
+## Direct UI Command Path
+
+- Observe completed: ${evidence.promptAndExtension.directUi.observeCompleted}
+- Read completed: ${evidence.promptAndExtension.directUi.readCompleted}
+- Safe action completed: ${evidence.promptAndExtension.directUi.safeActionCompleted}
+- Safe action request: ${evidence.promptAndExtension.directUi.safeActionRequestId}
+- Safe action verification: ${formatVerification(evidence.promptAndExtension.directUi.verification)}
 
 ## Extension Active-Tab Channel
 
@@ -439,7 +497,7 @@ function renderReport(evidence) {
 
 ## Semantic Acceptance
 
-This evidence demonstrates a real prompt-driven Browser Action request through the daemon, a typed extension command with source/expiry metadata, a user-denied risky action, a non-submitting field fill, and a controlled-browser task against a real public page with before/after verification. CDP/native unavailable paths are reported as diagnostics rather than silently marked complete.
+This evidence demonstrates direct UI-style Browser Action commands, a real prompt-driven Browser Action request through the daemon, a typed extension command with source/expiry metadata, a user-denied risky action, a non-submitting field fill, and a controlled-browser task against a real public page with before/after verification. CDP/native unavailable paths are reported as diagnostics rather than silently marked complete.
 `;
 }
 

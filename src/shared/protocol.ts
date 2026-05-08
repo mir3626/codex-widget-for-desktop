@@ -241,6 +241,37 @@ export type BrowserActionPlanInput = {
   confidence?: number;
 };
 
+export type BrowserActionDirectCommandKind =
+  | "adapter_status"
+  | "observe"
+  | "read"
+  | "click"
+  | "type"
+  | "search"
+  | "scroll"
+  | "navigate"
+  | "back"
+  | "forward"
+  | "reload"
+  | "screenshot";
+
+export type BrowserActionDirectCommandInput = {
+  id?: string;
+  kind: BrowserActionDirectCommandKind;
+  actionSessionId?: string;
+  sessionId?: string;
+  mode?: BrowserActionMode;
+  adapterId?: string;
+  source?: BrowserActionSourceRequest;
+  target?: BrowserActionTargetInput;
+  targetText?: string;
+  text?: string;
+  url?: string;
+  direction?: "up" | "down" | "left" | "right";
+  amount?: "small" | "medium" | "large" | number;
+  fullPage?: boolean;
+};
+
 export type BrowserActionPolicyDecision = "ask" | "allow" | "deny";
 
 export type BrowserActionPolicySummary = {
@@ -561,6 +592,11 @@ export type ClientMessage =
       actionSessionId?: string;
       sessionId?: string;
       plan: BrowserActionPlanInput;
+      requestId?: string;
+    }
+  | {
+      type: "browserAction.command";
+      command: BrowserActionDirectCommandInput;
       requestId?: string;
     }
   | {

@@ -51,6 +51,8 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - 2026-05-08T03:44:19.794+09:00 `/vibe-sync` advanced the harness from `v1.7.11` to `v1.7.12`. Dry-run found the two known downstream Codex orchestration doc conflicts, so forced sync was followed by re-applying the local Codex Orchestrator/provider contract. Verification passed `npm run vibe:typecheck`, bootstrap preflight, and `npm run vibe:gen-schemas -- --check`.
 - 2026-05-08T04:10:24.000+09:00 Iteration `iter-11` completed the Browser Action end-to-end control layer from `docs/plans/browser-action-end-to-end-control-handoff.md`: widget browser prompts now enter a deterministic daemon Browser Action tool simulation, multi-step plans execute with safety/policy/approval/extension pauses, browser-specific policies are persisted, the renderer exposes a Browser Action panel, extension commands carry expected source/expiry metadata, and E2E dogfood evidence is recorded in `docs/reports/browser-action-e2e-dogfood-evidence-2026-05-08.md`.
 - 2026-05-08T04:10:24.000+09:00 Browser Action E2E verification passed `npm run lint`, `npm run build:web`, `npm run smoke`, all Browser Action core/Playwright/CDP/evaluate/native/E2E/renderer smokes, extension/native-host/DOM/app-server smokes, `npm run dogfood:browser-action`, `npm run dogfood:browser-action:e2e`, `cargo check --manifest-path src-tauri/Cargo.toml`, strict UTF-8/mojibake checks, `git diff --check`, and `npm run vibe:checkpoint`.
+- 2026-05-08T09:09:48.942+09:00 Iteration `iter-12` completed the Browser Action control surface from `docs/plans/browser-action-control-surface-handoff.md`: a Vision-like Browser Action popup is anchored to the Browser mode button, direct UI commands use shared `browserAction.command`, daemon command handling converts direct requests into `BrowserActionPlan` execution through safety/approval/adapter/verify/audit paths, and prompt classification keeps informational Browser Action questions in normal Agent context.
+- 2026-05-08T09:09:48.942+09:00 Browser Action control-surface verification passed `npm run lint`, `npm run build:web`, `npm run smoke`, Browser Action core/Playwright/CDP/evaluate/native/E2E/renderer/direct-menu/prompt-classification smokes, extension/native-host/DOM/app-server smokes, `npm run dogfood:browser-action`, `npm run dogfood:browser-action:e2e`, `cargo check --manifest-path src-tauri/Cargo.toml`, and `cargo check --no-default-features` through the MSVC environment.
 - Current dev widget run is live after clearing port `5173`: Vite is listening on `127.0.0.1:5173`, daemon/app-server on `127.0.0.1:4128`, and startup logs are under `dist/logs/widget-dev-20260506-071947.*.log`.
 - Browser store submission runbook is source-controlled at `docs/release/browser-store-submission.md`; deferral is recorded in `docs/release/deferred-gates.json`. Use the runbook after dogfooding to clear the deferred public-release gate and then rerun strict readiness.
 
@@ -65,14 +67,13 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 
 ## Active Iteration
 
-- Current iteration: `iter-11` (`Browser Action End-to-End Control`) complete; Browser Action is now prompt-driven through daemon tool simulation with renderer control UI, executable plans, browser-specific policies, hardened extension channel, and E2E dogfood evidence.
+- Current iteration: `iter-12` (`Browser Action Control Surface`) complete; Browser Action is now prompt-driven and directly invokable from a Vision-like Browser mode popup, with both paths using the daemon BrowserActionPlan safety/approval/adapter/verify/audit pipeline.
 - Remaining precise blockers: first-class Codex app-server custom Browser Action tools require a stable custom-tool/client-tool contract; executable Windows browser chrome/restricted-page fallback requires a scoped UI Automation/native input helper.
 - Planned sprints:
-  - `iter-11-sprint-01-prompt-tool-plan-and-policy-core` (complete)
-  - `iter-11-sprint-02-renderer-browser-action-cockpit` (complete)
-  - `iter-11-sprint-03-extension-channel-and-managed-browser-ops` (complete)
-  - `iter-11-sprint-04-windows-fallback-and-dogfood-matrix` (complete with BLOCKED UIA helper boundary)
-  - `iter-11-sprint-05-completion-audit` (complete)
+  - `iter-12-sprint-01-control-surface-handoff-and-command-contract` (complete)
+  - `iter-12-sprint-02-daemon-direct-command-pipeline` (complete)
+  - `iter-12-sprint-03-browser-action-popup-ui` (complete)
+  - `iter-12-sprint-04-verification-and-dogfood-evidence` (complete)
 - Iteration 3 status: complete as a foundation iteration only. It does not satisfy the product-wide `/goal`; it delivered SQLite storage, durable session tabs/trash, artifact/activity ledger, and Vision recording/streaming foundations.
 - Architecture boundary: daemon owns sessions, messages, app-server runtime metadata, provider snapshots, artifacts, activity logs, and durable preferences. Renderer remains UI/interaction focused.
 - Storage boundary: SQLite stores metadata and structured state; large screenshots, recordings, generated files, and before/after snapshots live in an app-data blob store referenced by hash/path metadata. OAuth/Codex credentials must not be stored in SQLite.

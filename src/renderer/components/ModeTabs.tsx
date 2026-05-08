@@ -5,11 +5,12 @@ import { MODES } from "../config";
 type ModeTabsProps = {
   mode: WidgetMode;
   providerStatusByMode: Map<WidgetMode, ProviderStatus>;
+  browserButtonRef?: RefObject<HTMLButtonElement | null>;
   visionButtonRef?: RefObject<HTMLButtonElement | null>;
   onModeChange: (mode: WidgetMode) => void;
 };
 
-export function ModeTabs({ mode, providerStatusByMode, visionButtonRef, onModeChange }: ModeTabsProps) {
+export function ModeTabs({ mode, providerStatusByMode, browserButtonRef, visionButtonRef, onModeChange }: ModeTabsProps) {
   return (
     <div className="mode-row" role="tablist" aria-label="Mode">
       {MODES.map((item) => {
@@ -18,7 +19,7 @@ export function ModeTabs({ mode, providerStatusByMode, visionButtonRef, onModeCh
         return (
           <button
             key={item.mode}
-            ref={item.mode === "screen" ? visionButtonRef : undefined}
+            ref={item.mode === "browser" ? browserButtonRef : item.mode === "screen" ? visionButtonRef : undefined}
             className={mode === item.mode ? "mode active" : "mode"}
             data-tooltip={providerStatus ? `${item.label}: ${providerStatus.detail}` : item.label}
             aria-pressed={mode === item.mode}

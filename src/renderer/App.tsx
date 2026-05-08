@@ -14,6 +14,7 @@ import {
   normalizeModelId,
   normalizeReasoningEffort,
   type AuthStatus,
+  type BrowserActionDirectCommandInput,
   type BrowserActionMode,
   type BrowserActionPolicyDecision,
   type BranchContextMessage,
@@ -64,6 +65,7 @@ import {
   VISION_STREAM_SETTINGS_STORAGE_KEY
 } from "./config";
 import { ActivityLog } from "./components/ActivityLog";
+import { BrowserActionMenu } from "./components/BrowserActionMenu";
 import { ConversationPanel } from "./components/ConversationPanel";
 import { FloatingTooltipRoot } from "./components/FloatingTooltipRoot";
 import { MascotSprite, type MascotMotionStatus } from "./components/MascotSprite";
@@ -235,6 +237,7 @@ export function App() {
   const [sessionControlsFlashing, setSessionControlsFlashing] = useState(false);
   const [showActivityDetails, setShowActivityDetails] = useState(false);
   const [showVisionMenu, setShowVisionMenu] = useState(false);
+  const [showBrowserActionMenu, setShowBrowserActionMenu] = useState(false);
   const [visionNotice, setVisionNotice] = useState<VisionNotice | null>(null);
   const [visionSession, setVisionSession] = useState<VisionStreamSummary | null>(null);
   const [visionStreamSettings, setVisionStreamSettings] = useState<VisionStreamSettings>(() => readStoredVisionStreamSettings());
@@ -273,6 +276,7 @@ export function App() {
   const streamTypingTimerRef = useRef<number | null>(null);
   const speechRunIdRef = useRef(0);
   const promptInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const browserModeButtonRef = useRef<HTMLButtonElement | null>(null);
   const visionModeButtonRef = useRef<HTMLButtonElement | null>(null);
   const visionNoticeTimerRef = useRef<number | null>(null);
   const visionNoticeHideTimerRef = useRef<number | null>(null);
@@ -450,6 +454,33 @@ export function App() {
       document.removeEventListener("keydown", closeTrashFromEscape);
     };
   }, [showSessionTrash]);
+
+  useEffect(() => {
+    if (!showBrowserActionMenu) {
+      return;
+    }
+
+    function closeBrowserActionMenuFromOutside(event: MouseEvent | globalThis.PointerEvent) {
+      const target = event.target;
+      if (target instanceof Element && target.closest(".mode-row, .browser-action-menu")) {
+        return;
+      }
+      setShowBrowserActionMenu(false);
+    }
+
+    function closeBrowserActionMenuFromEscape(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        setShowBrowserActionMenu(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", closeBrowserActionMenuFromOutside, true);
+    document.addEventListener("keydown", closeBrowserActionMenuFromEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeBrowserActionMenuFromOutside, true);
+      document.removeEventListener("keydown", closeBrowserActionMenuFromEscape);
+    };
+  }, [showBrowserActionMenu]);
 
   useEffect(() => {
     if (!showVisionMenu) {
@@ -1374,6 +1405,32 @@ export function App() {
     send({ type: "browserAction.observe", actionSessionId: browserAction.actionSessionId });
   }
 
+  function runBrowserActionCommand(command: BrowserActionDirectCommandInput) {
+    const actionSessionId = browserAction.actionSessionId ?? command.actionSessionId;
+    send({
+      type: "browserAction.command",
+      requestId: `browser-action-direct-${crypto.randomUUID()}`,
+      command: {
+        ...command,
+        actionSessionId: actionSessionId ?? undefined,
+        sessionId: activeSessionId ?? command.sessionId,
+        mode: command.mode ?? browserAction.safetyMode
+      }
+    });
+    setBrowserAction((current) => ({
+      ...current,
+      progress: [...current.progress.slice(-5), { id: crypto.randomUUID(), status: `direct_${command.kind}` }],
+      error: null
+    }));
+  }
+
+  function setBrowserActionSafetyMode(mode: BrowserActionMode) {
+    setBrowserAction((current) => ({
+      ...current,
+      safetyMode: mode
+    }));
+  }
+
   function cancelBrowserAction() {
     if (!browserAction.actionSessionId) {
       return;
@@ -1477,16 +1534,28 @@ export function App() {
 
   function selectMode(nextMode: WidgetMode) {
     if (nextMode === mode) {
+      if (nextMode === "browser") {
+        setShowBrowserActionMenu((current) => !current);
+      }
       return;
     }
 
     if (nextMode === "screen") {
       setMode("screen");
       setShowVisionMenu(true);
+      setShowBrowserActionMenu(false);
+      return;
+    }
+
+    if (nextMode === "browser") {
+      setMode("browser");
+      setShowBrowserActionMenu(true);
+      setShowVisionMenu(false);
       return;
     }
 
     setShowVisionMenu(false);
+    setShowBrowserActionMenu(false);
     setMode(nextMode);
   }
 
@@ -2775,8 +2844,20 @@ export function App() {
         <ModeTabs
           mode={mode}
           providerStatusByMode={providerStatusByMode}
+          browserButtonRef={browserModeButtonRef}
           visionButtonRef={visionModeButtonRef}
           onModeChange={selectMode}
+        />
+
+        <BrowserActionMenu
+          open={showBrowserActionMenu}
+          state={browserAction}
+          anchorRef={browserModeButtonRef}
+          onStart={startBrowserAction}
+          onCommand={runBrowserActionCommand}
+          onCancel={cancelBrowserAction}
+          onPolicyChange={updateBrowserActionPolicy}
+          onSafetyModeChange={setBrowserActionSafetyMode}
         />
 
         <VisionActionMenu
