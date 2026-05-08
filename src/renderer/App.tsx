@@ -483,6 +483,13 @@ export function App() {
   }, [showBrowserActionMenu]);
 
   useEffect(() => {
+    if (!showBrowserActionMenu) {
+      return;
+    }
+    send({ type: "browserAction.adapters", actionSessionId: browserAction.actionSessionId ?? undefined });
+  }, [showBrowserActionMenu]);
+
+  useEffect(() => {
     if (!showVisionMenu) {
       return;
     }
