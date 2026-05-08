@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { WidgetMode } from "../../shared/protocol.js";
 import type { BrowserAction, BrowserActionMode, BrowserActionPromptPlan, BrowserActionSource } from "./types.js";
+import { resolveBrowserActionIntent } from "./intentResolver.js";
 
 export function planBrowserActionFromPrompt(input: {
   text: string;
@@ -14,7 +15,8 @@ export function planBrowserActionFromPrompt(input: {
   }
   const mode = readRequestedMode(text);
   const adapterId = readRequestedAdapter(text) ?? input.defaultAdapterId;
-  const actions = inferPromptActions(text);
+  const intent = resolveBrowserActionIntent(text);
+  const actions = intent.actions;
   if (actions.length === 0) {
     return null;
   }
@@ -24,9 +26,9 @@ export function planBrowserActionFromPrompt(input: {
     mode,
     adapterId,
     source: input.source,
-    confidence: actions.length > 0 ? 0.78 : 0.4,
+    confidence: intent.confidence,
     simulatedTool: true,
-    reason: "Deterministic daemon-side Browser Action tool simulation matched the user prompt.",
+    reason: intent.reason,
     steps: actions.map((action, index) => ({
       id: `step-${index + 1}`,
       action,

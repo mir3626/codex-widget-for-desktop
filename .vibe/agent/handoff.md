@@ -1173,3 +1173,16 @@ Completed after Codex app-server browser-open duplicate correction:
 26. Run `npm run vibe:checkpoint` before ending any follow-up maintenance session.
 
 Use `docs/context/qa.md` for routine follow-up commands.
+
+## Latest Update: iter-14 Browser Action Semantic Target Pipeline
+
+Completed `iter-14` through `$vibe-iterate` after live dogfood exposed that `새 채팅 눌러줘` failed as a low-confidence side-effect action. The failure was not that Browser Action could not use Vision-style graph/resolver concepts; it was that Browser Action still had a regex-only prompt parser and a shallow target ranker that let broad DOM containers compete with the intended actionable element.
+
+Implemented the Vision Context-inspired split:
+
+- `src/daemon/browser-action/intentResolver.ts` owns executable prompt intent, Korean command suffix stripping, and target phrase extraction.
+- `src/daemon/browser-action/targetLexicon.ts` owns target normalization, compact Korean label matching, aliases, and tokenization.
+- `targetResolver` now expands aliases, uses CJK-aware tokens, and caps non-actionable container candidates so links/buttons/inputs win over sidebar/page regions.
+- Browser Bridge auto-observe now posts snapshots to the daemon over HTTP before falling back to native host, avoiding a native-host-only success path that can leave the daemon's DOM snapshot empty.
+
+Verification passed `npm run lint`, `npm run smoke`, `npm run smoke:browser-action`, `npm run smoke:browser-action:e2e-control`, `npm run smoke:browser-action:prompt-classification`, `npm run smoke:extension`, `npm run smoke:browser-bridge`, `npm run smoke:dom`, `npm run smoke:browser-native-host`, `git diff --check`, UTF-8/mojibake checks, and `npm run vibe:checkpoint`. Dev services and the Tauri widget process were restarted; `/storage/health` is ready on `127.0.0.1:4128`. The unpacked browser extension must be reloaded once for the service-worker auto-observe transport change to affect the live browser.

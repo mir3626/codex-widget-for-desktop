@@ -5,6 +5,7 @@ export { buildBrowserObservation, summarizeBrowserElement, summarizeBrowserObser
 export { buildBrowserActionPlanFromCommand, isBrowserActionDirectExecutionCommand } from "./directCommand.js";
 export { inspectEvaluateCode, summarizeEvaluatePreview } from "./evaluatePolicy.js";
 export { buildElementGraph } from "./elementGraph.js";
+export { extractTargetPhrase, isInformationalBrowserActionQuestion, resolveBrowserActionIntent } from "./intentResolver.js";
 export { inferBrowserActionFromText } from "./intentToAction.js";
 export {
   BROWSER_ACTION_POLICY_SETTING_KEY,
@@ -16,6 +17,7 @@ export {
 } from "./permissionPolicy.js";
 export { isBrowserActionPrompt, planBrowserActionFromPrompt } from "./promptTool.js";
 export { decideBrowserActionSafety, isDestructiveBrowserAction } from "./safetyPolicy.js";
+export { expandBrowserTargetAliases, normalizeBrowserTargetText, tokenizeBrowserTargetText } from "./targetLexicon.js";
 export { resolveTarget } from "./targetResolver.js";
 export { summarizeBrowserActionResult, verifyBrowserAction } from "./resultVerifier.js";
 export * from "./types.js";

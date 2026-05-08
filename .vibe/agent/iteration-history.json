@@ -427,6 +427,37 @@
         "durable-product-state": 0.99
       },
       "summary": "Iteration 13 completed the Browser Extension Bridge UX refactor. The extension icon now opens a Browser Bridge popup, badge states show OFF/IDLE/RUN/ASK/ERR, daemon base URL and bridge settings are configurable, the service worker heartbeat/status is visible to daemon and widget, approved-site auto-observe plus command polling removes the manual snapshot step, site permission and restricted-page states are explicit, Browser mode foregrounds bridge status while moving adapters/debug under diagnostics, extension/store/privacy/review copy is updated, and verification passed lint, build:web, smoke, smoke:all, Browser Action adapter/control smokes, extension/native-host/DOM/app-server smokes, Browser Bridge smoke/dogfood, Browser Action E2E dogfood, and cargo check."
+    },
+    {
+      "id": "iter-14",
+      "label": "Browser Action Semantic Target Pipeline",
+      "startedAt": "2026-05-08T12:00:30.790+09:00",
+      "completedAt": "2026-05-08T12:12:23.408+09:00",
+      "goal": "Benchmark the Vision Context evidence graph/reference resolver/intent resolver structure and complete the Browser Action natural-language intent plus DOM target-resolution pipeline so Korean commands such as 새 채팅 눌러줘 normalize, resolve, pass safety, and reach the extension action path reliably.",
+      "plannedSprints": [
+        "iter-14-sprint-01-vision-style-intent-and-lexicon-layer",
+        "iter-14-sprint-02-target-resolver-confidence-and-actionable-ranking",
+        "iter-14-sprint-03-bridge-auto-observe-hardening-and-verification"
+      ],
+      "completedSprints": [
+        "iter-14-sprint-01-vision-style-intent-and-lexicon-layer",
+        "iter-14-sprint-02-target-resolver-confidence-and-actionable-ranking",
+        "iter-14-sprint-03-bridge-auto-observe-hardening-and-verification"
+      ],
+      "carryover": "Iter-13 made Browser Bridge snapshotless in the UX, but prompt execution could still fail on Korean target commands because prompt planning used regex-only target text and the resolver treated broad DOM containers as nearly equal alternatives to the intended actionable element.",
+      "openRisks": [
+        "The installed unpacked browser extension must be reloaded after service-worker changes before the live browser uses the HTTP-first auto-observe path.",
+        "First-class app-server custom Browser Action tools remain BLOCKED on a stable Codex app-server client-tool contract; this iteration continues to use daemon-owned deterministic prompt routing.",
+        "Live site DOMs can still produce genuinely ambiguous targets; side-effect actions should continue to clarify when no actionable candidate exceeds the safety threshold."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.985,
+        "durable-codex-runtime": 0.97,
+        "real-tool-providers": 1,
+        "resident-desktop-readiness": 0.96,
+        "durable-product-state": 0.99
+      },
+      "summary": "Iteration 14 completed a Vision Context-style Browser Action semantic target pipeline. Added a dedicated Browser Action intent resolver and target lexicon, normalized Korean command suffixes such as 눌러줘, expanded exact/alias/compact/token matching for Korean and English target labels, capped non-actionable container candidates so links/buttons/inputs win over broad page regions, added prompt/resolver smoke coverage for 새 채팅 눌러줘, and hardened the Browser Bridge auto-observe transport to post snapshots directly to the daemon before falling back to native host transport."
     }
   ]
 }

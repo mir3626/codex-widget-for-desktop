@@ -147,6 +147,19 @@ export type BrowserAction =
       allowCredentialAccess?: boolean;
     };
 
+export type BrowserActionIntent = {
+  id: string;
+  utterance: string;
+  actionType: BrowserAction["type"] | "unknown";
+  actions: BrowserAction[];
+  targetPhrase?: string;
+  targetRole?: string;
+  value?: string;
+  confidence: number;
+  reason: string;
+  alternatives: string[];
+};
+
 export type BrowserActionPlanStep = {
   id: string;
   action: BrowserAction;

@@ -111,8 +111,8 @@
     }
   ],
   "handoff": {
-    "currentSprintId": "iter-13-sprint-04-widget-simplification-smokes-and-dogfood",
-    "lastActionSummary": "Iteration 13 completed the Browser Extension Bridge UX refactor: extension icon now opens popup/settings instead of snapshot capture, badge/heartbeat/status are visible to daemon and widget, approved-site auto-observe plus command polling removes the manual snapshot step, site permission/restricted states are explicit, Browser UI hides adapter/debug complexity behind diagnostics, and Browser Bridge smoke/dogfood evidence is recorded.",
+    "currentSprintId": "iter-14-sprint-03-bridge-auto-observe-hardening-and-verification",
+    "lastActionSummary": "Iteration 14 completed the Browser Action semantic target pipeline: prompt planning now uses a dedicated intent resolver and target lexicon, Korean commands such as 새 채팅 눌러줘 normalize to the actionable target phrase, target resolution favors actionable links/buttons/inputs over broad containers, and Browser Bridge auto-observe posts snapshots to the daemon over HTTP before native-host fallback.",
     "openIssues": [
       "Codex app-server protocol remains experimental; stale persisted thread ids fall back safely, but live cross-process resume behavior needs dogfooding validation.",
       "Browser store account submission is deferred until after dogfooding.",
@@ -122,7 +122,8 @@
       "Browser Action native desktop executable browser chrome control is BLOCKED on a scoped Windows UI Automation or bounded native input helper; current adapter reports browser-window diagnostics, attempted PowerShell enumeration, required helper scope, and unsupported-action errors.",
       "Browser Action custom Codex app-server tool bridge is BLOCKED on a stable app-server custom tool/client-tool contract; current coverage uses daemon prompt/tool simulation, protocol events, approval, audit, and widget-context visibility.",
       "Restricted browser pages remain subject to browser/extension/CDP security boundaries and should report unsupported state rather than bypassing protections.",
-      "Browser Bridge uses explicit site permission for automatic page context sharing; users must enable each site or opt into broader origin permissions through extension settings."
+      "Browser Bridge uses explicit site permission for automatic page context sharing; users must enable each site or opt into broader origin permissions through extension settings.",
+      "The installed unpacked Browser Bridge extension must be reloaded after service-worker changes before the live browser uses the HTTP-first auto-observe transport."
     ],
     "orchestratorContextBudget": "medium",
     "preferencesActive": [
@@ -131,12 +132,12 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-08T10:27:23.258+09:00"
+    "updatedAt": "2026-05-08T12:12:23.408+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-08T10:27:23.258+09:00",
-  "verifiedAt": "2026-05-08T10:27:23.258+09:00"
+  "stateUpdatedAt": "2026-05-08T12:12:23.408+09:00",
+  "verifiedAt": "2026-05-08T12:12:23.408+09:00"
 }

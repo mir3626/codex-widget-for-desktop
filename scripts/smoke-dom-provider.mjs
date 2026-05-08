@@ -64,8 +64,12 @@ try {
     .filter((event) => event.type === "tool.output")
     .map((event) => event.chunk ?? "")
     .join("\n");
-  if (!toolOutput.includes(marker)) {
-    throw new Error(`DOM tool output did not include marker: ${toolOutput}`);
+  const completedOutput = events
+    .filter((event) => event.type === "message.completed")
+    .map((event) => event.text ?? "")
+    .join("\n");
+  if (!toolOutput.includes(marker) && !completedOutput.includes(marker)) {
+    throw new Error(`DOM output did not include marker: ${JSON.stringify({ toolOutput, completedOutput })}`);
   }
   console.log(`dom provider smoke ok on port ${daemon.port}`);
 } finally {

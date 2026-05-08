@@ -188,13 +188,25 @@ async function syncActiveTabObservation(tab, settings, reason) {
     permission: permission.permission
   };
   const snapshotUrl = resolveDaemonUrl(settings.daemonBaseUrl, "/providers/dom/snapshot");
-  const nativeResult = settings.useNativeHost
-    ? await trySendNativeSnapshot(snapshot, snapshotUrl)
-    : { ok: false, error: "Native host fallback is disabled." };
-  if (!nativeResult.ok) {
-    await postSnapshotToDaemon(snapshot, snapshotUrl);
+  const httpResult = await tryPostSnapshotToDaemon(snapshot, snapshotUrl);
+  if (!httpResult.ok) {
+    const nativeResult = settings.useNativeHost
+      ? await trySendNativeSnapshot(snapshot, snapshotUrl)
+      : { ok: false, error: "Native host fallback is disabled." };
+    if (!nativeResult.ok) {
+      throw new Error(`Browser Bridge observation failed. HTTP: ${readError(httpResult.error)} Native: ${readError(nativeResult.error)}`);
+    }
   }
   await setBridgeBadge("IDLE", tab.id);
+}
+
+async function tryPostSnapshotToDaemon(snapshot, daemonUrl) {
+  try {
+    await postSnapshotToDaemon(snapshot, daemonUrl);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error };
+  }
 }
 
 async function trySendNativeSnapshot(snapshot, daemonUrl) {

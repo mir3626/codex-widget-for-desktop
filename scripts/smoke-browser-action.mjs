@@ -6,6 +6,7 @@ import {
   buildBrowserObservation,
   buildElementGraph,
   decideBrowserActionSafety,
+  planBrowserActionFromPrompt,
   resolveTarget
 } from "../dist/daemon/browser-action/index.js";
 import { useSmokeAppData } from "./smoke-isolation.mjs";
@@ -132,6 +133,15 @@ function verifyResolverAndSafety(snapshot) {
   const ambiguous = resolveTarget({ graph, target: { kind: "text", text: "Save", role: "button" } });
   if (ambiguous.confidence >= 0.75 || ambiguous.alternatives.length < 1) {
     throw new Error(`Ambiguous target should produce alternatives and reduced confidence: ${JSON.stringify(ambiguous)}`);
+  }
+  const koreanPrompt = planBrowserActionFromPrompt({ text: "새 채팅 눌러줘", mode: "browser" });
+  if (!koreanPrompt || koreanPrompt.steps[0].action.type !== "click" || koreanPrompt.steps[0].targetSummary !== "새 채팅") {
+    throw new Error(`Korean click prompt should extract a clean target phrase: ${JSON.stringify(koreanPrompt)}`);
+  }
+  const newChat = resolveTarget({ graph, target: koreanPrompt.steps[0].action.target, hint: koreanPrompt.steps[0].targetSummary });
+  assertEqual(newChat.primary?.id, "new-chat", "Korean new chat target");
+  if (newChat.confidence < 0.9) {
+    throw new Error(`Korean new chat target should resolve with high confidence: ${JSON.stringify(newChat)}`);
   }
   const fallback = resolveTarget({ graph });
   if (fallback.confidence > 0.55) {
@@ -312,6 +322,36 @@ function createSnapshot(state) {
         editable: false,
         confidence: 0.96,
         riskHints: ["delete"]
+      },
+      {
+        id: "new-chat",
+        role: "link",
+        tagName: "a",
+        label: "새 채팅",
+        text: "새 채팅",
+        ariaLabel: "새 채팅",
+        selector: "a[aria-label=\"새 채팅\"]",
+        bbox: { x: 20, y: 200, w: 120, h: 36 },
+        visible: true,
+        enabled: true,
+        editable: false,
+        confidence: 0.96,
+        riskHints: []
+      },
+      {
+        id: "chat",
+        role: "link",
+        tagName: "a",
+        label: "채팅",
+        text: "채팅",
+        ariaLabel: "채팅",
+        selector: "a[aria-label=\"채팅\"]",
+        bbox: { x: 160, y: 200, w: 90, h: 36 },
+        visible: true,
+        enabled: true,
+        editable: false,
+        confidence: 0.96,
+        riskHints: []
       },
       {
         id: "save-draft",

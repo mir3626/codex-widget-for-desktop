@@ -172,6 +172,10 @@ function verifyPromptPlanner() {
   if (!click || click.steps[0].action.type !== "click") {
     throw new Error(`Click prompt did not produce click plan: ${JSON.stringify(click)}`);
   }
+  const koreanClick = planBrowserActionFromPrompt({ text: "새 채팅 눌러줘", mode: "browser" });
+  if (!koreanClick || koreanClick.steps[0].action.type !== "click" || koreanClick.steps[0].targetSummary !== "새 채팅") {
+    throw new Error(`Korean click prompt did not extract the target phrase: ${JSON.stringify(koreanClick)}`);
+  }
 }
 
 function createSnapshot(state) {
