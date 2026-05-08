@@ -128,8 +128,8 @@ try {
   await expectMenuText(page, "UIA helper is not installed.");
 
   await page.getByRole("menuitem", { name: "Adapter status" }).click();
-  await page.getByRole("menuitem", { name: "Observe" }).click();
-  await page.getByRole("menuitem", { name: "Read page" }).click();
+  await page.getByRole("menuitem", { name: "Observe state" }).click();
+  await page.getByRole("menuitem", { name: "Explain page" }).click();
   await page.getByLabel("Browser Action target").fill("Open details");
   await page.getByLabel("Browser Action text").fill("codex widget");
   await page.getByRole("menuitem", { name: "Click target" }).click();

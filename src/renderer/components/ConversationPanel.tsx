@@ -184,7 +184,7 @@ export function ConversationPanel({
 
       <BrowserActionPanel
         state={browserAction}
-        visible={mode === "browser" || Boolean(browserAction.actionSessionId)}
+        visible={shouldShowBrowserActionPanel(mode, browserAction)}
         onStart={onBrowserActionStart}
         onRefreshAdapters={onBrowserActionRefreshAdapters}
         onObserve={onBrowserActionObserve}
@@ -294,5 +294,20 @@ export function ConversationPanel({
         </div>
       ) : null}
     </section>
+  );
+}
+
+function shouldShowBrowserActionPanel(mode: WidgetMode, browserAction: BrowserActionUiState): boolean {
+  if (mode !== "browser") {
+    return false;
+  }
+  const bridgeMode = browserAction.bridgeStatus?.mode;
+  return Boolean(
+    browserAction.error ||
+    bridgeMode === "permission_needed" ||
+    bridgeMode === "disconnected" ||
+    bridgeMode === "restricted" ||
+    bridgeMode === "error" ||
+    bridgeMode === "running"
   );
 }

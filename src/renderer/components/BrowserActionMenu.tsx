@@ -6,11 +6,9 @@ import {
   Keyboard,
   MousePointerClick,
   Navigation,
-  Play,
   PlugZap,
   Redo2,
   RefreshCw,
-  RotateCw,
   Search,
   ShieldCheck,
   Square,
@@ -30,7 +28,6 @@ type BrowserActionMenuProps = {
   open: boolean;
   state: BrowserActionUiState;
   anchorRef?: RefObject<HTMLButtonElement | null>;
-  onStart: (mode: BrowserActionMode) => void;
   onCommand: (command: BrowserActionDirectCommandInput) => void;
   onCancel: () => void;
   onPolicyChange: (decision: BrowserActionPolicyDecision) => void;
@@ -47,7 +44,6 @@ export function BrowserActionMenu({
   open,
   state,
   anchorRef,
-  onStart,
   onCommand,
   onCancel,
   onPolicyChange,
@@ -95,15 +91,7 @@ export function BrowserActionMenu({
           <div className="browser-menu-head">
             <div>
               <strong>Browser Bridge</strong>
-              <span>{bridge.label}</span>
-            </div>
-            <div className="browser-menu-head-actions">
-              <button type="button" aria-label="Start Browser Action session" data-tooltip="Start" onClick={() => onStart(state.safetyMode)}>
-                <Play size={13} />
-              </button>
-              <button type="button" aria-label="Cancel Browser Action session" data-tooltip="Cancel" disabled={!state.actionSessionId} onClick={onCancel}>
-                <Square size={13} />
-              </button>
+              <span>{bridge.detail}</span>
             </div>
           </div>
 
@@ -112,46 +100,29 @@ export function BrowserActionMenu({
             <span>{bridge.detail}</span>
           </div>
 
-          <div className="browser-menu-controls single">
-            <label>
-              <span>Safety</span>
-              <select
-                aria-label="Browser Action safety mode"
-                value={visibleSafetyMode}
-                onChange={(event) => onSafetyModeChange(event.target.value as BrowserActionMode)}
-              >
-                {SAFETY_MODES.map((mode) => (
-                  <option key={mode.value} value={mode.value}>
-                    {mode.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
           <div className="browser-menu-section">
-            <div className="browser-menu-eyebrow">Current Page</div>
-            <div className="browser-menu-grid">
-              <MenuButton icon={<Eye size={13} />} label="Read page" onClick={() => onCommand(withAdapter({ kind: "read" }))} />
-              <MenuButton icon={<Eye size={13} />} label="Observe" onClick={() => onCommand(withAdapter({ kind: "observe" }))} />
+            <div className="browser-menu-eyebrow">Quick actions</div>
+            <div className="browser-menu-grid primary">
+              <MenuButton icon={<Eye size={13} />} label="Explain page" onClick={() => onCommand(withAdapter({ kind: "read" }))} />
               <MenuButton icon={<ArrowDown size={13} />} label="Scroll down" onClick={() => onCommand(withAdapter({ kind: "scroll", direction: "down", amount: "medium" }))} />
               <MenuButton icon={<ArrowUp size={13} />} label="Scroll up" onClick={() => onCommand(withAdapter({ kind: "scroll", direction: "up", amount: "medium" }))} />
+              <MenuButton icon={<RefreshCw size={13} />} label="Reload" onClick={() => onCommand(withAdapter({ kind: "reload" }))} />
             </div>
           </div>
 
           <div className="browser-menu-section">
-            <div className="browser-menu-eyebrow">Target</div>
+            <div className="browser-menu-eyebrow">Search or fill</div>
             <input
               aria-label="Browser Action target"
               value={targetText}
               onChange={(event) => setTargetText(event.target.value)}
-              placeholder="target text"
+              placeholder="target name, button, or field"
             />
             <input
               aria-label="Browser Action text"
               value={text}
               onChange={(event) => setText(event.target.value)}
-              placeholder="text or search"
+              placeholder="text to type or search"
             />
             <div className="browser-menu-grid">
               <MenuButton icon={<MousePointerClick size={13} />} label="Click target" onClick={() => onCommand(withAdapter({ kind: "click", targetText }))} />
@@ -161,7 +132,7 @@ export function BrowserActionMenu({
           </div>
 
           <div className="browser-menu-section">
-            <div className="browser-menu-eyebrow">Navigation</div>
+            <div className="browser-menu-eyebrow">Open page</div>
             <input
               aria-label="Browser Action URL"
               value={url}
@@ -172,18 +143,6 @@ export function BrowserActionMenu({
               <MenuButton icon={<Navigation size={13} />} label="Navigate URL" onClick={() => onCommand(withAdapter({ kind: "navigate", url }))} />
               <MenuButton icon={<Undo2 size={13} />} label="Back" onClick={() => onCommand(withAdapter({ kind: "back" }))} />
               <MenuButton icon={<Redo2 size={13} />} label="Forward" onClick={() => onCommand(withAdapter({ kind: "forward" }))} />
-              <MenuButton icon={<RotateCw size={13} />} label="Reload" onClick={() => onCommand(withAdapter({ kind: "reload" }))} />
-            </div>
-          </div>
-
-          <div className="browser-menu-section">
-            <div className="browser-menu-eyebrow">Policy</div>
-            <div className="browser-policy-row">
-              <ShieldCheck size={13} />
-              <span>{state.policies.filter((policy) => !policy.revokedAt).length} saved</span>
-              <button type="button" onClick={() => onPolicyChange("allow")}>Allow safe</button>
-              <button type="button" onClick={() => onPolicyChange("ask")}>Ask</button>
-              <button type="button" onClick={() => onPolicyChange("deny")}>Deny risky</button>
             </div>
           </div>
 
@@ -211,8 +170,33 @@ export function BrowserActionMenu({
                   </label>
                 </div>
                 <div className="browser-menu-grid">
+                  <MenuButton icon={<Eye size={13} />} label="Observe state" onClick={() => onCommand(withAdapter({ kind: "observe" }))} />
                   <MenuButton icon={<PlugZap size={13} />} label="Adapter status" onClick={() => onCommand(withAdapter({ kind: "adapter_status" }))} />
                   <MenuButton icon={<Camera size={13} />} label="Screenshot" onClick={() => onCommand(withAdapter({ kind: "screenshot" }))} />
+                  <MenuButton icon={<Square size={13} />} label="Cancel action" onClick={onCancel} />
+                </div>
+                <div className="browser-menu-controls single">
+                  <label>
+                    <span>Safety</span>
+                    <select
+                      aria-label="Browser Action safety mode"
+                      value={visibleSafetyMode}
+                      onChange={(event) => onSafetyModeChange(event.target.value as BrowserActionMode)}
+                    >
+                      {SAFETY_MODES.map((mode) => (
+                        <option key={mode.value} value={mode.value}>
+                          {mode.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="browser-policy-row">
+                  <ShieldCheck size={13} />
+                  <span>{state.policies.filter((policy) => !policy.revokedAt).length} saved browser policy</span>
+                  <button type="button" onClick={() => onPolicyChange("allow")}>Allow safe</button>
+                  <button type="button" onClick={() => onPolicyChange("ask")}>Ask</button>
+                  <button type="button" onClick={() => onPolicyChange("deny")}>Deny risky</button>
                 </div>
                 <div className="browser-adapter-statuses">
                   {adapterStatuses.map((adapter) => (

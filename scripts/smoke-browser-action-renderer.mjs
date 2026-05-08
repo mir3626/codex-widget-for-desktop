@@ -103,6 +103,23 @@ daemon.on("connection", (socket) => {
     actionSessionId: "renderer-browser-action",
     result: { id: "renderer-result", action: "read", status: "succeeded", safety: "allow", verification: "passed" }
   }));
+  socket.send(JSON.stringify({
+    type: "browserExtensionBridge.status",
+    status: {
+      connected: true,
+      mode: "idle",
+      updatedAt: "2026-05-08T00:00:00.000Z",
+      activeTab: {
+        tabId: 42,
+        windowId: 4,
+        url: "https://example.test/renderer",
+        title: "Renderer Smoke",
+        origin: "https://example.test/*",
+        permission: "allowed"
+      },
+      nativeHost: "enabled"
+    }
+  }));
 
   socket.on("message", (raw) => {
     const message = JSON.parse(raw.toString());
@@ -125,15 +142,17 @@ try {
     throw new Error("Vite did not bind.");
   }
   await page.goto(`http://127.0.0.1:${viteAddress.port}/?daemonPort=${daemonPort}`);
-  const panel = page.getByRole("region", { name: "Browser Action" });
-  await panel.waitFor({ state: "visible" });
-  await expectPanelText(page, "Browser Bridge");
-  await expectPanelText(page, "Browser extension active tab");
-  await expectPanelText(page, "CDP remote debugging");
-  await expectPanelText(page, "auto_safe_actions");
-  await expectPanelText(page, "Renderer smoke plan completed.");
-  await expectPanelText(page, "renderer-result");
-  await expectPanelText(page, "1 saved browser policy");
+  await waitUntil(async () => (await page.locator(".browser-action-panel").count()) === 0, "Idle Browser Bridge panel should stay out of the chat top.");
+  await page.locator(".mode-row").getByRole("button", { name: "Browser" }).click();
+  await page.locator(".browser-action-menu").waitFor();
+  await expectMenuText(page, "Browser connected");
+  await expectMenuText(page, "Renderer Smoke");
+  await expectMenuText(page, "Explain page");
+  await page.getByRole("button", { name: "Advanced diagnostics" }).click();
+  await expectMenuText(page, "Browser extension active tab");
+  await expectMenuText(page, "CDP remote debugging");
+  await expectMenuText(page, "Auto safe");
+  await expectMenuText(page, "1 saved browser policy");
   await page.getByRole("button", { name: "Deny risky" }).click();
   await waitUntil(() => clientMessages.some((message) => message.type === "browserAction.policy.set" && message.policy?.decision === "deny"), "Renderer policy button did not send policy update.");
   console.log(`browser action renderer smoke ok on port ${daemonPort}`);
@@ -143,11 +162,11 @@ try {
   daemon.close();
 }
 
-async function expectPanelText(page, text) {
+async function expectMenuText(page, text) {
   await waitUntil(async () => {
-    const content = await page.locator(".browser-action-panel").evaluate((node) => node.textContent ?? "");
+    const content = await page.locator(".browser-action-menu").evaluate((node) => node.textContent ?? "");
     return content.includes(text);
-  }, `Browser Action panel did not contain ${JSON.stringify(text)}.`);
+  }, `Browser Action menu did not contain ${JSON.stringify(text)}.`);
 }
 
 async function waitUntil(predicate, message) {

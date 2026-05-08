@@ -2876,7 +2876,6 @@ export function App() {
           open={showBrowserActionMenu}
           state={browserAction}
           anchorRef={browserModeButtonRef}
-          onStart={startBrowserAction}
           onCommand={runBrowserActionCommand}
           onCancel={cancelBrowserAction}
           onPolicyChange={updateBrowserActionPolicy}

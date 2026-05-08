@@ -206,7 +206,7 @@ async function collectPromptAndExtensionEvidence() {
         verification: directClickResult.result.verification
       },
       promptDriven: {
-        completed: promptPlan.plan.status === "completed" && promptAnswer.text.includes("Browser Action tool path executed"),
+        completed: promptPlan.plan.status === "completed" && promptAnswer.text.includes("Browser Action E2E Dogfood"),
         plan: promptPlan.plan,
         answer: promptAnswer.text
       },

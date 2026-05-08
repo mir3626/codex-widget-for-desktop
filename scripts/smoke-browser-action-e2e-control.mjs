@@ -44,8 +44,8 @@ try {
   const promptPlan = await waitFor((event) => event.type === "browserAction.plan" && event.actionSessionId.includes("prompt-browser-action-read"), "prompt-driven browser action plan");
   assertEqual(promptPlan.plan.status, "completed", "prompt read plan completed");
   const promptAnswer = await waitFor((event) => event.type === "message.completed" && event.id === "prompt-browser-action-read", "prompt browser action answer");
-  if (!promptAnswer.text.includes("Browser Action tool path executed")) {
-    throw new Error(`Prompt Browser Action answer did not mention tool path: ${promptAnswer.text}`);
+  if (!promptAnswer.text.includes("Browser Action E2E test page") || !promptAnswer.text.includes("https://example.test/browser-action-e2e/before")) {
+    throw new Error(`Prompt Browser Action answer did not summarize the observed page: ${promptAnswer.text}`);
   }
 
   send({

@@ -25,7 +25,8 @@ import {
   type BrowserActionPlan,
   type BrowserActionPolicy,
   type BrowserActionResult,
-  type BrowserActionSource
+  type BrowserActionSource,
+  type BrowserObservation
 } from "./browser-action/index.js";
 import {
   VisionContextSessionManager,
@@ -1247,7 +1248,7 @@ async function tryRunBrowserActionPrompt(input: {
     input.emit({
       type: "message.completed",
       id: input.message.id,
-      text: renderBrowserPromptResponse(execution.plan, execution.results, "approval_required")
+      text: renderBrowserPromptResponse(execution.plan, execution.results, "approval_required", input.message.text)
     });
     input.emit({ type: "session.state", state: "idle", id: input.message.id });
     broadcastLedgerSnapshot(input.clients, input.storage, input.sessionId);
@@ -1264,7 +1265,7 @@ async function tryRunBrowserActionPrompt(input: {
     input.emit({
       type: "message.completed",
       id: input.message.id,
-      text: renderBrowserPromptResponse(execution.plan, execution.results, "extension_pending")
+      text: renderBrowserPromptResponse(execution.plan, execution.results, "extension_pending", input.message.text)
     });
     input.emit({ type: "session.state", state: "idle", id: input.message.id });
     broadcastLedgerSnapshot(input.clients, input.storage, input.sessionId);
@@ -1282,7 +1283,7 @@ async function tryRunBrowserActionPrompt(input: {
   input.emit({
     type: "message.completed",
     id: input.message.id,
-    text: renderBrowserPromptResponse(execution.plan, execution.results, execution.plan.status)
+    text: renderBrowserPromptResponse(execution.plan, execution.results, execution.plan.status, input.message.text)
   });
   input.emit({ type: "session.state", state: "idle", id: input.message.id });
   recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", `Prompt Browser Action ${execution.plan.status}`, summarizeBrowserActionPlan(execution.plan));
@@ -1342,18 +1343,106 @@ function summarizeBrowserActionPlan(plan: BrowserActionPlan): Record<string, unk
 function renderBrowserPromptResponse(
   plan: BrowserActionPlan,
   results: BrowserActionResult[],
-  terminalStatus: string
+  terminalStatus: string,
+  promptText = ""
 ): string {
   const latest = results.at(-1);
+  if (terminalStatus !== "approval_required" && terminalStatus !== "extension_pending" && latest?.status === "succeeded" && latest.action.type === "read") {
+    return renderBrowserReadResponse(latest.after ?? latest.before, promptText);
+  }
   const lines = [
-    "Browser Action tool path executed.",
+    /[가-힣]/.test(promptText) ? "Browser Action을 실행했습니다." : "Browser Action completed.",
     `- plan: ${plan.status}`,
     `- steps: ${plan.steps.map((step) => `${step.id}:${step.status}`).join(", ")}`,
     latest ? `- latest result: ${latest.status}; verification=${latest.verification.status}; ${latest.verification.reason}` : undefined,
-    terminalStatus === "approval_required" ? "- next: user approval is required before executing the risky step." : undefined,
-    terminalStatus === "extension_pending" ? "- next: Browser Bridge will pick up the queued action automatically; open the extension popup only if the widget reports disconnected or site permission is needed." : undefined
+    terminalStatus === "approval_required"
+      ? /[가-힣]/.test(promptText)
+        ? "- next: 위험한 단계 실행 전 승인이 필요합니다."
+        : "- next: user approval is required before executing the risky step."
+      : undefined,
+    terminalStatus === "extension_pending"
+      ? /[가-힣]/.test(promptText)
+        ? "- next: Browser Bridge가 대기 중인 작업을 자동으로 실행합니다. disconnected 또는 site permission 상태일 때만 확장 팝업을 확인하세요."
+        : "- next: Browser Bridge will pick up the queued action automatically; open the extension popup only if the widget reports disconnected or site permission is needed."
+      : undefined
   ].filter(Boolean);
   return lines.map((line) => String(redactBrowserActionSecret(line))).join("\n");
+}
+
+function renderBrowserReadResponse(observation: BrowserObservation | undefined, promptText: string): string {
+  const korean = /[가-힣]/.test(promptText);
+  if (!observation) {
+    return korean
+      ? "현재 브라우저 페이지 관찰 결과를 읽지 못했습니다. Browser Bridge 연결과 현재 사이트 권한을 확인해 주세요."
+      : "I could not read the current browser observation. Check the Browser Bridge connection and site permission.";
+  }
+
+  const title = observation.title || readHostLabel(observation.url) || (korean ? "제목 없음" : "Untitled page");
+  const url = observation.url || "";
+  const bullets = extractBrowserTextBullets(observation.text, korean);
+  const controls = observation.elements
+    .filter((element) => element.visible && (element.role === "button" || element.role === "link" || element.editable))
+    .map((element) => element.label || element.text || element.placeholder || element.title || element.href || element.selector)
+    .filter(Boolean)
+    .slice(0, 5);
+
+  const lines = korean
+    ? [
+        `현재 보고 있는 페이지는 **${title}**입니다.`,
+        url ? `URL: ${url}` : undefined,
+        "",
+        bullets.length > 0 ? "주요 내용:" : "페이지 본문 텍스트는 거의 비어 있거나 읽을 수 없습니다.",
+        ...bullets.map((item) => `- ${item}`),
+        controls.length > 0 ? "" : undefined,
+        controls.length > 0 ? `보이는 주요 조작 요소: ${controls.join(", ")}` : undefined
+      ]
+    : [
+        `The current browser page is **${title}**.`,
+        url ? `URL: ${url}` : undefined,
+        "",
+        bullets.length > 0 ? "Main content:" : "The page body text is empty or unavailable.",
+        ...bullets.map((item) => `- ${item}`),
+        controls.length > 0 ? "" : undefined,
+        controls.length > 0 ? `Visible controls: ${controls.join(", ")}` : undefined
+      ];
+  return lines.filter((line) => line !== undefined).map((line) => String(redactBrowserActionSecret(line))).join("\n");
+}
+
+function extractBrowserTextBullets(value: string | undefined, korean: boolean): string[] {
+  const mainText = String(value ?? "")
+    .split(/\n\s*Interactive elements:/i)[0]
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!mainText) {
+    return [];
+  }
+  const chunks = mainText
+    .split(korean ? /(?<=[.!?。！？])\s+|(?:\s{2,})/ : /(?<=[.!?])\s+/)
+    .map((item) => item.trim())
+    .filter((item) => item.length >= 12);
+  const source = chunks.length > 0 ? chunks : [mainText];
+  const seen = new Set<string>();
+  const bullets: string[] = [];
+  for (const item of source) {
+    const normalized = item.toLowerCase();
+    if (seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    bullets.push(item.length > 220 ? `${item.slice(0, 217).trim()}...` : item);
+    if (bullets.length >= 4) {
+      break;
+    }
+  }
+  return bullets;
+}
+
+function readHostLabel(value: string): string {
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return "";
+  }
 }
 
 function readBrowserSourceFromSnapshot(snapshot: unknown): Partial<BrowserActionSource> | undefined {
