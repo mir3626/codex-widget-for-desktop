@@ -42,7 +42,7 @@ export function isBrowserActionPrompt(text: string, mode: WidgetMode): boolean {
   if (/\bbrowser\s*action\b|\bba:|\[browser-action\]|브라우저\s*액션/i.test(text)) {
     return true;
   }
-  if (mode === "browser" && /(현재\s*페이지|페이지|링크|버튼|검색창|입력칸|클릭|눌러|스크롤|뒤로|앞으로|새로고침|이동|열어|펼쳐|체크|선택|search|click|type|scroll|navigate|reload|back|forward)/i.test(normalized)) {
+  if (mode === "browser" && /(현재\s*페이지|보고\s*있는|페이지|화면|사이트|문서|설명|요약|읽어|봐줘|링크|버튼|검색창|입력칸|클릭|눌러|스크롤|뒤로|앞으로|새로고침|이동|열어|펼쳐|체크|선택|describe|summarize|search|click|type|scroll|navigate|reload|back|forward)/i.test(normalized)) {
     return true;
   }
   return /(현재\s*페이지|active\s*tab).*(눌러|클릭|입력|검색|스크롤|열어|이동|펼쳐|click|type|search|scroll|navigate)/i.test(text);
@@ -93,7 +93,7 @@ function inferPromptActions(text: string): BrowserAction[] {
     actions.push({ type: "select", target: { kind: "text", text: targetPhrase || value || "select" }, value });
   } else if (/클릭|눌러|click|press|펼쳐|expand/i.test(normalized)) {
     actions.push({ type: "click", target: { kind: "text", text: targetPhrase || normalized.slice(0, 80) } });
-  } else if (/읽어|요약|read|observe|봐줘/i.test(normalized)) {
+  } else if (/읽어|요약|설명|describe|summarize|read|observe|봐줘/i.test(normalized)) {
     actions.push({ type: "read", reason: normalized.slice(0, 240) });
   }
 

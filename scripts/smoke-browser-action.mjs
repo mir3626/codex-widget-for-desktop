@@ -39,6 +39,7 @@ try {
   });
 
   verifyResolverAndSafety(beforeSnapshot);
+  await verifyTargetlessActionsIgnoreFallbackTargets();
   await verifyStaleReobserveRetry(beforeSnapshot, afterSnapshot);
 
   await postDomSnapshot(beforeSnapshot);
@@ -209,6 +210,40 @@ async function verifyStaleReobserveRetry(beforeSnapshot, afterSnapshot) {
   assertEqual(execution.result.status, "succeeded", "stale retry status");
   assertEqual(observeCount, 1, "stale retry reobserve count");
   assertEqual(executeCount, 2, "stale retry execute count");
+}
+
+async function verifyTargetlessActionsIgnoreFallbackTargets() {
+  const manager = new BrowserActionSessionManager(new BrowserActionAdapterRegistry());
+  const snapshot = createSnapshot("before");
+  snapshot.focusedElementId = "delete-repo";
+  snapshot.elements = [
+    {
+      ...snapshot.elements.find((element) => element.id === "delete-repo"),
+      id: "danger-first"
+    },
+    ...snapshot.elements.filter((element) => element.id !== "delete-repo")
+  ];
+  const session = manager.start({ id: "browser-action-targetless-safety", mode: "auto_safe_actions" });
+  manager.observe({ actionSessionId: session.id, snapshot });
+  const read = await manager.execute({
+    actionSessionId: session.id,
+    snapshot,
+    action: { type: "read", reason: "explain current page" }
+  });
+  assertEqual(read.result.status, "succeeded", "targetless read status");
+  assertEqual(read.result.safety.decision, "allow", "targetless read safety");
+  if (read.result.target) {
+    throw new Error(`Targetless read should not inherit fallback page target: ${JSON.stringify(read.result.target)}`);
+  }
+
+  const reload = await manager.execute({
+    actionSessionId: session.id,
+    snapshot,
+    action: { type: "reload" }
+  });
+  if (!reload.command || reload.result.status === "needs_clarification") {
+    throw new Error(`Targetless reload should queue without fallback-target clarification: ${JSON.stringify(reload.result)}`);
+  }
 }
 
 function createSnapshot(state) {

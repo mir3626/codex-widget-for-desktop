@@ -135,11 +135,18 @@ export class BrowserActionSessionManager {
     const observation = session.latestObservation ?? buildBrowserObservation({ source: session.source, snapshot: input.snapshot });
     session.latestObservation = observation;
     const graph = buildElementGraph({ observationId: observation.id, focusedElementId: observation.focusedElementId, elements: observation.elements });
-    const targetResolution = resolveTarget({
-      graph,
-      target: readActionTarget(input.action),
-      hint: input.targetHint
-    });
+    const target = readActionTarget(input.action);
+    const targetResolution = shouldResolveTarget(input.action, input.targetHint)
+      ? resolveTarget({
+          graph,
+          target,
+          hint: input.targetHint
+        })
+      : {
+          alternatives: [],
+          confidence: 1,
+          reason: "This browser action does not require a page element target."
+        };
     const baseSafety = decideBrowserActionSafety({
       action: input.action,
       target: targetResolution.primary,
@@ -613,6 +620,18 @@ export function summarizeBrowserActionSession(session: BrowserActionSession): Re
 
 function readActionTarget(action: BrowserAction) {
   return "target" in action ? action.target : undefined;
+}
+
+function shouldResolveTarget(action: BrowserAction, hint?: string): boolean {
+  if (hint?.trim()) {
+    return true;
+  }
+  return action.type === "click" ||
+    action.type === "type" ||
+    action.type === "select" ||
+    action.type === "check" ||
+    action.type === "evaluate" && Boolean(action.target) ||
+    action.type === "scroll" && Boolean(action.target);
 }
 
 function readActionTimeoutMs(action: BrowserAction): number {

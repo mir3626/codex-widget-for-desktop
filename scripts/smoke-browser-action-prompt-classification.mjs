@@ -8,6 +8,9 @@ assertNoPlan("what can Browser Action do?", "browser");
 assertNoPlan("브라우저 액션이 뭔지 설명해줘", "browser");
 
 assertPlan("현재 페이지 읽어줘", "browser", ["read"]);
+assertPlan("지금 보고있는 페이지 설명해줘", "browser", ["read"]);
+assertPlan("지금 보고있는 화면 설명해줘", "browser", ["read"]);
+assertPlan("describe the current page", "browser", ["read"]);
 assertPlan("현재 페이지에서 Learn more 링크 눌러줘", "browser", ["click"]);
 assertPlan("검색창에 \"codex app-server\" 입력하고 검색해줘", "browser", ["type", "click"]);
 assertPlan("playwright로 https://example.com 열어줘", "browser", ["navigate"], "playwright");
