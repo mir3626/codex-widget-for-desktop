@@ -1,10 +1,11 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 
 const extensionDir = path.resolve("providers/browser-dom-extension");
 const manifestPath = path.join(extensionDir, "manifest.json");
 const serviceWorkerPath = path.join(extensionDir, "service-worker.js");
+const bridgeDir = path.join(extensionDir, "bridge");
 const optionsPath = path.join(extensionDir, "options.js");
 const popupPath = path.join(extensionDir, "popup.js");
 const packagePath = path.resolve("dist/providers/codex-widget-dom-extension-0.1.0.zip");
@@ -35,6 +36,18 @@ const check = spawnSync(process.execPath, ["--check", serviceWorkerPath], {
 if (check.status !== 0) {
   throw new Error([check.stdout, check.stderr].filter(Boolean).join("\n"));
 }
+const bridgeModulePaths = (await readdir(bridgeDir))
+  .filter((entry) => entry.endsWith(".js"))
+  .sort()
+  .map((entry) => path.join(bridgeDir, entry));
+for (const modulePath of bridgeModulePaths) {
+  const moduleCheck = spawnSync(process.execPath, ["--check", modulePath], {
+    encoding: "utf8"
+  });
+  if (moduleCheck.status !== 0) {
+    throw new Error([moduleCheck.stdout, moduleCheck.stderr].filter(Boolean).join("\n"));
+  }
+}
 const optionsCheck = spawnSync(process.execPath, ["--check", optionsPath], {
   encoding: "utf8"
 });
@@ -49,6 +62,8 @@ if (popupCheck.status !== 0) {
 }
 
 const serviceWorker = await readFile(serviceWorkerPath, "utf8");
+const bridgeModules = await Promise.all(bridgeModulePaths.map((modulePath) => readFile(modulePath, "utf8")));
+const extensionWorkerSource = [serviceWorker, ...bridgeModules].join("\n");
 for (const marker of [
   "chrome.alarms.onAlarm",
   "chrome.runtime.onMessage",
@@ -80,11 +95,11 @@ for (const marker of [
   "restricted browser pages",
   "isBrowserActionPollOnlyError"
 ]) {
-  if (!serviceWorker.includes(marker)) {
-    throw new Error(`Extension service worker is missing marker: ${marker}`);
+  if (!extensionWorkerSource.includes(marker)) {
+    throw new Error(`Extension service worker/modules are missing marker: ${marker}`);
   }
 }
-if (serviceWorker.includes("chrome.action.onClicked")) {
+if (extensionWorkerSource.includes("chrome.action.onClicked")) {
   throw new Error("Extension action click must open popup, not trigger default snapshot capture.");
 }
 if (serviceWorker.includes("chrome.permissions.request")) {
@@ -118,6 +133,7 @@ const packageEntries = readZipEntries(await readFile(packagePath));
 for (const entry of [
   "manifest.json",
   "service-worker.js",
+  "bridge/injected-dom.js",
   "popup.html",
   "popup.js",
   "options.html",
