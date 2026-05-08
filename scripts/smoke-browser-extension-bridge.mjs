@@ -50,6 +50,8 @@ try {
       daemonBaseUrl: baseUrl,
       autoConnect: true,
       autoObserve: true,
+      allowAllSites: true,
+      observeBlocklist: ["https://blocked.example"],
       allowSafeReadScroll: true,
       requireApprovalForClickType: true,
       useNativeHost: true,
@@ -66,6 +68,8 @@ try {
   const status = await readBridgeStatus();
   assertEqual(status.mode, "idle", "GET bridge status mode");
   assertEqual(status.activeTab.permission, "allowed", "GET bridge permission");
+  assertEqual(status.settings.allowAllSites, true, "GET bridge all-sites setting");
+  assertEqual(status.settings.observeBlocklist[0], "https://blocked.example", "GET bridge observe blocklist");
 
   await postHeartbeat({
     connected: true,

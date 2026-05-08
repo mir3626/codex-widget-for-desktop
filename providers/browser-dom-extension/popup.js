@@ -2,6 +2,8 @@ const DEFAULT_SETTINGS = {
   daemonBaseUrl: "http://127.0.0.1:4128",
   autoConnect: true,
   autoObserve: true,
+  allowAllSites: false,
+  observeBlocklist: [],
   allowSafeReadScroll: true,
   requireApprovalForClickType: true,
   useNativeHost: true,
@@ -17,6 +19,9 @@ const fields = {
   daemonBaseUrl: document.querySelector("#daemon-base-url"),
   autoConnect: document.querySelector("#auto-connect"),
   autoObserve: document.querySelector("#auto-observe"),
+  allowAllSites: document.querySelector("#allow-all-sites"),
+  observeBlocklist: document.querySelector("#observe-blocklist"),
+  toggleCurrentSiteBlock: document.querySelector("#toggle-current-site-block"),
   allowSafeReadScroll: document.querySelector("#allow-safe-read-scroll"),
   requireApprovalForClickType: document.querySelector("#require-approval-click-type"),
   nativeHost: document.querySelector("#native-host"),
@@ -46,6 +51,10 @@ document.querySelector("#debug-capture").addEventListener("click", () => {
   void debugCapture();
 });
 
+fields.toggleCurrentSiteBlock.addEventListener("click", () => {
+  void toggleCurrentSiteBlock();
+});
+
 void refresh();
 
 async function refresh() {
@@ -59,9 +68,17 @@ async function refresh() {
 
 async function saveSettings() {
   const settings = readSettingsFromForm();
+  const permission = await syncAllSitesPermission(settings.allowAllSites);
+  if (!permission.ok && settings.allowAllSites) {
+    settings.allowAllSites = false;
+  }
   const response = await sendMessage({ type: "bridge.saveSettings", settings });
   render(response.status, response.settings);
-  setStatus(response.ok ? "Saved Browser Bridge settings." : response.error ?? "Save failed.");
+  setStatus(response.ok
+    ? permission.ok
+      ? "Saved Browser Bridge settings."
+      : permission.error ?? "All-sites permission was not granted."
+    : response.error ?? "Save failed.");
 }
 
 async function resetSettings() {
@@ -93,6 +110,24 @@ async function enableCurrentSite() {
   setStatus(permission.ok ? "Current site enabled." : permission.error ?? "Site permission was not granted.");
 }
 
+async function toggleCurrentSiteBlock() {
+  const current = readCurrentBlockPattern();
+  if (!current) {
+    setStatus("Current page cannot be added to the observe blocklist.");
+    return;
+  }
+  const list = normalizeObserveBlocklist(fields.observeBlocklist.value);
+  const index = list.indexOf(current);
+  if (index >= 0) {
+    list.splice(index, 1);
+  } else {
+    list.push(current);
+  }
+  fields.observeBlocklist.value = list.join("\n");
+  await saveSettings();
+  setStatus(index >= 0 ? `Removed ${current} from observe blocklist.` : `Added ${current} to observe blocklist.`);
+}
+
 async function debugCapture() {
   const response = await sendMessage({ type: "bridge.debugSnapshot" });
   render(response.status, response.settings);
@@ -112,6 +147,12 @@ function render(status = {}, settings = DEFAULT_SETTINGS) {
   fields.daemonBaseUrl.value = settings.daemonBaseUrl ?? DEFAULT_SETTINGS.daemonBaseUrl;
   fields.autoConnect.checked = settings.autoConnect !== false;
   fields.autoObserve.checked = settings.autoObserve !== false;
+  fields.allowAllSites.checked = settings.allowAllSites === true;
+  fields.observeBlocklist.value = normalizeObserveBlocklist(settings.observeBlocklist).join("\n");
+  const currentBlock = readCurrentBlockPattern();
+  fields.toggleCurrentSiteBlock.textContent = currentBlock && normalizeObserveBlocklist(settings.observeBlocklist).includes(currentBlock)
+    ? "Unblock current site"
+    : "Block current site";
   fields.allowSafeReadScroll.checked = settings.allowSafeReadScroll !== false;
   fields.requireApprovalForClickType.checked = settings.requireApprovalForClickType !== false;
   fields.nativeHost.checked = settings.useNativeHost !== false;
@@ -124,12 +165,49 @@ function readSettingsFromForm() {
     daemonBaseUrl: normalizeDaemonBaseUrl(fields.daemonBaseUrl.value),
     autoConnect: fields.autoConnect.checked,
     autoObserve: fields.autoObserve.checked,
+    allowAllSites: fields.allowAllSites.checked,
+    observeBlocklist: normalizeObserveBlocklist(fields.observeBlocklist.value),
     allowSafeReadScroll: fields.allowSafeReadScroll.checked,
     requireApprovalForClickType: fields.requireApprovalForClickType.checked,
     useNativeHost: fields.nativeHost.checked,
     debugSnapshot: fields.debugSnapshot.checked,
     pollIntervalSeconds: clampNumber(fields.pollInterval.value, 5, 120, DEFAULT_SETTINGS.pollIntervalSeconds)
   };
+}
+
+function readCurrentBlockPattern() {
+  try {
+    const url = new URL(String(latestStatus?.activeTab?.url ?? "").trim());
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return "";
+    }
+    return url.origin.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function normalizeObserveBlocklist(value) {
+  const raw = Array.isArray(value) ? value : String(value ?? "").split(/[\n,]/);
+  const seen = new Set();
+  const list = [];
+  for (const item of raw) {
+    const normalized = String(item ?? "")
+      .trim()
+      .replace(/\s+/g, "")
+      .replace(/\/\*$/, "")
+      .replace(/\/$/, "")
+      .toLowerCase();
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    list.push(normalized);
+    if (list.length >= 100) {
+      break;
+    }
+  }
+  return list;
 }
 
 function readCurrentOrigin() {
@@ -161,6 +239,35 @@ function requestSitePermission(origin) {
         return;
       }
       resolve(granted ? { ok: true, origin } : { ok: false, origin, error: "Site permission was not granted." });
+    });
+  });
+}
+
+async function syncAllSitesPermission(enabled) {
+  if (enabled) {
+    return requestAllSitesPermission();
+  }
+  return removeAllSitesPermission();
+}
+
+function requestAllSitesPermission() {
+  return new Promise((resolve) => {
+    chrome.permissions.request({ origins: ["http://*/*", "https://*/*"] }, (granted) => {
+      const error = chrome.runtime.lastError;
+      if (error) {
+        resolve({ ok: false, error: error.message });
+        return;
+      }
+      resolve(granted ? { ok: true } : { ok: false, error: "All-sites permission was not granted." });
+    });
+  });
+}
+
+function removeAllSitesPermission() {
+  return new Promise((resolve) => {
+    chrome.permissions.remove({ origins: ["http://*/*", "https://*/*"] }, () => {
+      const error = chrome.runtime.lastError;
+      resolve(error ? { ok: false, error: error.message } : { ok: true });
     });
   });
 }

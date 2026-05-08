@@ -1954,6 +1954,8 @@ function normalizeBrowserExtensionBridgeStatus(input: unknown): BrowserExtension
           daemonBaseUrl: readOptionalString(settings.daemonBaseUrl),
           autoConnect: readOptionalBoolean(settings.autoConnect),
           autoObserve: readOptionalBoolean(settings.autoObserve),
+          allowAllSites: readOptionalBoolean(settings.allowAllSites),
+          observeBlocklist: readOptionalStringList(settings.observeBlocklist),
           allowSafeReadScroll: readOptionalBoolean(settings.allowSafeReadScroll),
           requireApprovalForClickType: readOptionalBoolean(settings.requireApprovalForClickType),
           useNativeHost: readOptionalBoolean(settings.useNativeHost),
@@ -2011,6 +2013,15 @@ function readOptionalBoolean(value: unknown): boolean | undefined {
 function readOptionalNumber(value: unknown): number | undefined {
   const number = typeof value === "number" ? value : Number(value);
   return Number.isFinite(number) ? number : undefined;
+}
+
+function readOptionalStringList(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  return value
+    .map((item) => readOptionalString(item))
+    .filter((item): item is string => Boolean(item));
 }
 
 async function handleHttpRequest(

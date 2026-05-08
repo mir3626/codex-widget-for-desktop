@@ -38,7 +38,8 @@
         font-weight: 700;
       }
 
-      input {
+      input,
+      textarea {
         width: 100%;
         box-sizing: border-box;
         border: 1px solid #b8c8c3;
@@ -48,7 +49,13 @@
         font: inherit;
       }
 
-      input:focus {
+      textarea {
+        min-height: 86px;
+        resize: vertical;
+      }
+
+      input:focus,
+      textarea:focus {
         border-color: #147d6f;
         outline: 2px solid rgba(20, 125, 111, 0.16);
       }
@@ -89,6 +96,14 @@
       <label for="daemon-url">
         Daemon base URL
         <input id="daemon-url" spellcheck="false" />
+      </label>
+      <label>
+        <span>Allow all sites except observe blocklist</span>
+        <input id="allow-all-sites" type="checkbox" />
+      </label>
+      <label for="observe-blocklist">
+        Observe blocklist
+        <textarea id="observe-blocklist" spellcheck="false" placeholder="example.com&#10;https://private.example"></textarea>
       </label>
       <div class="actions">
         <button id="reset" type="button">Reset</button>

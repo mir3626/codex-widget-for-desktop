@@ -260,6 +260,8 @@ export type BrowserExtensionBridgeStatus = {
     daemonBaseUrl?: string;
     autoConnect?: boolean;
     autoObserve?: boolean;
+    allowAllSites?: boolean;
+    observeBlocklist?: string[];
     allowSafeReadScroll?: boolean;
     requireApprovalForClickType?: boolean;
     useNativeHost?: boolean;

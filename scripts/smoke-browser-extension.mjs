@@ -63,6 +63,9 @@ for (const marker of [
   "/browser-action/extension/heartbeat",
   "/browser-action/extension/status",
   "autoObserve",
+  "allowAllSites",
+  "observeBlocklist",
+  "ALL_SITE_ORIGINS",
   "needs_site_permission",
   "chrome.permissions.contains",
   "window.getSelection",
@@ -89,7 +92,7 @@ if (serviceWorker.includes("chrome.permissions.request")) {
 }
 
 const options = await readFile(optionsPath, "utf8");
-if (!options.includes("Saved normalized local daemon base URL") || !options.includes("daemonBaseUrl")) {
+if (!options.includes("Saved normalized local daemon base URL") || !options.includes("daemonBaseUrl") || !options.includes("requestAllSitesPermission")) {
   throw new Error("Extension options should accept and store a daemon base URL.");
 }
 
@@ -98,7 +101,7 @@ if (!popup.includes("Browser Bridge") || popup.includes("Send DOM snapshot")) {
   throw new Error("Extension popup should expose Browser Bridge settings, not default snapshot UX.");
 }
 const popupScript = await readFile(popupPath, "utf8");
-for (const marker of ["chrome.permissions.request", "bridge.refresh", "readCurrentOrigin", "requestSitePermission"]) {
+for (const marker of ["chrome.permissions.request", "chrome.permissions.remove", "bridge.refresh", "readCurrentOrigin", "requestSitePermission", "requestAllSitesPermission", "observeBlocklist"]) {
   if (!popupScript.includes(marker)) {
     throw new Error(`Extension popup is missing marker: ${marker}`);
   }

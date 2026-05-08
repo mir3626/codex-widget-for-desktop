@@ -6,11 +6,14 @@ const DEFAULT_BROWSER_ACTION_HEARTBEAT_PATH = "/browser-action/extension/heartbe
 const DEFAULT_BROWSER_ACTION_STATUS_PATH = "/browser-action/extension/status";
 const NATIVE_HOST_NAME = "com.mir3626.codex_widget_dom";
 const BRIDGE_ALARM_NAME = "codex-widget-browser-bridge";
+const ALL_SITE_ORIGINS = ["http://*/*", "https://*/*"];
 const DEFAULT_SETTINGS = {
   daemonBaseUrl: DEFAULT_DAEMON_BASE_URL,
   daemonUrl: DEFAULT_DAEMON_DOM_SNAPSHOT_URL,
   autoConnect: true,
   autoObserve: true,
+  allowAllSites: false,
+  observeBlocklist: [],
   allowSafeReadScroll: true,
   requireApprovalForClickType: true,
   useNativeHost: true,
@@ -123,7 +126,7 @@ async function refreshBridge(reason) {
 
   status.activeTab = {
     ...status.activeTab,
-    ...(await readTabPermission(tab))
+    ...(await readTabPermission(tab, settings))
   };
   if (status.activeTab.permission === "restricted") {
     status.mode = "restricted";
@@ -176,7 +179,7 @@ async function syncActiveTabObservation(tab, settings, reason) {
     throw new Error("No active tab is available for Browser Bridge observation.");
   }
   assertTabCanRunBrowserAction(tab);
-  const permission = await readTabPermission(tab);
+  const permission = await readTabPermission(tab, settings);
   if (permission.permission !== "allowed") {
     throw new Error(permission.detail ?? "Site permission is required before Browser Bridge observation.");
   }
@@ -256,7 +259,7 @@ async function pollAndExecuteBrowserAction(tab, settings) {
     return;
   }
 
-  const permission = await readTabPermission(tab);
+  const permission = await readTabPermission(tab, settings);
   const pollUrl = new URL(resolveDaemonUrl(settings.daemonBaseUrl, DEFAULT_BROWSER_ACTION_POLL_PATH));
   pollUrl.searchParams.set("tabId", String(tab.id));
   if (tab.windowId !== undefined) {
@@ -460,6 +463,8 @@ function normalizeBridgeSettings(value) {
     daemonUrl: resolveDaemonUrl(daemonBaseUrl, "/providers/dom/snapshot"),
     autoConnect: record.autoConnect !== false,
     autoObserve: record.autoObserve !== false,
+    allowAllSites: record.allowAllSites === true,
+    observeBlocklist: normalizeObserveBlocklist(record.observeBlocklist),
     allowSafeReadScroll: record.allowSafeReadScroll !== false,
     requireApprovalForClickType: record.requireApprovalForClickType !== false,
     useNativeHost: record.useNativeHost !== false,
@@ -473,6 +478,8 @@ function sanitizeSettings(settings) {
     daemonBaseUrl: settings.daemonBaseUrl,
     autoConnect: settings.autoConnect,
     autoObserve: settings.autoObserve,
+    allowAllSites: settings.allowAllSites,
+    observeBlocklist: settings.observeBlocklist,
     allowSafeReadScroll: settings.allowSafeReadScroll,
     requireApprovalForClickType: settings.requireApprovalForClickType,
     useNativeHost: settings.useNativeHost,
@@ -590,7 +597,7 @@ async function postHeartbeat(baseUrl, status) {
   }
 }
 
-async function readTabPermission(tab) {
+async function readTabPermission(tab, settings) {
   if (!tab?.url) {
     return { permission: "unavailable", detail: "No active tab URL is available." };
   }
@@ -601,10 +608,97 @@ async function readTabPermission(tab) {
   if (!origin) {
     return { permission: "restricted", detail: "Only http and https pages are supported." };
   }
+  const blocked = readObserveBlocklistMatch(tab, settings?.observeBlocklist);
+  if (blocked) {
+    return { permission: "restricted", origin, detail: `Current site is blocked by Browser Bridge observe blocklist: ${blocked}` };
+  }
+  if (settings?.allowAllSites) {
+    const allAllowed = await chrome.permissions.contains({ origins: ALL_SITE_ORIGINS });
+    return allAllowed
+      ? { permission: "allowed", origin: "<all_urls>" }
+      : { permission: "needs_site_permission", origin: "<all_urls>", detail: "Allow all sites in the Browser Bridge popup or disable all-sites access." };
+  }
   const allowed = await chrome.permissions.contains({ origins: [origin] });
   return allowed
     ? { permission: "allowed", origin }
     : { permission: "needs_site_permission", origin, detail: "Enable this site in the Browser Bridge popup." };
+}
+
+function normalizeObserveBlocklist(value) {
+  const raw = Array.isArray(value)
+    ? value
+    : String(value ?? "")
+      .split(/[\n,]/);
+  const seen = new Set();
+  const list = [];
+  for (const item of raw) {
+    const normalized = normalizeObserveBlockPattern(item);
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    list.push(normalized);
+    if (list.length >= 100) {
+      break;
+    }
+  }
+  return list;
+}
+
+function normalizeObserveBlockPattern(value) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(/\/\*$/, "")
+    .replace(/\/$/, "")
+    .toLowerCase();
+}
+
+function readObserveBlocklistMatch(tab, blocklist) {
+  if (!Array.isArray(blocklist) || blocklist.length === 0) {
+    return "";
+  }
+  let parsed;
+  try {
+    parsed = new URL(tab?.url ?? "");
+  } catch {
+    return "";
+  }
+  const href = parsed.href.toLowerCase();
+  const origin = parsed.origin.toLowerCase();
+  const host = parsed.hostname.toLowerCase();
+  for (const pattern of blocklist) {
+    if (!pattern) {
+      continue;
+    }
+    if (pattern === "<all_urls>") {
+      return pattern;
+    }
+    if (pattern.startsWith("*.")) {
+      const suffix = pattern.slice(2);
+      if (host === suffix || host.endsWith(`.${suffix}`)) {
+        return pattern;
+      }
+      continue;
+    }
+    if (pattern.includes("*")) {
+      const regex = new RegExp(`^${escapeRegExp(pattern).replace(/\\\*/g, ".*")}$`, "i");
+      if (regex.test(href) || regex.test(origin) || regex.test(host)) {
+        return pattern;
+      }
+      continue;
+    }
+    if (pattern.includes("://")) {
+      if (href.startsWith(pattern) || origin === pattern) {
+        return pattern;
+      }
+      continue;
+    }
+    if (host === pattern || host.endsWith(`.${pattern}`)) {
+      return pattern;
+    }
+  }
+  return "";
 }
 
 function originPatternForTab(tab) {
@@ -630,6 +724,10 @@ function clampNumber(value, min, max, fallback) {
     return fallback;
   }
   return Math.max(min, Math.min(max, Math.floor(number)));
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function readError(error) {

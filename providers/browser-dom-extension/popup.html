@@ -82,7 +82,8 @@
       }
 
       input[type="text"],
-      input[type="number"] {
+      input[type="number"],
+      textarea {
         grid-column: 1 / -1;
         width: 100%;
         box-sizing: border-box;
@@ -93,7 +94,13 @@
         font: inherit;
       }
 
-      input:focus {
+      textarea {
+        min-height: 54px;
+        resize: vertical;
+      }
+
+      input:focus,
+      textarea:focus {
         border-color: #147d6f;
         outline: 2px solid rgba(20, 125, 111, 0.16);
       }
@@ -165,6 +172,15 @@
           Share current page context
           <input id="auto-observe" type="checkbox" />
         </label>
+        <label>
+          Allow all sites except blocklist
+          <input id="allow-all-sites" type="checkbox" />
+        </label>
+        <label for="observe-blocklist">
+          Observe blocklist
+          <textarea id="observe-blocklist" spellcheck="false" placeholder="example.com&#10;https://private.example"></textarea>
+        </label>
+        <button id="toggle-current-site-block" type="button">Block current site</button>
         <label>
           Allow safe read/scroll
           <input id="allow-safe-read-scroll" type="checkbox" />
