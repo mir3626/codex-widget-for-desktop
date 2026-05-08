@@ -106,7 +106,7 @@ daemon.on("connection", (socket) => {
       type: "provider.status",
       providers: [
         { mode: "agent", label: "Agent", state: "ready", detail: "ready", capabilities: [] },
-        { mode: "browser", label: "DOM", state: "stub", detail: "waiting", capabilities: [] },
+        { mode: "browser", label: "Browser Bridge", state: "stub", detail: "waiting", capabilities: [] },
         { mode: "screen", label: "Vision", state: "stub", detail: "waiting", capabilities: [] },
         { mode: "terminal", label: "PTY", state: "ready", detail: "ready", capabilities: [] }
       ]
@@ -633,7 +633,7 @@ try {
 
   const modeBar = page.locator(".mode-row");
   const agentModeButton = modeBar.getByRole("button", { name: /Agent/ });
-  const domModeButton = modeBar.getByRole("button", { name: /DOM/ });
+  const domModeButton = modeBar.getByRole("button", { name: /Browser/ });
   const visionModeButton = modeBar.getByRole("button", { name: /Vision/ });
   const ptyModeButton = modeBar.getByRole("button", { name: /PTY/ });
   if ((await page.locator(".vision-toolbar").count()) !== 0) {
@@ -641,7 +641,7 @@ try {
   }
   await domModeButton.click();
   await domModeButton.click();
-  await assertModeActive(page, "DOM");
+  await assertModeActive(page, "Browser");
   await agentModeButton.click();
   await ptyModeButton.click();
   await ptyModeButton.click();

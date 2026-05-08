@@ -214,6 +214,7 @@ export function App() {
   const [executionPermissions, setExecutionPermissions] = useState<ExecutionPermissionSummary[]>([]);
   const [browserAction, setBrowserAction] = useState<BrowserActionUiState>({
     actionSessionId: null,
+    bridgeStatus: null,
     adapters: [],
     policies: [],
     observationSummary: null,
@@ -878,6 +879,21 @@ export function App() {
         error: null
       }));
       appendLog(`Browser Action adapters ready: ${ready}`, "tool");
+      return;
+    }
+
+    if (event.type === "browserExtensionBridge.status") {
+      setBrowserAction((current) => ({
+        ...current,
+        bridgeStatus: event.status
+      }));
+      if (event.status.mode === "permission_needed") {
+        appendLog("Browser Bridge needs site permission", "tool");
+      } else if (event.status.mode === "disconnected") {
+        appendLog("Browser Bridge disconnected", "muted");
+      } else if (event.status.mode === "restricted" || event.status.mode === "error") {
+        appendLog(event.status.lastError ?? "Browser Bridge unavailable", "error");
+      }
       return;
     }
 

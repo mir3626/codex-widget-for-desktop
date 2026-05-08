@@ -5,7 +5,7 @@ import type { WidgetResizeDirection } from "./shell";
 
 export const MODES: Array<{ mode: WidgetMode; label: string; icon: typeof Bot }> = [
   { mode: "agent", label: "Agent", icon: Bot },
-  { mode: "browser", label: "DOM", icon: Globe2 },
+  { mode: "browser", label: "Browser", icon: Globe2 },
   { mode: "screen", label: "Vision", icon: Eye },
   { mode: "terminal", label: "PTY", icon: SquareTerminal }
 ];

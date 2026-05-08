@@ -1,39 +1,201 @@
-const DEFAULT_DAEMON_DOM_SNAPSHOT_URL = "http://127.0.0.1:4128/providers/dom/snapshot";
+const DEFAULT_DAEMON_BASE_URL = "http://127.0.0.1:4128";
+const DEFAULT_DAEMON_DOM_SNAPSHOT_URL = `${DEFAULT_DAEMON_BASE_URL}/providers/dom/snapshot`;
 const DEFAULT_BROWSER_ACTION_POLL_PATH = "/browser-action/extension/poll";
 const DEFAULT_BROWSER_ACTION_RESULT_PATH = "/browser-action/extension/result";
+const DEFAULT_BROWSER_ACTION_HEARTBEAT_PATH = "/browser-action/extension/heartbeat";
+const DEFAULT_BROWSER_ACTION_STATUS_PATH = "/browser-action/extension/status";
 const NATIVE_HOST_NAME = "com.mir3626.codex_widget_dom";
-const BADGE_RESET_MS = 1600;
+const BRIDGE_ALARM_NAME = "codex-widget-browser-bridge";
+const DEFAULT_SETTINGS = {
+  daemonBaseUrl: DEFAULT_DAEMON_BASE_URL,
+  daemonUrl: DEFAULT_DAEMON_DOM_SNAPSHOT_URL,
+  autoConnect: true,
+  autoObserve: true,
+  allowSafeReadScroll: true,
+  requireApprovalForClickType: true,
+  useNativeHost: true,
+  debugSnapshot: false,
+  pollIntervalSeconds: 10
+};
+const BADGES = {
+  OFF: { text: "OFF", color: "#64748b" },
+  IDLE: { text: "IDLE", color: "#0f766e" },
+  RUN: { text: "RUN", color: "#2563eb" },
+  ASK: { text: "ASK", color: "#b45309" },
+  ERR: { text: "ERR", color: "#b91c1c" }
+};
 
-chrome.action.onClicked.addListener((tab) => {
-  void sendActiveTabSnapshot(tab);
+chrome.runtime.onInstalled.addListener(() => {
+  void initializeBridge("installed");
 });
 
-async function sendActiveTabSnapshot(tab) {
-  if (!tab.id) {
-    return;
+chrome.runtime.onStartup.addListener(() => {
+  void initializeBridge("startup");
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === BRIDGE_ALARM_NAME) {
+    void refreshBridge("alarm");
+  }
+});
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  void handleRuntimeMessage(message)
+    .then((response) => sendResponse(response))
+    .catch((error) => sendResponse({ ok: false, error: readError(error) }));
+  return true;
+});
+
+void initializeBridge("loaded");
+
+async function initializeBridge(reason) {
+  const settings = await readBridgeSettings();
+  await configureBridgeAlarm(settings);
+  await refreshBridge(reason);
+}
+
+async function handleRuntimeMessage(message) {
+  if (message?.type === "bridge.getStatus") {
+    const status = await refreshBridge("popup");
+    return { ok: true, status, settings: sanitizeSettings(await readBridgeSettings()) };
+  }
+  if (message?.type === "bridge.saveSettings") {
+    const settings = normalizeBridgeSettings(message.settings);
+    await writeStorage(settings);
+    await configureBridgeAlarm(settings);
+    const status = await refreshBridge("settings_saved");
+    return { ok: true, status, settings: sanitizeSettings(settings) };
+  }
+  if (message?.type === "bridge.resetSettings") {
+    await writeStorage(DEFAULT_SETTINGS);
+    await configureBridgeAlarm(DEFAULT_SETTINGS);
+    const status = await refreshBridge("settings_reset");
+    return { ok: true, status, settings: sanitizeSettings(DEFAULT_SETTINGS) };
+  }
+  if (message?.type === "bridge.testConnection") {
+    const settings = await readBridgeSettings();
+    const status = await refreshBridge("test_connection");
+    return { ok: status.connected, status, settings: sanitizeSettings(settings) };
+  }
+  if (message?.type === "bridge.enableCurrentSite") {
+    const tab = await readActiveTab();
+    const permission = await requestCurrentSitePermission(tab);
+    const status = await refreshBridge(permission.ok ? "site_enabled" : "site_permission_denied");
+    return { ok: permission.ok, status, error: permission.error };
+  }
+  if (message?.type === "bridge.debugSnapshot") {
+    const settings = await readBridgeSettings();
+    if (!settings.debugSnapshot) {
+      return { ok: false, error: "Debug page capture is disabled." };
+    }
+    const tab = await readActiveTab();
+    if (!tab?.id) {
+      return { ok: false, error: "No active tab is available." };
+    }
+    await syncActiveTabObservation(tab, settings, "debug_snapshot");
+    const status = await refreshBridge("debug_snapshot");
+    return { ok: true, status };
+  }
+  return { ok: false, error: "Unknown Browser Bridge message." };
+}
+
+async function refreshBridge(reason) {
+  const settings = await readBridgeSettings();
+  const tab = await readActiveTab();
+  const daemonBaseUrl = settings.daemonBaseUrl;
+  const status = createBaseStatus({ settings, tab, reason });
+
+  if (!settings.autoConnect) {
+    status.connected = false;
+    status.mode = "off";
+    status.lastError = "Auto-connect is disabled.";
+    await setBridgeBadge("OFF");
+    return status;
+  }
+
+  const health = await testDaemonConnection(daemonBaseUrl);
+  status.connected = health.ok;
+  if (!health.ok) {
+    status.mode = "disconnected";
+    status.lastError = health.error;
+    await setBridgeBadge("OFF");
+    return status;
+  }
+
+  status.activeTab = {
+    ...status.activeTab,
+    ...(await readTabPermission(tab))
+  };
+  if (status.activeTab.permission === "restricted") {
+    status.mode = "restricted";
+    status.lastError = status.activeTab.detail ?? "This browser page is restricted.";
+    await postHeartbeat(daemonBaseUrl, status);
+    await setBridgeBadge("ERR", tab?.id);
+    return status;
+  }
+  if (status.activeTab.permission === "needs_site_permission") {
+    status.mode = "permission_needed";
+    status.lastError = "Enable this site in the Browser Bridge popup.";
+    await postHeartbeat(daemonBaseUrl, status);
+    await setBridgeBadge("ASK", tab?.id);
+    return status;
+  }
+
+  status.mode = "idle";
+  status.lastError = null;
+  await postHeartbeat(daemonBaseUrl, status);
+  await setBridgeBadge("IDLE", tab?.id);
+
+  if (settings.autoObserve && tab?.id) {
+    try {
+      await syncActiveTabObservation(tab, settings, "auto_observe");
+      status.lastObservationAt = new Date().toISOString();
+    } catch (error) {
+      status.lastError = readError(error);
+      await setBridgeBadge("ERR", tab.id);
+      await postHeartbeat(daemonBaseUrl, { ...status, mode: "error" });
+      return status;
+    }
   }
 
   try {
-    setBadge(tab.id, "...", "#64748b");
-    const snapshot = await readSnapshotFromTab(tab.id);
-    const daemonUrl = await readDaemonSnapshotUrl();
-    const nativeResult = await trySendNativeSnapshot(snapshot, daemonUrl);
-    if (!nativeResult.ok) {
-      await postSnapshotToDaemon(snapshot, daemonUrl);
-    }
-    try {
-      await pollAndExecuteBrowserAction(tab, daemonUrl);
-    } catch (error) {
-      if (!isBrowserActionPollOnlyError(error)) {
-        throw error;
-      }
-      console.warn("[Codex Widget] Browser Action polling unavailable after snapshot.", error);
-    }
-    setBadge(tab.id, "OK", "#0f766e");
+    await pollAndExecuteBrowserAction(tab, settings);
   } catch (error) {
-    console.error("[Codex Widget] DOM snapshot failed", error);
-    setBadge(tab.id, "ERR", "#b91c1c");
+    if (!isBrowserActionPollOnlyError(error)) {
+      status.mode = "error";
+      status.lastError = readError(error);
+      await setBridgeBadge("ERR", tab?.id);
+      await postHeartbeat(daemonBaseUrl, status);
+    }
   }
+
+  return status;
+}
+
+async function syncActiveTabObservation(tab, settings, reason) {
+  if (!tab?.id) {
+    throw new Error("No active tab is available for Browser Bridge observation.");
+  }
+  assertTabCanRunBrowserAction(tab);
+  const permission = await readTabPermission(tab);
+  if (permission.permission !== "allowed") {
+    throw new Error(permission.detail ?? "Site permission is required before Browser Bridge observation.");
+  }
+  await setBridgeBadge("RUN", tab.id);
+  const snapshot = await readSnapshotFromTab(tab.id);
+  snapshot.bridge = {
+    reason,
+    observedAt: new Date().toISOString(),
+    permission: permission.permission
+  };
+  const snapshotUrl = resolveDaemonUrl(settings.daemonBaseUrl, "/providers/dom/snapshot");
+  const nativeResult = settings.useNativeHost
+    ? await trySendNativeSnapshot(snapshot, snapshotUrl)
+    : { ok: false, error: "Native host fallback is disabled." };
+  if (!nativeResult.ok) {
+    await postSnapshotToDaemon(snapshot, snapshotUrl);
+  }
+  await setBridgeBadge("IDLE", tab.id);
 }
 
 async function trySendNativeSnapshot(snapshot, daemonUrl) {
@@ -78,12 +240,13 @@ async function postSnapshotToDaemon(snapshot, daemonUrl) {
   }
 }
 
-async function pollAndExecuteBrowserAction(tab, daemonUrl) {
-  if (!tab.id) {
+async function pollAndExecuteBrowserAction(tab, settings) {
+  if (!tab?.id) {
     return;
   }
 
-  const pollUrl = new URL(resolveDaemonActionUrl(daemonUrl, DEFAULT_BROWSER_ACTION_POLL_PATH));
+  const permission = await readTabPermission(tab);
+  const pollUrl = new URL(resolveDaemonUrl(settings.daemonBaseUrl, DEFAULT_BROWSER_ACTION_POLL_PATH));
   pollUrl.searchParams.set("tabId", String(tab.id));
   if (tab.windowId !== undefined) {
     pollUrl.searchParams.set("windowId", String(tab.windowId));
@@ -94,7 +257,9 @@ async function pollAndExecuteBrowserAction(tab, daemonUrl) {
   if (tab.title) {
     pollUrl.searchParams.set("title", tab.title);
   }
-  const resultUrl = resolveDaemonActionUrl(daemonUrl, DEFAULT_BROWSER_ACTION_RESULT_PATH);
+  pollUrl.searchParams.set("permission", permission.permission);
+  pollUrl.searchParams.set("mode", "browser_bridge");
+  const resultUrl = resolveDaemonUrl(settings.daemonBaseUrl, DEFAULT_BROWSER_ACTION_RESULT_PATH);
   const response = await fetch(pollUrl.toString(), { method: "GET" });
   if (!response.ok) {
     throw new Error(`Browser Action poll failed (${response.status}).`);
@@ -106,14 +271,16 @@ async function pollAndExecuteBrowserAction(tab, daemonUrl) {
     return;
   }
 
-  const before = await safeReadSnapshotFromTab(tab.id);
-  const sourceMismatch = detectSourceMismatch(command.expectedSource, tab, before);
+  await setBridgeBadge("RUN", tab.id);
+  const permissionError = permission.permission === "allowed" ? "" : permission.detail ?? "Site permission is required before Browser Action execution.";
+  const before = permissionError ? null : await safeReadSnapshotFromTab(tab.id);
+  const sourceMismatch = permissionError || detectSourceMismatch(command.expectedSource, tab, before);
   const result = sourceMismatch
     ? {
         ok: false,
         error: sourceMismatch,
         after: before,
-        metadata: { actualUrl: tab.url ?? before?.url, actualTitle: tab.title ?? before?.title }
+        metadata: { actualUrl: tab.url ?? before?.url, actualTitle: tab.title ?? before?.title, permission: permission.permission }
       }
     : await executeBrowserActionCommand(tab, command);
   const after = result.after ?? await safeReadSnapshotFromTab(tab.id);
@@ -130,9 +297,12 @@ async function pollAndExecuteBrowserAction(tab, daemonUrl) {
         windowId: tab.windowId,
         url: tab.url,
         title: tab.title
-      }
+      },
+      permission: permission.permission,
+      bridgeMode: "command_first"
     }
   });
+  await setBridgeBadge(result.ok ? "IDLE" : "ERR", tab.id);
 }
 
 function isBrowserActionPollOnlyError(error) {
@@ -260,20 +430,44 @@ function assertTabCanRunBrowserAction(tab) {
   }
 }
 
-function setBadge(tabId, text, color) {
-  chrome.action.setBadgeText({ tabId, text });
-  chrome.action.setBadgeBackgroundColor({ tabId, color });
-
-  if (text !== "...") {
-    setTimeout(() => {
-      chrome.action.setBadgeText({ tabId, text: "" });
-    }, BADGE_RESET_MS);
-  }
+async function setBridgeBadge(state, tabId) {
+  const badge = BADGES[state] ?? BADGES.ERR;
+  const input = tabId ? { tabId, text: badge.text } : { text: badge.text };
+  await chrome.action.setBadgeText(input);
+  await chrome.action.setBadgeBackgroundColor(tabId ? { tabId, color: badge.color } : { color: badge.color });
 }
 
-async function readDaemonSnapshotUrl() {
-  const stored = await readStorage({ daemonUrl: DEFAULT_DAEMON_DOM_SNAPSHOT_URL });
-  return normalizeDaemonSnapshotUrl(stored.daemonUrl);
+async function readBridgeSettings() {
+  return normalizeBridgeSettings(await readStorage(DEFAULT_SETTINGS));
+}
+
+function normalizeBridgeSettings(value) {
+  const record = value && typeof value === "object" ? value : {};
+  const daemonBaseUrl = normalizeDaemonBaseUrl(record.daemonBaseUrl ?? record.daemonUrl);
+  return {
+    daemonBaseUrl,
+    daemonUrl: resolveDaemonUrl(daemonBaseUrl, "/providers/dom/snapshot"),
+    autoConnect: record.autoConnect !== false,
+    autoObserve: record.autoObserve !== false,
+    allowSafeReadScroll: record.allowSafeReadScroll !== false,
+    requireApprovalForClickType: record.requireApprovalForClickType !== false,
+    useNativeHost: record.useNativeHost !== false,
+    debugSnapshot: record.debugSnapshot === true,
+    pollIntervalSeconds: clampNumber(record.pollIntervalSeconds, 5, 120, DEFAULT_SETTINGS.pollIntervalSeconds)
+  };
+}
+
+function sanitizeSettings(settings) {
+  return {
+    daemonBaseUrl: settings.daemonBaseUrl,
+    autoConnect: settings.autoConnect,
+    autoObserve: settings.autoObserve,
+    allowSafeReadScroll: settings.allowSafeReadScroll,
+    requireApprovalForClickType: settings.requireApprovalForClickType,
+    useNativeHost: settings.useNativeHost,
+    debugSnapshot: settings.debugSnapshot,
+    pollIntervalSeconds: settings.pollIntervalSeconds
+  };
 }
 
 function readStorage(defaults) {
@@ -282,43 +476,166 @@ function readStorage(defaults) {
   });
 }
 
-function normalizeDaemonSnapshotUrl(value) {
+function writeStorage(values) {
+  return new Promise((resolve) => {
+    chrome.storage.sync.set(values, resolve);
+  });
+}
+
+async function configureBridgeAlarm(settings) {
+  await chrome.alarms.clear(BRIDGE_ALARM_NAME);
+  if (!settings.autoConnect) {
+    return;
+  }
+  await chrome.alarms.create(BRIDGE_ALARM_NAME, {
+    delayInMinutes: 0.1,
+    periodInMinutes: Math.max(0.5, settings.pollIntervalSeconds / 60)
+  });
+}
+
+function normalizeDaemonBaseUrl(value) {
   if (typeof value !== "string") {
-    return DEFAULT_DAEMON_DOM_SNAPSHOT_URL;
+    return DEFAULT_DAEMON_BASE_URL;
   }
 
   try {
     const url = new URL(value.trim());
     const isLocalHost = url.hostname === "127.0.0.1" || url.hostname === "localhost";
     const isHttp = url.protocol === "http:";
-    if (isLocalHost && isHttp && (url.pathname === "/" || url.pathname === "")) {
-      url.pathname = "/providers/dom/snapshot";
-      url.search = "";
-      url.hash = "";
-      return url.toString();
+    if (!isLocalHost || !isHttp) {
+      return DEFAULT_DAEMON_BASE_URL;
     }
-    if (isLocalHost && isHttp && url.pathname === "/providers/dom/snapshot") {
-      return url.toString();
-    }
-  } catch {
-    // Fall through to the safe local default.
-  }
-
-  return DEFAULT_DAEMON_DOM_SNAPSHOT_URL;
-}
-
-function resolveDaemonActionUrl(snapshotUrl, pathname) {
-  try {
-    const url = new URL(snapshotUrl);
-    url.pathname = pathname;
+    url.pathname = "";
     url.search = "";
     url.hash = "";
-    return url.toString();
+    return url.toString().replace(/\/$/, "");
   } catch {
-    const fallback = new URL(DEFAULT_DAEMON_DOM_SNAPSHOT_URL);
-    fallback.pathname = pathname;
-    return fallback.toString();
+    return DEFAULT_DAEMON_BASE_URL;
   }
+}
+
+function resolveDaemonUrl(baseUrl, pathname) {
+  const url = new URL(normalizeDaemonBaseUrl(baseUrl));
+  url.pathname = pathname;
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
+async function readActiveTab() {
+  const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  if (tabs[0]) {
+    return tabs[0];
+  }
+  const fallback = await chrome.tabs.query({ active: true, currentWindow: true });
+  return fallback[0] ?? null;
+}
+
+function createBaseStatus({ settings, tab, reason }) {
+  const manifest = chrome.runtime.getManifest();
+  return {
+    extensionVersion: manifest.version,
+    daemonBaseUrl: settings.daemonBaseUrl,
+    connected: false,
+    mode: "checking",
+    reason,
+    updatedAt: new Date().toISOString(),
+    activeTab: {
+      tabId: tab?.id,
+      windowId: tab?.windowId,
+      url: tab?.url,
+      title: tab?.title,
+      permission: "unknown"
+    },
+    nativeHost: settings.useNativeHost ? "enabled" : "disabled",
+    settings: sanitizeSettings(settings),
+    lastError: null
+  };
+}
+
+async function testDaemonConnection(baseUrl) {
+  try {
+    const response = await fetch(resolveDaemonUrl(baseUrl, "/storage/health"), { method: "GET" });
+    return response.ok
+      ? { ok: true }
+      : { ok: false, error: `Widget daemon health check failed (${response.status}).` };
+  } catch (error) {
+    return { ok: false, error: readError(error) };
+  }
+}
+
+async function postHeartbeat(baseUrl, status) {
+  try {
+    const response = await fetch(resolveDaemonUrl(baseUrl, DEFAULT_BROWSER_ACTION_HEARTBEAT_PATH), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(status)
+    });
+    if (!response.ok) {
+      throw new Error(`Browser Bridge heartbeat failed (${response.status}).`);
+    }
+  } catch (error) {
+    console.debug("[Codex Widget] Browser Bridge heartbeat failed.", error);
+  }
+}
+
+async function readTabPermission(tab) {
+  if (!tab?.url) {
+    return { permission: "unavailable", detail: "No active tab URL is available." };
+  }
+  if (isRestrictedTabUrl(tab.url)) {
+    return { permission: "restricted", detail: "This browser page does not allow extension page access." };
+  }
+  const origin = originPatternForTab(tab);
+  if (!origin) {
+    return { permission: "restricted", detail: "Only http and https pages are supported." };
+  }
+  const allowed = await chrome.permissions.contains({ origins: [origin] });
+  return allowed
+    ? { permission: "allowed", origin }
+    : { permission: "needs_site_permission", origin, detail: "Enable this site in the Browser Bridge popup." };
+}
+
+async function requestCurrentSitePermission(tab) {
+  const origin = originPatternForTab(tab);
+  if (!origin) {
+    return { ok: false, error: "Current page cannot grant Browser Bridge permission." };
+  }
+  try {
+    const ok = await chrome.permissions.request({ origins: [origin] });
+    return ok ? { ok: true, origin } : { ok: false, origin, error: "Site permission was not granted." };
+  } catch (error) {
+    return { ok: false, origin, error: readError(error) };
+  }
+}
+
+function originPatternForTab(tab) {
+  try {
+    const url = new URL(tab?.url ?? "");
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return "";
+    }
+    return `${url.origin}/*`;
+  } catch {
+    return "";
+  }
+}
+
+function isRestrictedTabUrl(value) {
+  return /^(chrome|edge|brave|vivaldi|opera|about|devtools|chrome-extension):/i.test(value) ||
+    /chromewebstore\.google\.com|microsoftedge\.microsoft\.com\/addons/i.test(value);
+}
+
+function clampNumber(value, min, max, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return fallback;
+  }
+  return Math.max(min, Math.min(max, Math.floor(number)));
+}
+
+function readError(error) {
+  return error instanceof Error ? error.message : String(error ?? "Unknown error");
 }
 
 function collectDomSnapshot() {

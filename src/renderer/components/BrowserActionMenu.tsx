@@ -56,6 +56,7 @@ export function BrowserActionMenu({
   const internalTriggerRef = useRef<HTMLButtonElement | null>(null);
   const floating = useFloatingSurface(open, anchorRef ?? internalTriggerRef, { preferred: "bottom-end", offset: 6, margin: 8 });
   const [adapterId, setAdapterId] = useState("extension");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [targetText, setTargetText] = useState("");
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
@@ -67,13 +68,14 @@ export function BrowserActionMenu({
   }, [adapterId, state.adapters]);
   const adapterStatuses = state.adapters.length > 0 ? state.adapters : [{
     id: "extension",
-    label: "Extension",
+    label: "Browser Bridge",
     state: "unavailable" as const,
-    detail: "Status not loaded.",
+    detail: "Bridge status not loaded.",
     capabilities: [],
     checkedAt: ""
   }];
   const visibleSafetyMode = state.safetyMode === "full_control_dev" ? "ask_before_action" : state.safetyMode;
+  const bridge = summarizeBridgeStatus(state.bridgeStatus);
 
   const withAdapter = (command: BrowserActionDirectCommandInput): BrowserActionDirectCommandInput => ({
     ...command,
@@ -92,8 +94,8 @@ export function BrowserActionMenu({
         >
           <div className="browser-menu-head">
             <div>
-              <strong>Browser Action</strong>
-              <span>{state.actionSessionId ? shortId(state.actionSessionId) : "idle"}</span>
+              <strong>Browser Bridge</strong>
+              <span>{bridge.label}</span>
             </div>
             <div className="browser-menu-head-actions">
               <button type="button" aria-label="Start Browser Action session" data-tooltip="Start" onClick={() => onStart(state.safetyMode)}>
@@ -105,17 +107,12 @@ export function BrowserActionMenu({
             </div>
           </div>
 
-          <div className="browser-menu-controls">
-            <label>
-              <span>Adapter</span>
-              <select aria-label="Browser Action adapter" value={activeAdapterId} onChange={(event) => setAdapterId(event.target.value)}>
-                {adapterStatuses.map((adapter) => (
-                  <option key={adapter.id} value={adapter.id}>
-                    {adapter.id}
-                  </option>
-                ))}
-              </select>
-            </label>
+          <div className={`browser-bridge-status ${bridge.tone}`}>
+            <strong>{bridge.label}</strong>
+            <span>{bridge.detail}</span>
+          </div>
+
+          <div className="browser-menu-controls single">
             <label>
               <span>Safety</span>
               <select
@@ -133,12 +130,12 @@ export function BrowserActionMenu({
           </div>
 
           <div className="browser-menu-section">
-            <div className="browser-menu-eyebrow">Page</div>
+            <div className="browser-menu-eyebrow">Current Page</div>
             <div className="browser-menu-grid">
-              <MenuButton icon={<PlugZap size={13} />} label="Adapter status" onClick={() => onCommand(withAdapter({ kind: "adapter_status" }))} />
-              <MenuButton icon={<Eye size={13} />} label="Observe page" onClick={() => onCommand(withAdapter({ kind: "observe" }))} />
               <MenuButton icon={<Eye size={13} />} label="Read page" onClick={() => onCommand(withAdapter({ kind: "read" }))} />
-              <MenuButton icon={<Camera size={13} />} label="Screenshot" onClick={() => onCommand(withAdapter({ kind: "screenshot" }))} />
+              <MenuButton icon={<Eye size={13} />} label="Observe" onClick={() => onCommand(withAdapter({ kind: "observe" }))} />
+              <MenuButton icon={<ArrowDown size={13} />} label="Scroll down" onClick={() => onCommand(withAdapter({ kind: "scroll", direction: "down", amount: "medium" }))} />
+              <MenuButton icon={<ArrowUp size={13} />} label="Scroll up" onClick={() => onCommand(withAdapter({ kind: "scroll", direction: "up", amount: "medium" }))} />
             </div>
           </div>
 
@@ -176,8 +173,6 @@ export function BrowserActionMenu({
               <MenuButton icon={<Undo2 size={13} />} label="Back" onClick={() => onCommand(withAdapter({ kind: "back" }))} />
               <MenuButton icon={<Redo2 size={13} />} label="Forward" onClick={() => onCommand(withAdapter({ kind: "forward" }))} />
               <MenuButton icon={<RotateCw size={13} />} label="Reload" onClick={() => onCommand(withAdapter({ kind: "reload" }))} />
-              <MenuButton icon={<ArrowDown size={13} />} label="Scroll down" onClick={() => onCommand(withAdapter({ kind: "scroll", direction: "down", amount: "medium" }))} />
-              <MenuButton icon={<ArrowUp size={13} />} label="Scroll up" onClick={() => onCommand(withAdapter({ kind: "scroll", direction: "up", amount: "medium" }))} />
             </div>
           </div>
 
@@ -192,13 +187,43 @@ export function BrowserActionMenu({
             </div>
           </div>
 
-          <div className="browser-adapter-statuses">
-            {adapterStatuses.map((adapter) => (
-              <div key={adapter.id} className={`browser-adapter-status ${adapter.state}`}>
-                <strong>{adapter.label}</strong>
-                <small>{adapter.detail}</small>
-              </div>
-            ))}
+          <div className="browser-menu-section">
+            <button type="button" className="browser-advanced-toggle" onClick={() => setAdvancedOpen((current) => !current)}>
+              <PlugZap size={13} />
+              <span>{advancedOpen ? "Hide diagnostics" : "Advanced diagnostics"}</span>
+            </button>
+            {advancedOpen ? (
+              <>
+                <div className="browser-menu-controls">
+                  <label>
+                    <span>Adapter</span>
+                    <select aria-label="Browser Action adapter" value={activeAdapterId} onChange={(event) => setAdapterId(event.target.value)}>
+                      {adapterStatuses.map((adapter) => (
+                        <option key={adapter.id} value={adapter.id}>
+                          {adapter.id}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Session</span>
+                    <input readOnly aria-label="Browser Action session id" value={state.actionSessionId ? shortId(state.actionSessionId) : "idle"} />
+                  </label>
+                </div>
+                <div className="browser-menu-grid">
+                  <MenuButton icon={<PlugZap size={13} />} label="Adapter status" onClick={() => onCommand(withAdapter({ kind: "adapter_status" }))} />
+                  <MenuButton icon={<Camera size={13} />} label="Screenshot" onClick={() => onCommand(withAdapter({ kind: "screenshot" }))} />
+                </div>
+                <div className="browser-adapter-statuses">
+                  {adapterStatuses.map((adapter) => (
+                    <div key={adapter.id} className={`browser-adapter-status ${adapter.state}`}>
+                      <strong>{adapter.label}</strong>
+                      <small>{adapter.detail}</small>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : null}
           </div>
         </div>,
         document.body
@@ -217,4 +242,28 @@ function MenuButton({ icon, label, onClick }: { icon: ReactNode; label: string; 
 
 function shortId(value: string): string {
   return value.length > 18 ? `${value.slice(0, 10)}...${value.slice(-4)}` : value;
+}
+
+function summarizeBridgeStatus(status: BrowserActionUiState["bridgeStatus"]): { label: string; detail: string; tone: string } {
+  if (!status) {
+    return { label: "Bridge status not loaded", detail: "Open the extension popup or wait for heartbeat.", tone: "muted" };
+  }
+  const tab = status.activeTab;
+  const tabLabel = tab?.title || tab?.url || "current tab";
+  if (!status.connected || status.mode === "off" || status.mode === "disconnected") {
+    return { label: "Browser disconnected", detail: status.lastError || "Start the widget daemon and check extension settings.", tone: "off" };
+  }
+  if (status.mode === "permission_needed") {
+    return { label: "Needs site permission", detail: tab?.origin || status.lastError || "Enable this site in the extension popup.", tone: "ask" };
+  }
+  if (status.mode === "restricted") {
+    return { label: "Restricted page", detail: status.lastError || "Open a supported http or https page.", tone: "error" };
+  }
+  if (status.mode === "error") {
+    return { label: "Bridge failed", detail: status.lastError || "Check extension diagnostics.", tone: "error" };
+  }
+  if (status.mode === "running") {
+    return { label: "Browser running", detail: tabLabel, tone: "run" };
+  }
+  return { label: "Browser connected", detail: tabLabel, tone: "ready" };
 }

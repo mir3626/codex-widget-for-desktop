@@ -5,13 +5,13 @@
       "observeCompleted": true,
       "readCompleted": true,
       "safeActionCompleted": true,
-      "safeActionRequestId": "browser-command-97e45cd3-b764-4f83-97c7-5f9be64004ed",
+      "safeActionRequestId": "browser-command-895b6311-9891-4198-ab41-262eccd9cf97",
       "verification": "passed"
     },
     "promptDriven": {
       "completed": true,
       "plan": {
-        "id": "browser-plan-e37e8d56-5014-4309-9069-94bae5dbcdfa",
+        "id": "browser-plan-0f812f53-b557-4539-ad1a-aa9ed5cb4dec",
         "actionSessionId": "browser-action-prompt-dogfood-prompt-read",
         "goal": "브라우저 액션으로 현재 페이지 읽어줘",
         "status": "completed",
@@ -25,7 +25,7 @@
             "safety": "allow",
             "risk": "low",
             "reason": "Read the current browser observation.",
-            "resultId": "browser-result-bbe26cfb-3a5b-444d-925d-da8b28a9e79a"
+            "resultId": "browser-result-58615e32-0b8e-4444-a827-3c4cd2d7a255"
           }
         ]
       },
@@ -33,14 +33,14 @@
     },
     "nonSubmitFill": {
       "completed": true,
-      "requestId": "browser-command-d3fc9150-c96f-45c8-b35b-a084e2b48c06",
+      "requestId": "browser-command-2e5b120d-83fb-4492-8dc6-ce8dd9cf4536",
       "expectedSource": {
         "kind": "active_tab",
         "browser": "unknown",
         "url": "https://example.test/browser-action-e2e-dogfood",
         "title": "Browser Action E2E Dogfood"
       },
-      "expiresAt": "2026-05-08T00:07:40.484Z",
+      "expiresAt": "2026-05-08T01:26:24.121Z",
       "verification": "passed"
     },
     "riskyDeny": {
@@ -50,7 +50,7 @@
     },
     "extensionCommand": {
       "completed": true,
-      "requestId": "browser-command-ad0f24f9-8a10-4082-b95e-5e1484ba9232",
+      "requestId": "browser-command-5b825a9c-48e6-4ffa-9bd6-252f394f2df5",
       "expectedSource": {
         "kind": "active_tab",
         "browser": "unknown",

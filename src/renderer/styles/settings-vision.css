@@ -471,11 +471,60 @@
   opacity: 0.45;
 }
 
+.browser-bridge-status {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  border: 1px solid rgba(36, 42, 50, 0.08);
+  border-radius: 8px;
+  padding: 7px 8px;
+  background: rgba(247, 250, 250, 0.78);
+}
+
+.browser-bridge-status strong {
+  color: #303842;
+  font-size: 11px;
+}
+
+.browser-bridge-status span {
+  overflow: hidden;
+  color: #77818e;
+  font-size: 10px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-bridge-status.ready {
+  border-color: rgba(39, 119, 101, 0.18);
+  background: rgba(236, 250, 246, 0.88);
+}
+
+.browser-bridge-status.ask {
+  border-color: rgba(180, 114, 20, 0.2);
+  background: rgba(255, 248, 232, 0.9);
+}
+
+.browser-bridge-status.error,
+.browser-bridge-status.off {
+  border-color: rgba(180, 45, 39, 0.16);
+  background: rgba(255, 242, 242, 0.9);
+}
+
+.browser-bridge-status.run {
+  border-color: rgba(37, 99, 235, 0.16);
+  background: rgba(237, 245, 255, 0.9);
+}
+
 .browser-menu-controls {
   min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 6px;
+}
+
+.browser-menu-controls.single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .browser-menu-controls label,
@@ -563,6 +612,26 @@
 .browser-policy-row button {
   min-height: 24px;
   padding: 4px 7px;
+}
+
+.browser-advanced-toggle {
+  min-width: 0;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid rgba(36, 42, 50, 0.08);
+  border-radius: 8px;
+  color: #43505d;
+  background: rgba(247, 250, 250, 0.72);
+  cursor: pointer;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.browser-advanced-toggle:hover {
+  background: rgba(232, 237, 239, 0.92);
 }
 
 .browser-adapter-statuses {

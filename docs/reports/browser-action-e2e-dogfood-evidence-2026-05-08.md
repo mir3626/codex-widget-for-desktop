@@ -20,15 +20,15 @@
 - Observe completed: true
 - Read completed: true
 - Safe action completed: true
-- Safe action request: browser-command-97e45cd3-b764-4f83-97c7-5f9be64004ed
+- Safe action request: browser-command-895b6311-9891-4198-ab41-262eccd9cf97
 - Safe action verification: passed
 
 ## Extension Active-Tab Channel
 
 - Non-submit fill completed: true
-- Fill request: browser-command-d3fc9150-c96f-45c8-b35b-a084e2b48c06
+- Fill request: browser-command-2e5b120d-83fb-4492-8dc6-ce8dd9cf4536
 - Fill expected source URL: https://example.test/browser-action-e2e-dogfood
-- Fill command expiry: 2026-05-08T00:07:40.484Z
+- Fill command expiry: 2026-05-08T01:26:24.121Z
 - Safe expand completed: true
 - Safe expand verification: passed
 

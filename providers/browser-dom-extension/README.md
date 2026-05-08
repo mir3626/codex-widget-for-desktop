@@ -1,6 +1,6 @@
-# Codex Widget DOM Snapshot Extension
+# Codex Widget Browser Bridge Extension
 
-This unpacked Chrome/Edge extension sends the active tab DOM snapshot to the local widget daemon.
+This unpacked Chrome/Edge extension connects approved browser pages to the local Codex Widget daemon. It is the Browser Action active-tab bridge, not a manual page capture button.
 
 ## Load Locally
 
@@ -23,34 +23,46 @@ with `manifest.json` at the zip root.
 ## Use
 
 1. Start the widget daemon so it listens on `http://127.0.0.1:4128`.
-2. Open the web page you want to send to the widget.
-3. Click the `Codex Widget DOM Snapshot` extension action.
-4. Switch the widget to `DOM` mode and ask about the active page, selection, or visible content.
+2. Load or reload the extension.
+3. Click the extension icon to open the Browser Bridge popup.
+4. Confirm the daemon base URL.
+5. Open the site you want to control and choose **Enable site** in the popup.
+6. Use Browser mode in the widget. Direct Browser Action buttons and natural prompts can observe, read, click, type, scroll, and navigate through the same daemon safety and audit pipeline.
+
+The icon does not trigger page capture in the default flow. The badge shows bridge state:
+
+```text
+OFF  daemon disconnected or auto-connect disabled
+IDLE connected and waiting
+RUN  observe/action in progress
+ASK  site permission needed
+ERR  last bridge/action error
+```
 
 ## Options
 
-The default daemon endpoint is:
+The default daemon base URL is:
 
 ```text
-http://127.0.0.1:4128/providers/dom/snapshot
+http://127.0.0.1:4128
 ```
 
-Use the extension Options page if the widget daemon is running on another local port. The extension only accepts local `http://127.0.0.1/...` or `http://localhost/...` snapshot URLs ending in `/providers/dom/snapshot`.
+Endpoint URLs are derived internally:
 
-The extension posts:
-
-```json
-{
-  "url": "https://example.com",
-  "title": "Example",
-  "selection": "selected text",
-  "text": "page text and interactive element labels"
-}
+```text
+GET  /storage/health
+POST /providers/dom/snapshot              legacy/internal page-context transport
+GET  /browser-action/extension/poll
+POST /browser-action/extension/result
+POST /browser-action/extension/heartbeat
+GET  /browser-action/extension/status
 ```
+
+The popup and options page only accept local `http://127.0.0.1/...` or `http://localhost/...` daemon base URLs.
 
 ## Native Messaging
 
-The service worker first tries the optional native messaging host `com.mir3626.codex_widget_dom`. If the host is not registered, it falls back to direct local HTTP.
+The service worker can use the optional native messaging host `com.mir3626.codex_widget_dom`. If the host is not registered or is disabled in settings, the extension falls back to direct local HTTP.
 
 Register the host with:
 
@@ -60,4 +72,6 @@ Register the host with:
 
 See [../browser-native-host](../browser-native-host) for host details and uninstall instructions.
 
-The daemon keeps only the latest snapshot. It returns `OK`/`ERR` badge text on the extension action after each send attempt.
+## Privacy Boundary
+
+The extension observes only supported http/https pages that have explicit site permission. Sensitive input values are redacted by the page collector. Page context is sent only to the local daemon or optional local native host.

@@ -91,7 +91,7 @@ const submissionManifest = {
     "Upload the extension zip to the Chrome Web Store or Microsoft Edge Add-ons dashboard.",
     "Paste the store listing, privacy disclosure, and review notes from this packet.",
     "Attach icon assets from the icons directory where the store dashboard asks for listing media.",
-    "Confirm the extension only sends user-triggered active-tab snapshots to localhost or the installed native messaging host.",
+    "Confirm the extension opens a Browser Bridge popup, requests site permission explicitly, and only sends approved page context to localhost or the installed native messaging host.",
     "Set CODEX_WIDGET_BROWSER_STORE_SUBMITTED=1 only after the store dashboard submission has been completed."
   ]
 };
@@ -100,7 +100,7 @@ await writeFile(join(outputDir, "submission-manifest.json"), `${JSON.stringify(s
 await writeFile(
   join(outputDir, "README.md"),
   [
-    "# Codex Widget DOM Extension Store Submission",
+    "# Codex Widget Browser Bridge Store Submission",
     "",
     `Version: ${version}`,
     "",

@@ -92,6 +92,18 @@
       "expectStdoutContains": "browser action e2e dogfood evidence written"
     },
     {
+      "id": "smoke-browser-bridge",
+      "command": "npm run smoke:browser-bridge",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser extension bridge smoke ok"
+    },
+    {
+      "id": "dogfood-browser-bridge",
+      "command": "npm run dogfood:browser-bridge",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser extension bridge dogfood evidence written"
+    },
+    {
       "id": "cargo-check",
       "command": "powershell -NoProfile -ExecutionPolicy Bypass -Command \". .\\scripts\\use-msvc-env.ps1; Push-Location src-tauri; cargo check --no-default-features; Pop-Location\"",
       "expectExitCode": 0,
@@ -99,8 +111,8 @@
     }
   ],
   "handoff": {
-    "currentSprintId": "iter-12-sprint-04-verification-and-dogfood-evidence",
-    "lastActionSummary": "Iteration 12 completed the Browser Action control surface: Vision-like direct popup/menu, shared browserAction.command protocol, daemon direct command to BrowserActionPlan pipeline, prompt classification hardening, direct-menu and prompt-classification smokes, and refreshed E2E dogfood evidence.",
+    "currentSprintId": "iter-13-sprint-04-widget-simplification-smokes-and-dogfood",
+    "lastActionSummary": "Iteration 13 completed the Browser Extension Bridge UX refactor: extension icon now opens popup/settings instead of snapshot capture, badge/heartbeat/status are visible to daemon and widget, approved-site auto-observe plus command polling removes the manual snapshot step, site permission/restricted states are explicit, Browser UI hides adapter/debug complexity behind diagnostics, and Browser Bridge smoke/dogfood evidence is recorded.",
     "openIssues": [
       "Codex app-server protocol remains experimental; stale persisted thread ids fall back safely, but live cross-process resume behavior needs dogfooding validation.",
       "Browser store account submission is deferred until after dogfooding.",
@@ -109,7 +121,8 @@
       "Mascot motion must be reworked with real authored pose/expression/state animation assets; generated static-pose sprites are not accepted.",
       "Browser Action native desktop executable browser chrome control is BLOCKED on a scoped Windows UI Automation or bounded native input helper; current adapter reports browser-window diagnostics, attempted PowerShell enumeration, required helper scope, and unsupported-action errors.",
       "Browser Action custom Codex app-server tool bridge is BLOCKED on a stable app-server custom tool/client-tool contract; current coverage uses daemon prompt/tool simulation, protocol events, approval, audit, and widget-context visibility.",
-      "Restricted browser pages remain subject to browser/extension/CDP security boundaries and should report unsupported state rather than bypassing protections."
+      "Restricted browser pages remain subject to browser/extension/CDP security boundaries and should report unsupported state rather than bypassing protections.",
+      "Browser Bridge uses explicit site permission for automatic page context sharing; users must enable each site or opt into broader origin permissions through extension settings."
     ],
     "orchestratorContextBudget": "medium",
     "preferencesActive": [
@@ -118,12 +131,12 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-08T09:09:48.942+09:00"
+    "updatedAt": "2026-05-08T10:27:23.258+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-08T09:09:48.942+09:00",
-  "verifiedAt": "2026-05-08T09:09:48.942+09:00"
+  "stateUpdatedAt": "2026-05-08T10:27:23.258+09:00",
+  "verifiedAt": "2026-05-08T10:27:23.258+09:00"
 }

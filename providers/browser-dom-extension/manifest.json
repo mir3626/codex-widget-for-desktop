@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Codex Widget DOM Snapshot",
+  "name": "Codex Widget Browser Bridge",
   "version": "0.1.0",
-  "description": "Send the active tab DOM snapshot to the local Codex Widget daemon.",
-  "permissions": ["activeTab", "scripting", "storage", "nativeMessaging"],
+  "description": "Bridge approved browser pages to the local Codex Widget daemon for safe Browser Action control.",
+  "permissions": ["activeTab", "alarms", "nativeMessaging", "scripting", "storage", "tabs"],
   "host_permissions": ["http://127.0.0.1/*", "http://localhost/*"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
@@ -15,7 +16,8 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Send DOM snapshot to Codex Widget",
+    "default_title": "Codex Widget Browser Bridge",
+    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon-16.png",
       "48": "icons/icon-48.png",

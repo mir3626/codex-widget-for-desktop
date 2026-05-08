@@ -26,18 +26,19 @@ export function BrowserActionPanel({
   }
   const readyAdapters = state.adapters.filter((adapter) => adapter.state === "ready");
   const latestProgress = state.progress.at(-1);
+  const bridge = summarizeBridgePanel(state);
   return (
     <section className="browser-action-panel" aria-label="Browser Action">
       <div className="browser-action-head">
         <div>
-          <strong>Browser Action</strong>
-          <span>{state.actionSessionId ? `session ${shortId(state.actionSessionId)}` : "no active session"}</span>
+          <strong>Browser Bridge</strong>
+          <span>{bridge.detail}</span>
         </div>
         <div className="browser-action-controls">
           <button type="button" data-tooltip="Start Browser Action" aria-label="Start Browser Action" onClick={() => onStart(state.safetyMode)}>
             <Play size={13} />
           </button>
-          <button type="button" data-tooltip="Refresh adapters" aria-label="Refresh adapters" onClick={onRefreshAdapters}>
+          <button type="button" data-tooltip="Refresh diagnostics" aria-label="Refresh adapters" onClick={onRefreshAdapters}>
             <RefreshCw size={13} />
           </button>
           <button type="button" data-tooltip="Observe page" aria-label="Observe page" disabled={!state.actionSessionId} onClick={onObserve}>
@@ -49,20 +50,24 @@ export function BrowserActionPanel({
         </div>
       </div>
       <div className="browser-action-grid">
-        <Metric label="Adapters" value={readyAdapters.length ? readyAdapters.map((adapter) => adapter.id).join(", ") : "none"} />
+        <Metric label="Bridge" value={bridge.label} />
         <Metric label="Safety" value={state.safetyMode} />
         <Metric label="Progress" value={latestProgress?.status ?? "idle"} />
       </div>
       {state.adapters.length > 0 ? (
-        <div className="browser-action-adapters">
-          {state.adapters.map((adapter) => (
-            <div key={adapter.id} className={`browser-action-adapter ${adapter.state}`}>
-              {adapter.state === "ready" ? <CheckCircle2 size={12} /> : <Ban size={12} />}
-              <span>{adapter.label}</span>
-              <small>{adapter.detail}</small>
-            </div>
-          ))}
-        </div>
+        <details className="browser-action-summary">
+          <summary>Diagnostics</summary>
+          <div className="browser-action-adapters">
+            {state.adapters.map((adapter) => (
+              <div key={adapter.id} className={`browser-action-adapter ${adapter.state}`}>
+                {adapter.state === "ready" ? <CheckCircle2 size={12} /> : <Ban size={12} />}
+                <span>{adapter.label}</span>
+                <small>{adapter.detail}</small>
+              </div>
+            ))}
+          </div>
+          <pre>{readyAdapters.length ? `ready: ${readyAdapters.map((adapter) => adapter.id).join(", ")}` : "ready: none"}</pre>
+        </details>
       ) : null}
       <div className="browser-action-policy">
         <ShieldCheck size={13} />
@@ -98,4 +103,30 @@ function SummaryBlock({ title, value }: { title: string; value: unknown }) {
 
 function shortId(value: string): string {
   return value.length > 18 ? `${value.slice(0, 10)}...${value.slice(-4)}` : value;
+}
+
+function summarizeBridgePanel(state: BrowserActionUiState): { label: string; detail: string } {
+  const status = state.bridgeStatus;
+  if (!status) {
+    return {
+      label: "unknown",
+      detail: state.actionSessionId ? `session ${shortId(state.actionSessionId)}` : "waiting for extension heartbeat"
+    };
+  }
+  if (!status.connected || status.mode === "off" || status.mode === "disconnected") {
+    return { label: "disconnected", detail: status.lastError || "extension not connected" };
+  }
+  if (status.mode === "permission_needed") {
+    return { label: "needs permission", detail: status.activeTab?.origin || "enable this site in the extension popup" };
+  }
+  if (status.mode === "restricted") {
+    return { label: "restricted", detail: status.lastError || "open a supported page" };
+  }
+  if (status.mode === "error") {
+    return { label: "failed", detail: status.lastError || "check diagnostics" };
+  }
+  return {
+    label: status.mode === "running" ? "running" : "connected",
+    detail: status.activeTab?.title || status.activeTab?.url || "ready"
+  };
 }

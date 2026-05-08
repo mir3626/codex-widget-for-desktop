@@ -2,6 +2,7 @@ import type { ComponentPropsWithoutRef } from "react";
 import type {
   BrowserActionAdapterStatus,
   BrowserActionPolicySummary,
+  BrowserExtensionBridgeStatus,
   RuntimeInteraction,
   ScreenCrop
 } from "../shared/protocol.js";
@@ -63,6 +64,7 @@ export type VisionFrameStats = {
 
 export type BrowserActionUiState = {
   actionSessionId: string | null;
+  bridgeStatus: BrowserExtensionBridgeStatus | null;
   adapters: BrowserActionAdapterStatus[];
   policies: BrowserActionPolicySummary[];
   observationSummary: unknown;

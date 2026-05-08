@@ -223,6 +223,51 @@ export type BrowserActionAdapterStatus = {
   diagnostics?: Record<string, unknown>;
 };
 
+export type BrowserExtensionBridgePermission = "unknown" | "allowed" | "needs_site_permission" | "restricted" | "unavailable";
+
+export type BrowserExtensionBridgeMode =
+  | "off"
+  | "checking"
+  | "disconnected"
+  | "idle"
+  | "running"
+  | "permission_needed"
+  | "restricted"
+  | "error";
+
+export type BrowserExtensionBridgeStatus = {
+  extensionVersion?: string;
+  daemonBaseUrl?: string;
+  connected: boolean;
+  mode: BrowserExtensionBridgeMode;
+  reason?: string;
+  updatedAt: string;
+  lastSeenAt?: string;
+  lastObservationAt?: string;
+  lastCommandId?: string;
+  lastError?: string | null;
+  nativeHost?: "enabled" | "disabled" | "available" | "unavailable" | "unknown";
+  activeTab?: {
+    tabId?: number | string;
+    windowId?: number | string;
+    url?: string;
+    title?: string;
+    origin?: string;
+    permission: BrowserExtensionBridgePermission;
+    detail?: string;
+  };
+  settings?: {
+    daemonBaseUrl?: string;
+    autoConnect?: boolean;
+    autoObserve?: boolean;
+    allowSafeReadScroll?: boolean;
+    requireApprovalForClickType?: boolean;
+    useNativeHost?: boolean;
+    debugSnapshot?: boolean;
+    pollIntervalSeconds?: number;
+  };
+};
+
 export type BrowserActionPlanStepInput = {
   id?: string;
   action: BrowserActionInput;
@@ -790,6 +835,10 @@ export type ServerEvent =
       type: "browserAction.adapters";
       actionSessionId?: string;
       adapters: BrowserActionAdapterStatus[];
+    }
+  | {
+      type: "browserExtensionBridge.status";
+      status: BrowserExtensionBridgeStatus;
     }
   | {
       type: "browserAction.plan";

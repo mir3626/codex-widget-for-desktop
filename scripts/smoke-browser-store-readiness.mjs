@@ -36,7 +36,7 @@ for (const iconSize of ["16", "48", "128"]) {
   assertFile(path.join(extensionDir, manifest.icons?.[iconSize] ?? ""), `manifest icon ${iconSize}`);
 }
 
-for (const permission of ["activeTab", "scripting", "storage", "nativeMessaging"]) {
+for (const permission of ["activeTab", "alarms", "scripting", "storage", "tabs", "nativeMessaging"]) {
   assertIncludes(manifest.permissions, permission, "manifest.permissions");
   assertIncludesText(listing, `\`${permission}\``, `store listing permission rationale for ${permission}`);
   assertIncludesText(reviewNotes, `\`${permission}\``, `review notes permission rationale for ${permission}`);
@@ -48,8 +48,8 @@ for (const hostPermission of ["http://127.0.0.1/*", "http://localhost/*"]) {
 }
 
 for (const marker of [
-  "does not run continuously",
-  "only after a user action",
+  "browser bridge",
+  "does not observe or act on sites until permission is granted",
   "does not sell",
   "does not load remote code",
   "native messaging host"

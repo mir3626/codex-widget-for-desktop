@@ -38,6 +38,7 @@ import {
 } from "./vision-context/index.js";
 import type {
   ClientMessage,
+  BrowserExtensionBridgeStatus,
   ExecutionPermissionSummary,
   MessageSnapshotStatus,
   RuntimeStatus,
@@ -66,6 +67,12 @@ const MAX_RETAINED_MESSAGES = 80;
 const MAX_LEDGER_TOOL_OUTPUT_CHARS = 120_000;
 const MAX_VISION_RECORDING_DATA_URL_CHARS = 16 * 1024 * 1024;
 const CODEX_APP_SERVER_RUNTIME_PROVIDER = "codex-app-server";
+const BROWSER_EXTENSION_BRIDGE_STALE_MS = 90_000;
+
+type BrowserExtensionBridgeStore = {
+  update: (status: BrowserExtensionBridgeStatus) => BrowserExtensionBridgeStatus;
+  snapshot: () => BrowserExtensionBridgeStatus;
+};
 
 export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHandle> {
   let serverRef: Server | undefined;
@@ -79,6 +86,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
   const providers = new ProviderRegistry();
   const visionContext = new VisionContextSessionManager();
   const browserActions = new BrowserActionSessionManager();
+  const browserExtensionBridge = createBrowserExtensionBridgeStore();
   const storage = createStorageService();
   const requestSessions = new Map<string, string>();
   const agentSession: AgentSessionState = {};
@@ -91,7 +99,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
   };
 
   const server = createServer((request, response) => {
-    void handleHttpRequest(request, response, auth, onAuthChanged, providers, browserActions, clients, storage);
+    void handleHttpRequest(request, response, auth, onAuthChanged, providers, browserActions, browserExtensionBridge, clients, storage);
   });
   serverRef = server;
   const wss = new WebSocketServer({ server });
@@ -102,6 +110,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     send(socket, { type: "auth.status", auth: auth.getStatus() });
     send(socket, { type: "provider.status", providers: getProviderStatuses(providers) });
     send(socket, { type: "runtime.status", status: readRuntimeStatus(startedAt, clients, controllers, codexAppServer, storage) });
+    send(socket, { type: "browserExtensionBridge.status", status: browserExtensionBridge.snapshot() });
     sendExecutionPermissions(socket, storage);
     sendBrowserActionPolicies(socket, storage);
     sendSessionSnapshot(socket, storage);
@@ -1342,7 +1351,7 @@ function renderBrowserPromptResponse(
     `- steps: ${plan.steps.map((step) => `${step.id}:${step.status}`).join(", ")}`,
     latest ? `- latest result: ${latest.status}; verification=${latest.verification.status}; ${latest.verification.reason}` : undefined,
     terminalStatus === "approval_required" ? "- next: user approval is required before executing the risky step." : undefined,
-    terminalStatus === "extension_pending" ? "- next: the browser extension picked up path is pending; click the extension/snapshot action if the active tab is not polling." : undefined
+    terminalStatus === "extension_pending" ? "- next: Browser Bridge will pick up the queued action automatically; open the extension popup only if the widget reports disconnected or site permission is needed." : undefined
   ].filter(Boolean);
   return lines.map((line) => String(redactBrowserActionSecret(line))).join("\n");
 }
@@ -1795,6 +1804,126 @@ function syncCodexAppServer(auth: OAuthSession, codexAppServer: CodexAppServerBr
   void codexAppServer.warm(resolveCodexExecutionContext()).catch(() => undefined);
 }
 
+function createBrowserExtensionBridgeStore(): BrowserExtensionBridgeStore {
+  let latest: BrowserExtensionBridgeStatus = {
+    connected: false,
+    mode: "disconnected",
+    updatedAt: new Date(0).toISOString(),
+    lastError: "Browser Bridge has not connected yet.",
+    activeTab: { permission: "unknown" }
+  };
+
+  return {
+    update(status) {
+      latest = normalizeBrowserExtensionBridgeStatus(status);
+      return latest;
+    },
+    snapshot() {
+      if (latest.lastSeenAt && Date.now() - Date.parse(latest.lastSeenAt) > BROWSER_EXTENSION_BRIDGE_STALE_MS) {
+        return {
+          ...latest,
+          connected: false,
+          mode: "disconnected",
+          lastError: "Browser Bridge heartbeat is stale."
+        };
+      }
+      return latest;
+    }
+  };
+}
+
+function normalizeBrowserExtensionBridgeStatus(input: unknown): BrowserExtensionBridgeStatus {
+  const record = readRecord(input) ?? {};
+  const activeTab = readRecord(record.activeTab);
+  const settings = readRecord(record.settings);
+  const now = new Date().toISOString();
+  const mode = readBrowserExtensionBridgeMode(record.mode);
+  const permission = readBrowserExtensionBridgePermission(activeTab?.permission);
+  return {
+    extensionVersion: readOptionalString(record.extensionVersion),
+    daemonBaseUrl: readOptionalString(record.daemonBaseUrl),
+    connected: record.connected === true,
+    mode,
+    reason: readOptionalString(record.reason),
+    updatedAt: readOptionalString(record.updatedAt) ?? now,
+    lastSeenAt: now,
+    lastObservationAt: readOptionalString(record.lastObservationAt),
+    lastCommandId: readOptionalString(record.lastCommandId),
+    lastError: readOptionalString(record.lastError) ?? null,
+    nativeHost: readBrowserExtensionNativeHost(record.nativeHost),
+    activeTab: {
+      tabId: readId(activeTab?.tabId),
+      windowId: readId(activeTab?.windowId),
+      url: readOptionalString(activeTab?.url),
+      title: readOptionalString(activeTab?.title),
+      origin: readOptionalString(activeTab?.origin),
+      permission,
+      detail: readOptionalString(activeTab?.detail)
+    },
+    settings: settings
+      ? {
+          daemonBaseUrl: readOptionalString(settings.daemonBaseUrl),
+          autoConnect: readOptionalBoolean(settings.autoConnect),
+          autoObserve: readOptionalBoolean(settings.autoObserve),
+          allowSafeReadScroll: readOptionalBoolean(settings.allowSafeReadScroll),
+          requireApprovalForClickType: readOptionalBoolean(settings.requireApprovalForClickType),
+          useNativeHost: readOptionalBoolean(settings.useNativeHost),
+          debugSnapshot: readOptionalBoolean(settings.debugSnapshot),
+          pollIntervalSeconds: readOptionalNumber(settings.pollIntervalSeconds)
+        }
+      : undefined
+  };
+}
+
+function readBrowserExtensionBridgeMode(value: unknown): BrowserExtensionBridgeStatus["mode"] {
+  return value === "off" ||
+    value === "checking" ||
+    value === "disconnected" ||
+    value === "idle" ||
+    value === "running" ||
+    value === "permission_needed" ||
+    value === "restricted" ||
+    value === "error"
+    ? value
+    : "disconnected";
+}
+
+function readBrowserExtensionBridgePermission(value: unknown): NonNullable<BrowserExtensionBridgeStatus["activeTab"]>["permission"] {
+  return value === "allowed" ||
+    value === "needs_site_permission" ||
+    value === "restricted" ||
+    value === "unavailable" ||
+    value === "unknown"
+    ? value
+    : "unknown";
+}
+
+function readBrowserExtensionNativeHost(value: unknown): BrowserExtensionBridgeStatus["nativeHost"] {
+  return value === "enabled" ||
+    value === "disabled" ||
+    value === "available" ||
+    value === "unavailable" ||
+    value === "unknown"
+    ? value
+    : "unknown";
+}
+
+function readId(value: unknown): string | number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  return readOptionalString(value);
+}
+
+function readOptionalBoolean(value: unknown): boolean | undefined {
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function readOptionalNumber(value: unknown): number | undefined {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
 async function handleHttpRequest(
   request: IncomingMessage,
   response: ServerResponse,
@@ -1802,6 +1931,7 @@ async function handleHttpRequest(
   onAuthChanged: () => void,
   providers: ProviderRegistry,
   browserActions: BrowserActionSessionManager,
+  browserExtensionBridge: BrowserExtensionBridgeStore,
   clients: Set<WebSocket>,
   storage: StorageService
 ): Promise<void> {
@@ -1819,6 +1949,25 @@ async function handleHttpRequest(
         "Access-Control-Allow-Headers": "content-type"
       })
       .end();
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/browser-action/extension/heartbeat") {
+    try {
+      const status = browserExtensionBridge.update(JSON.parse(await readRequestBody(request, 128 * 1024)));
+      broadcast(clients, { type: "browserExtensionBridge.status", status });
+      writeJsonResponse(response, 200, { ok: true, status });
+    } catch (error) {
+      writeJsonResponse(response, 400, {
+        ok: false,
+        error: error instanceof Error ? error.message : "Invalid Browser Bridge heartbeat."
+      });
+    }
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/browser-action/extension/status") {
+    writeJsonResponse(response, 200, { ok: true, status: browserExtensionBridge.snapshot() });
     return;
   }
 

@@ -1,0 +1,46 @@
+{
+  "generatedAt": "2026-05-08T01:25:52.574Z",
+  "daemonBaseUrl": "http://127.0.0.1:41369",
+  "checks": [
+    {
+      "name": "daemon connected",
+      "status": "pass"
+    },
+    {
+      "name": "extension heartbeat visible to daemon/widget",
+      "status": "pass",
+      "mode": "idle"
+    },
+    {
+      "name": "automatic page context path uses legacy provider without manual extension click",
+      "status": "pass"
+    },
+    {
+      "name": "missing site permission recovery state",
+      "status": "pass",
+      "mode": "permission_needed"
+    },
+    {
+      "name": "restricted page boundary",
+      "status": "pass",
+      "mode": "restricted"
+    }
+  ],
+  "eventTypes": [
+    "connected",
+    "auth.status",
+    "provider.status",
+    "runtime.status",
+    "browserExtensionBridge.status",
+    "execution.permissions",
+    "browserAction.policies",
+    "session.snapshot",
+    "ledger.snapshot",
+    "session.state",
+    "browserExtensionBridge.status",
+    "provider.status",
+    "ledger.snapshot",
+    "browserExtensionBridge.status",
+    "browserExtensionBridge.status"
+  ]
+}

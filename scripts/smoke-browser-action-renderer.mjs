@@ -25,7 +25,7 @@ daemon.on("connection", (socket) => {
     type: "provider.status",
     providers: [
       { mode: "agent", label: "Agent", state: "ready", detail: "ready", capabilities: [] },
-      { mode: "browser", label: "DOM", state: "ready", detail: "snapshot ready", capabilities: ["dom"] },
+      { mode: "browser", label: "Browser Bridge", state: "ready", detail: "bridge ready", capabilities: ["browser-bridge"] },
       { mode: "screen", label: "Vision", state: "stub", detail: "waiting", capabilities: [] },
       { mode: "terminal", label: "PTY", state: "ready", detail: "ready", capabilities: [] }
     ]
@@ -127,7 +127,7 @@ try {
   await page.goto(`http://127.0.0.1:${viteAddress.port}/?daemonPort=${daemonPort}`);
   const panel = page.getByRole("region", { name: "Browser Action" });
   await panel.waitFor({ state: "visible" });
-  await expectPanelText(page, "Browser Action");
+  await expectPanelText(page, "Browser Bridge");
   await expectPanelText(page, "Browser extension active tab");
   await expectPanelText(page, "CDP remote debugging");
   await expectPanelText(page, "auto_safe_actions");

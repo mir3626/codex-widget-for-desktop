@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-12",
+  "currentIteration": "iter-13",
   "iterations": [
     {
       "id": "iter-1",
@@ -394,6 +394,39 @@
         "durable-product-state": 0.99
       },
       "summary": "Iteration 12 completed the Browser Action user-facing control surface. The widget now has a Vision-like Browser Action popup anchored to the Browser mode button, direct UI commands normalize into BrowserActionPlan execution through the existing daemon safety/approval/adapter/verify/audit pipeline, natural-language Browser prompt execution remains intact, informational Browser Action questions are no longer misclassified, and dogfood evidence now covers direct UI observe/read/safe-action plus prompt-driven and adapter-driven paths."
+    },
+    {
+      "id": "iter-13",
+      "label": "Browser Extension Bridge UX",
+      "startedAt": "2026-05-08T10:27:23.258+09:00",
+      "completedAt": "2026-05-08T10:27:23.258+09:00",
+      "goal": "Complete docs/plans/browser-extension-bridge-handoff.md end-to-end: convert the DOM snapshot extension into a Codex Widget Browser Bridge with popup/settings, badge heartbeat, explicit site permission, command-first polling/execution, widget status visibility, simplified Browser UI, smokes, and dogfood evidence.",
+      "plannedSprints": [
+        "iter-13-sprint-01-extension-popup-options-and-settings",
+        "iter-13-sprint-02-badge-heartbeat-and-daemon-status",
+        "iter-13-sprint-03-command-first-extension-channel-and-permission-flow",
+        "iter-13-sprint-04-widget-simplification-smokes-and-dogfood"
+      ],
+      "completedSprints": [
+        "iter-13-sprint-01-extension-popup-options-and-settings",
+        "iter-13-sprint-02-badge-heartbeat-and-daemon-status",
+        "iter-13-sprint-03-command-first-extension-channel-and-permission-flow",
+        "iter-13-sprint-04-widget-simplification-smokes-and-dogfood"
+      ],
+      "carryover": "Iter-12 completed the direct Browser Action control surface but the extension still exposed a manual DOM snapshot mental model. Iter-13 carries forward the product-owner goal that installing/configuring the extension should be enough for normal Browser Action, with no manual extension icon click or snapshot step.",
+      "openRisks": [
+        "First-class Codex app-server custom Browser Action tools remain BLOCKED on a stable app-server custom tool/client-tool contract; Browser Bridge uses daemon-owned command/plan routing.",
+        "Windows UI Automation executable browser chrome control remains BLOCKED on a scoped helper; Browser Bridge surfaces native fallback diagnostics but does not imply executable UIA fallback support.",
+        "Chrome/Edge restricted pages remain unsupported by design and are surfaced as restricted state rather than bypassed."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.98,
+        "durable-codex-runtime": 0.97,
+        "real-tool-providers": 1,
+        "resident-desktop-readiness": 0.96,
+        "durable-product-state": 0.99
+      },
+      "summary": "Iteration 13 completed the Browser Extension Bridge UX refactor. The extension icon now opens a Browser Bridge popup, badge states show OFF/IDLE/RUN/ASK/ERR, daemon base URL and bridge settings are configurable, the service worker heartbeat/status is visible to daemon and widget, approved-site auto-observe plus command polling removes the manual snapshot step, site permission and restricted-page states are explicit, Browser mode foregrounds bridge status while moving adapters/debug under diagnostics, extension/store/privacy/review copy is updated, and verification passed lint, build:web, smoke, smoke:all, Browser Action adapter/control smokes, extension/native-host/DOM/app-server smokes, Browser Bridge smoke/dogfood, Browser Action E2E dogfood, and cargo check."
     }
   ]
 }

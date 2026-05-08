@@ -1,6 +1,6 @@
 # Browser Extension Bridge Handoff
 
-Status: planned follow-up after `iter-12`
+Status: complete in `iter-13` (2026-05-08)
 Target repo: `C:\Users\Tony\Workspace\codex-widget-for-desktop`
 Baseline handoffs:
 - `docs/plans/browser-action-interface-handoff.md`
@@ -534,6 +534,16 @@ Acceptance:
 
 ## 15. Verification Gate
 
+Implementation result:
+
+- Extension popup/options: complete. The extension action opens a Browser Bridge popup and no longer triggers snapshot capture in the default flow.
+- Badge/heartbeat/status: complete. The service worker publishes OFF/IDLE/RUN/ASK/ERR badge states, daemon heartbeat/status endpoints normalize bridge state, and the widget receives `browserExtensionBridge.status`.
+- Command-first bridge channel: complete for the extension MVP. The extension polls the daemon while auto-connect is enabled, auto-observes approved sites through the internal legacy DOM provider transport, executes queued typed Browser Action commands without manual icon clicks, posts before/after observations, and preserves native-host and `/providers/dom/snapshot` compatibility.
+- Site permission flow: complete. The popup can request permission for the current origin; missing permission and restricted pages produce explicit recovery states.
+- Widget UX simplification: complete. Browser mode foregrounds bridge state and direct actions; adapter/debug detail is collapsed behind diagnostics.
+- Dogfood evidence: recorded at `docs/reports/browser-extension-bridge-dogfood-evidence-2026-05-08.md`.
+- Remaining external blockers: first-class Codex app-server custom Browser Action tools and executable Windows UI Automation browser-chrome fallback remain outside this extension bridge scope and are tracked in Browser Action handoffs.
+
 Required verification:
 
 ```text
@@ -550,11 +560,12 @@ npm run smoke:browser-action:cdp
 npm run smoke:browser-action:evaluate
 npm run smoke:browser-action:native
 npm run smoke:extension
+npm run smoke:browser-bridge
 npm run smoke:browser-native-host
 npm run smoke:dom
 npm run smoke:app-server
-new Browser Bridge popup/badge/heartbeat/permission/command-first smokes
-updated Browser Action dogfood evidence
+npm run dogfood:browser-bridge
+npm run dogfood:browser-action:e2e
 applicable cargo checks for touched Tauri/Rust code
 UTF-8/mojibake checks for touched text files
 npm run vibe:checkpoint

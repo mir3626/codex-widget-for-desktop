@@ -1,0 +1,16 @@
+{
+  "phase": "iterate",
+  "mode": "iterate",
+  "iterationId": "iter-13",
+  "carryoverIterationId": "iter-12",
+  "createdAt": "2026-05-08T10:27:23.258+09:00",
+  "note": "vibe-interview v1.7.12 accepted the iterate dry-run path for carryover discovery; this durable log records the selected iter-13 scope for Codex orchestration.",
+  "carryoverSummary": "iter-12 completed the direct Browser Action control surface, but the extension remained snapshot-centric. The next iteration converts the browser DOM extension into Codex Widget Browser Bridge with popup/settings, badge heartbeat, explicit site permission, command-first polling/execution, simplified widget Browser UI, smokes, and dogfood evidence.",
+  "plannedSprints": [
+    "iter-13-sprint-01-extension-popup-options-and-settings",
+    "iter-13-sprint-02-badge-heartbeat-and-daemon-status",
+    "iter-13-sprint-03-command-first-extension-channel-and-permission-flow",
+    "iter-13-sprint-04-widget-simplification-smokes-and-dogfood"
+  ],
+  "sourceHandoff": "docs/plans/browser-extension-bridge-handoff.md"
+}

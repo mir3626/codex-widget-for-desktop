@@ -105,10 +105,10 @@ export class ProviderRegistry {
       },
       {
         mode: "browser",
-        label: "DOM",
+        label: "Browser Bridge",
         state: this.domSnapshot ? "ready" : "stub",
-        detail: this.domSnapshot ? readDomDetail(this.domSnapshot) : "Waiting for DOM snapshot",
-        capabilities: ["active-tab", "selection", "metadata", "snapshot", "structured-elements", "browser-action", "typed-actions"]
+        detail: this.domSnapshot ? readDomDetail(this.domSnapshot) : "Waiting for Browser Bridge page context",
+        capabilities: ["active-tab", "selection", "metadata", "browser-bridge", "structured-elements", "browser-action", "typed-actions"]
       },
       {
         mode: "screen",

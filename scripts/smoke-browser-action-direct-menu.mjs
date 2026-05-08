@@ -25,7 +25,7 @@ daemon.on("connection", (socket) => {
     type: "provider.status",
     providers: [
       { mode: "agent", label: "Agent", state: "ready", detail: "ready", capabilities: [] },
-      { mode: "browser", label: "DOM", state: "ready", detail: "snapshot ready", capabilities: ["dom"] },
+      { mode: "browser", label: "Browser Bridge", state: "ready", detail: "bridge ready", capabilities: ["browser-bridge"] },
       { mode: "screen", label: "Vision", state: "ready", detail: "ready", capabilities: [] },
       { mode: "terminal", label: "PTY", state: "ready", detail: "ready", capabilities: [] }
     ]
@@ -70,6 +70,23 @@ daemon.on("connection", (socket) => {
       { id: "native-desktop", label: "Windows native fallback", state: "unavailable", detail: "UIA helper is not installed.", capabilities: [], checkedAt: "2026-05-08T00:00:00.000Z" }
     ]
   }));
+  socket.send(JSON.stringify({
+    type: "browserExtensionBridge.status",
+    status: {
+      connected: true,
+      mode: "idle",
+      updatedAt: "2026-05-08T00:00:00.000Z",
+      activeTab: {
+        tabId: 17,
+        windowId: 3,
+        url: "https://example.test/direct-menu",
+        title: "Direct menu smoke",
+        origin: "https://example.test/*",
+        permission: "allowed"
+      },
+      nativeHost: "enabled"
+    }
+  }));
   socket.send(JSON.stringify({ type: "browserAction.policies", policies: [] }));
 
   socket.on("message", (raw) => {
@@ -99,16 +116,19 @@ try {
     throw new Error("Vite did not bind.");
   }
   await page.goto(`http://127.0.0.1:${viteAddress.port}/?daemonPort=${daemonPort}&mode=browser`);
-  await page.getByRole("button", { name: /DOM/ }).click();
+  await page.locator(".mode-row").getByRole("button", { name: "Browser" }).click();
   await page.locator(".browser-action-menu").waitFor();
-  await expectMenuText(page, "Browser Action");
+  await expectMenuText(page, "Browser Bridge");
+  await expectMenuText(page, "Browser connected");
+  await expectMenuText(page, "Direct menu smoke");
+  await page.getByRole("button", { name: "Advanced diagnostics" }).click();
   await expectMenuText(page, "Browser extension active tab");
   await expectMenuText(page, "Playwright controlled browser");
   await expectMenuText(page, "CDP endpoint is not configured.");
   await expectMenuText(page, "UIA helper is not installed.");
 
   await page.getByRole("menuitem", { name: "Adapter status" }).click();
-  await page.getByRole("menuitem", { name: "Observe page" }).click();
+  await page.getByRole("menuitem", { name: "Observe" }).click();
   await page.getByRole("menuitem", { name: "Read page" }).click();
   await page.getByLabel("Browser Action target").fill("Open details");
   await page.getByLabel("Browser Action text").fill("codex widget");
