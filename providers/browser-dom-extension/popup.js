@@ -24,6 +24,7 @@ const fields = {
   debugSnapshot: document.querySelector("#debug-snapshot"),
   status: document.querySelector("#status")
 };
+let latestStatus = null;
 
 document.querySelector("#save").addEventListener("click", () => {
   void saveSettings();
@@ -76,9 +77,20 @@ async function testConnection() {
 }
 
 async function enableCurrentSite() {
-  const response = await sendMessage({ type: "bridge.enableCurrentSite" });
+  const origin = readCurrentOrigin();
+  if (!origin) {
+    setStatus("Current page cannot grant Browser Bridge permission.");
+    return;
+  }
+
+  setStatus(`Requesting Browser Bridge permission for ${origin}`);
+  const permission = await requestSitePermission(origin);
+  const response = await sendMessage({
+    type: "bridge.refresh",
+    reason: permission.ok ? "site_enabled" : "site_permission_denied"
+  });
   render(response.status, response.settings);
-  setStatus(response.ok ? "Current site enabled." : response.error ?? "Site permission was not granted.");
+  setStatus(permission.ok ? "Current site enabled." : permission.error ?? "Site permission was not granted.");
 }
 
 async function debugCapture() {
@@ -88,6 +100,7 @@ async function debugCapture() {
 }
 
 function render(status = {}, settings = DEFAULT_SETTINGS) {
+  latestStatus = status ?? {};
   const state = readState(status);
   fields.badge.textContent = state.badge;
   fields.badge.style.background = state.color;
@@ -117,6 +130,39 @@ function readSettingsFromForm() {
     debugSnapshot: fields.debugSnapshot.checked,
     pollIntervalSeconds: clampNumber(fields.pollInterval.value, 5, 120, DEFAULT_SETTINGS.pollIntervalSeconds)
   };
+}
+
+function readCurrentOrigin() {
+  const origin = latestStatus?.activeTab?.origin || originPatternForUrl(latestStatus?.activeTab?.url);
+  if (origin) {
+    return origin;
+  }
+  return originPatternForUrl(fields.tabState.textContent);
+}
+
+function originPatternForUrl(value) {
+  try {
+    const url = new URL(String(value ?? "").trim());
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return "";
+    }
+    return `${url.origin}/*`;
+  } catch {
+    return "";
+  }
+}
+
+function requestSitePermission(origin) {
+  return new Promise((resolve) => {
+    chrome.permissions.request({ origins: [origin] }, (granted) => {
+      const error = chrome.runtime.lastError;
+      if (error) {
+        resolve({ ok: false, origin, error: error.message });
+        return;
+      }
+      resolve(granted ? { ok: true, origin } : { ok: false, origin, error: "Site permission was not granted." });
+    });
+  });
 }
 
 function readState(status) {

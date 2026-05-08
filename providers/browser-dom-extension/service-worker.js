@@ -77,11 +77,10 @@ async function handleRuntimeMessage(message) {
     const status = await refreshBridge("test_connection");
     return { ok: status.connected, status, settings: sanitizeSettings(settings) };
   }
-  if (message?.type === "bridge.enableCurrentSite") {
-    const tab = await readActiveTab();
-    const permission = await requestCurrentSitePermission(tab);
-    const status = await refreshBridge(permission.ok ? "site_enabled" : "site_permission_denied");
-    return { ok: permission.ok, status, error: permission.error };
+  if (message?.type === "bridge.refresh") {
+    const settings = await readBridgeSettings();
+    const status = await refreshBridge(typeof message.reason === "string" ? message.reason : "popup_refresh");
+    return { ok: true, status, settings: sanitizeSettings(settings) };
   }
   if (message?.type === "bridge.debugSnapshot") {
     const settings = await readBridgeSettings();
@@ -594,19 +593,6 @@ async function readTabPermission(tab) {
   return allowed
     ? { permission: "allowed", origin }
     : { permission: "needs_site_permission", origin, detail: "Enable this site in the Browser Bridge popup." };
-}
-
-async function requestCurrentSitePermission(tab) {
-  const origin = originPatternForTab(tab);
-  if (!origin) {
-    return { ok: false, error: "Current page cannot grant Browser Bridge permission." };
-  }
-  try {
-    const ok = await chrome.permissions.request({ origins: [origin] });
-    return ok ? { ok: true, origin } : { ok: false, origin, error: "Site permission was not granted." };
-  } catch (error) {
-    return { ok: false, origin, error: readError(error) };
-  }
 }
 
 function originPatternForTab(tab) {

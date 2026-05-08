@@ -62,9 +62,9 @@ for (const marker of [
   "/browser-action/extension/result",
   "/browser-action/extension/heartbeat",
   "/browser-action/extension/status",
-  "requestCurrentSitePermission",
   "autoObserve",
   "needs_site_permission",
+  "chrome.permissions.contains",
   "window.getSelection",
   "document.body",
   "collectInteractiveElements",
@@ -84,6 +84,9 @@ for (const marker of [
 if (serviceWorker.includes("chrome.action.onClicked")) {
   throw new Error("Extension action click must open popup, not trigger default snapshot capture.");
 }
+if (serviceWorker.includes("chrome.permissions.request")) {
+  throw new Error("Site permission requests must stay in the popup click handler so MV3 preserves user gesture.");
+}
 
 const options = await readFile(optionsPath, "utf8");
 if (!options.includes("Saved normalized local daemon base URL") || !options.includes("daemonBaseUrl")) {
@@ -93,6 +96,12 @@ if (!options.includes("Saved normalized local daemon base URL") || !options.incl
 const popup = await readFile(path.join(extensionDir, "popup.html"), "utf8");
 if (!popup.includes("Browser Bridge") || popup.includes("Send DOM snapshot")) {
   throw new Error("Extension popup should expose Browser Bridge settings, not default snapshot UX.");
+}
+const popupScript = await readFile(popupPath, "utf8");
+for (const marker of ["chrome.permissions.request", "bridge.refresh", "readCurrentOrigin", "requestSitePermission"]) {
+  if (!popupScript.includes(marker)) {
+    throw new Error(`Extension popup is missing marker: ${marker}`);
+  }
 }
 
 const packageRun = spawnSync(process.execPath, ["scripts/package-browser-extension.mjs"], {
