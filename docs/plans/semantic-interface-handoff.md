@@ -1,6 +1,6 @@
 # Semantic Interface Handoff
 
-Status: planned; handoff authority for the next semantic decision-layer implementation
+Status: implemented in iter-15 as a baseline; handoff authority for the semantic decision-layer implementation; updated after Privacy Filter architecture review, Codex/Claude accuracy debate, iter-15 implementation, and 2026-05-09 Codex subagent design review
 Target repo: `C:\Users\Tony\Workspace\codex-widget-for-desktop`
 Baseline modules:
 - `src/daemon/browser-action/`
@@ -9,6 +9,43 @@ Baseline modules:
 - provider snapshot and Activity ledger paths
 
 Primary goal: build a reusable daemon-side Semantic Interface that converts observations and user intent into deterministic, auditable action hypotheses. It should be portable across Browser Action, Vision Context, Terminal, Workspace, Screen/OCR, and future Windows UI Automation without becoming a browser-specific resolver or a generic LLM planner.
+
+## Implementation Status (2026-05-08)
+
+Implemented:
+
+- `src/daemon/semantic-interface/` package-like daemon module with frozen v1 type surface, ontology/catalog versions, intent frames, deterministic hypothesis/ranking, step-transition grammar, operating profiles, pure safety predicates, trace/replay, redacted trace projection, generic alias lexicon, Browser Action adapter, Browser Action semantic target resolver, Vision Context adapter, and testing harness.
+- `npm run smoke:semantic-interface` covering Browser Action concept-filter resolution, duplicate-label abstention, stale snapshot warnings, redacted trace checks, deterministic replay, Browser Action low-risk live gate, Vision read/locate conformance, and typed/untyped/adversarial golden trace modes.
+- Browser Action target resolution integration that keeps Browser Action as the executor, uses Semantic Interface only as a target-resolution gate/advisory, attaches redacted semantic trace metadata to safety/audit, and preserves existing exact/selector/focused/bbox resolver behavior.
+- Vision Context read/locate conformance through `taskCapsuleToSemanticSnapshot` without changing core ranker/predicate contracts.
+- Dogfood evidence report at `docs/reports/semantic-interface-dogfood-evidence-2026-05-08.md`.
+
+Deferred beyond v1:
+
+- Terminal, Workspace, Screen/OCR, and Windows UI Automation adapters remain future consumers. The v1 contracts leave room for them, but Browser Action and Vision Context are the completed conformance targets for this iteration.
+- Statistical calibration remains deferred until a held-out dogfood trace set exists. V1 uses evidence-profile gating plus top-vs-runner-up margin as specified.
+- LLM enrichment remains logged-only future work and is not part of deterministic ranking.
+
+## 2026-05-09 Design Review Addendum
+
+The post-implementation design review tightened the v1 contract around a specific concern: semantic resolution must not become a hidden scalar confidence score with extra feature names attached. The module should keep evidence multidimensional and typed until hard gates, operating-profile gates, pairwise margin checks, safety predicates, and clarification/abstention decisions have run.
+
+Adopted refinements for the next implementation cycle:
+
+- Promote `CandidateEvidencePacket` as the public evidence contract. The older `DeterministicFeatures` name should be treated as a compatibility alias only while migrating iter-15 code.
+- Add `CandidateGenerationTrace`, `ActionabilityEvidence`, `TargetFingerprint`, `PairwiseMargin`, and `RankerTrace` to the replay contract.
+- Use integer basis-point scores (`0..10000`) inside evidence packets to avoid replay drift from floating-point rounding.
+- Keep final scalar score as an ordering aid only after typed gates have passed.
+- Separate target clarification from safety approval at the type and protocol level.
+- Treat Semantic Memory as an immutable, scoped, redacted evidence read-set. Memory can assist tie-breaking only after fresh observed candidates pass hard gates.
+
+Explicitly rejected refinements:
+
+- site-specific resolver rules for the motivating `개념글` case
+- online learned rankers in v1
+- embedding-selected executable targets
+- memory-derived permission or approval relaxation
+- durable persistence of full DOM text, screenshots, or sensitive page state
 
 ## 0. Why This Handoff Exists
 
@@ -39,6 +76,17 @@ This is not a site-specific problem. It is a missing semantic decision layer:
 - The system needs replayable evidence for why a candidate won, lost, or required clarification.
 
 Vision Context performed better in early dogfood because it already normalizes raw input into durable capsule/evidence/resolution structures instead of throwing raw observations directly into a prompt or selector matcher. Browser Action, Terminal, Workspace, and future computer-use need the same kind of semantic decision boundary.
+
+An architecture review of OpenAI Privacy Filter confirmed a useful but bounded lesson. Privacy Filter should not become the design basis for `semantic-interface`: it is a token-span labeling system over linear text, while this module resolves action targets in evidence graphs. However, several of its reliability patterns are accuracy-critical for v1:
+
+- candidate generation and final deterministic decision must stay separate
+- ontology/catalog/schema versions must be explicit and replayable
+- invalid semantic transitions must be rejected or disqualified by typed validators
+- operating profiles must describe evidence requirements, not vague confidence moods
+- evaluation must distinguish typed correctness, untyped grounding, adversarial cases, and abstention
+- durable traces must have a redacted projection boundary
+
+Therefore this handoff keeps the existing graph/affordance architecture, but upgrades these patterns from optional refinements to v1 acceptance criteria.
 
 ## 1. Product Goal
 
@@ -192,7 +240,12 @@ V1 should keep the public surface small. These contracts are the initial frozen 
 - `SafetyPredicate`
 - `SafetyVerdict`
 - `TraceRecord`
+- `RedactedTraceRecord`
 - `VerificationClaim`
+- `StepTransitionGrammar`
+- `OperatingProfile`
+- `SemanticDecisionOutcome`
+- `SemanticEvalMode`
 
 The types may be implemented in one `types.ts` first, then split only when the module grows.
 
@@ -457,25 +510,14 @@ export interface SemanticHypothesis {
   affordance: SemanticAffordance;
   proposal: ExecutableCommandProposal;
   expectedVerification: VerificationClaim;
-  features: DeterministicFeatures;
+  evidence: CandidateEvidencePacket;
+  finalScoreBp?: BasisPoints;
   enrichment?: EnrichmentLog;
   explanation: string;
   disqualifiers: string[];
 }
 
-export interface DeterministicFeatures {
-  exactLabelMatch?: number;
-  partialLabelMatch?: number;
-  affordanceMatch?: number;
-  roleMatch?: number;
-  regionMatch?: number;
-  viewportPresence?: number;
-  enabled?: number;
-  selectedOrFocused?: number;
-  freshness?: number;
-  sourceConfidence?: number;
-  riskPenalty?: number;
-}
+export type DeterministicFeatures = CandidateEvidencePacket;
 
 export interface EnrichmentLog {
   source: "llm" | "lexicon" | "memory";
@@ -487,7 +529,8 @@ export interface EnrichmentLog {
 
 Invariant:
 
-- `features` must be deterministic and must not include LLM-derived scores.
+- `evidence` must be deterministic and must not include LLM-derived scores.
+- `DeterministicFeatures` is a migration alias for iter-15 code. New code should use `CandidateEvidencePacket`.
 - `enrichment` is logged separately and cannot be read by the deterministic ranker.
 - Disqualified candidates should remain visible in trace output.
 
@@ -611,11 +654,12 @@ export interface TraceRecord {
   rankerVersion: string;
   predicateVersion: string;
   catalogVersion: string;
+  rankerTrace: RankerTrace;
   ranked: Array<{
     hypothesisId: string;
-    score: number;
+    finalScoreBp: BasisPoints;
     selected: boolean;
-    featureContributions: DeterministicFeatures;
+    evidence: CandidateEvidencePacket;
     explanation: string;
     disqualifiers: string[];
   }>;
@@ -630,11 +674,115 @@ export interface TraceRecord {
 Reproducibility contract:
 
 ```text
-same normalized snapshot + same intent frame + same ranker/predicate/catalog versions
+same normalized snapshot + same intent frame + same candidate generator/ranker/predicate/catalog versions
+  + same optional immutable memory read-set hash
   -> same ranked hypotheses and safety verdicts
 ```
 
 Execution results may vary because the external world changes. Decision replay must not.
+
+### Redacted Trace Record
+
+`TraceRecord` may exist in memory during a local decision. Durable Activity, report, and app-server context sinks must use a redacted projection.
+
+```ts
+export interface RedactedTraceRecord {
+  schemaVersion: number;
+  id: string;
+  createdAt: string;
+  snapshotId: string;
+  intentId: string;
+  intentHash: string;
+  semanticInterfaceVersion: string;
+  redactionPolicyVersion: string;
+  summary: {
+    outcome: "selected" | "abstained" | "blocked" | "confirm_required" | "unsupported";
+    selectedHypothesisId?: string;
+    hypothesisCount: number;
+    warningCount: number;
+  };
+  ranked: Array<{
+    hypothesisId: string;
+    finalScoreBp: BasisPoints;
+    selected: boolean;
+    explanation: string;
+    disqualifiers: string[];
+  }>;
+  verdicts: Array<{
+    hypothesisId: string;
+    verdict: SafetyVerdict;
+  }>;
+  warnings: SemanticSourceWarning[];
+}
+
+export interface SemanticSourceWarning {
+  kind: "snapshot_stale" | "source_mismatch" | "adapter_mismatch" | "redacted_evidence" | "unsupported_surface";
+  severity: "info" | "warn" | "block";
+  evidenceIds: string[];
+  description: string;
+}
+```
+
+Invariant:
+
+- Durable traces must not include password/token/payment/cookie/credential values.
+- Redaction happens before writing Activity, report, or app-server context.
+- A source mismatch warning is equivalent to Privacy Filter's tokenizer/decode mismatch warning: it does not always block, but it must be visible and replayable.
+
+### Step Transition Grammar, Operating Profile, And Outcome
+
+Privacy Filter's BIOES/Viterbi loop must not be copied into `semantic-interface`. The transferable pattern is constrained validation: typed state transitions prevent malformed decisions from looking valid.
+
+```ts
+export type SemanticStepTransition =
+  | "intent_to_reference"
+  | "reference_to_target"
+  | "target_to_action"
+  | "action_to_verification";
+
+export interface StepTransitionGrammar {
+  id: string;
+  version: string;
+  validate(input: {
+    snapshot: SemanticSnapshot;
+    intent: IntentFrame;
+    hypothesis: SemanticHypothesis;
+  }): {
+    valid: boolean;
+    disqualifiers: string[];
+    warnings: SemanticSourceWarning[];
+  };
+}
+
+export interface OperatingProfile {
+  id: "strict" | "standard" | "permissive";
+  version: string;
+  requiredEvidence: {
+    exactOrAliasMatch?: boolean;
+    roleOrAffordanceMatch?: boolean;
+    visibleInViewport?: boolean;
+    enabledStateKnown?: boolean;
+    uniqueWithinScope?: boolean;
+    revalidationRequired?: boolean;
+    maxSnapshotAgeMs?: number;
+    minTopMargin?: number;
+  };
+}
+
+export type SemanticDecisionOutcome =
+  | { kind: "act"; hypothesis: SemanticHypothesis; safety: SafetyVerdict; trace: TraceRecord }
+  | { kind: "confirm"; hypothesis: SemanticHypothesis; safety: SafetyVerdict; trace: TraceRecord }
+  | { kind: "abstain"; reasons: string[]; trace: TraceRecord }
+  | { kind: "block"; reasons: string[]; trace: TraceRecord };
+
+export type SemanticEvalMode = "typed" | "untyped" | "adversarial";
+```
+
+Invariant:
+
+- The transition grammar validates semantic structure; it does not flatten graph evidence into token labels.
+- Operating profiles are defined by evidence requirements. Safety/risk policy selects a profile; it does not directly mutate ranker thresholds.
+- `abstain` is a successful safety outcome when evidence is insufficient for a side-effect action.
 
 ## 6. Deterministic Ranking
 
@@ -649,9 +797,161 @@ Input:
 Output:
 
 - sorted hypotheses
-- scores
-- feature contributions
+- basis-point scores
+- typed evidence packets
 - disqualifiers
+
+Ranking must not collapse evidence into one scalar too early. The scalar score is only the final ordering aid after typed gates have run. Each hypothesis must carry a multidimensional deterministic evidence packet so required axes can be inspected, gated, compared, and traced independently.
+
+Required v1 evidence shape:
+
+```ts
+export type BasisPoints = number; // integer 0..10000
+
+export type AxisEvidenceStatus =
+  | "present"
+  | "missing"
+  | "conflict"
+  | "stale"
+  | "unsupported"
+  | "redacted";
+
+export interface AxisEvidence {
+  scoreBp: BasisPoints;
+  status: AxisEvidenceStatus;
+  evidenceIds: string[];
+  reasonCodes: string[];
+}
+
+export interface ActionabilityEvidence {
+  visible: AxisEvidence;
+  enabled: AxisEvidence;
+  stable: AxisEvidence;
+  inViewport: AxisEvidence;
+  occlusion: AxisEvidence;
+  adapterCapability: AxisEvidence;
+  revalidation: AxisEvidence;
+}
+
+export interface MemoryContributionEvidence {
+  phraseAlias: AxisEvidence;
+  preferredRole: AxisEvidence;
+  preferredRegion: AxisEvidence;
+  usualAction: AxisEvidence;
+  avoidTarget: AxisEvidence;
+  scopeStrength: AxisEvidence;
+  readSetId?: string;
+}
+
+export interface CandidateEvidencePacket {
+  lexical: AxisEvidence;
+  alias: AxisEvidence;
+  affordance: AxisEvidence;
+  role: AxisEvidence;
+  entityKind: AxisEvidence;
+  region: AxisEvidence;
+  graphRelation: AxisEvidence;
+  viewFreshness: AxisEvidence;
+  focus: AxisEvidence;
+  actionability: ActionabilityEvidence;
+  memory?: MemoryContributionEvidence;
+  risk: AxisEvidence;
+  ambiguity: AxisEvidence;
+}
+
+export interface TargetFingerprint {
+  surfaceId: string;
+  viewIdentityHash: string;
+  entityId?: string;
+  evidenceIds: string[];
+  role?: string;
+  normalizedLabel?: string;
+  affordances: SemanticAffordance[];
+  regionPath?: string[];
+  relationDigest?: string;
+  locatorDigest?: string;
+  bboxBucket?: string;
+}
+
+export interface CandidateGenerationTrace {
+  sourceSnapshotId: string;
+  intentFrameId: string;
+  generatorVersion: string;
+  generatedCandidateIds: string[];
+  rejectedBeforeRanking: GateResult[];
+}
+
+export interface GateResult {
+  candidateId: string;
+  gate: "hard" | "operating_profile" | "safety_precheck";
+  status: "pass" | "fail" | "warn";
+  reasonCodes: string[];
+}
+
+export interface OperatingProfileDecision {
+  profileId: string;
+  requiredAxes: string[];
+  minTopMarginBp: BasisPoints;
+  selectedBy: "action_family" | "risk_tier" | "surface_kind" | "evidence_quality";
+  reasonCodes: string[];
+}
+
+export interface PairwiseMargin {
+  winnerId: string;
+  runnerUpId: string;
+  finalMarginBp: BasisPoints;
+  axisMarginsBp: Record<string, BasisPoints>;
+  sufficient: boolean;
+  reasonCodes: string[];
+}
+
+export interface RankerTrace {
+  candidateGeneration: CandidateGenerationTrace;
+  gateResults: GateResult[];
+  profileDecision: OperatingProfileDecision;
+  pairwiseMargin?: PairwiseMargin;
+  selectedCandidateId?: string;
+  targetFingerprint?: TargetFingerprint;
+  outcome: "act" | "clarify" | "abstain" | "block";
+  reasonCodes: string[];
+}
+```
+
+Ranker decision stages:
+
+```text
+1. hard gate
+   remove candidates that fail freshness, visibility, required affordance, unsupported adapter capability, or malformed transition grammar
+
+2. operating-profile gate
+   require action-family-specific evidence axes instead of a single global threshold
+
+3. ranking
+   compute scalar ordering only for candidates that survived gates
+
+4. margin/abstention
+   compare top candidate and runner-up by profile-specific axes and final score
+
+5. target fingerprinting
+   attach a deterministic fingerprint that the feature executor must revalidate before side-effect execution
+```
+
+Example profile rules:
+
+```text
+click/type:
+  viewFreshness >= 8500
+  actionability.visible >= 8000
+  affordance >= 7000
+  lexical or alias >= 6500
+  top candidate must beat runner-up by required axes and minTopMargin
+
+read/locate:
+  may use lower affordance thresholds
+  must still record uncertainty and avoid false precision
+```
+
+Embeddings or vector similarity may be used for broad candidate generation or alias discovery, but not as the final authority for execution. Final selection must be based on typed, replayable evidence packets, operating-profile gates, margin checks, target fingerprint revalidation, and safety predicates.
 
 Initial ranking signals:
 
@@ -662,6 +962,20 @@ Initial ranking signals:
 - selected/focused state improves confidence only when relevant
 - unsupported adapter capability disqualifies or warns
 - high Tier1 risk does not lower reference confidence; it affects safety verdict separately
+
+Accuracy-critical v1 additions:
+
+- keep candidate evidence as multidimensional typed packets until hard gates and operating-profile gates have run
+- trace candidate generation separately from ranking so recall failure cannot masquerade as confident selection
+- distinguish visibility from actionability; a visible node may still be disabled, occluded, stale, adapter-unsupported, or unsafe to revalidate
+- attach `TargetFingerprint` to side-effect proposals and require executor-owned revalidation before acting
+- compare top candidates with pairwise axis margins, not only final score
+- run `StepTransitionGrammar` after hypothesis generation and before selection
+- use `OperatingProfile` evidence requirements instead of one global confidence threshold
+- compare top candidate against runner-up by margin; if margin or required evidence is insufficient, return `abstain`
+- record source warnings such as stale snapshot, adapter mismatch, hidden/offscreen evidence, and redacted evidence
+- keep all rejected candidates visible in trace output with deterministic disqualifiers
+- validate ontology/catalog schemas at build time and snapshot ingest time; per-action runtime validation is reserved for live locator/state fields
 
 For the motivating Browser Action case:
 
@@ -692,6 +1006,22 @@ Selected:
   Candidate A
 ```
 
+### V1 Calibration Strategy
+
+V1 should not pretend to have statistically calibrated probabilities before enough dogfood data exists. The first production calibration strategy is:
+
+```text
+evidence-profile gating + top-vs-runner-up margin + typed abstention
+```
+
+This means:
+
+- a candidate must satisfy the selected `OperatingProfile.requiredEvidence`
+- the selected candidate must beat the runner-up by the profile's `minTopMargin` when a side-effect action is proposed
+- read/locate may use permissive profiles, but the decision must still trace uncertainty
+- click/type/navigation/filter actions must abstain or clarify when evidence is under-specified
+- future statistical calibration, such as temperature scaling or isotonic regression, requires a held-out golden trace set and a documented recalibration script
+
 ## 7. Safety And Ambiguity Policy
 
 Safety and ambiguity must be independent.
@@ -703,12 +1033,46 @@ Reference resolution statuses:
 - `unresolved`
 - `unsupported`
 
+Decision outcomes:
+
+- `act`
+- `confirm`
+- `abstain`
+- `block`
+
 Safety verdicts:
 
 - `allow`
 - `warn`
 - `confirm`
 - `block`
+
+Clarification and safety approval are different protocol concepts:
+
+```ts
+export interface ClarificationDecision {
+  kind: "clarify";
+  reason: "ambiguous_target" | "unknown_reference" | "unknown_intent" | "missing_required_evidence";
+  choices: Array<{
+    candidateId: string;
+    label: string;
+    evidenceSummary: string;
+    targetFingerprint?: TargetFingerprint;
+  }>;
+  trace: RankerTrace;
+}
+
+export interface SafetyApprovalDecision {
+  kind: "safety_approval";
+  risk: SemanticTier1Risk;
+  proposal: ExecutableCommandProposal;
+  safety: SafetyVerdict;
+  targetFingerprint?: TargetFingerprint;
+  trace: RankerTrace;
+}
+```
+
+Clarifying which target the user means is not permission to perform a risky action. A confirmed target can still require a separate safety approval.
 
 Default policy:
 
@@ -719,8 +1083,28 @@ Default policy:
 - unsupported adapter capabilities must not silently downgrade to fake success
 - if ambiguity remains among candidates with the same affordance and same risk, ask for clarification
 - if ambiguity is only between exact desired-affordance candidate and partial wrong-affordance candidate, the exact desired-affordance candidate may win with traceable disqualifiers
+- if required evidence is missing for a side-effect action, return typed `abstain` rather than fabricating confidence
+- if a snapshot is stale or mismatched against the execution surface, reobserve or abstain before acting
+- high-risk families select stricter operating profiles but remain profile-invariant for confirm/block rules
 
 Shadow probe is not a v1 execution feature. V1 should model adapter capability for `shadowProbe`, but live probing requires a separate policy review because real browser clicks can still produce analytics, focus, navigation, or hidden side effects.
+
+### V1 Adversarial Accuracy Suite
+
+The golden trace suite must include fixed adversarial classes. These are not optional nice-to-have cases; they define what "accurate enough to act" means.
+
+Required classes:
+
+- duplicate label: multiple visible controls/content items share the same text
+- post-hydration drift: the observed target changes after snapshot creation
+- ARIA-vs-visible mismatch: accessible name and visible text disagree
+- offscreen or occluded target: candidate exists but is not safely actionable
+- i18n alias: user phrase and target label differ by language, spacing, suffix, or common synonym
+- dynamic id churn: selectors/ids change while semantic role remains stable
+- shadow DOM boundary: evidence is visible but locator support may be adapter-limited
+- nested form scope: text/type/submit candidates must resolve to the correct local form/control scope
+
+Each class needs at least one golden fixture before live low-risk adoption is marked complete. Aggregate precision/recall is not enough; the report must show per-class pass/fail and abstention behavior.
 
 ## 8. LLM Boundary
 
@@ -744,7 +1128,7 @@ Not allowed:
 Type-level rule:
 
 ```text
-ranker(input) must receive DeterministicFeatures, not EnrichmentLog
+ranker(input) must receive CandidateEvidencePacket and validated intent-frame data, not EnrichmentLog
 ```
 
 If future LLM enrichment is added, traces must clearly mark it as `influence: "logged_only"` until a separate deterministic validator explicitly accepts part of it as typed intent-frame input.
@@ -770,12 +1154,40 @@ export interface SemanticObservationAdapter<TObservation = unknown> {
 Adapter rules:
 
 - Browser Action adapter may map DOM role/name/selector/bbox/href to evidence/entities.
+- Browser Action View Graph adapter must map region, node, edge, route/view identity, mutation stability, and digest evidence when available; this is required for SPA/dynamic-page accuracy and is not optional polish.
 - Vision Context adapter may map OCR/visual regions/capsule observations to evidence/entities.
 - Terminal adapter may map buffer lines, cwd, command history, prompt state, exit status to evidence/entities.
 - Workspace adapter may map file paths, git status, diagnostics, symbols, and edits to evidence/entities.
 - Adapters may provide Tier2 labels, but the semantic core must treat them as opaque unless a feature-specific extension opts in.
 - Adapters must not hide restricted/unsupported states.
 - Adapters must preserve redaction boundaries.
+
+### 9.1 Browser View Graph Adapter Requirement
+
+Browser Action must provide Semantic Interface with View Graph features instead of only a flat `BrowserElement[]`. This is required because SPA pages can change route/view without a document reload, dynamic ids can churn during hydration, and repeated labels require region/group context.
+
+Adapter-owned evidence should include:
+
+- `BrowserViewIdentity`: tab/window/document/url/route, view revision, DOM revision, captured time, mutation quiet time.
+- `ViewNode`: semantic nodes such as region, control, field, content item, list, row, modal, and form.
+- `ViewEdge`: relationships such as contains, labels, same_group, filters, submits, and navigates_to.
+- `ViewDigest`: route, visible text, interactive element, and optional layout digests.
+- stale/source warnings when the expected execution view no longer matches the observed view.
+
+Semantic core requirements:
+
+- Treat View Graph features as deterministic evidence, not as browser-specific core assumptions.
+- Prefer current-view, visible, enabled, affordance-compatible nodes over stale or hidden nodes.
+- Use region and edge context to resolve duplicate labels.
+- Preserve abstention when evidence is insufficient for side-effect actions.
+- Emit redacted trace explanations for selected node, alternatives, stale-view decisions, and ambiguity.
+
+Feature-owned execution requirements:
+
+- Browser Action keeps the original semantic target reference and expected view identity in action commands.
+- Extension validates the current view before executing.
+- On `stale_view` or `stale_target`, daemon reobserves/re-resolves once for safe recoverable actions.
+- Safety policy remains Browser Action owned; Semantic Interface does not execute.
 
 ## 10. Browser Action Migration
 
@@ -890,9 +1302,18 @@ But Terminal and Workspace should not drive v1 implementation until Browser shad
 The Semantic Interface is production-quality only when all of the following are true:
 
 - deterministic replay passes for a substantial golden trace suite
-- traces include evidence, hypotheses, feature scores, selected/rejected candidates, safety verdicts, and verification claims
+- traces include evidence, hypotheses, basis-point scores, selected/rejected candidates, safety verdicts, and verification claims
+- ranker traces expose typed evidence packets, candidate generation provenance, gate results, pairwise margins, and target fingerprints, not only one final scalar score
+- redacted durable traces are emitted separately from in-memory full traces
 - `개념글` and similar Korean connective target cases resolve without site-specific hardcoding
 - safety and ambiguity are represented separately in trace output
+- `abstain` is a first-class outcome for under-evidenced side-effect actions
+- `StepTransitionGrammar` rejects or disqualifies malformed intent/reference/target/action/verification mappings
+- operating profiles are defined by evidence requirements and selected by safety/risk policy
+- v1 calibration uses evidence-profile gating plus top-vs-runner-up margin, with statistical calibration deferred until a held-out trace set exists
+- embeddings/vector similarity, if added, are limited to candidate generation or alias discovery and cannot decide execution without typed evidence validation
+- typed, untyped, and adversarial semantic eval modes are implemented in the golden trace harness
+- the adversarial target-resolution suite covers duplicate label, hydration drift, ARIA/visible mismatch, offscreen/occluded, i18n alias, dynamic id churn, shadow DOM, and nested form scope
 - Browser Action shadow/advisory/live phases are documented and gated
 - low-risk Browser Action live adoption has fallback/rollback
 - Vision read/locate conformance works without core changes
@@ -943,9 +1364,12 @@ Scope:
 - `src/daemon/semantic-interface/safetyPredicate.ts`
 - `src/daemon/semantic-interface/trace.ts`
 - `src/daemon/semantic-interface/replay.ts`
+- `src/daemon/semantic-interface/transitionGrammar.ts`
+- `src/daemon/semantic-interface/operatingProfile.ts`
 - `src/daemon/semantic-interface/adapters/browserActionAdapter.ts`
 - `scripts/smoke-semantic-interface.mjs`
 - fixture for the `개념글` ambiguity case
+- first adversarial fixtures for duplicate-label, i18n alias, and stale snapshot/source mismatch cases
 
 Acceptance:
 
@@ -953,6 +1377,9 @@ Acceptance:
 - The `개념글` prompt frame resolves to an activate/filter hypothesis for the exact button candidate.
 - The partial `개념글[동물,기타]` link remains visible as a rejected/disqualified candidate.
 - Replay of the same fixture produces identical ranking and safety verdict.
+- transition grammar produces deterministic disqualifiers for malformed mappings.
+- operating profiles can force `abstain` when required evidence or top-vs-runner-up margin is missing.
+- typed/untyped/adversarial eval modes are represented in the fixture harness, even if the first suite is small.
 - Existing Browser Action smokes continue to pass.
 
 ### Sprint 02: Browser Action Shadow Mode
@@ -965,12 +1392,17 @@ Scope:
 - emit semantic traces for live prompt-driven Browser Action attempts
 - record advisory diff without changing execution
 - add trace redaction checks
+- add `RedactedTraceRecord` projection for Activity/report/app-server durable sinks
+- emit source warnings for stale snapshot, source mismatch, adapter mismatch, redacted evidence, and unsupported surface
+- expand adversarial fixtures to cover ARIA/visible mismatch, offscreen/occluded, dynamic id churn, shadow DOM, and nested form scope
 
 Acceptance:
 
 - live Browser Action requests produce semantic traces
 - no user-visible execution changes
 - Activity/dogfood can show why semantic resolver would pick a different candidate
+- durable traces contain redacted summaries and no credential/token/payment/cookie values
+- advisory reports include per-adversarial-class pass/fail/abstain behavior
 
 ### Sprint 03: Vision Read/Locate Conformance
 
@@ -987,6 +1419,7 @@ Acceptance:
 - Vision fixture produces a semantic snapshot and read/locate hypotheses
 - shared replay harness works for Browser and Vision fixtures
 - core ranker/predicate contracts stay unchanged
+- typed/untyped eval split works for Vision read/locate traces without Browser-only assumptions
 
 ### Sprint 04: Low-Risk Browser Action Live Gate
 
@@ -1027,7 +1460,7 @@ Risk: LLM output leaks into deterministic ranking.
 
 Mitigation:
 
-- separate `EnrichmentLog` from `DeterministicFeatures`
+- separate `EnrichmentLog` from `CandidateEvidencePacket`
 - ranker signature must not accept enrichment
 - trace marks enrichment as logged-only
 
@@ -1059,19 +1492,31 @@ Mitigation:
 ## 17. Open Questions
 
 - Should the first implementation store semantic traces in Activity, report files, or only smoke fixtures?
-- What exact confidence threshold should Phase C use for low-risk filter/activate actions?
 - Should Browser Action intent parsing directly emit `IntentFrame`, or should an adapter bridge convert existing `BrowserActionPromptPlan` first?
-- How much Vision Context data should enter semantic traces before privacy redaction becomes too noisy?
 - Should trace replay scrub dynamic ids/timestamps globally or require deterministic id factories in tests?
+- What is the minimum held-out dogfood trace count before statistical calibration is worth adding beyond profile gating and margin abstention?
+
+Resolved by the Privacy Filter review/debate:
+
+- Do not replace the graph/affordance design with token-span sequence labeling.
+- Do not use one global confidence threshold for Phase C. Use operating profiles selected by risk tier.
+- Do not persist full traces by default. Durable sinks use `RedactedTraceRecord`.
+- Do not treat aggregate precision/recall as enough semantic evidence. Track typed, untyped, adversarial, and abstention behavior.
 
 ## 18. Non-Negotiable Rules
 
 - Do not make `semantic-interface` an executor.
 - Do not make LLM output the default action selector.
+- Do not import Privacy Filter's BIOES token-span loop as the core semantic model.
+- Do not flatten graph/affordance evidence into linear token labels for action resolution.
+- Do not flatten typed evidence packets into one scalar before hard gates, operating-profile gates, pairwise margin, and safety checks have run.
+- Do not treat memory, embeddings, or alias matches as executable target authority.
 - Do not add site-specific rules for the `개념글` case.
 - Do not hide ambiguity by silently choosing risky candidates.
+- Do not merge clarification with safety approval.
+- Do not treat under-evidenced side-effect resolution as success; use `abstain` or clarification.
+- Do not use aggregate precision/recall as the headline production metric for action accuracy.
 - Do not persist password/token/payment/cookie/credential values in traces.
 - Do not weaken Browser Action safety policy during semantic migration.
 - Do not modify Browser Action live execution in Phase A.
 - Preserve Korean/UTF-8 encoding integrity.
-

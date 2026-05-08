@@ -398,26 +398,91 @@ Acceptance:
 - At least one prompt-driven Agent Browser Action task.
 - Semantic acceptance is not marked complete based only on type/build/smoke checks.
 
-## 12. Recommended Implementation Order
+## 12. Workstream 9: Request-Scoped Fresh Observation and View Graph
+
+Goal: make prompt-driven Browser Action accurate on tab switches, same-tab navigation, SPAs, hydration drift, and duplicate-label pages.
+
+This is now a required production workstream. Periodic DOM polling and "latest snapshot" are insufficient because a user prompt can arrive while the daemon still holds a previous page, previous route, or pre-hydration view. Browser Action must first obtain a request-scoped current observation, then validate and execute against that view.
+
+Required transport:
+
+- Add a long-poll command channel for the extension:
+  - extension opens `/browser-action/extension/wait`
+  - daemon holds until `observe_now`, action, cancel, or timeout
+  - extension immediately opens the next wait request after each response
+  - existing alarm polling remains a fallback
+- Do not make WebSocket the only production command path. MV3 service-worker suspension makes always-on sockets fragile; WebSocket can be added later as an optional fast path.
+
+Required fresh observation:
+
+- Prompt/direct Browser Action starts with `observe_now`.
+- The observation must include tab/window/document/view identity, URL/title, ready state, capture time, and mutation stability where available.
+- Daemon must reject or wait on mismatched observations instead of resolving against stale DOM.
+- Same-tab navigation and SPA route changes must invalidate stale observations even when `tabId` remains unchanged.
+
+Required View Graph:
+
+- Extension maintains a current-view semantic graph:
+  - regions: header, nav, sidebar, main, modal, form, list, table
+  - nodes: controls, fields, links, content items, rows, cards
+  - edges: contains, labels, same_group, filters, submits, navigates_to
+  - state: focus, route revision, DOM revision, mutation quietness
+- Content script tracks:
+  - `history.pushState`
+  - `history.replaceState`
+  - `popstate`
+  - `hashchange`
+  - DOM mutations
+  - focus/selection/form value changes
+- Snapshot carries digests:
+  - route digest
+  - visible text digest
+  - interactive element digest
+  - optional layout digest
+
+Required execution contract:
+
+- Browser Action commands carry:
+  - selected node id
+  - original semantic target reference
+  - expected view identity
+  - expected digest
+- Extension checks current view identity before executing.
+- If stale, extension returns `stale_view` or `stale_target`.
+- Daemon reobserves and re-resolves once for safe recoverable actions.
+- Low-confidence side-effect actions still clarify.
+
+Acceptance:
+
+- Tab switch immediately followed by a prompt does not use the previous tab snapshot.
+- Same-tab navigation immediately followed by a prompt waits for or requests the new document/view.
+- React/SPA fixture route changes invalidate stale observations even without full reload.
+- Duplicate visible labels resolve by region/affordance, not just text.
+- Modal/form/list fixtures prove View Graph edges improve target choice.
+- Dogfood evidence includes at least one real or local SPA task with route/mutation-driven view changes.
+
+## 13. Recommended Implementation Order
 
 1. Agent Tool Contract
 2. Renderer Browser Action UX
 3. Multi-Step Plan Execution
 4. Browser Safety Permission Policy
 5. Extension Action Channel Stability
-6. Managed Browser and CDP Operating Model
-7. Windows UI Automation Helper
-8. Real Dogfood Matrix
+6. Request-Scoped Fresh Observation and View Graph
+7. Managed Browser and CDP Operating Model
+8. Windows UI Automation Helper
+9. Real Dogfood Matrix
 
 Reasoning:
 
 - The product value appears when prompts can drive actions.
 - UI and plan execution must exist before broader dogfood can be meaningful.
-- Extension/managed/CDP stability can then be hardened against real workflows.
+- Extension stability must include request-scoped fresh observation and View Graph before real dynamic pages are reliable.
+- Managed/CDP stability can then be hardened against real workflows.
 - Windows UI Automation should stay bounded by Browser Action semantics.
 - Dogfood evidence should close the loop only after the live path exists.
 
-## 12.1 Iteration iter-11 Completion Record
+## 13.1 Iteration iter-11 Completion Record
 
 Workstream status:
 
@@ -429,6 +494,10 @@ Workstream status:
 6. Browser Safety Permission Policy: implemented browser-specific policies under daemon app settings with allow/ask/deny by action family, origin, risk, mode, expiry, revocation, and secret redaction helpers.
 7. Windows UI Automation Helper: bounded diagnostics implemented; executable browser chrome/restricted-page fallback is `BLOCKED` with attempted path and required helper scope recorded in native adapter diagnostics and smoke coverage.
 8. Real Dogfood Matrix: implemented `npm run dogfood:browser-action:e2e`, producing prompt-driven, extension-channel, risky-deny, non-submit-fill, real Playwright navigation, CDP-unavailable, native-boundary, and restricted-page evidence.
+
+Post-`iter-15` required expansion:
+
+- Workstream 9 is open and required. Dogfood showed that latest-snapshot semantics can still use the wrong page after tab switches or before SPA/page updates settle. This must be addressed with request-scoped fresh observation, long-poll delivery, document/view identity, View Graph, and execute-time stale-view validation before Browser Action is considered production-accurate on dynamic sites.
 
 New evidence:
 

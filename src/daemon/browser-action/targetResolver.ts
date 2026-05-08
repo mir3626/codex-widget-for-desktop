@@ -1,9 +1,12 @@
 import { summarizeBrowserElement } from "./browserObservation.js";
 import { compactText, expandBrowserTargetAliases, normalizeBrowserTargetText, tokenizeBrowserTargetText } from "./targetLexicon.js";
-import type { BrowserElement, ElementGraph, ElementTarget, Rect, TargetResolution } from "./types.js";
+import { resolveBrowserActionTargetSemantically } from "../semantic-interface/adapters/browserActionTargetResolver.js";
+import type { BrowserAction, BrowserElement, BrowserObservation, ElementGraph, ElementTarget, Rect, TargetResolution } from "./types.js";
 
 export function resolveTarget(input: {
   graph: ElementGraph;
+  observation?: BrowserObservation;
+  action?: BrowserAction;
   target?: ElementTarget;
   hint?: string;
 }): TargetResolution {
@@ -36,7 +39,7 @@ export function resolveTarget(input: {
   const topScore = ranked[0]?.score ?? 0;
   const secondScore = ranked[1]?.score ?? 0;
   const ambiguous = primary && secondScore > 0 && Math.abs(topScore - secondScore) < 0.08;
-  return {
+  const lexical: TargetResolution = {
     primary,
     alternatives: ranked.slice(1, 5).map((item) => item.element),
     confidence: ambiguous ? Math.min(0.68, topScore) : topScore,
@@ -45,6 +48,41 @@ export function resolveTarget(input: {
         ? `Target hint is ambiguous; closest match is ${summarizeBrowserElement(primary)}.`
         : `Matched target hint against ${summarizeBrowserElement(primary)}.`
       : "No element matched the requested target with useful confidence."
+  };
+  const semantic = input.observation
+    ? resolveBrowserActionTargetSemantically({
+        observation: input.observation,
+        action: input.action,
+        target: input.target,
+        hint: input.hint
+      })
+    : undefined;
+  return chooseResolution({ lexical, semantic });
+}
+
+function chooseResolution(input: { lexical: TargetResolution; semantic?: TargetResolution }): TargetResolution {
+  if (!input.semantic?.primary) {
+    return input.semantic?.semantic
+      ? { ...input.lexical, semantic: input.semantic.semantic }
+      : input.lexical;
+  }
+  if (!input.lexical.primary || input.lexical.confidence < 0.75) {
+    return input.semantic.confidence >= 0.75 ? input.semantic : { ...input.lexical, semantic: input.semantic.semantic };
+  }
+  if (input.lexical.primary.id === input.semantic.primary.id) {
+    return {
+      ...input.lexical,
+      confidence: Math.max(input.lexical.confidence, input.semantic.confidence),
+      reason: `${input.lexical.reason} Semantic Interface confirmed the same target.`,
+      semantic: input.semantic.semantic
+    };
+  }
+  if (input.semantic.confidence >= input.lexical.confidence + 0.08) {
+    return input.semantic;
+  }
+  return {
+    ...input.lexical,
+    semantic: input.semantic.semantic
   };
 }
 

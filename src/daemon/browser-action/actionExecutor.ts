@@ -9,8 +9,10 @@ export function createBrowserQueuedCommand(input: {
   target?: BrowserElement;
   expectedSource?: BrowserQueuedCommand["expectedSource"];
   timeoutMs?: number;
+  expiresInMs?: number;
 }): BrowserQueuedCommand {
   const createdAt = new Date();
+  const expiresInMs = Math.max(1000, input.expiresInMs ?? input.timeoutMs ?? 30_000);
   return {
     requestId: input.requestId,
     actionSessionId: input.actionSessionId,
@@ -20,6 +22,6 @@ export function createBrowserQueuedCommand(input: {
     target: input.target,
     expectedSource: input.expectedSource,
     createdAt: createdAt.toISOString(),
-    expiresAt: new Date(createdAt.getTime() + Math.max(1000, input.timeoutMs ?? 30_000)).toISOString()
+    expiresAt: new Date(createdAt.getTime() + expiresInMs).toISOString()
   };
 }

@@ -69,6 +69,8 @@ const MAX_LEDGER_TOOL_OUTPUT_CHARS = 120_000;
 const MAX_VISION_RECORDING_DATA_URL_CHARS = 16 * 1024 * 1024;
 const CODEX_APP_SERVER_RUNTIME_PROVIDER = "codex-app-server";
 const BROWSER_EXTENSION_BRIDGE_STALE_MS = 90_000;
+const BROWSER_BRIDGE_FRESH_SNAPSHOT_WAIT_MS = 35_000;
+const BROWSER_BRIDGE_FRESH_SNAPSHOT_POLL_MS = 250;
 
 type BrowserExtensionBridgeStore = {
   update: (status: BrowserExtensionBridgeStatus) => BrowserExtensionBridgeStatus;
@@ -135,6 +137,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
         providers,
         visionContext,
         browserActions,
+        browserExtensionBridge,
         getServerPort(server)
       );
     });
@@ -204,6 +207,7 @@ async function handleMessage(
   providers: ProviderRegistry,
   visionContext: VisionContextSessionManager,
   browserActions: BrowserActionSessionManager,
+  browserExtensionBridge: BrowserExtensionBridgeStore,
   daemonPort: number
 ): Promise<void> {
   let message: ClientMessage;
@@ -678,7 +682,8 @@ async function handleMessage(
           agentSession,
           codexAppServer,
           providers,
-          browserActions
+          browserActions,
+          browserExtensionBridge
         });
       }
     } catch (error) {
@@ -1062,7 +1067,8 @@ async function handleMessage(
     agentSession,
     codexAppServer,
     providers,
-    browserActions
+    browserActions,
+    browserExtensionBridge
   });
 }
 
@@ -1079,6 +1085,7 @@ async function runAskMessage(input: {
   codexAppServer: CodexAppServerBridge;
   providers: ProviderRegistry;
   browserActions: BrowserActionSessionManager;
+  browserExtensionBridge: BrowserExtensionBridgeStore;
 }): Promise<void> {
   const {
     message,
@@ -1092,7 +1099,8 @@ async function runAskMessage(input: {
     agentSession,
     codexAppServer,
     providers,
-    browserActions
+    browserActions,
+    browserExtensionBridge
   } = input;
   const controller = new AbortController();
   controllers.set(message.id, controller);
@@ -1127,7 +1135,8 @@ async function runAskMessage(input: {
       clients,
       storage,
       providers,
-      browserActions
+      browserActions,
+      browserExtensionBridge
     });
     if (browserActionHandled) {
       return;
@@ -1177,6 +1186,7 @@ async function tryRunBrowserActionPrompt(input: {
   storage: StorageService;
   providers: ProviderRegistry;
   browserActions: BrowserActionSessionManager;
+  browserExtensionBridge: BrowserExtensionBridgeStore;
 }): Promise<boolean> {
   const promptPlan = planBrowserActionFromPrompt({
     text: input.message.text,
@@ -1201,7 +1211,27 @@ async function tryRunBrowserActionPrompt(input: {
     reason: promptPlan.reason
   });
 
-  const snapshot = input.providers.getDomSnapshot();
+  const snapshot = await waitForFreshBrowserBridgeSnapshot({
+    providers: input.providers,
+    browserExtensionBridge: input.browserExtensionBridge,
+    storage: input.storage,
+    sessionId: input.sessionId
+  });
+  const staleSnapshot = readBrowserBridgeSnapshotMismatch(input.browserExtensionBridge.snapshot(), snapshot);
+  if (staleSnapshot) {
+    const korean = /[가-힣]/.test(input.message.text);
+    recordRuntimeActivity(input.storage, input.sessionId, "warn", "browser-action", "Prompt Browser Action held for stale Browser Bridge snapshot", staleSnapshot);
+    input.emit({
+      type: "message.completed",
+      id: input.message.id,
+      text: korean
+        ? `현재 활성 탭 관찰이 아직 갱신되지 않았습니다. Browser Bridge가 ${readHostLabel(staleSnapshot.expectedUrl) || staleSnapshot.expectedUrl} 페이지를 읽는 중입니다. 잠시 후 다시 실행해 주세요.`
+        : `The current active-tab observation is still refreshing. Browser Bridge is reading ${readHostLabel(staleSnapshot.expectedUrl) || staleSnapshot.expectedUrl}; try again shortly.`
+    });
+    input.emit({ type: "session.state", state: "idle", id: input.message.id });
+    broadcastLedgerSnapshot(input.clients, input.storage, input.sessionId);
+    return true;
+  }
   const observed = input.browserActions.observe({ actionSessionId: session.id, snapshot });
   recordBrowserActionAudit(input.storage, observed.audit);
   broadcast(input.clients, {
@@ -1289,6 +1319,77 @@ async function tryRunBrowserActionPrompt(input: {
   recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", `Prompt Browser Action ${execution.plan.status}`, summarizeBrowserActionPlan(execution.plan));
   broadcastLedgerSnapshot(input.clients, input.storage, input.sessionId);
   return true;
+}
+
+async function waitForFreshBrowserBridgeSnapshot(input: {
+  providers: ProviderRegistry;
+  browserExtensionBridge: BrowserExtensionBridgeStore;
+  storage: StorageService;
+  sessionId: string;
+}): Promise<DomSnapshot | null> {
+  const startedAt = Date.now();
+  const initialSnapshot = input.providers.getDomSnapshot();
+  const initialMismatch = readBrowserBridgeSnapshotMismatch(input.browserExtensionBridge.snapshot(), initialSnapshot);
+  if (!initialMismatch) {
+    return initialSnapshot;
+  }
+
+  recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", "Waiting for fresh Browser Bridge snapshot", initialMismatch);
+  while (Date.now() - startedAt < BROWSER_BRIDGE_FRESH_SNAPSHOT_WAIT_MS) {
+    await sleep(BROWSER_BRIDGE_FRESH_SNAPSHOT_POLL_MS);
+    const latestSnapshot = input.providers.getDomSnapshot();
+    const mismatch = readBrowserBridgeSnapshotMismatch(input.browserExtensionBridge.snapshot(), latestSnapshot);
+    if (!mismatch) {
+      recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", "Fresh Browser Bridge snapshot received", {
+        waitedMs: Date.now() - startedAt,
+        url: latestSnapshot?.url
+      });
+      return latestSnapshot;
+    }
+  }
+  const latestSnapshot = input.providers.getDomSnapshot();
+  recordRuntimeActivity(input.storage, input.sessionId, "warn", "browser-action", "Browser Bridge snapshot stayed stale after wait", {
+    waitedMs: Date.now() - startedAt,
+    ...readBrowserBridgeSnapshotMismatch(input.browserExtensionBridge.snapshot(), latestSnapshot)
+  });
+  return latestSnapshot;
+}
+
+function readBrowserBridgeSnapshotMismatch(status: BrowserExtensionBridgeStatus, snapshot: DomSnapshot | null): { expectedUrl: string; actualUrl?: string } | undefined {
+  const expectedUrl = status.activeTab?.url?.trim();
+  if (!status.connected || status.activeTab?.permission !== "allowed" || !expectedUrl || !/^https?:\/\//i.test(expectedUrl)) {
+    return undefined;
+  }
+  if (snapshot?.url && browserActionUrlsMatch(snapshot.url, expectedUrl)) {
+    return undefined;
+  }
+  return {
+    expectedUrl,
+    actualUrl: snapshot?.url
+  };
+}
+
+function browserActionUrlsMatch(left: string | undefined, right: string | undefined): boolean {
+  const normalizedLeft = normalizeBrowserActionUrl(left);
+  const normalizedRight = normalizeBrowserActionUrl(right);
+  return Boolean(normalizedLeft && normalizedRight && normalizedLeft === normalizedRight);
+}
+
+function normalizeBrowserActionUrl(value: string | undefined): string {
+  if (!value) {
+    return "";
+  }
+  try {
+    const url = new URL(value);
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return value.trim();
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function normalizeBrowserActionPlan(input: {

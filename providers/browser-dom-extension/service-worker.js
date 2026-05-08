@@ -44,6 +44,24 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
+chrome.tabs.onActivated.addListener(() => {
+  void refreshBridge("tab_activated").catch((error) => console.debug("[Codex Widget] Browser Bridge tab activation refresh failed.", error));
+});
+
+chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+  if (!tab?.active || changeInfo.status !== "complete") {
+    return;
+  }
+  void refreshBridge("tab_complete").catch((error) => console.debug("[Codex Widget] Browser Bridge tab update refresh failed.", error));
+});
+
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) {
+    return;
+  }
+  void refreshBridge("window_focused").catch((error) => console.debug("[Codex Widget] Browser Bridge window focus refresh failed.", error));
+});
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   void handleRuntimeMessage(message)
     .then((response) => sendResponse(response))

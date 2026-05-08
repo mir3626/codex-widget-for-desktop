@@ -27,6 +27,9 @@ import type {
 } from "./types.js";
 import type { RuntimeInteractionDecision } from "../../shared/protocol.js";
 
+const DIRECT_ACTION_TIMEOUT_MS = 12_000;
+const EXTENSION_COMMAND_PICKUP_TIMEOUT_MS = 90_000;
+
 export class BrowserActionSessionManager {
   private sessions = new Map<string, BrowserActionSession>();
   private results = new Map<string, BrowserActionResult>();
@@ -139,6 +142,8 @@ export class BrowserActionSessionManager {
     const targetResolution = shouldResolveTarget(input.action, input.targetHint)
       ? resolveTarget({
           graph,
+          observation,
+          action: input.action,
           target,
           hint: input.targetHint
         })
@@ -164,6 +169,16 @@ export class BrowserActionSessionManager {
         })
       : undefined);
     const safety = applyBrowserActionPolicyToSafety({ safety: baseSafety, match: policyMatch });
+    if (targetResolution.semantic) {
+      safety.metadata = {
+        ...(safety.metadata ?? {}),
+        semanticInterface: {
+          outcome: targetResolution.semantic.outcome,
+          selectedElementId: targetResolution.semantic.selectedElementId,
+          trace: targetResolution.semantic.trace
+        }
+      };
+    }
     const result: BrowserActionResult = {
       id: `browser-result-${randomUUID()}`,
       actionSessionId: session.id,
@@ -177,7 +192,16 @@ export class BrowserActionSessionManager {
       verification: { status: "unknown", reason: "Action has not completed yet." }
     };
     this.results.set(result.id, result);
-    session.timeline.push(createTimelineEvent({ startedAt: session.startedAt, type: "resolve", summary: targetResolution.reason, detail: { confidence: targetResolution.confidence, alternatives: targetResolution.alternatives.map((element) => element.id) } }));
+    session.timeline.push(createTimelineEvent({
+      startedAt: session.startedAt,
+      type: "resolve",
+      summary: targetResolution.reason,
+      detail: {
+        confidence: targetResolution.confidence,
+        alternatives: targetResolution.alternatives.map((element) => element.id),
+        semantic: targetResolution.semantic
+      }
+    }));
 
     if (safety.decision === "block" || safety.decision === "clarify") {
       result.status = safety.decision === "block" ? "failed" : "needs_clarification";
@@ -234,7 +258,8 @@ export class BrowserActionSessionManager {
       action: input.action,
       target: targetResolution.primary,
       expectedSource: session.source,
-      timeoutMs: readActionTimeoutMs(input.action)
+      timeoutMs: readActionTimeoutMs(input.action),
+      expiresInMs: readExtensionCommandPickupTimeoutMs()
     });
     this.commandResultIds.set(command.requestId, result.id);
     this.pendingCommands.push(command);
@@ -280,7 +305,8 @@ export class BrowserActionSessionManager {
       action: approval.action,
       target: approval.target,
       expectedSource: session.source,
-      timeoutMs: readActionTimeoutMs(approval.action)
+      timeoutMs: readActionTimeoutMs(approval.action),
+      expiresInMs: readExtensionCommandPickupTimeoutMs()
     });
     this.commandResultIds.set(command.requestId, result.id);
     result.status = "pending";
@@ -573,7 +599,13 @@ export class BrowserActionSessionManager {
       }
     });
     const graph = buildElementGraph({ observationId: refreshed.id, focusedElementId: refreshed.focusedElementId, elements: refreshed.elements });
-    const resolution = resolveTarget({ graph, target: readActionTarget(input.result.action), hint: input.result.safety.targetSummary });
+    const resolution = resolveTarget({
+      graph,
+      observation: refreshed,
+      action: input.result.action,
+      target: readActionTarget(input.result.action),
+      hint: input.result.safety.targetSummary
+    });
     input.session.timeline.push(createTimelineEvent({
       startedAt: input.session.startedAt,
       type: "resolve",
@@ -638,7 +670,11 @@ function readActionTimeoutMs(action: BrowserAction): number {
   if (action.type === "evaluate" && action.timeoutMs) {
     return Math.max(1, Math.min(Math.floor(action.timeoutMs), 5_000));
   }
-  return 12_000;
+  return DIRECT_ACTION_TIMEOUT_MS;
+}
+
+function readExtensionCommandPickupTimeoutMs(): number {
+  return EXTENSION_COMMAND_PICKUP_TIMEOUT_MS;
 }
 
 function isRetriableBrowserActionError(error: string | undefined): boolean {

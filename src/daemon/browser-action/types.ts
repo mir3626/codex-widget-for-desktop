@@ -212,6 +212,12 @@ export type TargetResolution = {
   alternatives: BrowserElement[];
   confidence: number;
   reason: string;
+  semantic?: {
+    outcome: "act" | "confirm" | "abstain" | "block";
+    selectedElementId?: string;
+    rankedElementIds?: string[];
+    trace: unknown;
+  };
 };
 
 export type BrowserVerificationResult = {

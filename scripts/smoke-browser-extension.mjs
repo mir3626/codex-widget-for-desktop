@@ -66,6 +66,9 @@ const bridgeModules = await Promise.all(bridgeModulePaths.map((modulePath) => re
 const extensionWorkerSource = [serviceWorker, ...bridgeModules].join("\n");
 for (const marker of [
   "chrome.alarms.onAlarm",
+  "chrome.tabs.onActivated",
+  "chrome.tabs.onUpdated",
+  "chrome.windows.onFocusChanged",
   "chrome.runtime.onMessage",
   "Codex Widget] Browser Bridge heartbeat",
   "chrome.scripting.executeScript",

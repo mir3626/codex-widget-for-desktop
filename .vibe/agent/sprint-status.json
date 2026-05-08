@@ -108,12 +108,26 @@
       "command": "powershell -NoProfile -ExecutionPolicy Bypass -Command \". .\\scripts\\use-msvc-env.ps1; Push-Location src-tauri; cargo check --no-default-features; Pop-Location\"",
       "expectExitCode": 0,
       "runOutsideSandbox": true
+    },
+    {
+      "id": "smoke-semantic-interface",
+      "command": "npm run smoke:semantic-interface",
+      "expectExitCode": 0,
+      "expectStdoutContains": "semantic interface smoke ok"
+    },
+    {
+      "id": "dogfood-semantic-interface",
+      "command": "npm run dogfood:semantic-interface",
+      "expectExitCode": 0,
+      "expectStdoutContains": "semantic interface dogfood evidence written"
     }
   ],
   "handoff": {
-    "currentSprintId": "iter-14-sprint-03-bridge-auto-observe-hardening-and-verification",
-    "lastActionSummary": "Iteration 14 completed the Browser Action semantic target pipeline: prompt planning now uses a dedicated intent resolver and target lexicon, Korean commands such as 새 채팅 눌러줘 normalize to the actionable target phrase, target resolution favors actionable links/buttons/inputs over broad containers, and Browser Bridge auto-observe posts snapshots to the daemon over HTTP before native-host fallback.",
+    "currentSprintId": "iter-15-complete",
+    "lastActionSummary": "Iteration 15 completed Semantic Interface: v1 semantic type/ranker/trace surface, Browser Action semantic advisory/live gate, Vision read/locate conformance, golden/adversarial suite, dogfood evidence, and smoke coverage.",
     "openIssues": [
+      "Semantic Interface v1 is complete for Browser Action and Vision Context conformance; Terminal/Workspace/Screen/OCR/UIA adapters are future consumers, not part of iter-15.",
+      "Semantic Interface statistical calibration is deferred until a held-out dogfood trace set exists; v1 uses operating profiles plus top-vs-runner-up margin.",
       "Codex app-server protocol remains experimental; stale persisted thread ids fall back safely, but live cross-process resume behavior needs dogfooding validation.",
       "Browser store account submission is deferred until after dogfooding.",
       "Vision recording/screen streaming has consent, retention, history, cleanup, skipped-frame diagnostics, resource guardrails, and Vision Context capsule preprocessing; longer CPU/memory tuning remains dogfood-dependent.",
@@ -132,12 +146,11 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-08T12:12:23.408+09:00"
+    "updatedAt": "2026-05-08T23:05:00.000+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-08T12:12:23.408+09:00",
-  "verifiedAt": "2026-05-08T12:12:23.408+09:00"
+  "stateUpdatedAt": "2026-05-08T23:05:00.000+09:00"
 }

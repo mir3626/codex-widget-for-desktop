@@ -1,6 +1,6 @@
 # Browser Extension Bridge Handoff
 
-Status: complete in `iter-13` (2026-05-08)
+Status: complete in `iter-13` for snapshotless Browser Bridge UX; post-dogfood View Graph expansion is now required and open
 Target repo: `C:\Users\Tony\Workspace\codex-widget-for-desktop`
 Baseline handoffs:
 - `docs/plans/browser-action-interface-handoff.md`
@@ -22,6 +22,8 @@ user prompt or widget button -> daemon Browser Action request -> extension obser
 ```
 
 This handoff is authoritative for the extension UX and transport refactor that removes manual snapshot capture from the normal user flow.
+
+Post-`iter-15` dogfood clarified that snapshotless UX is not enough for accurate computer-use behavior. Browser Action must not execute against "the last snapshot"; it must execute against a request-scoped, identity-verified current view. View Graph is therefore a required Browser Bridge expansion, even if it costs additional time and tokens.
 
 ## 1. Product Goal
 
@@ -286,6 +288,177 @@ The widget should use this to show simple user-facing states:
 - action running
 - last action failed
 
+### 9.3 Request-Scoped Fresh Observation
+
+Prompt-driven and direct Browser Action must start by capturing a fresh observation for that request. Periodic auto-observe remains useful for status and preview, but it is not authoritative for execution.
+
+Required flow:
+
+```text
+user prompt/direct action
+daemon classifies browser-context action
+daemon issues observe_now for the active tab
+extension captures the current page/view
+daemon verifies identity/freshness
+semantic resolver selects target
+daemon applies safety/approval
+extension executes against the same current view or returns stale_view
+daemon reobserves/re-resolves/retries once where safe
+```
+
+Do not rely only on `tabId`. Same-tab navigation can keep `tabId` while replacing the document. SPA route changes can keep both `tabId` and document while changing the actionable view.
+
+Minimum observation identity:
+
+```ts
+type BrowserObservationIdentity = {
+  tabId?: number | string;
+  windowId?: number | string;
+  frameId?: number;
+  documentId?: string;
+  navigationId?: string;
+  url: string;
+  title?: string;
+  readyState?: "loading" | "interactive" | "complete";
+  capturedAt: string;
+  observedAt?: string;
+};
+```
+
+Validation rules:
+
+- `snapshot.url` must match the active tab URL after normalizing hash-only differences where appropriate.
+- `capturedAt` must be tied to the current request, not only to the last background poll.
+- `documentId` or navigation token should match when available.
+- `readyState` should be `interactive` or `complete`; otherwise the extension returns loading/retry metadata.
+- mismatched identity must not execute side-effect actions.
+
+### 9.4 Long-Poll Command Channel
+
+The current alarm/poll loop is an acceptable fallback, but prompt-driven Browser Action needs a lower-latency command path. Prefer a daemon HTTP long-poll endpoint before a WebSocket-only design because Manifest V3 service workers can suspend and drop persistent connections.
+
+Recommended transport:
+
+```text
+extension opens /browser-action/extension/wait
+daemon holds request until observe/action/cancel command or timeout
+extension executes command or captures observe_now
+extension immediately opens the next wait request
+alarm poll remains fallback for recovery
+```
+
+Why not WebSocket as the default:
+
+- MV3 service-worker suspension can close the socket without a reliable always-on background page.
+- WebSocket still needs command queue, retry, expiry, heartbeat, and missed-command recovery.
+- HTTP long-poll fits the existing local daemon endpoint/auth/debug model and degrades naturally to alarm poll.
+
+WebSocket can be added later as an optional fast path, but long-poll plus queue semantics should be the production baseline.
+
+### 9.5 View Graph Requirement
+
+View Graph is a required Browser Bridge capability for SPA and dynamic-page accuracy. A one-time DOM snapshot is a momentary picture; View Graph is the extension-maintained semantic map of the current browser view, its regions, controls, content items, routes, mutations, and stability.
+
+Conceptual graph:
+
+```text
+View
+  Route/document/view identity
+  Regions: header, nav, sidebar, main, modal, form, list, table
+  Nodes: controls, fields, links, content items, rows, cards
+  Edges: contains, labels, same_group, filters, submits, navigates_to
+  State: focus, selection, route revision, DOM revision, mutation quietness
+```
+
+View Graph must support:
+
+- SPA route detection through `pushState`, `replaceState`, `popstate`, and `hashchange`.
+- DOM mutation tracking with revision counters.
+- mutation quiet waiting before authoritative observe.
+- visible-text and interactive-element digests.
+- region segmentation for main/nav/sidebar/modal/form/list/table scope.
+- stable keys for continuity, without treating stable keys as security guarantees.
+- action-time validation against expected view identity/digest.
+- stale view/target errors that trigger daemon reobserve/re-resolve instead of unsafe execution.
+
+View identity model:
+
+```ts
+type BrowserViewIdentity = {
+  tabId?: number | string;
+  windowId?: number | string;
+  documentId?: string;
+  frameId?: number;
+  url: string;
+  routeKey: string;
+  historyIndex?: number;
+  viewRevision: number;
+  domRevision: number;
+  capturedAt: string;
+  mutationQuietMs: number;
+};
+```
+
+View node model:
+
+```ts
+type ViewNode = {
+  nodeId: string;
+  stableKey: string;
+  kind: "view" | "region" | "control" | "content_item" | "form" | "field" | "list" | "row" | "modal";
+  role?: string;
+  name?: string;
+  text?: string;
+  href?: string;
+  selector?: string;
+  bbox?: Rect;
+  visible: boolean;
+  enabled: boolean;
+  editable: boolean;
+  affordances: ("read" | "activate" | "type" | "select" | "scroll")[];
+  riskHints: string[];
+  regionId?: string;
+  parentId?: string;
+  siblingIds?: string[];
+};
+```
+
+View edge model:
+
+```ts
+type ViewEdge = {
+  from: string;
+  to: string;
+  kind: "contains" | "labels" | "controls" | "describes" | "near" | "same_group" | "opens" | "filters" | "submits" | "navigates_to";
+  confidence: number;
+};
+```
+
+Action commands should carry both a selected node and the original semantic reference:
+
+```ts
+type BrowserActionCommand = {
+  requestId: string;
+  action: "click" | "type" | "scroll";
+  targetNodeId?: string;
+  targetReference: {
+    text: string;
+    role?: string;
+    region?: string;
+    affordance: string;
+  };
+  expectedView: BrowserViewIdentity;
+  expectedDigest: {
+    routeDigest: string;
+    textDigest: string;
+    interactiveDigest: string;
+    layoutDigest?: string;
+  };
+};
+```
+
+This is required for pages where text labels repeat, controls move after hydration, or React/Vue/Next route state changes without a full document reload.
+
 ## 10. Daemon Requirements
 
 The daemon should own Browser Action semantics and treat extension observations as adapter evidence.
@@ -532,6 +705,72 @@ Acceptance:
   - operate browser from widget without snapshot step
 - semantic acceptance is based on real action evidence, not only smoke checks
 
+### Sprint 9: Request-Scoped Observe and Long-Poll
+
+Deliver:
+
+- `/browser-action/extension/wait` long-poll endpoint
+- `observe_now` command type with request id and expected active-tab metadata
+- prompt/direct Browser Action path that waits for a request-scoped fresh observation before resolving
+- alarm polling retained as recovery fallback
+- timeout/cancel/retry semantics for pending observe/action commands
+
+Acceptance:
+
+- tab switch followed immediately by prompt does not execute against the previous tab snapshot
+- same-tab navigation followed immediately by prompt waits for the new page observation
+- stale or missing observation produces a visible recovery message, not false target clarification
+- smokes cover command wait timeout, stale snapshot guard, and alarm fallback
+
+### Sprint 10: View Identity and SPA Stability
+
+Deliver:
+
+- observation identity fields on Browser Bridge snapshots
+- document/navigation identity where browser APIs provide it
+- content-script route hooks for `pushState`, `replaceState`, `popstate`, and `hashchange`
+- `viewRevision` and `domRevision`
+- mutation quiet tracking and `mutationQuietMs`
+- visible text and interactive element digests
+
+Acceptance:
+
+- React/SPA fixture route changes invalidate stale observations even when `tabId` and document stay the same
+- action execution rejects `stale_view` when expected view identity/digest no longer matches
+- daemon reobserves and re-resolves once for safe stale-view recovery
+
+### Sprint 11: View Graph Schema and Region Segmentation
+
+Deliver:
+
+- optional `viewGraph` field on Browser observations
+- `ViewNode` and `ViewEdge` schema
+- region segmentation for header/nav/sidebar/main/modal/form/list/table/repeated rows
+- labels/same_group/filters/submits/navigates_to edge inference
+- privacy-safe redaction for text, form values, and sensitive fields
+
+Acceptance:
+
+- repeated-label fixture distinguishes main-region controls from sidebar/content links
+- form fixture links labels, fields, and submit controls without persisting secrets
+- modal fixture scopes actions to the active modal before background page controls
+
+### Sprint 12: Semantic Interface View Graph Resolver
+
+Deliver:
+
+- Semantic Interface adapter that consumes View Graph features
+- target ranking features for region relevance, group relations, affordance, visibility, focus, and historical continuity
+- action-time semantic re-resolve against the latest view graph
+- redacted trace evidence that explains selected node, alternatives, stale-view decisions, and ambiguity
+
+Acceptance:
+
+- `개념글`-style duplicate text resolves to the intended filter/control by region/affordance
+- React/SPA fixture survives dynamic ids, hydration drift, and route changes
+- low-confidence side-effect actions clarify instead of acting
+- dogfood evidence proves prompt-driven SPA/browser tasks, not only static deterministic pages
+
 ## 15. Verification Gate
 
 Implementation result:
@@ -543,6 +782,7 @@ Implementation result:
 - Widget UX simplification: complete. Browser mode foregrounds bridge state and direct actions; adapter/debug detail is collapsed behind diagnostics.
 - Dogfood evidence: recorded at `docs/reports/browser-extension-bridge-dogfood-evidence-2026-05-08.md`.
 - Remaining external blockers: first-class Codex app-server custom Browser Action tools and executable Windows UI Automation browser-chrome fallback remain outside this extension bridge scope and are tracked in Browser Action handoffs.
+- Required follow-up: request-scoped fresh observation, long-poll command delivery, and View Graph are not optional polish. They are required for production Browser Action accuracy on tab switches, same-tab navigation, SPA route changes, hydration drift, and duplicate-label pages.
 
 Required verification:
 

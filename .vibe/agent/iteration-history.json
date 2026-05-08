@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-13",
+  "currentIteration": "iter-15",
   "iterations": [
     {
       "id": "iter-1",
@@ -303,9 +303,6 @@
         "iter-10-sprint-04-agent-protocol-smokes-and-dogfood-evidence",
         "iter-10-sprint-05-production-completion-audit"
       ],
-      "completedSprints": [],
-      "carryover": "Iter-9 shipped a deterministic Browser Action MVP but intentionally left CDP, Playwright, native desktop, full_control_dev evaluate, and semantic dogfood evidence incomplete. The product owner clarified that the original goal was production-level interface completion, not MVP closure. This iteration treats iter-9 as a partial baseline and implements or precisely blocks the remaining production adapter surfaces.",
-      "completedAt": "2026-05-08T02:25:00.000+09:00",
       "completedSprints": [
         "iter-10-sprint-01-adapter-registry-verification-and-evaluate-core",
         "iter-10-sprint-02-playwright-and-cdp-controlled-adapters",
@@ -313,6 +310,8 @@
         "iter-10-sprint-04-agent-protocol-smokes-and-dogfood-evidence",
         "iter-10-sprint-05-production-completion-audit"
       ],
+      "carryover": "Iter-9 shipped a deterministic Browser Action MVP but intentionally left CDP, Playwright, native desktop, full_control_dev evaluate, and semantic dogfood evidence incomplete. The product owner clarified that the original goal was production-level interface completion, not MVP closure. This iteration treats iter-9 as a partial baseline and implements or precisely blocks the remaining production adapter surfaces.",
+      "completedAt": "2026-05-08T02:25:00.000+09:00",
       "openRisks": [
         "Native desktop executable browser chrome control remains BLOCKED on a scoped Windows UI Automation or bounded native input helper; the current adapter reports diagnostics and unsupported-action errors.",
         "First-class Browser Action custom tool integration remains BLOCKED on a stable Codex app-server custom tool/client-tool contract; daemon protocol simulation and widget context cover current agent visibility.",
@@ -458,6 +457,40 @@
         "durable-product-state": 0.99
       },
       "summary": "Iteration 14 completed a Vision Context-style Browser Action semantic target pipeline. Added a dedicated Browser Action intent resolver and target lexicon, normalized Korean command suffixes such as 눌러줘, expanded exact/alias/compact/token matching for Korean and English target labels, capped non-actionable container candidates so links/buttons/inputs win over broad page regions, added prompt/resolver smoke coverage for 새 채팅 눌러줘, and hardened the Browser Bridge auto-observe transport to post snapshots directly to the daemon before falling back to native host transport."
+    },
+    {
+      "id": "iter-15",
+      "label": "Semantic Interface",
+      "startedAt": "2026-05-08T22:13:52.425+09:00",
+      "goal": "Complete docs/plans/semantic-interface-handoff.md end-to-end: reusable daemon-side semantic decision boundary with type surface, golden trace/replay, transition grammar, operating profiles, redacted durable traces, Browser Action shadow/advisory/live gate, Vision read/locate conformance, adversarial fixtures, docs, and verification.",
+      "plannedSprints": [
+        "iter-15-sprint-01-type-surface-golden-traces",
+        "iter-15-sprint-02-browser-action-shadow-and-redacted-traces",
+        "iter-15-sprint-03-vision-read-locate-conformance",
+        "iter-15-sprint-04-low-risk-browser-live-gate-and-completion"
+      ],
+      "completedSprints": [
+        "iter-15-sprint-01-type-surface-golden-traces",
+        "iter-15-sprint-02-browser-action-shadow-and-redacted-traces",
+        "iter-15-sprint-03-vision-read-locate-conformance",
+        "iter-15-sprint-04-low-risk-browser-live-gate-and-completion"
+      ],
+      "carryover": "Iter-14 improved Browser Action prompt intent/target resolution, but that semantic logic remains Browser Action-specific. Iter-15 extracts a reusable semantic-interface module while preserving Browser Action safety and using shadow/advisory phases before low-risk live adoption.",
+      "openRisks": [
+        "Terminal, Workspace, Screen/OCR, and Windows UI Automation adapters remain future consumers of the semantic-interface contract; Browser Action and Vision Context are the completed v1 conformance targets.",
+        "Statistical calibration remains deferred until a held-out dogfood trace set exists; v1 uses evidence-profile gating plus top-vs-runner-up margin.",
+        "LLM enrichment remains logged-only future work and must not feed deterministic ranker scores without a separate typed validator."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.985,
+        "durable-codex-runtime": 0.97,
+        "real-tool-providers": 1,
+        "resident-desktop-readiness": 0.965,
+        "durable-product-state": 0.99,
+        "semantic-interface": 1
+      },
+      "summary": "Iteration 15 completed the reusable semantic-interface module from docs/plans/semantic-interface-handoff.md. The daemon now has a package-like src/daemon/semantic-interface boundary with v1 type contracts, ontology/version constants, intent frames, deterministic hypotheses/ranking, transition grammar, operating profiles, pure safety predicates, trace/replay, redacted durable trace projection, generic alias lexicon, Browser Action and Vision Context adapters, typed/untyped/adversarial golden trace harness, and dogfood evidence. Browser Action keeps execution feature-owned but can use semantic target resolution as a low-risk live gate with redacted trace metadata; Vision Context read/locate conformance works without core type or ranker changes.",
+      "completedAt": "2026-05-08T23:05:00.000+09:00"
     }
   ]
 }

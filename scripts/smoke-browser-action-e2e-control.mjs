@@ -106,6 +106,7 @@ try {
   if (!command?.expiresAt) {
     throw new Error(`Queued command is missing expiry metadata: ${JSON.stringify(command)}`);
   }
+  assertExtensionPickupWindow(command);
   await postBrowserActionResult(command.requestId, true, beforeSnapshot, afterSnapshot);
   const extensionResult = await waitFor((event) => event.type === "browserAction.result" && event.result?.action === "click", "extension action result");
   assertEqual(extensionResult.result.status, "succeeded", "extension action status");
@@ -124,6 +125,7 @@ try {
   const directQueued = await waitFor((event) => event.type === "browserAction.progress" && event.status === "direct_paused_for_extension", "direct click queued");
   const directCommand = await pollBrowserActionCommand();
   assertEqual(directCommand?.requestId, directQueued.detail?.requestId, "direct command request id");
+  assertExtensionPickupWindow(directCommand);
   await postBrowserActionResult(directCommand.requestId, true, beforeSnapshot, afterSnapshot);
   const directClickResult = await waitFor(
     (event) =>
@@ -271,5 +273,15 @@ function waitFor(predicate, label, timeoutMs = 15_000) {
 function assertEqual(actual, expected, label) {
   if (actual !== expected) {
     throw new Error(`${label}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+  }
+}
+
+function assertExtensionPickupWindow(command) {
+  if (!command?.createdAt || !command?.expiresAt) {
+    throw new Error(`Queued extension command is missing created/expiry metadata: ${JSON.stringify(command)}`);
+  }
+  const pickupWindowMs = Date.parse(command.expiresAt) - Date.parse(command.createdAt);
+  if (pickupWindowMs < 60_000) {
+    throw new Error(`Queued extension command expiry is shorter than the MV3 alarm pickup window: ${pickupWindowMs}ms`);
   }
 }

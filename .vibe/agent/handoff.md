@@ -57,6 +57,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - 2026-05-08T10:27:23.258+09:00 Browser Extension Bridge verification passed `npm run lint`, `npm run build:web`, `npm run smoke`, `npm run smoke:all`, Browser Action core/Playwright/CDP/evaluate/native/E2E/renderer/direct-menu/prompt-classification smokes, extension/browser-bridge/native-host/DOM/app-server smokes, browser store readiness, `npm run dogfood:browser-bridge`, `npm run dogfood:browser-action:e2e`, and MSVC `cargo check --no-default-features`.
 - 2026-05-08T12:50:38.055+09:00 Browser Bridge service-worker refactor completed without behavior changes: page-injected DOM snapshot/action functions moved to `providers/browser-dom-extension/bridge/injected-dom.js`, `service-worker.js` dropped from 1428 to 737 lines, and extension smoke now validates bridge modules plus package inclusion. Reload the unpacked extension to pick up the module split.
 - 2026-05-08T17:57:17.977+09:00 Added `docs/plans/semantic-interface-handoff.md` as the authoritative handoff for a reusable Semantic Interface: a deterministic observation-to-hypothesis decision boundary with evidence, intent frames, ranker/safety predicate contracts, trace/replay, Browser Action shadow migration, and Vision read/locate conformance.
+- 2026-05-08T23:05:00.000+09:00 Iteration `iter-15` completed the Semantic Interface from `docs/plans/semantic-interface-handoff.md`: `src/daemon/semantic-interface/` now owns v1 semantic types, ontology/versioning, intent frames, deterministic hypotheses/ranking, transition grammar, operating profiles, pure safety predicates, trace/replay, redacted trace projection, generic alias lexicon, Browser Action and Vision adapters, typed/untyped/adversarial golden trace harness, Browser Action low-risk live gate metadata, and `docs/reports/semantic-interface-dogfood-evidence-2026-05-08.md`.
 - Current dev widget run is live after clearing port `5173`: Vite is listening on `127.0.0.1:5173`, daemon/app-server on `127.0.0.1:4128`, and startup logs are under `dist/logs/widget-dev-20260506-071947.*.log`.
 - Browser store submission runbook is source-controlled at `docs/release/browser-store-submission.md`; deferral is recorded in `docs/release/deferred-gates.json`. Use the runbook after dogfooding to clear the deferred public-release gate and then rerun strict readiness.
 
@@ -71,8 +72,8 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 
 ## Active Iteration
 
-- Current iteration: `iter-13` (`Browser Extension Bridge UX`) complete; the browser extension is now a Browser Bridge with popup/settings, badge heartbeat, explicit site permission, automatic approved-site observation, daemon-visible status, command-first action polling, and simplified Browser UI.
-- Remaining precise blockers: first-class Codex app-server custom Browser Action tools require a stable custom-tool/client-tool contract; executable Windows browser chrome/restricted-page fallback requires a scoped UI Automation/native input helper.
+- Current iteration: `iter-15` (`Semantic Interface`) complete; the reusable daemon-side Semantic Interface is implemented for Browser Action and Vision Context conformance with redacted traces, golden/adversarial evidence, and low-risk Browser Action target gating.
+- Remaining precise blockers/future consumers: first-class Codex app-server custom Browser Action tools require a stable custom-tool/client-tool contract; executable Windows browser chrome/restricted-page fallback requires a scoped UI Automation/native input helper; Terminal/Workspace/Screen/OCR/UIA Semantic Interface adapters are future consumers beyond iter-15.
 - Planned sprints:
   - `iter-13-sprint-01-extension-popup-options-and-settings` (complete)
   - `iter-13-sprint-02-badge-heartbeat-and-daemon-status` (complete)
@@ -1192,3 +1193,20 @@ Verification passed `npm run lint`, `npm run smoke`, `npm run smoke:browser-acti
 Follow-up Browser Bridge setting added: the extension popup/options now include `Allow all sites except blocklist`. Turning it on requests Chrome/Edge optional host permissions for `http://*/*` and `https://*/*`; the service worker then allows all supported sites except entries in `observeBlocklist`. Blocklist entries accept origins/hosts such as `https://private.example`, `example.com`, or `*.example.com`.
 
 Live DCInside prompt fix: `개념글 눌러서 재밌어보이는 글 보여줘` now extracts `개념글` as the click target. Browser Bridge also captures `[onclick]`/`[tabindex]` controls and prioritizes visible actionable DOM elements before applying the element cap so hidden DCInside settings/overlay controls do not crowd out real page tabs.
+
+## Latest Update: Semantic Interface Accuracy Handoff Amendment
+
+After reviewing OpenAI Privacy Filter and running a Codex/Claude accuracy debate, `docs/plans/semantic-interface-handoff.md` was updated before implementation. The decision is to keep the current graph/affordance `semantic-interface` architecture, not replace it with Privacy Filter-style token span labeling, but to promote selected Privacy Filter reliability patterns to v1 requirements.
+
+The handoff now requires `RedactedTraceRecord`, `StepTransitionGrammar`, `OperatingProfile`, `SemanticDecisionOutcome`, and typed/untyped/adversarial eval modes. V1 calibration is defined as evidence-profile gating plus top-vs-runner-up margin and typed abstention, with statistical calibration deferred until a held-out trace set exists. The golden trace suite must cover duplicate labels, hydration drift, ARIA/visible mismatch, offscreen/occluded targets, i18n aliases, dynamic id churn, shadow DOM boundaries, and nested form scope. Under-evidenced side-effect resolution must return `abstain` or clarification rather than fabricating confidence.
+
+## Latest Update: iter-15 Semantic Interface Started
+
+Iteration `iter-15` is active. It follows `docs/plans/semantic-interface-handoff.md` and carries forward iter-14's Browser Action semantic target improvements into a reusable daemon-side `semantic-interface` module. Planned sprint order:
+
+- `iter-15-sprint-01-type-surface-golden-traces`
+- `iter-15-sprint-02-browser-action-shadow-and-redacted-traces`
+- `iter-15-sprint-03-vision-read-locate-conformance`
+- `iter-15-sprint-04-low-risk-browser-live-gate-and-completion`
+
+Current sprint: `iter-15-sprint-01-type-surface-golden-traces`. Browser Action live behavior must remain unchanged during Sprint 01; the first implementation is type surface, deterministic ranker/replay, transition grammar, operating profiles, redacted traces, Browser Action adapter conversion, and golden trace smoke coverage.
