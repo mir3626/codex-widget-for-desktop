@@ -22,7 +22,7 @@ export async function handleProviderSnapshotRoute(
 
   if (request.method === "POST" && url.pathname === "/providers/dom/snapshot") {
     try {
-      const snapshot = providers.setDomSnapshot(JSON.parse(await readRequestBody(request, 128 * 1024)));
+      const snapshot = providers.setDomSnapshot(JSON.parse(await readRequestBody(request, 1024 * 1024)));
       browserPerception.ingestProviderSnapshot({
         providers,
         bridgeStatus: browserExtensionBridge.snapshot(),

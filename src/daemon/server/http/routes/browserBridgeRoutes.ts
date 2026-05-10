@@ -65,7 +65,7 @@ export async function handleBrowserBridgeRoute(
 
   if (request.method === "POST" && url.pathname === "/browser-action/extension/observe-result") {
     try {
-      const payload = JSON.parse(await readRequestBody(request, 512 * 1024));
+      const payload = JSON.parse(await readRequestBody(request, 1024 * 1024));
       const result = browserPerception.completeObserveResult({
         providers,
         bridgeStatus: browserExtensionBridge.snapshot(),
