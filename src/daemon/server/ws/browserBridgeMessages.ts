@@ -3,6 +3,8 @@ import { browserBridgeActiveTabChanged, pollBrowserBridgeCommand } from "../http
 import { broadcast, send } from "../events.js";
 import type { MessageRouterContext } from "./context.js";
 
+const BROWSER_BRIDGE_WS_COMMAND_WAIT_MS = 1_000;
+
 type BrowserBridgeCommandPollMessage = {
   type?: string;
   tabId?: string | number;
@@ -30,7 +32,7 @@ export async function handleBrowserBridgeMessage(message: unknown, context: Mess
   const command = await pollBrowserBridgeCommand({
     browserPerception: context.browserPerception,
     browserActions: context.browserActions,
-    waitMs: 0
+    waitMs: BROWSER_BRIDGE_WS_COMMAND_WAIT_MS
   });
   send(context.socket, { type: "browserBridge.command", command });
   return true;

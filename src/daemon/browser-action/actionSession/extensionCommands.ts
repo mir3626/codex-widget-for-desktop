@@ -12,7 +12,7 @@ import type {
 } from "../types.js";
 import { cloneResult, cloneSession } from "./cloning.js";
 
-const COMMAND_REDELIVERY_WAIT_MS = 2_500;
+const COMMAND_REDELIVERY_WAIT_MS = 750;
 
 export function pollBrowserExtensionCommand(input: {
   pendingCommands: BrowserQueuedCommand[];

@@ -1,0 +1,16 @@
+{
+  "scenarioId": "local-navigate-always-allow-grouped",
+  "status": "pass",
+  "failureClass": "",
+  "elapsedMs": 222,
+  "finalUrl": "http://127.0.0.1:61976/target-two",
+  "answer": "브라우저 동작을 완료했습니다. 실행: navigate http://127.0.0.1:61976/target-two 현재 페이지: Browser Action Live Fixture (http://127.0.0.1:61976/target-two) 검증: Action changed the browser route or URL.",
+  "answerRedacted": false,
+  "answerLength": 180,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-widget-ui-final5-20260511\\local-navigate-always-allow-grouped\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-widget-ui-final5-20260511\\local-navigate-always-allow-grouped\\screenshot-after.png",
+    "widgetBefore": "docs\\reports\\assets\\browser-action-live\\browser-action-widget-ui-final5-20260511\\local-navigate-always-allow-grouped\\widget-before.png",
+    "widgetAfter": "docs\\reports\\assets\\browser-action-live\\browser-action-widget-ui-final5-20260511\\local-navigate-always-allow-grouped\\widget-after.png"
+  }
+}

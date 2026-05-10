@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import WebSocket from "ws";
 import { chromium } from "@playwright/test";
+import { createServer as createViteServer } from "vite";
 import { startDaemon } from "../dist/daemon/server.js";
 import { useSmokeAppData } from "./smoke-isolation.mjs";
 
@@ -39,7 +40,7 @@ const reportPath = path.resolve(options.report || path.join("docs/reports", `bro
 await mkdir(outputDir, { recursive: true });
 
 const scenarios = (await readScenarios(options.scenarios))
-  .filter((scenario) => options.mode === "all" || !scenario.mode || scenario.mode === options.mode)
+  .filter((scenario) => scenarioMatchesMode(scenario, options.mode))
   .filter((scenario) => options.scenario.size === 0 || options.scenario.has(scenario.id));
 
 if (scenarios.length === 0) {
@@ -61,7 +62,9 @@ if (options.dryRun) {
 
 const result = options.mode === "real"
   ? await runRealBrowserMode(scenarios)
-  : await runIsolatedMode(scenarios);
+  : options.mode === "widget-ui"
+    ? await runWidgetUiMode(scenarios)
+    : await runIsolatedMode(scenarios);
 
 await writeJson(path.join(outputDir, "run-result.json"), result);
 await writeFile(reportPath, renderReport(result), "utf8");
@@ -150,6 +153,179 @@ async function runRealBrowserMode(scenarios) {
     reportPath,
     startedAt: new Date().toISOString(),
     results
+  };
+}
+
+async function runWidgetUiMode(scenarios) {
+  const smokeAppData = useSmokeAppData("codex-widget-browser-action-widget-ui-live");
+  const daemon = await startDaemon({ port: options.daemonPort });
+  const daemonUrl = `http://127.0.0.1:${daemon.port}`;
+  const fixture = await startFixtureServer();
+  const renderer = await startWidgetRendererServer();
+  const targetBrowser = await launchIsolatedBrowser({ daemonUrl, extensionDir: options.extensionDir, headless: options.headless });
+  const widgetBrowser = await launchWidgetBrowser({ rendererUrl: renderer.url, daemonPort: daemon.port, headless: options.headless });
+  const monitorSocket = await connectDaemonSocket(daemonUrl);
+  const results = [];
+
+  try {
+    for (let index = 0; index < scenarios.length; index += 1) {
+      const scenario = scenarios[index];
+      const page = await targetBrowser.ensurePage();
+      const scenarioResult = await runWidgetUiScenario({
+        scenario,
+        daemonUrl,
+        monitorSocket,
+        targetPage: page,
+        widgetPage: widgetBrowser.page,
+        fixture,
+        scenarioIndex: index
+      });
+      results.push(scenarioResult);
+      console.log(`[${scenarioResult.status}] ${scenario.id} ${scenarioResult.failureClass ? `(${scenarioResult.failureClass})` : ""}`);
+    }
+  } finally {
+    monitorSocket.close();
+    await widgetBrowser.close();
+    await targetBrowser.close();
+    await renderer.close();
+    await fixture.close();
+    await daemon.close();
+    smokeAppData.cleanup();
+  }
+
+  return {
+    runId,
+    mode: "widget-ui",
+    daemonUrl,
+    rendererUrl: renderer.url,
+    outputDir,
+    reportPath,
+    startedAt: new Date().toISOString(),
+    results
+  };
+}
+
+async function runWidgetUiScenario(input) {
+  let startedAt = Date.now();
+  const scenarioDir = path.join(outputDir, safeFileName(input.scenario.id));
+  const events = [];
+  const beforeStatus = await readBridgeStatus(input.daemonUrl).catch((error) => ({ error: readError(error) }));
+  let beforeScreenshot = "";
+  let afterScreenshot = "";
+  let beforeWidgetScreenshot = "";
+  let afterWidgetScreenshot = "";
+  let finalUrl = "";
+  let finalText = "";
+  let answer = "";
+  let failureClass = "";
+  let status = "pass";
+  let scenarioBridgeStatus = beforeStatus;
+
+  await mkdir(scenarioDir, { recursive: true });
+  await writeJson(path.join(scenarioDir, "scenario.json"), sanitizeArtifact(input.scenario, { realMode: false }));
+  await writeJson(path.join(scenarioDir, "bridge-status-before.json"), sanitizeArtifact(beforeStatus, { realMode: false }));
+
+  const stopCollecting = collectSocketEvents(input.monitorSocket, events);
+  try {
+    if (input.targetPage && (input.scenario.url || Array.isArray(input.scenario.setupUrls))) {
+      const setupUrls = Array.isArray(input.scenario.setupUrls) && input.scenario.setupUrls.length > 0
+        ? input.scenario.setupUrls
+        : [input.scenario.url];
+      let targetUrl = "";
+      for (const setupUrl of setupUrls) {
+        targetUrl = resolveScenarioUrl(setupUrl, input.fixture);
+        await input.targetPage.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 20_000 });
+      }
+      await input.targetPage.bringToFront();
+      await input.targetPage.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => undefined);
+      scenarioBridgeStatus = await waitForBridgeActiveTab(input.daemonUrl, targetUrl, 12_000);
+      beforeScreenshot = path.join(scenarioDir, "screenshot-before.png");
+      await input.targetPage.screenshot({ path: beforeScreenshot, fullPage: true }).catch(() => {
+        beforeScreenshot = "";
+      });
+    }
+
+    await input.widgetPage.bringToFront();
+    await waitForWidgetReady(input.widgetPage);
+    beforeWidgetScreenshot = path.join(scenarioDir, "widget-before.png");
+    await input.widgetPage.screenshot({ path: beforeWidgetScreenshot, fullPage: true }).catch(() => {
+      beforeWidgetScreenshot = "";
+    });
+
+    const assistantCountBefore = await input.widgetPage.locator(".assistant-message").count();
+    await submitWidgetPrompt(input.widgetPage, resolveScenarioPrompt(input.scenario.prompt, input.fixture));
+    startedAt = Date.now();
+    await maybeRespondToWidgetApproval(input.widgetPage, input.scenario, startedAt);
+    await input.targetPage.bringToFront();
+    answer = await waitForWidgetAssistantAnswer(input.widgetPage, {
+      assistantCountBefore,
+      scenario: input.scenario,
+      startedAt
+    });
+
+    await input.targetPage.waitForLoadState("domcontentloaded", { timeout: 10_000 }).catch(() => undefined);
+    finalUrl = input.targetPage.url();
+    finalText = await input.targetPage.locator("body").innerText({ timeout: 5_000 }).catch(() => "");
+    afterScreenshot = path.join(scenarioDir, "screenshot-after.png");
+    await input.targetPage.screenshot({ path: afterScreenshot, fullPage: true }).catch(() => {
+      afterScreenshot = "";
+    });
+    afterWidgetScreenshot = path.join(scenarioDir, "widget-after.png");
+    await input.widgetPage.screenshot({ path: afterWidgetScreenshot, fullPage: true }).catch(() => {
+      afterWidgetScreenshot = "";
+    });
+
+    const assertion = assertScenario({
+      scenario: input.scenario,
+      answer,
+      finalUrl,
+      finalText,
+      elapsedMs: Date.now() - startedAt,
+      events,
+      bridgeStatus: scenarioBridgeStatus
+    });
+    if (!assertion.ok) {
+      status = "fail";
+      failureClass = assertion.failureClass;
+    }
+  } catch (error) {
+    status = "fail";
+    failureClass = classifyFailure({ error, answer, events, bridgeStatus: scenarioBridgeStatus });
+    answer = answer || readError(error);
+  } finally {
+    stopCollecting();
+  }
+
+  const afterStatus = await readBridgeStatus(input.daemonUrl).catch((error) => ({ error: readError(error) }));
+  await writeJson(path.join(scenarioDir, "bridge-status-after.json"), sanitizeArtifact(afterStatus, { realMode: false }));
+  await writeFile(path.join(scenarioDir, "daemon-events.jsonl"), events.map((event) => JSON.stringify(event)).join("\n") + (events.length ? "\n" : ""), "utf8");
+  await writeJson(path.join(scenarioDir, "result.json"), {
+    scenarioId: input.scenario.id,
+    status,
+    failureClass,
+    elapsedMs: Date.now() - startedAt,
+    finalUrl,
+    answer,
+    answerRedacted: false,
+    answerLength: answer.length,
+    screenshots: {
+      before: beforeScreenshot ? path.relative(process.cwd(), beforeScreenshot) : undefined,
+      after: afterScreenshot ? path.relative(process.cwd(), afterScreenshot) : undefined,
+      widgetBefore: beforeWidgetScreenshot ? path.relative(process.cwd(), beforeWidgetScreenshot) : undefined,
+      widgetAfter: afterWidgetScreenshot ? path.relative(process.cwd(), afterWidgetScreenshot) : undefined
+    }
+  });
+
+  return {
+    id: input.scenario.id,
+    mode: "widget-ui",
+    prompt: resolveScenarioPrompt(input.scenario.prompt, input.fixture),
+    status,
+    failureClass,
+    elapsedMs: Date.now() - startedAt,
+    finalUrl,
+    answerPreview: answer.slice(0, 500),
+    artifactDir: path.relative(process.cwd(), scenarioDir).replace(/\\/g, "/")
   };
 }
 
@@ -481,6 +657,34 @@ async function launchIsolatedBrowser(input) {
   };
 }
 
+async function startWidgetRendererServer() {
+  const vite = await createViteServer({
+    logLevel: "error",
+    server: { host: "127.0.0.1", port: 0, strictPort: false }
+  });
+  await vite.listen();
+  const address = vite.httpServer?.address();
+  if (!address || typeof address === "string") {
+    await vite.close();
+    throw new Error("Widget renderer server did not bind.");
+  }
+  return {
+    url: `http://127.0.0.1:${address.port}`,
+    close: () => vite.close()
+  };
+}
+
+async function launchWidgetBrowser(input) {
+  const browser = await chromium.launch({ headless: input.headless });
+  const page = await browser.newPage({ viewport: { width: 520, height: 820 } });
+  await page.goto(`${input.rendererUrl}/?daemonPort=${input.daemonPort}&mode=browser`, { waitUntil: "domcontentloaded" });
+  await waitForWidgetReady(page);
+  return {
+    page,
+    close: () => browser.close()
+  };
+}
+
 async function readExtensionId(context) {
   let worker = context.serviceWorkers()[0];
   if (!worker) {
@@ -610,6 +814,109 @@ function waitForSocketEvent(socket, input) {
   });
 }
 
+function collectSocketEvents(socket, events) {
+  const onMessage = (raw) => {
+    try {
+      events.push(JSON.parse(raw.toString()));
+    } catch (error) {
+      events.push({ type: "parse_error", error: readError(error) });
+    }
+  };
+  socket.on("message", onMessage);
+  return () => socket.off("message", onMessage);
+}
+
+async function waitForWidgetReady(page) {
+  const prompt = page.getByLabel("Ask Codex");
+  await prompt.waitFor({ timeout: 15_000 });
+  await waitUntil(async () => !(await prompt.isDisabled()), "Widget prompt did not become enabled.", 15_000);
+}
+
+async function submitWidgetPrompt(page, prompt) {
+  const textarea = page.getByLabel("Ask Codex");
+  await textarea.fill(prompt);
+  await page.getByRole("button", { name: "Send prompt" }).click();
+}
+
+async function maybeRespondToWidgetApproval(page, scenario, startedAt) {
+  if (!scenario.approval) {
+    return;
+  }
+  const maxMs = readMaxMs(scenario);
+  const approvalCard = page.locator(".interaction-card").first();
+  const waitMs = Math.max(1_000, Math.min(10_000, maxMs - (Date.now() - startedAt)));
+  try {
+    await approvalCard.waitFor({ timeout: waitMs });
+  } catch {
+    return;
+  }
+
+  if (scenario.approval === "deny") {
+    await approvalCard.getByRole("button", { name: "Deny" }).click();
+    return;
+  }
+  if (scenario.approval === "always_allow") {
+    await approvalCard.getByRole("button", { name: "Always allow" }).click();
+    return;
+  }
+  await approvalCard.getByRole("button", { name: "Allow" }).click();
+}
+
+async function waitForWidgetAssistantAnswer(page, input) {
+  const assistantIndex = input.assistantCountBefore;
+  const deadline = Date.now() + readMaxMs(input.scenario);
+  let latestText = "";
+  while (Date.now() < deadline) {
+    const messages = page.locator(".assistant-message");
+    if ((await messages.count()) > assistantIndex) {
+      const message = messages.nth(assistantIndex);
+      const className = await message.getAttribute("class").catch(() => "");
+      latestText = (await message.innerText().catch(() => "")).trim();
+      if (isWidgetAnswerReady(latestText, input.scenario, String(className).includes("is-live"))) {
+        if (input.scenario.approval && /승인 후 실행|approval|approve/i.test(latestText)) {
+          await page.waitForTimeout(100);
+        } else {
+          return latestText;
+        }
+      }
+    }
+    await page.waitForTimeout(60);
+  }
+  return latestText || (await readLatestWidgetAnswer(page));
+}
+
+function isWidgetAnswerReady(text, scenario, isLive) {
+  if (!text || text === "Working") {
+    return false;
+  }
+  if (scenario.approval && /승인 후 실행|approval|approve/i.test(text)) {
+    return false;
+  }
+  const expect = scenario.expect ?? {};
+  if ((expect.answerIncludes ?? []).length > 0 && expect.answerIncludes.every((value) => text.includes(value))) {
+    return true;
+  }
+  if ((expect.textIncludes ?? []).length > 0 && expect.textIncludes.every((value) => text.includes(value))) {
+    return true;
+  }
+  if ((expect.urlIncludes ?? []).length > 0 && expect.urlIncludes.every((value) => text.includes(value))) {
+    return true;
+  }
+  if (/브라우저 동작을 완료했습니다|현재 보고 있는 페이지는|주요 내용:/i.test(text)) {
+    return true;
+  }
+  return !isLive;
+}
+
+async function readLatestWidgetAnswer(page) {
+  const messages = page.locator(".assistant-message");
+  const count = await messages.count();
+  if (count === 0) {
+    return "";
+  }
+  return (await messages.nth(count - 1).innerText().catch(() => "")).trim();
+}
+
 async function waitForBridgeActiveTab(daemonUrl, expectedUrl, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -668,6 +975,16 @@ function readMaxMs(scenario) {
   return Number(scenario.expect?.maxMs) || 45_000;
 }
 
+function scenarioMatchesMode(scenario, mode) {
+  if (mode === "all") {
+    return true;
+  }
+  if (mode === "widget-ui") {
+    return !scenario.mode || scenario.mode === "isolated" || scenario.mode === "widget-ui";
+  }
+  return !scenario.mode || scenario.mode === mode;
+}
+
 async function readScenarios(filePath) {
   const raw = await readFile(filePath, "utf8");
   return raw
@@ -723,8 +1040,8 @@ function parseArgs(argv) {
       throw new Error(`Unknown argument: ${arg}`);
     }
   }
-  if (!["isolated", "real", "all"].includes(parsed.mode)) {
-    throw new Error(`Invalid --mode ${parsed.mode}; expected isolated, real, or all.`);
+  if (!["isolated", "real", "widget-ui", "all"].includes(parsed.mode)) {
+    throw new Error(`Invalid --mode ${parsed.mode}; expected isolated, real, widget-ui, or all.`);
   }
   return parsed;
 }
@@ -736,7 +1053,8 @@ Usage:
   node scripts/browser-action-live-runner.mjs [options]
 
 Options:
-  --mode isolated|real|all     isolated launches a dedicated browser profile; real uses the installed extension and active user browser tab
+  --mode isolated|real|widget-ui|all
+                               isolated sends prompts over daemon websocket; widget-ui drives the browser-hosted widget UI; real uses the installed extension and active user browser tab
   --scenario <id>              run one scenario; can be repeated
   --scenarios <path>           JSONL scenario file
   --headed                     show the isolated browser window (default)
@@ -769,6 +1087,7 @@ ${rows}
 ## Notes
 
 - \`isolated\` mode launches a dedicated Chromium profile with the unpacked Browser Bridge extension and a local fixture page.
+- \`widget-ui\` mode launches that same target browser plus a separate browser-hosted widget UI and submits prompts through the actual composer/approval controls.
 - \`real\` mode uses the currently installed Browser Bridge extension and the active user browser tab. Do not touch that tab while a real-mode scenario is running.
 - Failure packets include daemon events, bridge status before/after, screenshots when a controlled browser page is available, and a machine-readable result JSON.
 `;
@@ -828,6 +1147,16 @@ function escapeHtml(value) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitUntil(predicate, message, timeoutMs = 5_000, intervalMs = 50) {
+  const startedAt = Date.now();
+  while (!(await predicate())) {
+    if (Date.now() - startedAt > timeoutMs) {
+      throw new Error(message);
+    }
+    await sleep(intervalMs);
+  }
 }
 
 function readError(error) {

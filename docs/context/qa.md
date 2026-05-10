@@ -64,6 +64,14 @@ npm run release:browser-store-packet
 npm run smoke:dom
 ```
 
+Run this after Browser Action prompt/approval UX, Browser Bridge command delivery, or live-runner automation changes:
+
+```powershell
+npm run dogfood:browser-action:live:widget-ui
+```
+
+This launches a separate target Chromium profile with the unpacked Browser Bridge extension plus a separate browser-hosted widget UI, then submits prompts and approval responses through the real chat controls.
+
 Run this after a release build when bundle resource wiring changes:
 
 ```powershell

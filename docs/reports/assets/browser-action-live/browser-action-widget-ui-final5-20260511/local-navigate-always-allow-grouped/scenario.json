@@ -1,0 +1,18 @@
+{
+  "id": "local-navigate-always-allow-grouped",
+  "mode": "isolated",
+  "url": "fixture:/forum",
+  "prompt": "{{fixtureBaseUrl}}/target-two 열어줘",
+  "expect": {
+    "urlIncludes": [
+      "/target-two"
+    ],
+    "forbidAnswer": [
+      "plan:",
+      "latest result",
+      "Browser Action을 실행했습니다."
+    ],
+    "maxApprovalPrompts": 0,
+    "maxMs": 8000
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "extensionVersion": "0.1.0",
+  "daemonBaseUrl": "http://127.0.0.1:61975",
+  "connected": true,
+  "mode": "idle",
+  "reason": "browser_bridge",
+  "updatedAt": "2026-05-10T17:27:12.674Z",
+  "lastSeenAt": "2026-05-10T17:27:12.674Z",
+  "lastObservationAt": "2026-05-10T17:27:12.639Z",
+  "lastError": null,
+  "nativeHost": "disabled",
+  "activeTab": {
+    "tabId": 2118029565,
+    "windowId": 2118029564,
+    "url": "http://127.0.0.1:61976/target-two",
+    "title": "Browser Action Live Fixture",
+    "origin": "http://127.0.0.1:61976/*",
+    "permission": "allowed"
+  },
+  "settings": {
+    "daemonBaseUrl": "http://127.0.0.1:61975",
+    "autoConnect": true,
+    "autoObserve": true,
+    "allowAllSites": false,
+    "observeBlocklist": [],
+    "allowSafeReadScroll": true,
+    "requireApprovalForClickType": false,
+    "useNativeHost": false,
+    "debugSnapshot": false,
+    "pollIntervalSeconds": 5
+  }
+}

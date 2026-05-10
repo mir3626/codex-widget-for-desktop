@@ -1253,6 +1253,19 @@ Completed after Codex app-server browser-open duplicate correction:
 
 Use `docs/context/qa.md` for routine follow-up commands.
 
+## Latest Update: Browser Action Widget UI Live Automation
+
+Implemented the recommended live automation path that tests Browser Action the way a user does: one Chromium profile hosts the target page with the Browser Bridge extension, and a separate browser-hosted widget UI receives prompts through the real chat composer and approval buttons.
+
+- Added `npm run dogfood:browser-action:live:widget-ui`, backed by `scripts/browser-action-live-runner.mjs --mode widget-ui`. It launches an isolated daemon, local fixture server, Vite renderer, target extension browser, and separate widget browser.
+- Widget UI mode now types into `Ask Codex`, clicks the real `Send prompt` control, handles Browser Action approval cards through `Allow` / `Always allow` / `Deny`, screenshots both target and widget surfaces, and verifies final target-browser state.
+- Fixed renderer final-answer replacement for approved Browser Action prompts. A later `message.completed` that replaces an approval receipt now updates the visible assistant message instead of leaving the old receipt stuck on screen.
+- Hardened Browser Bridge command pickup for real UI timing: daemon WebSocket command polls wait briefly for just-queued commands, command redelivery cooldown is shorter, and the extension schedules wake retries after queued/progress events so approved actions do not stall behind an aborted long-poll response.
+- Verification passed `npm run lint`, `npm run build:web`, `npm run smoke:browser-action`, `npm run smoke:browser-action:prompt-classification`, `npm run smoke:browser-bridge`, `npm run smoke:extension`, and `npm run dogfood:browser-action:live:widget-ui -- --run-id browser-action-widget-ui-final5-20260511`.
+- Restarted the live dev runtime after daemon/renderer changes. Renderer is on `127.0.0.1:5173` PID `92796`, daemon `/storage/health` is ok on `127.0.0.1:4128` PID `10192`, and widget PID is `109152`.
+
+Manual follow-up: reload the unpacked Browser Bridge extension once in Chrome/Edge so the installed service worker uses the wake retry update. The automated widget UI run loads the updated unpacked extension directly.
+
 ## Latest Update: Browser Action Live Latency And Grouped Always Allow
 
 Completed the live Browser Action follow-up for slow/inconsistent `뒤로가기`, repeated Always Allow prompts, and general action startup latency.

@@ -1,0 +1,16 @@
+{
+  "scenarioId": "local-back-fast-path",
+  "status": "pass",
+  "failureClass": "",
+  "elapsedMs": 221,
+  "finalUrl": "http://127.0.0.1:61976/forum",
+  "answer": "브라우저 동작을 완료했습니다. 실행: back 현재 페이지: Browser Action Live Fixture (http://127.0.0.1:61976/forum) 검증: Action changed the browser route or URL.",
+  "answerRedacted": false,
+  "answerLength": 137,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-widget-ui-final5-20260511\\local-back-fast-path\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-widget-ui-final5-20260511\\local-back-fast-path\\screenshot-after.png",
+    "widgetBefore": "docs\\reports\\assets\\browser-action-live\\browser-action-widget-ui-final5-20260511\\local-back-fast-path\\widget-before.png",
+    "widgetAfter": "docs\\reports\\assets\\browser-action-live\\browser-action-widget-ui-final5-20260511\\local-back-fast-path\\widget-after.png"
+  }
+}

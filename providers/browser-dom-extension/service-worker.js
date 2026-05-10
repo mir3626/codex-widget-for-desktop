@@ -404,7 +404,9 @@ async function sendBridgeCommandSocketPoll(reason) {
 async function handleBridgeCommandSocketMessage(raw) {
   const message = JSON.parse(typeof raw === "string" ? raw : String(raw ?? "{}"));
   if (isBridgeCommandWakeEvent(message)) {
-    await sendBridgeCommandSocketPoll(String(message.status ?? "queued"));
+    const reason = String(message.status ?? "queued");
+    await sendBridgeCommandSocketPoll(reason);
+    scheduleBridgeCommandSocketWakeRetries(reason);
     return;
   }
   if (message?.type !== "browserBridge.command" || !message.command) {
@@ -422,6 +424,14 @@ async function handleBridgeCommandSocketMessage(raw) {
     await executePolledBrowserActionCommand(tab, settings, permission, message.command);
   }
   await sendBridgeCommandSocketPoll("after_command");
+}
+
+function scheduleBridgeCommandSocketWakeRetries(reason) {
+  for (const delayMs of [900, 1_800, 3_000]) {
+    setTimeout(() => {
+      void sendBridgeCommandSocketPoll(`wake_retry:${reason}:${delayMs}`);
+    }, delayMs);
+  }
 }
 
 function isBridgeCommandWakeEvent(message) {

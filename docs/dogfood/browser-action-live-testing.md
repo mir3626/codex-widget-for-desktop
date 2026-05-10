@@ -23,6 +23,23 @@ npm run dogfood:browser-action:live -- --run-id browser-action-live-debug
 
 The reported `Elapsed ms` is measured from the widget prompt send to the final answer/action result. Browser launch, fixture navigation, extension setup, and active-tab readiness waits are excluded so latency regressions reflect user-visible prompt time.
 
+## Widget UI Mode
+
+Run the same deterministic target-browser scenarios through the actual browser-hosted widget UI:
+
+```powershell
+npm run dogfood:browser-action:live:widget-ui
+```
+
+This mode launches two separate Chromium surfaces:
+
+- a target browser profile with the unpacked Browser Bridge extension and local fixture page
+- a separate widget UI browser pointed at the Vite renderer with `?daemonPort=<isolated daemon>&mode=browser`
+
+Playwright types into the visible widget composer, clicks the real send button, handles approval cards through the real `Allow` / `Always allow` / `Deny` buttons, and then verifies the target browser outcome. This catches UI regressions that daemon-websocket live mode cannot see, including Browser mode selection, prompt composer state, approval card behavior, final answer rendering, and chat receipt wording.
+
+Keep target and widget browsers separate. If the widget UI runs in the same extension-enabled browser profile as the target page, the extension can observe the widget tab instead of the intended target page.
+
 ## Real Browser Mode
 
 Run against the installed Browser Bridge extension and the currently active user browser tab:
@@ -44,7 +61,7 @@ docs/dogfood/browser-action-live-scenarios.jsonl
 Each JSONL row defines:
 
 - `id`
-- `mode`: `isolated` or `real`
+- `mode`: `isolated`, `widget-ui`, or `real`
 - `url`: optional; `fixture:/...` is resolved against the local fixture server in isolated mode
 - `setupUrls`: optional ordered fixture/site navigation list for scenarios such as history/back testing
 - `prompt`

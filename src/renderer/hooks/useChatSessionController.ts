@@ -200,17 +200,15 @@ export function useChatSessionController(input: UseChatSessionControllerInput) {
       streamBuffersRef.current.set(id, "");
     }
     completedResponseIdsRef.current.add(id);
-    if (shouldApplyImmediately) {
-      setChatMessages((current) =>
-        ensureAssistantMessage(current, id).map((message) =>
-          message.role === "assistant" && message.id === id
-            ? { ...message, text, status: "done" }
-            : message
-        )
-      );
-      return;
-    }
-    setChatMessages((current) => ensureAssistantMessage(current, id));
+    setChatMessages((current) =>
+      ensureAssistantMessage(current, id).map((message) => {
+        if (message.role !== "assistant" || message.id !== id) {
+          return message;
+        }
+        const replacesVisibleText = Boolean(text && message.text && !text.startsWith(message.text));
+        return shouldApplyImmediately || replacesVisibleText ? { ...message, text, status: "done" } : message;
+      })
+    );
     scheduleAssistantTyping();
   }
 

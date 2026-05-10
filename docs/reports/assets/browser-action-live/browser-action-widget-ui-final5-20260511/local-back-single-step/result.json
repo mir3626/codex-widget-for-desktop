@@ -1,0 +1,16 @@
+{
+  "scenarioId": "local-back-single-step",
+  "status": "pass",
+  "failureClass": "",
+  "elapsedMs": 190,
+  "finalUrl": "http://127.0.0.1:61976/view/notice",
+  "answer": "브라우저 동작을 완료했습니다. 실행: back 현재 페이지: 공지 (http://127.0.0.1:61976/view/notice) 검증: Action changed the browser route or URL.",
+  "answerRedacted": false,
+  "answerLength": 118,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-widget-ui-final5-20260511\\local-back-single-step\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-widget-ui-final5-20260511\\local-back-single-step\\screenshot-after.png",
+    "widgetBefore": "docs\\reports\\assets\\browser-action-live\\browser-action-widget-ui-final5-20260511\\local-back-single-step\\widget-before.png",
+    "widgetAfter": "docs\\reports\\assets\\browser-action-live\\browser-action-widget-ui-final5-20260511\\local-back-single-step\\widget-after.png"
+  }
+}

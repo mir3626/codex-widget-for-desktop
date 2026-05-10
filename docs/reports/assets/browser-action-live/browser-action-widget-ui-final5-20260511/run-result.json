@@ -1,0 +1,88 @@
+{
+  "runId": "browser-action-widget-ui-final5-20260511",
+  "mode": "widget-ui",
+  "daemonUrl": "http://127.0.0.1:61975",
+  "rendererUrl": "http://127.0.0.1:5174",
+  "outputDir": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\browser-action-live\\browser-action-widget-ui-final5-20260511",
+  "reportPath": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\browser-action-live-report-browser-action-widget-ui-final5-20260511.md",
+  "startedAt": "2026-05-10T17:27:15.673Z",
+  "results": [
+    {
+      "id": "local-concept-random-post",
+      "mode": "widget-ui",
+      "prompt": "개념글 눌러서 재밌어보이는 글 아무거나 보여줘",
+      "status": "pass",
+      "failureClass": "",
+      "elapsedMs": 1138,
+      "finalUrl": "http://127.0.0.1:61976/view/interesting",
+      "answerPreview": "현재 보고 있는 페이지는 재밌는 게시글입니다. URL: http://127.0.0.1:61976/view/interesting\n\n주요 내용:\n\n재밌는 게시글 Browser Action live fixture opened the representative content item.\n\n보이는 주요 조작 요소: 목록",
+      "artifactDir": "docs/reports/assets/browser-action-live/browser-action-widget-ui-final5-20260511/local-concept-random-post"
+    },
+    {
+      "id": "local-current-page-read",
+      "mode": "widget-ui",
+      "prompt": "지금 보고있는 페이지 설명해줘",
+      "status": "pass",
+      "failureClass": "",
+      "elapsedMs": 165,
+      "finalUrl": "http://127.0.0.1:61976/forum",
+      "answerPreview": "현재 보고 있는 페이지는 Browser Action Live Fixture입니다. URL: http://127.0.0.1:61976/forum\n\n주요 내용:\n\n개념글 전체글 글쓰기 특이점 테스트 게시판 [공지] 처음 오신 분을 위한 안내운영자 [설문] 알리 할인상품 의견 요청운영자 연봉자랑하는 지피쨩작성자 오늘 1964 28 싱글벙글 브라우저 액션 테스트작성자 오늘 881 12\n\n보이는 주요 조작 요소: 개념글, 전체글, 글쓰기, [공지] 처음 오신 분을 위한 안내, [설문] 알리 할인상품 의견 요청",
+      "artifactDir": "docs/reports/assets/browser-action-live/browser-action-widget-ui-final5-20260511/local-current-page-read"
+    },
+    {
+      "id": "local-back-fast-path",
+      "mode": "widget-ui",
+      "prompt": "뒤로가기",
+      "status": "pass",
+      "failureClass": "",
+      "elapsedMs": 225,
+      "finalUrl": "http://127.0.0.1:61976/forum",
+      "answerPreview": "브라우저 동작을 완료했습니다. 실행: back 현재 페이지: Browser Action Live Fixture (http://127.0.0.1:61976/forum) 검증: Action changed the browser route or URL.",
+      "artifactDir": "docs/reports/assets/browser-action-live/browser-action-widget-ui-final5-20260511/local-back-fast-path"
+    },
+    {
+      "id": "local-back-single-step",
+      "mode": "widget-ui",
+      "prompt": "뒤로가기",
+      "status": "pass",
+      "failureClass": "",
+      "elapsedMs": 195,
+      "finalUrl": "http://127.0.0.1:61976/view/notice",
+      "answerPreview": "브라우저 동작을 완료했습니다. 실행: back 현재 페이지: 공지 (http://127.0.0.1:61976/view/notice) 검증: Action changed the browser route or URL.",
+      "artifactDir": "docs/reports/assets/browser-action-live/browser-action-widget-ui-final5-20260511/local-back-single-step"
+    },
+    {
+      "id": "local-navigate-always-allow-prime",
+      "mode": "widget-ui",
+      "prompt": "http://127.0.0.1:61976/target 열어줘",
+      "status": "pass",
+      "failureClass": "",
+      "elapsedMs": 2658,
+      "finalUrl": "http://127.0.0.1:61976/target",
+      "answerPreview": "브라우저 동작을 완료했습니다. 실행: navigate http://127.0.0.1:61976/target 현재 페이지: Browser Action Live Fixture (http://127.0.0.1:61976/target) 검증: Action changed the browser route or URL.",
+      "artifactDir": "docs/reports/assets/browser-action-live/browser-action-widget-ui-final5-20260511/local-navigate-always-allow-prime"
+    },
+    {
+      "id": "local-navigate-always-allow-grouped",
+      "mode": "widget-ui",
+      "prompt": "http://127.0.0.1:61976/target-two 열어줘",
+      "status": "pass",
+      "failureClass": "",
+      "elapsedMs": 226,
+      "finalUrl": "http://127.0.0.1:61976/target-two",
+      "answerPreview": "브라우저 동작을 완료했습니다. 실행: navigate http://127.0.0.1:61976/target-two 현재 페이지: Browser Action Live Fixture (http://127.0.0.1:61976/target-two) 검증: Action changed the browser route or URL.",
+      "artifactDir": "docs/reports/assets/browser-action-live/browser-action-widget-ui-final5-20260511/local-navigate-always-allow-grouped"
+    },
+    {
+      "id": "local-navigate-always-allow-reuse",
+      "mode": "widget-ui",
+      "prompt": "http://127.0.0.1:61976/target 열어줘",
+      "status": "pass",
+      "failureClass": "",
+      "elapsedMs": 1108,
+      "finalUrl": "http://127.0.0.1:61976/target",
+      "answerPreview": "브라우저 동작을 완료했습니다. 실행: navigate http://127.0.0.1:61976/target 현재 페이지: Browser Action Live Fixture (http://127.0.0.1:61976/target) 검증: Action changed the browser route or URL.",
+      "artifactDir": "docs/reports/assets/browser-action-live/browser-action-widget-ui-final5-20260511/local-navigate-always-allow-reuse"
+    }
+  ]
+}
