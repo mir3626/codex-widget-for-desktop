@@ -829,3 +829,45 @@ Dependencies: Sprints 01-03 and verification scripts.
 Expected scope: new `smoke:browser-view-graph-v2`, deterministic dogfood report, existing Browser Action/Bridge/Semantic smoke coverage, durable context/report updates.
 
 Status: complete. Added `npm run smoke:browser-view-graph-v2` and `npm run dogfood:browser-view-graph-v2`; both pass locally. Existing focused smokes for Browser Action, Browser Action E2E control, prompt classification, Browser Bridge, extension, DOM provider, Semantic Interface, and Semantic Memory passed, followed by full `npm run lint`, `npm run smoke` including `build:web`, Browser Action/Semantic dogfood refresh, UTF-8/mojibake checks, project report refresh, and checkpoint.
+
+## Iteration iter-19: Browser Perception Interface
+
+Status: planned from `docs/plans/browser-perception-interface-handoff.md`.
+
+Carryover: Iteration 18 completed Browser View Graph v2, but live dogfood still showed that prompt execution can race ahead of a fresh active-tab observation and return "Browser Bridge is reading the page; try again later." Iteration 19 should implement the Browser Perception interface that owns request-scoped fresh observation, extension observe acknowledgements, SPA stabilization, prepared context storage, and Browser Action integration.
+
+### iter-19-sprint-01-context-store-and-request-scoped-observe
+
+Goal: add the daemon-side `PreparedBrowserViewContext` store and bounded `ensureFreshContext` API.
+
+Expected scope: context identity, freshness/stability policy, active-tab context storage, ProviderRegistry prepared observation bridge, and smoke fixtures for fresh/stale/settling context decisions.
+
+### iter-19-sprint-02-extension-command-ack-and-long-poll-observe
+
+Goal: make extension observe commands explicit, acknowledged, cancellable, and timeout-aware.
+
+Expected scope: daemon observe command queue, extension long-poll or upgraded poll delivery, fast ack/result separation, timeout/cancel handling, permission/restricted/wrong-tab results, and legacy DOM snapshot compatibility.
+
+### iter-19-sprint-03-spa-stabilization-and-active-tab-dirty-signals
+
+Goal: handle same-tab URL/query/history/mutation changes before Browser Action resolves targets.
+
+Expected scope: content-script mutation/history tracking, active context dirty invalidation, stabilization thresholds, query-transition smoke coverage, and React-style mutation-after-load fixtures.
+
+### iter-19-sprint-04-browser-action-prompt-direct-integration
+
+Goal: ensure prompt and direct Browser Action paths consume request-scoped Browser Perception before planning or side-effect execution.
+
+Expected scope: prompt runner `ensureFreshContext` integration, side-effect re-resolve against the latest graph, progress events while perception is pending, and a regression smoke for the previous retry-later message.
+
+### iter-19-sprint-05-semantic-evidence-and-verification-refresh
+
+Goal: publish prepared context evidence to Semantic Interface and update Browser Action verification around legitimate route/query transitions.
+
+Expected scope: prepared context evidence packets, Semantic Memory scope/read-set alignment, graph transition verification, and dogfood evidence for filter -> representative content flow without site-specific rules.
+
+### iter-19-sprint-06-ux-diagnostics-and-completion
+
+Goal: make perception waiting visible as progress rather than as a failed final answer.
+
+Expected scope: compact renderer perception states, diagnostics for command ack/result/freshness, full verification, project report refresh, durable context updates, and checkpoint.

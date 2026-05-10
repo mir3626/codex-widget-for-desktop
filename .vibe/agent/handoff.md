@@ -1180,7 +1180,32 @@ Completed after Codex app-server browser-open duplicate correction:
 
 Use `docs/context/qa.md` for routine follow-up commands.
 
-## Latest Update: Browser View Graph v2 Implementation
+## Latest Update: Browser Perception Interface Handoff
+
+Added `docs/plans/browser-perception-interface-handoff.md` after live testing showed the next failure class:
+
+```text
+현재 활성 탭 관찰이 아직 갱신되지 않았습니다.
+Browser Bridge가 gall.dcinside.com 페이지를 읽는 중입니다.
+잠시 후 다시 실행해 주세요.
+```
+
+This confirms that Browser View Graph v2 is necessary but not sufficient. View Graph v2 can model a page once a valid observation exists, but Browser Action still needs a Browser Perception layer that guarantees request-scoped fresh active-tab context before prompt/direct action planning.
+
+The new handoff scopes:
+
+- daemon `PreparedBrowserViewContext` store and `ensureFreshContext` API
+- extension observe command ack/result/timeout/cancel semantics
+- long-poll or upgraded poll delivery for `observe_now`
+- SPA/query/history/mutation stabilization
+- active-tab dirty invalidation and graph revision handling
+- Browser Action prompt/direct integration before planning and before side-effect execution
+- Semantic Interface evidence publication from prepared contexts
+- renderer progress states so "reading page" is not returned as the final chat answer
+
+`docs/plans/sprint-roadmap.md` now includes planned Iteration `iter-19: Browser Perception Interface` with six recommended sprints.
+
+## Previous Update: Browser View Graph v2 Implementation
 
 Iteration `iter-18` completed `docs/plans/browser-view-graph-v2-handoff.md`.
 
