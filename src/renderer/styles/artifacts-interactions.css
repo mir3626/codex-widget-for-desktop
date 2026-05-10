@@ -25,7 +25,7 @@
 .conversation-artifact-float {
   position: fixed;
   left: 12px;
-  bottom: calc(var(--mascot-stage, 0px) + var(--prompt-composer-height, 46px) + 34px + 52px + 10px);
+  bottom: calc(var(--mascot-stage, 0px) + var(--prompt-composer-height, 46px) + 34px + 52px + 4px);
   z-index: 68;
   width: max-content;
   max-width: min(calc(100vw - 24px), 420px);
@@ -34,7 +34,7 @@
 }
 
 .widget-shell.is-maximized .conversation-artifact-float {
-  bottom: calc(var(--prompt-composer-height, 46px) + 34px + 52px + 10px);
+  bottom: calc(var(--prompt-composer-height, 46px) + 34px + 52px + 4px);
 }
 
 .conversation.has-artifact-float::after {

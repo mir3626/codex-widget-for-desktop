@@ -7,7 +7,7 @@ import {
   SEMANTIC_RANKER_VERSION,
   SEMANTIC_REDACTION_POLICY_VERSION
 } from "./ontology.js";
-import type { RankedSemanticHypothesis, RedactedTraceRecord, SafetyVerdict, SemanticSourceWarning, TraceRecord } from "./types.js";
+import type { RankedSemanticHypothesis, RankerTrace, RedactedTraceRecord, SafetyVerdict, SemanticSourceWarning, TraceRecord } from "./types.js";
 
 export function buildTraceRecord(input: {
   snapshotId: string;
@@ -15,6 +15,7 @@ export function buildTraceRecord(input: {
   intent: unknown;
   ranked: RankedSemanticHypothesis[];
   selectedHypothesisId?: string;
+  rankerTrace: RankerTrace;
   verdicts: Array<{ hypothesisId: string; verdict: SafetyVerdict }>;
   warnings?: SemanticSourceWarning[];
   now?: Date;
@@ -29,12 +30,13 @@ export function buildTraceRecord(input: {
     rankerVersion: SEMANTIC_RANKER_VERSION,
     predicateVersion: SEMANTIC_PREDICATE_VERSION,
     catalogVersion: SEMANTIC_CATALOG_VERSION,
+    rankerTrace: input.rankerTrace,
     ranked: input.ranked.map((item) => ({
       hypothesisId: item.hypothesis.id,
       targetEntityId: item.hypothesis.targetEntityId,
-      score: item.score,
+      finalScoreBp: item.finalScoreBp,
       selected: item.hypothesis.id === input.selectedHypothesisId,
-      featureContributions: item.featureContributions,
+      evidence: item.evidence,
       explanation: item.hypothesis.explanation,
       disqualifiers: item.hypothesis.disqualifiers
     })),
@@ -66,7 +68,7 @@ export function redactTraceRecord(input: {
     ranked: input.trace.ranked.map((item) => ({
       hypothesisId: item.hypothesisId,
       targetEntityId: item.targetEntityId,
-      score: item.score,
+      finalScoreBp: item.finalScoreBp,
       selected: item.selected,
       explanation: item.explanation,
       disqualifiers: item.disqualifiers

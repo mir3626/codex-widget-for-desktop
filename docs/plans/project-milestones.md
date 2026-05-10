@@ -133,3 +133,30 @@ Evidence:
 - Iteration 9 adds a durable Browser Action module boundary: action sessions, normalized browser observations, element graphs, target resolutions, safety decisions, queued extension commands, verification results, and audit summaries are daemon-owned concepts, while full sensitive page state and credentials remain outside durable storage.
 - Iteration 10 completes the production Browser Action interface expansion: adapter registry/status, direct controlled-adapter execution, stale reobserve/retry, Playwright/CDP smokes, native diagnostics boundary, full_control_dev evaluate approval/credential safeguards, and real dogfood evidence.
 - Iteration 11 completes the prompt-driven Browser Action E2E control layer: deterministic daemon-side prompt/tool simulation, executable BrowserActionPlan lifecycle, browser-specific saved policies, renderer cockpit, hardened extension command channel, and a real E2E dogfood matrix with CDP/native unavailable evidence where appropriate.
+
+## semantic-interface
+
+Goal: provide a reusable daemon-side semantic decision interface that turns normalized observations and intent frames into deterministic, auditable hypotheses without becoming an executor or prompt-only planner.
+
+Current progress: 1
+
+Evidence:
+- Iteration 15 created `src/daemon/semantic-interface/` with ontology/version constants, intent frames, deterministic hypotheses/ranking, transition grammar, operating profiles, pure safety predicates, trace/replay, redacted trace projection, Browser Action adapter/resolver, Vision Context adapter, and golden/adversarial smoke coverage.
+- Iteration 16 upgraded the ranker contract to typed basis-point `CandidateEvidencePacket` evidence, `CandidateGenerationTrace`, pairwise margins, target fingerprints, and richer ranker traces.
+- Browser Action observations now carry `BrowserViewGraph` identity/node/edge data, and Semantic Interface maps view node id, region role, graph relation, and view revision evidence into hypotheses.
+- `npm run smoke:semantic-interface` covers Browser Action ambiguity, stale/source warnings, typed evidence/ranker traces, Vision read/locate conformance, redaction, deterministic replay, and adversarial fixture classes.
+- `docs/reports/semantic-interface-dogfood-evidence-2026-05-08.md` records committed dogfood evidence.
+
+## semantic-memory
+
+Goal: let the local widget improve interpretation from unresolved cases, clarifications, corrections, and repeated instructions through redacted deterministic memory while never granting permissions or bypassing feature-owned safety.
+
+Current progress: 1
+
+Evidence:
+- Iteration 16 added `src/daemon/semantic-interface/memory/` with redaction/hash helpers, SQLite-backed memory graph storage, unresolved cases, feedback events, weighted graph deltas, immutable `MemoryReadSet` projections, reports, reset, and ranker memory-axis mapping.
+- Storage migration `semantic_memory` creates local memory nodes, edges, unresolved-case, and feedback-event tables without storing full page state or secret values.
+- Daemon endpoints cover settings, report, unresolved, feedback, read, and reset paths; renderer Settings exposes enable/disable, counts, refresh, and clear-all controls.
+- Browser Action live target resolution reads scoped memory when enabled, records unresolved target cases on clarification, and attaches memory read-set provenance to safety metadata.
+- `npm run smoke:semantic-memory` covers redaction, settings, daemon endpoints, read-set hashes, blocked-edge exclusion, Browser Action live read-set plumbing, reset/report, and replay integration.
+- `docs/reports/semantic-memory-dogfood-evidence-2026-05-09.md` records redacted dogfood evidence.

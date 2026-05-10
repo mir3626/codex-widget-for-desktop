@@ -48,6 +48,78 @@ try {
     throw new Error(`Prompt Browser Action answer did not summarize the observed page: ${promptAnswer.text}`);
   }
 
+  await postDomSnapshot(beforeSnapshot);
+  send({
+    type: "ask",
+    id: "prompt-browser-action-chain",
+    text: "개념글 눌러서 재밌어보이는 글 보여줘",
+    mode: "browser"
+  });
+  const firstChainQueued = await waitFor(
+    (event) => event.type === "browserAction.progress" &&
+      event.actionSessionId.includes("prompt-browser-action-chain") &&
+      event.status === "plan_paused_for_extension",
+    "first chained prompt command"
+  );
+  const firstChainCommand = await pollBrowserActionCommand(beforeSnapshot);
+  assertEqual(firstChainCommand?.requestId, firstChainQueued.detail?.requestId, "first chained command request id");
+  assertEqual(firstChainCommand?.expectedSource?.url, beforeSnapshot.url, "first chained command expected source");
+  await postBrowserActionResult(firstChainCommand.requestId, true, beforeSnapshot, afterSnapshot);
+  const secondChainQueued = await waitFor(
+    (event) => event.type === "browserAction.progress" &&
+      event.actionSessionId.includes("prompt-browser-action-chain") &&
+      event.status === "plan_paused_for_extension" &&
+      event.detail?.requestId !== firstChainCommand.requestId,
+    "second chained prompt command"
+  );
+  const secondChainCommand = await pollBrowserActionCommand(afterSnapshot);
+  assertEqual(secondChainCommand?.requestId, secondChainQueued.detail?.requestId, "second chained command request id");
+  assertEqual(secondChainCommand?.expectedSource?.url, afterSnapshot.url, "second chained command expected source follows first result URL");
+  await postBrowserActionResult(secondChainCommand.requestId, true, afterSnapshot, createSnapshot("view"));
+  const chainAnswer = await waitFor((event) => event.type === "message.completed" && event.id === "prompt-browser-action-chain", "chained prompt answer");
+  if (!chainAnswer.text.includes("https://example.test/browser-action-e2e/view")) {
+    throw new Error(`Chained Browser Action answer did not use the final observation: ${chainAnswer.text}`);
+  }
+
+  await postDomSnapshot(beforeSnapshot);
+  send({
+    type: "ask",
+    id: "prompt-browser-action-source-refresh",
+    text: "개념글 눌러줘",
+    mode: "browser"
+  });
+  const sourceRefreshQueued = await waitFor(
+    (event) => event.type === "browserAction.progress" &&
+      event.actionSessionId.includes("prompt-browser-action-source-refresh") &&
+      event.status === "plan_paused_for_extension",
+    "source-refresh prompt command"
+  );
+  const sourceRefreshCommand = await pollBrowserActionCommand(beforeSnapshot);
+  assertEqual(sourceRefreshCommand?.requestId, sourceRefreshQueued.detail?.requestId, "source-refresh command request id");
+  assertEqual(sourceRefreshCommand?.expectedSource?.url, beforeSnapshot.url, "source-refresh command starts from initial source");
+  await postBrowserActionResult(
+    sourceRefreshCommand.requestId,
+    false,
+    beforeSnapshot,
+    afterSnapshot,
+    `Active tab URL changed before Browser Action execution: expected ${beforeSnapshot.url}, got ${afterSnapshot.url}.`
+  );
+  const sourceRetryQueued = await waitFor(
+    (event) => event.type === "browserAction.progress" &&
+      event.actionSessionId.includes("prompt-browser-action-source-refresh") &&
+      event.status === "plan_paused_for_extension" &&
+      event.detail?.requestId !== sourceRefreshCommand.requestId,
+    "source-refresh retry command"
+  );
+  const sourceRetryCommand = await pollBrowserActionCommand(afterSnapshot);
+  assertEqual(sourceRetryCommand?.requestId, sourceRetryQueued.detail?.requestId, "source-refresh retry request id");
+  assertEqual(sourceRetryCommand?.expectedSource?.url, afterSnapshot.url, "source-refresh retry uses refreshed source");
+  await postBrowserActionResult(sourceRetryCommand.requestId, true, afterSnapshot, afterSnapshot);
+  const sourceRefreshAnswer = await waitFor((event) => event.type === "message.completed" && event.id === "prompt-browser-action-source-refresh", "source-refresh prompt answer");
+  if (!sourceRefreshAnswer.text.includes("plan: completed")) {
+    throw new Error(`Source-refresh retry prompt did not complete after refreshed observation: ${sourceRefreshAnswer.text}`);
+  }
+
   send({
     type: "browserAction.command",
     requestId: "direct-read-request",
@@ -97,7 +169,12 @@ try {
       confidence: 0.9
     }
   });
-  const queued = await waitFor((event) => event.type === "browserAction.progress" && event.status === "plan_paused_for_extension", "plan queued for extension");
+  const queued = await waitFor(
+    (event) => event.type === "browserAction.progress" &&
+      event.actionSessionId === "e2e-plan-session" &&
+      event.status === "plan_paused_for_extension",
+    "plan queued for extension"
+  );
   const command = await pollBrowserActionCommand();
   assertEqual(command?.requestId, queued.detail?.requestId, "plan command request id");
   if (!command?.expectedSource?.url) {
@@ -108,7 +185,7 @@ try {
   }
   assertExtensionPickupWindow(command);
   await postBrowserActionResult(command.requestId, true, beforeSnapshot, afterSnapshot);
-  const extensionResult = await waitFor((event) => event.type === "browserAction.result" && event.result?.action === "click", "extension action result");
+  const extensionResult = await waitFor((event) => event.type === "browserAction.result" && event.result?.id === command.resultId, "extension action result");
   assertEqual(extensionResult.result.status, "succeeded", "extension action status");
 
   send({
@@ -155,7 +232,12 @@ try {
     actionSessionId: "e2e-plan-session",
     action: { type: "click", target: { kind: "element_id", id: "delete-repo" } }
   });
-  const blocked = await waitFor((event) => event.type === "browserAction.result" && event.result?.status === "failed", "destructive denied result");
+  const blocked = await waitFor(
+    (event) => event.type === "browserAction.result" &&
+      event.actionSessionId === "e2e-plan-session" &&
+      event.result?.status === "failed",
+    "destructive denied result"
+  );
   assertEqual(blocked.result.safety, "block", "destructive policy block");
 
   console.log(`browser action e2e control smoke ok on port ${daemon.port}`);
@@ -202,6 +284,34 @@ function createSnapshot(state) {
         riskHints: []
       },
       {
+        id: "concept-posts",
+        role: "link",
+        tagName: "a",
+        label: "개념글",
+        text: "개념글",
+        selector: "a[href=\"/mgallery/board/lists/?id=thesingularity&exception_mode=recommend\"]",
+        href: "https://example.test/browser-action-e2e/after",
+        visible: true,
+        enabled: true,
+        editable: false,
+        confidence: 0.96,
+        riskHints: []
+      },
+      {
+        id: "interesting-post",
+        role: "link",
+        tagName: "a",
+        label: "재밌어보이는 실험 글",
+        text: "재밌어보이는 실험 글",
+        selector: "a[href=\"/browser-action-e2e/view\"]",
+        href: "https://example.test/browser-action-e2e/view",
+        visible: true,
+        enabled: true,
+        editable: false,
+        confidence: 0.96,
+        riskHints: []
+      },
+      {
         id: "delete-repo",
         role: "button",
         tagName: "button",
@@ -233,8 +343,8 @@ async function postDomSnapshot(snapshot) {
   }
 }
 
-async function pollBrowserActionCommand() {
-  const response = await fetch(`${baseUrl}/browser-action/extension/poll?tabId=11&windowId=7&url=${encodeURIComponent(beforeSnapshot.url)}&title=${encodeURIComponent(beforeSnapshot.title)}`);
+async function pollBrowserActionCommand(snapshot = beforeSnapshot) {
+  const response = await fetch(`${baseUrl}/browser-action/extension/poll?tabId=11&windowId=7&url=${encodeURIComponent(snapshot.url)}&title=${encodeURIComponent(snapshot.title)}`);
   if (!response.ok) {
     throw new Error(`Browser Action poll failed: ${response.status}`);
   }

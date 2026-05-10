@@ -1,6 +1,6 @@
 # Semantic Interface Handoff
 
-Status: implemented in iter-15 as a baseline; handoff authority for the semantic decision-layer implementation; updated after Privacy Filter architecture review, Codex/Claude accuracy debate, iter-15 implementation, and 2026-05-09 Codex subagent design review
+Status: implemented through iter-16; handoff authority for the semantic decision-layer implementation; updated after Privacy Filter architecture review, Codex/Claude accuracy debate, iter-15 baseline implementation, 2026-05-09 Codex subagent design review, and Semantic Memory/View Graph completion work
 Target repo: `C:\Users\Tony\Workspace\codex-widget-for-desktop`
 Baseline modules:
 - `src/daemon/browser-action/`
@@ -10,15 +10,20 @@ Baseline modules:
 
 Primary goal: build a reusable daemon-side Semantic Interface that converts observations and user intent into deterministic, auditable action hypotheses. It should be portable across Browser Action, Vision Context, Terminal, Workspace, Screen/OCR, and future Windows UI Automation without becoming a browser-specific resolver or a generic LLM planner.
 
-## Implementation Status (2026-05-08)
+## Implementation Status (2026-05-09)
 
 Implemented:
 
 - `src/daemon/semantic-interface/` package-like daemon module with frozen v1 type surface, ontology/catalog versions, intent frames, deterministic hypothesis/ranking, step-transition grammar, operating profiles, pure safety predicates, trace/replay, redacted trace projection, generic alias lexicon, Browser Action adapter, Browser Action semantic target resolver, Vision Context adapter, and testing harness.
-- `npm run smoke:semantic-interface` covering Browser Action concept-filter resolution, duplicate-label abstention, stale snapshot warnings, redacted trace checks, deterministic replay, Browser Action low-risk live gate, Vision read/locate conformance, and typed/untyped/adversarial golden trace modes.
+- Typed evidence-packet ranker contract: `CandidateEvidencePacket`, integer basis-point axes, actionability/risk/ambiguity/memory axes, `CandidateGenerationTrace`, `TargetFingerprint`, `PairwiseMargin`, and `RankerTrace`.
+- Browser Action View Graph ingestion: `BrowserObservation.viewGraph`, view identity/digest/revision metadata, region/list/form/modal nodes, graph edges, and Semantic Interface adapter mapping for region/group/affordance evidence.
+- Immutable Semantic Memory read-set integration: ranker receives scoped, redacted `MemoryReadSet` projections and maps them into separate memory axes without querying mutable storage during deterministic replay.
+- `npm run smoke:semantic-interface` covering Browser Action concept-filter resolution, duplicate-label abstention, stale snapshot warnings, typed evidence packets, ranker traces, redacted trace checks, deterministic replay, Browser Action low-risk live gate, Vision read/locate conformance, and typed/untyped/adversarial golden trace modes.
 - Browser Action target resolution integration that keeps Browser Action as the executor, uses Semantic Interface only as a target-resolution gate/advisory, attaches redacted semantic trace metadata to safety/audit, and preserves existing exact/selector/focused/bbox resolver behavior.
+- Browser Action live resolution now supplies scoped Semantic Memory read sets into Semantic Interface when enabled, and safety metadata records memory read-set provenance without persisting full page state.
 - Vision Context read/locate conformance through `taskCapsuleToSemanticSnapshot` without changing core ranker/predicate contracts.
 - Dogfood evidence report at `docs/reports/semantic-interface-dogfood-evidence-2026-05-08.md`.
+- Semantic Memory dogfood evidence report at `docs/reports/semantic-memory-dogfood-evidence-2026-05-09.md`.
 
 Deferred beyond v1:
 

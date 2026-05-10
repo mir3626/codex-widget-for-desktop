@@ -17,9 +17,21 @@ type SettingsPanelProps = {
   nativeDaemonStatus: NativeDaemonStatus | null;
   providerStatuses: ProviderStatus[];
   executionPermissions: ExecutionPermissionSummary[];
+  semanticMemoryEnabled: boolean;
+  semanticMemoryReport: {
+    nodeCount: number;
+    edgeCount: number;
+    unresolvedCount: number;
+    feedbackCount: number;
+    generatedAt: string;
+  } | null;
+  semanticMemoryStatus: string;
   screenCrop: ScreenCropSettings;
   onAutostartChange: (enabled: boolean) => void;
   onExecutionPermissionChange: (action: string, decision: ExecutionPermissionDecision) => void;
+  onSemanticMemoryEnabledChange: (enabled: boolean) => void;
+  onSemanticMemoryRefresh: () => void;
+  onSemanticMemoryClear: () => void;
   onCaptureScreen: () => void;
   onScreenCropEnabledChange: (enabled: boolean) => void;
   onScreenCropFieldChange: (field: keyof ScreenCrop, value: string) => void;
@@ -32,9 +44,15 @@ export function SettingsPanel({
   nativeDaemonStatus,
   providerStatuses,
   executionPermissions,
+  semanticMemoryEnabled,
+  semanticMemoryReport,
+  semanticMemoryStatus,
   screenCrop,
   onAutostartChange,
   onExecutionPermissionChange,
+  onSemanticMemoryEnabledChange,
+  onSemanticMemoryRefresh,
+  onSemanticMemoryClear,
   onCaptureScreen,
   onScreenCropEnabledChange,
   onScreenCropFieldChange,
@@ -103,6 +121,30 @@ export function SettingsPanel({
         ) : (
           <p className="settings-empty-copy">No saved action permissions.</p>
         )}
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-heading">
+          <strong>Semantic Memory</strong>
+          <span>{semanticMemoryStatus}</span>
+        </div>
+        <label className="toggle-row">
+          <input type="checkbox" checked={semanticMemoryEnabled} onChange={(event) => onSemanticMemoryEnabledChange(event.target.checked)} />
+          <span>
+            <strong>Use memory during target resolution</strong>
+            <small>Apply scoped, redacted memory read sets after fresh observed candidates pass hard gates.</small>
+          </span>
+        </label>
+        <div className="runtime-grid">
+          <RuntimeMetric label="Nodes" value={semanticMemoryReport?.nodeCount ?? 0} />
+          <RuntimeMetric label="Edges" value={semanticMemoryReport?.edgeCount ?? 0} />
+          <RuntimeMetric label="Gaps" value={semanticMemoryReport?.unresolvedCount ?? 0} />
+          <RuntimeMetric label="Feedback" value={semanticMemoryReport?.feedbackCount ?? 0} />
+        </div>
+        <div className="settings-inline-actions">
+          <button type="button" onClick={onSemanticMemoryRefresh}>Refresh</button>
+          <button type="button" onClick={onSemanticMemoryClear}>Clear all</button>
+        </div>
       </div>
 
       <div className="settings-section provider-settings">

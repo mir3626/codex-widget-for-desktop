@@ -32,6 +32,13 @@ function verifyKoreanConceptTarget() {
   if (rejected?.selected) {
     throw new Error("Partial sidebar concept link should not be selected");
   }
+  const selected = outcome.trace.ranked.find((item) => item.selected);
+  if (!selected?.evidence?.actionability || selected.finalScoreBp < 7500) {
+    throw new Error(`Selected candidate should carry typed evidence packet and basis-point score: ${JSON.stringify(selected)}`);
+  }
+  if (!outcome.trace.rankerTrace?.candidateGeneration || !outcome.trace.rankerTrace.targetFingerprint) {
+    throw new Error(`Trace should include candidate provenance and target fingerprint: ${JSON.stringify(outcome.trace.rankerTrace)}`);
+  }
 }
 
 function verifyDuplicateLabelAbstention() {

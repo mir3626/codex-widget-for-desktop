@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-15",
+  "currentIteration": "iter-17",
   "iterations": [
     {
       "id": "iter-1",
@@ -491,6 +491,86 @@
       },
       "summary": "Iteration 15 completed the reusable semantic-interface module from docs/plans/semantic-interface-handoff.md. The daemon now has a package-like src/daemon/semantic-interface boundary with v1 type contracts, ontology/version constants, intent frames, deterministic hypotheses/ranking, transition grammar, operating profiles, pure safety predicates, trace/replay, redacted durable trace projection, generic alias lexicon, Browser Action and Vision Context adapters, typed/untyped/adversarial golden trace harness, and dogfood evidence. Browser Action keeps execution feature-owned but can use semantic target resolution as a low-risk live gate with redacted trace metadata; Vision Context read/locate conformance works without core type or ranker changes.",
       "completedAt": "2026-05-08T23:05:00.000+09:00"
+    },
+    {
+      "id": "iter-16",
+      "label": "Semantic Interface View Graph And Memory",
+      "startedAt": "2026-05-09T02:20:37.466+09:00",
+      "completedAt": "2026-05-09T02:55:00.000+09:00",
+      "goal": "Complete docs/plans/semantic-interface-handoff.md and docs/plans/semantic-memory-handoff.md: typed evidence packets, Browser View Graph evidence, immutable Semantic Memory read sets, clarification/correction feedback, live Browser Action memory integration, user controls, smokes, and dogfood evidence.",
+      "plannedSprints": [
+        "iter-16-sprint-01-request-scoped-observe-and-long-poll",
+        "iter-16-sprint-02-view-identity-spa-stability",
+        "iter-16-sprint-03-view-graph-schema-and-region-segmentation",
+        "iter-16-sprint-04-semantic-view-graph-resolution-and-dogfood",
+        "iter-16-sprint-05-semantic-memory-storage-redaction",
+        "iter-16-sprint-06-memory-readsets-and-ranker-integration",
+        "iter-16-sprint-07-user-control-and-dogfood-evidence"
+      ],
+      "completedSprints": [
+        "iter-16-sprint-01-request-scoped-observe-and-long-poll",
+        "iter-16-sprint-02-view-identity-spa-stability",
+        "iter-16-sprint-03-view-graph-schema-and-region-segmentation",
+        "iter-16-sprint-04-semantic-view-graph-resolution-and-dogfood",
+        "iter-16-sprint-05-semantic-memory-storage-redaction",
+        "iter-16-sprint-06-memory-readsets-and-ranker-integration",
+        "iter-16-sprint-07-user-control-and-dogfood-evidence"
+      ],
+      "carryover": "Iter-15 completed the reusable semantic-interface baseline. User follow-up required the remaining typed evidence-packet refinements, View Graph grounding, and Semantic Memory layer so repeated ambiguity/correction can improve future target resolution without bypassing safety.",
+      "openRisks": [
+        "Dedicated ranked-choice clarification card UX can still be refined; current implementation records unresolved cases, exposes input/approval surfaces, and keeps Browser Action safety-owned clarification behavior.",
+        "Node's built-in SQLite module is still experimental in the current runtime and prints an ExperimentalWarning in some dogfood scripts.",
+        "Memory improves ranking only after fresh observed candidates pass hard gates; it intentionally does not override permissions or low-confidence side-effect safety."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.985,
+        "durable-codex-runtime": 0.97,
+        "real-tool-providers": 1,
+        "resident-desktop-readiness": 0.965,
+        "durable-product-state": 0.99,
+        "semantic-interface": 1,
+        "semantic-memory": 1
+      },
+      "summary": "Iteration 16 completed the Semantic Interface refinement and Semantic Memory implementation. Semantic hypotheses now carry typed basis-point evidence packets, ranker traces, candidate-generation provenance, pairwise margins, and target fingerprints. Browser observations now include View Graph identity/nodes/edges and Semantic Interface maps view regions, roles, and relations into ranking evidence. Semantic Memory adds local SQLite-backed nodes/edges/unresolved/feedback storage, redaction/hash helpers, immutable MemoryReadSet projections, ranker memory axes, live Browser Action read-set integration with safety metadata provenance, unresolved-case recording, daemon report/read/reset/settings endpoints, renderer Settings controls, `npm run smoke:semantic-memory`, and `npm run dogfood:semantic-memory` evidence."
+    },
+    {
+      "id": "iter-17",
+      "label": "Browser Action Runtime Closure",
+      "startedAt": "2026-05-10T13:11:21.483+09:00",
+      "goal": "Continue Browser Action/Semantic Interface work in the user-requested order 2 -> 3 -> 1 -> 6 -> 7 -> 5: View Graph runtime audit and gap closure, Semantic Interface/Memory live audit, prompt-driven Browser Action failure fixes, dogfood matrix refresh, agent-friendly refactor follow-up, and Browser Action UX cleanup.",
+      "plannedSprints": [
+        "iter-17-sprint-01-view-graph-runtime-audit",
+        "iter-17-sprint-02-semantic-interface-memory-live-audit",
+        "iter-17-sprint-03-prompt-driven-browser-action-failure-fixes",
+        "iter-17-sprint-04-dogfood-matrix-refresh",
+        "iter-17-sprint-05-agent-friendly-refactor-followup",
+        "iter-17-sprint-06-browser-action-ux-cleanup"
+      ],
+      "completedSprints": [
+        "iter-17-sprint-01-view-graph-runtime-audit",
+        "iter-17-sprint-02-semantic-interface-memory-live-audit",
+        "iter-17-sprint-03-prompt-driven-browser-action-failure-fixes",
+        "iter-17-sprint-04-dogfood-matrix-refresh",
+        "iter-17-sprint-05-agent-friendly-refactor-followup",
+        "iter-17-sprint-06-browser-action-ux-cleanup"
+      ],
+      "carryover": "Iter-16 completed View Graph and Semantic Memory implementation, but live Browser Action dogfood still fails on dynamic page transitions and ambiguous Korean browser commands. This iteration treats the previous implementation as a baseline to audit and harden, not as sufficient acceptance.",
+      "openRisks": [
+        "Live Browser Bridge behavior depends on the installed unpacked extension being reloaded after service-worker changes.",
+        "Dynamic pages can change URL/query/view identity between observe and execute; expected-source guards must distinguish stale-source risk from intentional step-to-step navigation.",
+        "Semantic Memory must improve ranking only through typed read-set evidence and must not bypass Browser Action safety or permissions."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.985,
+        "durable-codex-runtime": 0.97,
+        "real-tool-providers": 1,
+        "resident-desktop-readiness": 0.965,
+        "durable-product-state": 0.99,
+        "semantic-interface": 1,
+        "semantic-memory": 1
+      },
+      "summary": "Iteration 17 completed the requested 2 -> 3 -> 1 -> 6 -> 7 -> 5 pass. Browser Action prompt execution now recovers from extension expected-source URL/tab/window mismatch by refreshing the active observation and retrying the affected step once. Browser Bridge poll requests update daemon-visible active-tab status. Representative content resolution now rejects utility/profile/category/comment anchors and prefers article-like content links. Browser prompt failures, clarification, and pending-extension states render clearer user-facing messages instead of opaque execution receipts. Verification covered lint, build, Browser Action/Bridge/Semantic smokes, and dogfood evidence scripts.",
+      "completedAt": "2026-05-10T13:45:00.000+09:00"
     }
   ]
 }

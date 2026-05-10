@@ -1,0 +1,34 @@
+import type { WebSocket } from "ws";
+import type { AgentSessionState } from "../../agent.js";
+import type { CodexAppServerBridge } from "../../codexAppServer.js";
+import type { OAuthSession } from "../../oauth.js";
+import type { BrowserActionSessionManager } from "../../browser-action/index.js";
+import type { ProviderRegistry } from "../../providers/providerRegistry.js";
+import type { StorageService } from "../../storage/storage.js";
+import type { SemanticMemoryStore } from "../../semantic-interface/index.js";
+import type { VisionContextSessionManager } from "../../vision-context/index.js";
+import type { BrowserActionCommandWaiter } from "../browser-action/commandWaiters.js";
+import type { PendingSemanticClarification } from "../browser-action/clarification.js";
+import type { BrowserExtensionBridgeStore } from "../browser-bridge/store.js";
+import type { RetainedMessage } from "../events.js";
+
+export type MessageRouterContext = {
+  socket: WebSocket;
+  controllers: Map<string, AbortController>;
+  retainedMessages: Map<string, RetainedMessage>;
+  toolOutputBuffers: Map<string, Map<string, string>>;
+  auth: OAuthSession;
+  clients: Set<WebSocket>;
+  requestSessions: Map<string, string>;
+  storage: StorageService;
+  agentSession: AgentSessionState;
+  codexAppServer: CodexAppServerBridge;
+  providers: ProviderRegistry;
+  visionContext: VisionContextSessionManager;
+  browserActions: BrowserActionSessionManager;
+  browserExtensionBridge: BrowserExtensionBridgeStore;
+  semanticMemory: SemanticMemoryStore;
+  semanticClarifications: Map<string, PendingSemanticClarification>;
+  browserActionCommandWaiters: Map<string, BrowserActionCommandWaiter>;
+  daemonPort: number;
+};

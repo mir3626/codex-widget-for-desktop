@@ -1,0 +1,9 @@
+export const DEFAULT_DAEMON_BASE_URL = "http://127.0.0.1:4128";
+export const DEFAULT_DAEMON_DOM_SNAPSHOT_URL = `${DEFAULT_DAEMON_BASE_URL}/providers/dom/snapshot`;
+export const DEFAULT_BROWSER_ACTION_POLL_PATH = "/browser-action/extension/poll";
+export const DEFAULT_BROWSER_ACTION_RESULT_PATH = "/browser-action/extension/result";
+export const DEFAULT_BROWSER_ACTION_HEARTBEAT_PATH = "/browser-action/extension/heartbeat";
+export const DEFAULT_BROWSER_ACTION_STATUS_PATH = "/browser-action/extension/status";
+export const NATIVE_HOST_NAME = "com.mir3626.codex_widget_dom";
+export const BRIDGE_ALARM_NAME = "codex-widget-browser-bridge";
+export const ALL_SITE_ORIGINS = ["http://*/*", "https://*/*"];

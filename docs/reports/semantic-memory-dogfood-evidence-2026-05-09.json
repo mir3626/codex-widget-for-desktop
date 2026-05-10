@@ -1,0 +1,284 @@
+{
+  "unresolved": {
+    "id": "sem-unresolved-e0390f0c-303c-4ffd-ad67-5533ea418bc0",
+    "createdAt": "2026-05-10T04:21:19.095Z",
+    "surface": "browser_page",
+    "failureKind": "ambiguous_target",
+    "utteranceHash": "31daf6d759117bd0f82439a1",
+    "redactedUtterance": "개념글 눌러서 재밌어보이는 글 보여줘",
+    "scope": {
+      "surface": "browser_page",
+      "origin": "https://example.test",
+      "viewPattern": "/list"
+    },
+    "candidates": [
+      {
+        "id": "concept-posts",
+        "label": "개념글",
+        "reason": "main filter button"
+      },
+      {
+        "id": "concept-sidebar",
+        "label": "개념글[동물,기타]",
+        "reason": "partial sidebar link"
+      }
+    ],
+    "traceId": "trace-dogfood-ambiguous-concept"
+  },
+  "clarification": {
+    "id": "sem-feedback-2de399f7-d9d3-41ae-bf14-9c008076900c",
+    "createdAt": "2026-05-10T04:21:19.100Z",
+    "source": "clarification_selected",
+    "surface": "browser_page",
+    "scope": {
+      "surface": "browser_page",
+      "origin": "https://example.test",
+      "viewPattern": "/list"
+    },
+    "utteranceHash": "31daf6d759117bd0f82439a1",
+    "redactedUtterance": "개념글 눌러서 재밌어보이는 글 보여줘",
+    "payload": {
+      "phrase": "개념글",
+      "selectedTarget": "개념글",
+      "rejectedTarget": "개념글[동물,기타]",
+      "preferredRole": "button",
+      "preferredRegion": "main",
+      "preferredAffordance": "filter",
+      "action": "browser.click",
+      "safetyClass": "safe_action"
+    },
+    "memoryDelta": [
+      {
+        "relation": "phrase_alias",
+        "fromKey": "개념글",
+        "toKey": "개념글",
+        "deltaBp": 1800,
+        "source": "clarification",
+        "safetyClass": "safe_action"
+      },
+      {
+        "relation": "avoid_target",
+        "fromKey": "개념글",
+        "toKey": "개념글[동물,기타]",
+        "deltaBp": 2500,
+        "source": "user_correction",
+        "safetyClass": "safe_action"
+      },
+      {
+        "relation": "preferred_role",
+        "fromKey": "개념글",
+        "toKey": "button",
+        "deltaBp": 1200,
+        "source": "clarification",
+        "safetyClass": "safe_action"
+      },
+      {
+        "relation": "preferred_region",
+        "fromKey": "개념글",
+        "toKey": "main",
+        "deltaBp": 1200,
+        "source": "clarification",
+        "safetyClass": "safe_action"
+      },
+      {
+        "relation": "preferred_affordance",
+        "fromKey": "개념글",
+        "toKey": "filter",
+        "deltaBp": 1300,
+        "source": "clarification",
+        "safetyClass": "safe_action"
+      },
+      {
+        "relation": "usual_action",
+        "fromKey": "개념글",
+        "toKey": "browser.click",
+        "deltaBp": 1100,
+        "source": "clarification",
+        "safetyClass": "safe_action"
+      }
+    ]
+  },
+  "readSet": {
+    "id": "mem-read-h5f4e74c7117fb3c-h5733626e31f3d58",
+    "schemaVersion": "semantic-memory.v1",
+    "storeVersion": "semantic-memory-store.v1",
+    "decayEpoch": "v1-static",
+    "scope": {
+      "surface": "browser_page",
+      "origin": "https://example.test",
+      "viewPattern": "/list"
+    },
+    "queryHash": "h5f4e74c7117fb3c",
+    "resultHash": "h5733626e31f3d58",
+    "edges": [
+      {
+        "id": "sem-edge-7db018f0-5f8f-4927-ae48-bcef8f6dade3",
+        "relation": "avoid_target",
+        "fromKey": "개념글",
+        "toKey": "개념글[동물,기타]",
+        "weightBp": 2500,
+        "evidenceCount": 1,
+        "safetyClass": "safe_action"
+      },
+      {
+        "id": "sem-edge-52a6ffac-fcc6-48f3-b988-457cf3cd65df",
+        "relation": "phrase_alias",
+        "fromKey": "개념글",
+        "toKey": "개념글",
+        "weightBp": 1800,
+        "evidenceCount": 1,
+        "safetyClass": "safe_action"
+      },
+      {
+        "id": "sem-edge-e99ecd55-bf0a-4fb1-b923-6a56d1e1ce69",
+        "relation": "preferred_affordance",
+        "fromKey": "개념글",
+        "toKey": "filter",
+        "weightBp": 1300,
+        "evidenceCount": 1,
+        "safetyClass": "safe_action"
+      },
+      {
+        "id": "sem-edge-a7250ec4-29ba-434a-bd4e-2bf97dd136dd",
+        "relation": "preferred_region",
+        "fromKey": "개념글",
+        "toKey": "main",
+        "weightBp": 1200,
+        "evidenceCount": 1,
+        "safetyClass": "safe_action"
+      },
+      {
+        "id": "sem-edge-f6e9de8c-7105-4487-9c11-09705ba2170c",
+        "relation": "preferred_role",
+        "fromKey": "개념글",
+        "toKey": "button",
+        "weightBp": 1200,
+        "evidenceCount": 1,
+        "safetyClass": "safe_action"
+      },
+      {
+        "id": "sem-edge-345234de-aee0-4558-88fa-5666d9878c82",
+        "relation": "usual_action",
+        "fromKey": "개념글",
+        "toKey": "browser.click",
+        "weightBp": 1100,
+        "evidenceCount": 1,
+        "safetyClass": "safe_action"
+      }
+    ],
+    "exclusions": []
+  },
+  "replay": {
+    "outcome": "act",
+    "selectedHypothesisId": "hyp-a2472cce",
+    "selectedFinalScoreBp": 8638,
+    "selectedMemoryEvidence": {
+      "phraseAlias": {
+        "scoreBp": 1800,
+        "status": "present",
+        "evidenceIds": [
+          "mem-read-h5f4e74c7117fb3c-h5733626e31f3d58"
+        ],
+        "reasonCodes": [
+          "memory_phrase_alias"
+        ]
+      },
+      "preferredRole": {
+        "scoreBp": 1200,
+        "status": "present",
+        "evidenceIds": [
+          "mem-read-h5f4e74c7117fb3c-h5733626e31f3d58"
+        ],
+        "reasonCodes": [
+          "memory_preferred_role"
+        ]
+      },
+      "preferredRegion": {
+        "scoreBp": 0,
+        "status": "missing",
+        "evidenceIds": [
+          "mem-read-h5f4e74c7117fb3c-h5733626e31f3d58"
+        ],
+        "reasonCodes": [
+          "memory_preferred_region"
+        ]
+      },
+      "usualAction": {
+        "scoreBp": 1300,
+        "status": "present",
+        "evidenceIds": [
+          "mem-read-h5f4e74c7117fb3c-h5733626e31f3d58"
+        ],
+        "reasonCodes": [
+          "memory_usual_action"
+        ]
+      },
+      "avoidTarget": {
+        "scoreBp": 2500,
+        "status": "present",
+        "evidenceIds": [
+          "mem-read-h5f4e74c7117fb3c-h5733626e31f3d58"
+        ],
+        "reasonCodes": [
+          "memory_avoid_target"
+        ]
+      },
+      "scopeStrength": {
+        "scoreBp": 7000,
+        "status": "present",
+        "evidenceIds": [
+          "mem-read-h5f4e74c7117fb3c-h5733626e31f3d58"
+        ],
+        "reasonCodes": [
+          "memory_scope_strength"
+        ]
+      },
+      "readSetId": "mem-read-h5f4e74c7117fb3c-h5733626e31f3d58"
+    },
+    "targetFingerprint": {
+      "surfaceId": "surface-730359ed",
+      "viewIdentityHash": "sem-browser-5e49f3e0",
+      "entityId": "entity-concept-posts",
+      "evidenceIds": [
+        "evidence-concept-posts"
+      ],
+      "role": "button",
+      "normalizedLabel": "개념글",
+      "affordances": [
+        "read",
+        "locate",
+        "activate"
+      ],
+      "regionPath": [
+        "surface-730359ed"
+      ],
+      "relationDigest": "surface-730359ed:contains:entity-concept-posts|surface-730359ed:focused:entity-concept-posts|entity-view-region-list:contains:entity-concept-posts|entity-concept-posts:filters:entity-view-region-list",
+      "locatorDigest": "#concept-posts|button|개념글"
+    },
+    "pairwiseMargin": {
+      "winnerId": "hyp-a2472cce",
+      "runnerUpId": "hyp-667263d3",
+      "finalMarginBp": 1108,
+      "axisMarginsBp": {
+        "lexical": 2800,
+        "alias": 0,
+        "affordance": 0,
+        "role": 0,
+        "region": 0,
+        "graphRelation": 0,
+        "actionability": 0
+      },
+      "sufficient": true,
+      "reasonCodes": [
+        "pairwise_margin_exact_actionable_near_miss_passed"
+      ]
+    }
+  },
+  "report": {
+    "generatedAt": "2026-05-10T04:21:19.117Z",
+    "edgeCount": 6,
+    "unresolvedCount": 1,
+    "feedbackCount": 1,
+    "topEdges": []
+  }
+}

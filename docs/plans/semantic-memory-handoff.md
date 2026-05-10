@@ -1,6 +1,6 @@
 # Semantic Memory Handoff
 
-Status: planning handoff (2026-05-09); not implemented; updated after Semantic Interface post-implementation Codex subagent design review
+Status: implemented in iter-16 (2026-05-09); authoritative handoff for the local deterministic Semantic Memory subsystem
 Target repo: `C:\Users\Tony\Workspace\codex-widget-for-desktop`
 Primary dependency: `docs/plans/semantic-interface-handoff.md`
 Related handoffs:
@@ -9,6 +9,33 @@ Related handoffs:
 - `docs/plans/browser-extension-bridge-handoff.md`
 
 Primary goal: build a local, deterministic, privacy-preserving Semantic Memory layer that lets Semantic Interface improve from unresolved cases, user clarifications, user corrections, repeated instructions, and verified outcomes without becoming remote model training or a safety bypass.
+
+## Implementation Status (2026-05-09)
+
+Implemented:
+
+- `src/daemon/semantic-interface/memory/` with SQLite-backed local memory storage, redaction/hash helpers, weighted graph deltas, immutable read sets, report/reset APIs, and ranker feature mapping.
+- Storage migration `semantic_memory` creates `semantic_memory_nodes`, `semantic_memory_edges`, `semantic_unresolved_cases`, and `semantic_feedback_events` with local-only metadata.
+- Daemon endpoints:
+  - `GET /semantic-memory/settings`
+  - `POST /semantic-memory/settings`
+  - `GET /semantic-memory/report`
+  - `POST /semantic-memory/unresolved`
+  - `POST /semantic-memory/feedback`
+  - `POST /semantic-memory/read`
+  - `POST /semantic-memory/reset`
+- Browser Action live target resolution reads scoped `MemoryReadSet` data when enabled, records unresolved target cases when clarification is required, and attaches read-set provenance to safety metadata without storing full page state.
+- Renderer Settings includes Semantic Memory enable/disable, report counts, refresh, and clear-all controls.
+- Semantic Interface replay/ranker integration accepts `MemoryReadSet` as immutable input and maps memory into separate typed evidence axes (`phrase_prior`, `role_prior`, `region_prior`, `affordance_prior`, `scope_prior`, and negative/blocking evidence).
+- `npm run smoke:semantic-memory` covers unresolved-case redaction, clarification feedback, correction/blocked-edge exclusion, immutable read-set hashes, daemon HTTP endpoints, reset/report behavior, and deterministic replay with memory evidence.
+- `npm run dogfood:semantic-memory` writes redacted dogfood evidence at `docs/reports/semantic-memory-dogfood-evidence-2026-05-09.md` plus JSON support data.
+
+Explicit boundaries:
+
+- Semantic Memory improves interpretation only; it does not grant permission, bypass Browser Action safety, or select executable targets without fresh observed candidates.
+- Secrets and credential-like values are redacted or hashed before memory persistence.
+- Full DOM text, screenshots, raw traces, credentials, cookies, tokens, payment values, and password values are not persisted.
+- Clarification-specific ranked-choice UI remains implemented through existing Browser Action approval/input surfaces and unresolved-case logging; the dedicated 2-5 choice clarification card can be refined as UI polish without changing the daemon memory contract.
 
 ## 0. Why This Handoff Exists
 

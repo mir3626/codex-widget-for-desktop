@@ -4,13 +4,22 @@ import { buildIntentFrame, riskForAffordance } from "../intentFrame.js";
 import { normalizeSemanticText } from "../ontology.js";
 import { replaySemanticDecision } from "../replay.js";
 import { redactTraceRecord } from "../trace.js";
-import type { RedactedTraceRecord, ReferenceExpression, SemanticAffordance, SemanticDecisionOutcome, SemanticEntityKind, SemanticTier1Risk } from "../types.js";
+import type {
+  MemoryReadSet,
+  RedactedTraceRecord,
+  ReferenceExpression,
+  SemanticAffordance,
+  SemanticDecisionOutcome,
+  SemanticEntityKind,
+  SemanticTier1Risk
+} from "../types.js";
 
 export function resolveBrowserActionTargetSemantically(input: {
   observation: BrowserObservation;
   action?: BrowserAction;
   target?: ElementTarget;
   hint?: string;
+  memoryReadSet?: MemoryReadSet;
   now?: Date;
 }): TargetResolution {
   const reference = readReferenceText(input.target, input.hint, input.action);
@@ -34,7 +43,7 @@ export function resolveBrowserActionTargetSemantically(input: {
       riskBudget: riskForBrowserAction(input.action, affordance)
     }]
   });
-  const outcome = replaySemanticDecision({ snapshot, intent, now: input.now });
+  const outcome = replaySemanticDecision({ snapshot, intent, memoryReadSet: input.memoryReadSet, now: input.now });
   const trace = redactTraceRecord({
     trace: outcome.trace,
     outcome: redactedOutcomeKind(outcome),
@@ -60,7 +69,7 @@ export function resolveBrowserActionTargetSemantically(input: {
   const selectedEntity = snapshot.entities.find((entity) => entity.id === outcome.hypothesis.targetEntityId);
   const selectedElementId = readBrowserElementId(selectedEntity);
   const primary = selectedElementId ? input.observation.elements.find((element) => element.id === selectedElementId) : undefined;
-  const selectedScore = outcome.trace.ranked.find((item) => item.hypothesisId === outcome.hypothesis.id)?.score ?? 0;
+  const selectedScore = (outcome.trace.ranked.find((item) => item.hypothesisId === outcome.hypothesis.id)?.finalScoreBp ?? 0) / 10000;
   const alternatives = rankedElements(input.observation.elements, snapshot, outcome).filter((element) => element.id !== primary?.id).slice(0, 5);
   return {
     primary,

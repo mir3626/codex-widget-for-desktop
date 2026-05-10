@@ -11,4 +11,5 @@ export * from "./trace.js";
 export * from "./replay.js";
 export * from "./adapters/index.js";
 export * from "./lexicon/index.js";
+export * from "./memory/index.js";
 export * from "./testing/index.js";

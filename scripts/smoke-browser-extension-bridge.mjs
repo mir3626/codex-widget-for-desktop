@@ -111,12 +111,23 @@ try {
   assertEqual(restricted.status.activeTab.permission, "restricted", "restricted state");
 
   await postDomSnapshot();
-  const poll = await fetch(`${baseUrl}/browser-action/extension/poll?permission=allowed&mode=browser_bridge`);
+  const pollUrl = new URL(`${baseUrl}/browser-action/extension/poll`);
+  pollUrl.searchParams.set("permission", "allowed");
+  pollUrl.searchParams.set("mode", "browser_bridge");
+  pollUrl.searchParams.set("tabId", "42");
+  pollUrl.searchParams.set("windowId", "5");
+  pollUrl.searchParams.set("url", "https://example.test/browser-bridge/poll");
+  pollUrl.searchParams.set("title", "Browser Bridge Poll");
+  const poll = await fetch(pollUrl);
   if (!poll.ok) {
     throw new Error(`Browser Bridge poll endpoint failed: ${poll.status}`);
   }
   const pollPayload = await poll.json();
   assertEqual(pollPayload.ok, true, "poll ok");
+  const polledStatus = await readBridgeStatus();
+  assertEqual(polledStatus.mode, "idle", "poll refreshes bridge mode");
+  assertEqual(polledStatus.activeTab.url, "https://example.test/browser-bridge/poll", "poll refreshes active tab URL");
+  assertEqual(String(polledStatus.activeTab.tabId), "42", "poll refreshes active tab id");
 
   console.log(`browser extension bridge smoke ok on port ${daemon.port}`);
 } finally {

@@ -120,13 +120,28 @@
       "command": "npm run dogfood:semantic-interface",
       "expectExitCode": 0,
       "expectStdoutContains": "semantic interface dogfood evidence written"
+    },
+    {
+      "id": "smoke-semantic-memory",
+      "command": "npm run smoke:semantic-memory",
+      "expectExitCode": 0,
+      "expectStdoutContains": "semantic memory smoke ok"
+    },
+    {
+      "id": "dogfood-semantic-memory",
+      "command": "npm run dogfood:semantic-memory",
+      "expectExitCode": 0,
+      "expectStdoutContains": "semantic memory dogfood evidence written"
     }
   ],
   "handoff": {
-    "currentSprintId": "iter-15-complete",
-    "lastActionSummary": "Iteration 15 completed Semantic Interface: v1 semantic type/ranker/trace surface, Browser Action semantic advisory/live gate, Vision read/locate conformance, golden/adversarial suite, dogfood evidence, and smoke coverage.",
+    "currentSprintId": "iter-17-complete",
+    "lastActionSummary": "Iteration 17 completed the requested Browser Action/Semantic pass in order 2 -> 3 -> 1 -> 6 -> 7 -> 5: expected-source refresh retry, Browser Bridge poll status refresh, representative-content resolver hardening, dogfood refresh, narrow UX response cleanup, and verification.",
     "openIssues": [
-      "Semantic Interface v1 is complete for Browser Action and Vision Context conformance; Terminal/Workspace/Screen/OCR/UIA adapters are future consumers, not part of iter-15.",
+      "Semantic Interface v1 is complete for Browser Action and Vision Context conformance; Terminal/Workspace/Screen/OCR/UIA adapters are future consumers beyond iter-16.",
+      "Dedicated ranked-choice clarification card UX can still be refined; current behavior records unresolved cases, uses existing Browser Action clarification/approval surfaces, and keeps side-effect safety feature-owned.",
+      "Manual live-site Browser Action verification should be repeated after reloading the installed unpacked Browser Bridge extension so the service worker receives the latest command/status changes.",
+      "Semantic Memory uses Node's experimental built-in SQLite module and may print ExperimentalWarning during dogfood scripts.",
       "Semantic Interface statistical calibration is deferred until a held-out dogfood trace set exists; v1 uses operating profiles plus top-vs-runner-up margin.",
       "Codex app-server protocol remains experimental; stale persisted thread ids fall back safely, but live cross-process resume behavior needs dogfooding validation.",
       "Browser store account submission is deferred until after dogfooding.",
@@ -146,11 +161,11 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-08T23:05:00.000+09:00"
+    "updatedAt": "2026-05-10T13:45:00.000+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-08T23:05:00.000+09:00"
+  "stateUpdatedAt": "2026-05-10T13:45:00.000+09:00"
 }

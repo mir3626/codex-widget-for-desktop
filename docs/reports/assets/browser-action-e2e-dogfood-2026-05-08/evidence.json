@@ -5,17 +5,17 @@
       "observeCompleted": true,
       "readCompleted": true,
       "safeActionCompleted": true,
-      "safeActionRequestId": "browser-command-895b6311-9891-4198-ab41-262eccd9cf97",
+      "safeActionRequestId": "browser-command-200bcb8a-540d-4bf0-97eb-650fddf22558",
       "verification": "passed"
     },
     "promptDriven": {
       "completed": true,
       "plan": {
-        "id": "browser-plan-0f812f53-b557-4539-ad1a-aa9ed5cb4dec",
+        "id": "browser-plan-f5839294-e826-4590-b0a9-9db5bde978bf",
         "actionSessionId": "browser-action-prompt-dogfood-prompt-read",
         "goal": "브라우저 액션으로 현재 페이지 읽어줘",
         "status": "completed",
-        "confidence": 0.78,
+        "confidence": 0.86,
         "summary": "Browser Action plan completed with 1 result(s).",
         "steps": [
           {
@@ -25,22 +25,22 @@
             "safety": "allow",
             "risk": "low",
             "reason": "Read the current browser observation.",
-            "resultId": "browser-result-58615e32-0b8e-4444-a827-3c4cd2d7a255"
+            "resultId": "browser-result-3e77bf62-7c6f-42c0-bd87-9df3a0241e3f"
           }
         ]
       },
-      "answer": "Browser Action tool path executed.\n- plan: completed\n- steps: step-1:succeeded\n- latest result: succeeded; verification=passed; Read action returned the current browser observation."
+      "answer": "현재 보고 있는 페이지는 **Browser Action E2E Dogfood**입니다.\nURL: https://example.test/browser-action-e2e-dogfood\n\n주요 내용:\n- Browser Action dogfood page with a safe notes field and a destructive control.\n\n보이는 주요 조작 요소: Notes, Open details, Delete account"
     },
     "nonSubmitFill": {
       "completed": true,
-      "requestId": "browser-command-2e5b120d-83fb-4492-8dc6-ce8dd9cf4536",
+      "requestId": "browser-command-9bb8fed0-1cf8-4046-923a-6d9eab92c5c4",
       "expectedSource": {
         "kind": "active_tab",
         "browser": "unknown",
         "url": "https://example.test/browser-action-e2e-dogfood",
         "title": "Browser Action E2E Dogfood"
       },
-      "expiresAt": "2026-05-08T01:26:24.121Z",
+      "expiresAt": "2026-05-10T04:22:49.535Z",
       "verification": "passed"
     },
     "riskyDeny": {
@@ -50,7 +50,7 @@
     },
     "extensionCommand": {
       "completed": true,
-      "requestId": "browser-command-5b825a9c-48e6-4ffa-9bd6-252f394f2df5",
+      "requestId": "browser-command-744ad36b-32ab-4cbf-a78f-88ec28ba61e3",
       "expectedSource": {
         "kind": "active_tab",
         "browser": "unknown",
@@ -81,7 +81,7 @@
         "id": "el-1",
         "text": "Learn more",
         "label": "Learn more",
-        "confidence": 0.6200000000000001
+        "confidence": 0.6533333333333333
       },
       "beforeUrl": "https://example.com/",
       "afterUrl": "https://www.iana.org/help/example-domains",

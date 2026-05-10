@@ -1,0 +1,295 @@
+{
+  "sessionId": "2026-05-08T17-20-37-463Z-ece613",
+  "createdAt": "2026-05-08T17:20:37.466Z",
+  "lang": "ko",
+  "maxRounds": 15,
+  "oneLiner": "Complete docs/plans/semantic-interface-handoff.md and docs/plans/semantic-memory-handoff.md implementation end-to-end, including typed evidence packets, View Graph/fresh observation carryover, immutable Semantic Memory read sets, clarification/correction feedback, ranker integration, smokes, dogfood evidence, and durable context updates.",
+  "inferredDomain": null,
+  "domainConfidence": null,
+  "adjacentDomains": [],
+  "dimensions": [
+    {
+      "id": "goal",
+      "label": "프로젝트 목표 / 한 줄 정의",
+      "weight": 1,
+      "subFields": [
+        "one_liner",
+        "primary_value"
+      ],
+      "required": true
+    },
+    {
+      "id": "target_user",
+      "label": "핵심 사용자 및 이해관계자",
+      "weight": 0.9,
+      "subFields": [
+        "primary_persona",
+        "secondary_stakeholders",
+        "user_scale"
+      ],
+      "required": true
+    },
+    {
+      "id": "platform",
+      "label": "플랫폼 / 배포 대상",
+      "weight": 0.7,
+      "subFields": [
+        "platform_type",
+        "runtime_constraints"
+      ],
+      "required": true
+    },
+    {
+      "id": "data_model",
+      "label": "주요 도메인 엔티티 및 관계",
+      "weight": 0.9,
+      "subFields": [
+        "entities",
+        "key_relations",
+        "invariants"
+      ],
+      "required": true
+    },
+    {
+      "id": "primary_interaction",
+      "label": "핵심 사용자 시나리오",
+      "weight": 0.9,
+      "subFields": [
+        "happy_path",
+        "failure_paths"
+      ],
+      "required": true
+    },
+    {
+      "id": "success_metric",
+      "label": "성공 기준 / 측정 지표",
+      "weight": 0.8,
+      "subFields": [
+        "acceptance_criteria",
+        "kpi"
+      ],
+      "required": true
+    },
+    {
+      "id": "non_goals",
+      "label": "v1 의도적 제외 (non-goals)",
+      "weight": 0.5,
+      "subFields": [],
+      "required": false
+    },
+    {
+      "id": "constraints",
+      "label": "법·규제·비용·보안 제약",
+      "weight": 0.8,
+      "subFields": [
+        "legal_regulatory",
+        "budget",
+        "security_privacy"
+      ],
+      "required": true
+    },
+    {
+      "id": "tech_stack",
+      "label": "기술 스택 선호·제약",
+      "weight": 0.6,
+      "subFields": [
+        "language_runtime",
+        "framework",
+        "datastore",
+        "hosting"
+      ],
+      "required": false
+    },
+    {
+      "id": "domain_specifics",
+      "label": "도메인 특화 이슈 (전문가 probing)",
+      "weight": 1,
+      "subFields": [],
+      "required": true
+    }
+  ],
+  "coverage": {
+    "goal": {
+      "ratio": 0,
+      "subFields": {
+        "one_liner": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "primary_value": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        }
+      }
+    },
+    "target_user": {
+      "ratio": 0,
+      "subFields": {
+        "primary_persona": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "secondary_stakeholders": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "user_scale": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        }
+      }
+    },
+    "platform": {
+      "ratio": 0,
+      "subFields": {
+        "platform_type": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "runtime_constraints": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        }
+      }
+    },
+    "data_model": {
+      "ratio": 0,
+      "subFields": {
+        "entities": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "key_relations": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "invariants": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        }
+      }
+    },
+    "primary_interaction": {
+      "ratio": 0,
+      "subFields": {
+        "happy_path": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "failure_paths": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        }
+      }
+    },
+    "success_metric": {
+      "ratio": 0,
+      "subFields": {
+        "acceptance_criteria": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "kpi": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        }
+      }
+    },
+    "non_goals": {
+      "ratio": 0,
+      "subFields": {}
+    },
+    "constraints": {
+      "ratio": 0,
+      "subFields": {
+        "legal_regulatory": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "budget": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "security_privacy": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        }
+      }
+    },
+    "tech_stack": {
+      "ratio": 0,
+      "subFields": {
+        "language_runtime": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "framework": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "datastore": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        },
+        "hosting": {
+          "value": "",
+          "confidence": 0,
+          "deferred": false
+        }
+      }
+    },
+    "domain_specifics": {
+      "ratio": 0,
+      "subFields": {}
+    }
+  },
+  "rounds": [],
+  "ambiguityTrace": [],
+  "consensus": {
+    "status": null,
+    "promptedAt": null,
+    "decidedAt": null,
+    "summaryHash": null,
+    "terminationReason": null,
+    "ambiguityFinal": null,
+    "summary": null,
+    "corrections": [],
+    "decision": null,
+    "rationale": ""
+  },
+  "terminatedAt": null,
+  "terminationReason": null,
+  "outputPath": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\.vibe\\interview-log\\iter-16.json",
+  "meta": {
+    "orchestratorModel": {
+      "provider": "codex",
+      "familyAlias": "codex",
+      "apiId": "codex",
+      "legacy": true
+    },
+    "interviewMode": "iterate",
+    "carryoverIterationId": "iter-15",
+    "priorIterationCarryover": "## Prior iteration carryover\n\nCarryover iteration: iter-15\n\nRecent session entries:\n- 2026-05-04T04:20:24.000Z [decision][bootstrap] Initialized vibe-doctor state for codex-widget-for-desktop without importing vibe-doctor template product context.\n- 2026-05-04T04:20:24.000Z [decision][architecture] Keep daemon-owned session architecture. Renderer connects over local WebSocket; OpenAI credentials stay out of renderer code.\n- 2026-05-04T04:20:24.000Z [decision][roadmap] Next iteration begins with auth architecture before real browser/screen/terminal providers.\n- 2026-05-04T04:21:48.000Z [checkpoint][bootstrap] Synced vibe-doctor v1.7.2 harness from local upstream at C:\\Users\\Tony\\Workspace\\vibe-doctor.\n- 2026-05-04T04:22:48.000Z [decision][windows-provider] Set Codex provider command to .\\.vibe\\harness\\scripts\\run-codex.cmd because this downstream runs under Windows PowerShell.\n- 2026-05-04T04:24:57.000Z [verification][bootstrap] Passed npm run vibe:doctor, bootstrap preflight, npm run lint, npm run build:web, npm run smoke, and Tauri cargo check with MSVC environment loaded.\n- 2026-05-04T04:25:52.000Z [decision][dependency] Pinned zod to v3 range because vibe-doctor v1.7.2 harness schemas use zod v3 typing; npm run vibe:typecheck passes after the downgrade.\n- 2026-05-04T04:38:55.590Z [checkpoint][sync] Ran /vibe-sync to upstream v1.7.2 with --force to establish missing sync history; backup created at .vibe/sync-backup/2026-05-04T04-37-12-648Z; harness typecheck and bootstrap preflight passed.\n- 2026-05-04T04:46:18.556Z [decision][orchestration] Set Codex as the main Orchestrator and default Planner/Generator/Evaluator provider in .vibe/config.json; Claude providers are fallback-only unless explicitly reconfigured.\n- 2026-05-04T04:51:00.478Z [decision][sprint-mode-tier] Enabled /vibe-sprint-mode extended tier; .claude/settings.local.json now has 71/71 preset allow rules active.\n- 2026-05-04T05:20:46.183Z [decision][auth] Converted the widget from direct API-key OpenAI SDK use to OAuth PKCE sign-in plus Bearer-token backend proxy streaming; mock streaming remains the no-config fallback.\n- 2026-05-04T05:29:04.167Z [decision][dev-workflow] Added scripts/dev-hot.mjs so npm run dev uses Vite HMR plus daemon TypeScript watch/restart; Tauri dev no longer spawns a duplicate daemon by default.\n- 2026-05-04T05:47:42.687Z [decision][auth-token-config] Added gitignored .env token mode so the daemon can use CODEX_WIDGET_OAUTH_ACCESS_TOKEN directly against CODEX_WIDGET_AGENT_PROXY_URL for local OAuth-token development.\n- 2026-05-04T06:10:57.119Z [decision][auth-ux] Implemented token-mode Sign in so the widget writes OAuth access token/proxy settings into gitignored .env automatically.\n- 2026-05-04T06:31:07.151Z [fix][auth-ux] Replaced Tauri window.open token-page flow with an inline widget token form because popups did not visibly open from the WebView.\n- 2026-05-04T06:39:52.616Z [decision][auth-social-login] Switched local auth config to PKCE/social-login mode and opened OAuth authorize URLs through the OS browser via a Tauri command; actual login completion requires the configured OAuth backend/proxy.\n- 2026-05-04T06:53:03.674Z [fix][dev-auth-proxy] Added and started a local dev OAuth/proxy server on 127.0.0.1:8787; verified PKCE callback, token exchange, authenticated daemon status, and Bearer proxy streaming end-to-end.\n- 2026-05-04T07:11:25.966Z [fix][codex-auth] Replaced the default mock OAuth proxy flow with Codex CLI OpenAI/ChatGPT auth: Sign in delegates to `codex login`, auth status reads `codex login status`, and prompts stream through `codex exec --json`.\n- 2026-05-04T07:11:25.966Z [safety][codex-auth] Codex-mode Sign out now disconnects only the widget session and does not run global `codex logout`.\n- 2026-05-04T07:31:04.929Z [ui][renderer] Applied taste-skill cleanup to the widget renderer: Windows-style titlebar/panel, clearer auth/status controls, structured conversation area, labeled token form, activity log, composer, and smaller companion mascot layout.\n\nHandoff snapshot:\n# Handoff\n\n## Current State\n\nThe project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.\n\n## Current Readiness Snapshot\n\n- 2026-05-06T07:22:23.060+09:00 strict `node scripts/release-readiness.mjs --require-manual-gates` re-check passed all automated release, resource, store-packet, and two-hour soak gates except the external browser-store submission gate.\n- 2026-05-06T08:56:59.660+09:00 product owner deferred actual Chrome Web Store / Microsoft Edge Add-ons dashboard submission until after dogfooding; the release-channel readiness objective closed with that task deferred.\n- 2026-05-06T12:27:12.372+09:00 a new active goal was registered: all follow-up work should proceed through `/vibe-iterate`, with Iteration `iter-3` focused on daemon-owned SQLite state, recoverable sessions/tabs/trash, artifact history, activity logs, Vision recording/streaming, and extensible theme/mascot/module foundations.\n- 2026-05-06T13:37:00.000+09:00 `iter-3-sprint-03-artifact-activity-ledger` completed: daemon-owned artifact/activity ledger APIs, blob-backed tool-output and file-change artifact records, chat and trash artifact viewers, activity detail UI, and storage/daemon/renderer smoke coverage are in place. Next active sprint is `iter-3-sprint-04-vision-streaming-and-ux-foundation`.\n- 2026-05-06T14:07:59.836+09:00 `iter-3-sprint-04-vision-streaming-and-ux-foundation` completed: Vision popup actions, WebM recording metadata/blob preservation, metadata-only Agent screen stream with low-frequency frame delivery to the daemon Vision snapshot endpoint, guardrails, and status-aware mascot hooks are implemented. The planned Iteration 3 sprint set is complete.\n- 2026-05-06T14:44:38.519+09:00 product owner clarified that the `/goal` directive means repeated `/vibe-iterate` execution until the categorized dogfooding backlog is actually closed, not stopping after Iteration 3. Durable state now treats Iteration 4 as active; the external goal tool was prematurely marked complete and cannot be reverted from the available API.\n- 2026-05-06T14:58:00.000+09:00 `iter-4-sprint-01-ui-polish-and-tab-interactions` completed: resize hit areas, minimum-width model/reason controls, 12px user bubbles, active session tab polish, branch-to-new-session toast, and model/reason session-switch pulse are implemented with renderer smoke coverage.\n- 2026-05-06T15:12:00.000+09:00 `iter-4-sprint-02-widget-context-agent-awareness` completed: each Agent turn now receives a daemon-owned widget capability context covering current mode, model/reasoning, sanitized auth, provider statuses, controls, Vision/DOM/PTY use cases, and safety boundaries across app-server, exec, and OAuth proxy paths.\n- 2026-05-06T15:19:22.339+09:00 `iter-4-sprint-03-artifact-rendering-and-version-browser` completed: artifact files now include file type icons, bounded text/image previews, current-version metadata, version accordions, and versioned open requests reused by both chat and trash artifact viewers.\n- 2026-05-06T15:34:46.947+09:00 `iter-4-sprint-04-vision-voice-interactive-loop` completed: Vision tools now separate snapshot/WebM recording/Agent share, persist cadence and duration controls, retain consent/retention metadata in daemon stream records, dismiss on outside click/Escape, and expose a Web Speech API voice prompt input boundary.\n- 2026-05-06T15:43:32.772+09:00 `iter-4-sprint-05-pty-popup-and-mascot-persona` completed: PTY now has an inline use-case/connection guide, a terminal-focused popout entry point on the same daemon port, and Default Dog mascot persona/tone is injected into Agent widget context. The Iteration 4 planned sprint set is complete.\n- 2026-05-06T16:04:18.953+09:00 Iteration `iter-5` started to close the remaining feasible backlog: durable app-server thread rebinding, provider snapshot history UI, Vision resource tuning, and final completion audit.\n- 2026-05-06T16:22:00.000+09:00 `iter-5-sprint-01-durable-app-server-thread-rebinding` completed: the daemon now persists and rebinds Codex app-server thread ids per durable session, retries stale thread ids safely, and smoke coverage verifies separate internal sessions keep separate app-server threads.\n- 2026-05-06T16:38:00.000+09:00 `iter-5-sprint-02-provider-snapshot-history-ui` completed: DOM, Vision, and Terminal provider snapshots are now stored as redacted ledger history and rendered in the Activity detail popover.\n- 2026-05-06T16:52:00.000+09:00 `iter-5-sprint-03-vision-resource-and-retention-tuning` completed: Agent screen share now drops overlapping frame ticks, reports skipped frames, avoids duplicate stop messages, cleans up media/frame resources on terminal provider states, and records effective guardrail metadata.\n- 2026-05-06T16:53:00.000+09:00 `iter-5-sprint-04-completion-audit-and-readiness-update` completed: roadmap, milestones, iteration history, handoff, session log, and project report state now classify all remaining work. The active vibe-iterate goal has no further feasible non-dogfood implementation backlog.\n\nMilestones:\n# Project Milestones\n\n## resident-widget-mvp\n\nGoal: keep a small Tauri desktop widget resident on Windows with reliable window controls, prompt/chat UX, streaming Codex responses, session reset, and recoverable daemon lifecycle.\n\nCurrent progress: 0.96\n\nEvidence:\n- Tauri shell, borderless resize, pin, opacity, mascot drag, and model/reasoning controls are implemented.\n- Daemon WebSocket streaming works with Codex CLI auth.\n- Default runtime now uses daemon-owned `codex app-server` with `exec` fallback.\n- Visible chat history is now replayed from daemon-owned SQLite session snapshots; renderer localStorage remains only as a temporary fallback.\n- Multi-turn chat layout, GFM tables, prompt resizing, and response action menu placement are covered by a Playwright renderer smoke.\n- Response Branch is covered by smoke tests and now creates a new durable internal session tab before sending a one-shot branch seed with the next prompt.\n- Iteration 4 Sprint 01 closed the first dogfooding UI polish slice: resize handles are easier to hit, minimum-width model/reason controls no longer overlap, user prompt bubbles use 12px radius, session tabs have clearer active affordance, branch creates a visible new-session toast, and model/reason controls pulse when the active session changes.\n- Iteration 4 Sprint 03 improves the artifact/chat UX with inline artifact previews, version accordions, and versioned open requests from both chat and trash surfaces.\n- Iteration 4 Sprint 05 makes PTY feel like an intentional widget module by adding an inline guide and a terminal-focused popout entry point on the same daemon port.\n- Reconnecting renderer clients receive retained daemon response snapshots, and active requests continue after the original WebSocket closes.\n- The widget hides to tray, stays off the taskbar, and exposes resident settings.\n- Packaged Tauri builds now supervise the Node daemon and restart it after unexpected exits.\n- Native daemon supervisor diagnostics are visible in the renderer status strip and Settings runtime grid.\n- Packaged Tauri builds include a bundled daemon JS entry and bundled Node runtime resource for daemon startup.\n- Iteration 5 Sprint 04 audited the remaining backlog and found no additional feasible non-dogfood MVP work beyond dogfood-dependent tuning and deferred external release submission.\n\nRoadmap pointer:\n# Sprint Roadmap\n\n## Iteration 1: Resident Agent Widget Foundation\n\n### sprint-01-auth-architecture\n\nGoal: replace the current API-key-first mental model with a documented OAuth-ready auth/backend boundary while preserving local mock and daemon development.\n\nDependencies: current Tauri widget and daemon.\n\nExpected scope: docs, config, daemon auth boundary notes, optional local token abstraction.\n\n### sprint-02-browser-dom-bridge\n\nGoal: add the first real browser provider contract for active-tab DOM selection and element metadata.\n\n\nIteration history:\n{\n  \"$schema\": \"./iteration-history.schema.json\",\n  \"currentIteration\": \"iter-15\",\n  \"iterations\": [\n    {\n      \"id\": \"iter-1\",\n      \"label\": \"Resident Agent Widget Foundation\",\n      \"startedAt\": \"2026-05-04T00:00:00.000Z\",\n      \"completedAt\": \"2026-05-06T16:53:00.000+09:00\",\n      \"goal\": \"Continue development of the Tauri desktop Codex-style resident agent widget through vibe-doctor sprints.\",\n      \"plannedSprints\": [\n        \"sprint-01-auth-architecture\",\n        \"sprint-02-browser-dom-bridge\",\n        \"sprint-03-terminal-pty-provider\",\n        \"sprint-04-screen-vision-provider\",\n        \"sprint-05-packaging-and-startup\"\n      ],\n      \"completedSprints\": [\n        \"iter-9-sprint-01-types-observation-and-targeting\",\n        \"iter-9-sprint-02-safety-policy-and-action-executor\",\n        \"iter-9-sprint-03-extension-observation-and-typed-actions\",\n        \"iter-9-sprint-04-daemon-protocol-and-renderer-approval\",\n        \"iter-9-sprint-05-agent-integration-and-completion-audit\"\n      ],\n      \"milestoneProgress\": {\n        \"resident-widget-mvp\": 0.6,\n        \"real-tool-providers\": 0.1,\n        \"oauth-ready-auth\": 0\n      },\n      \"summary\": \"The MVP shell, UI, and daemon stream exist. Next work should harden auth architecture and replace provider stubs with real integrations.\"\n    },\n    {\n      \"id\": \"iter-2\",\n      \"label\": \"Resident Runtime Expansion\",\n      \"startedAt\": \"2026-05-05T12:42:04.335+09:00\",\n      \"completedAt\": \"2026-05-06T08:56:59.660+09:00\",\n      \"goal\": \"Expand the widget beyond one-off UI patches into a durable resident desktop Codex assistant with stable app-server protocol, interaction UI, persistent conversation state, provider contracts, and desktop operations hardening.\",\n      \"plannedSprints\": [\n        \"iter-2-sprint-01-runtime-protocol\",\n        \"iter-2-sprint-02-tool-provider-shell\",\n        \"iter-2-sprint-03-resident-desktop-ops\"\n      ],\n      \"completedSprints\": [\n        \"iter-2-sprint-01-runtime-protocol\",\n        \"iter-2-sprin\n\nPrior report text signals:\nProduct Context report :root{color-scheme:light;--bg:#f7f8f6;--paper:#ffffff;--paper-soft:#f1f4f1;--text:#20231f;--secondary:#596158;--muted:#81897d;--line:#dfe5dc;--line-strong:#c8d3c7;--accent:#0f766e;--accent-soft:rgba(15,118,110,0.12);--surface:rgba(255,255,255,0.9);--surface-quiet:rgba(247,248,246,0.82);--surface-shadow:0 1px 2px rgba(31,35,31,0.04),0 18px 42px rgba(31,35,31,0.08);--inner-line:inset 0 1px 0 rgba(255,255,255,0.86);--border:var(--line);--border-strong:var(--line-strong);--accent-subtle:var(--accent-soft);--glass-bg:var(--surface);--glass-bg-flat:var(--surface);--glass-highlight:var(--inner-line);--glass-depth:var(--surface-shadow);--complete-bg:rgba(26,127,55,0.13);--complete-text:#176b35;--progress-bg:rgba(15,118,110,0.13);--progress-text:#0f766e;--partial-bg:rgba(181,108,19,0.14);--partial-text:#8a520f;--failed-bg:rgba(180,45,39,0.12);--failed-text:#9e2f2a;--idle-bg:rgba(89,97,88,0.12);--idle-text:#596158;--loc-add:#176b35;--loc-del:#9e2f2a;--loc-net-neutral:#596158;--motion:cubic-bezier(.2,.8,.2,1)} *{box-sizing:border-box} body{margin:0;min-height:100vh;background:linear-gradient(180deg,#fafbf8 0%,var(--bg) 48%,#eef2ed 100%);background-attachment:fixed;color:var(--text);font-family:Geist,\"Segoe UI\",sans-serif;font-size:15px;line-height:1.65;padding:0;font-variant-numeric:tabular-nums} body::before{content:\"\";position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(rgba(32,35,31,0.035) 1px,transparent 1px),linear-gradient(90deg,rgba(32,35,31,0.028) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(180deg,rgba(0,0,0,.5),rgba(0,0,0,.08));z-index:-1} a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline;text-underline-offset:3px} button{font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer} button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px} code,time{font-family:\"Geist Mono\""
+  },
+  "pending": null
+}

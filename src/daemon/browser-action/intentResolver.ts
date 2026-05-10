@@ -1,6 +1,25 @@
 import { randomUUID } from "node:crypto";
-import { normalizeBrowserTargetText, stripBrowserActionSuffix } from "./targetLexicon.js";
 import type { BrowserAction, BrowserActionIntent } from "./types.js";
+import {
+  isClickThenContentRequest,
+  isContentOpenRequest,
+  readContentRequestTarget
+} from "./intentResolver/contentRequests.js";
+import { readIntentConfidence } from "./intentResolver/confidence.js";
+import {
+  extractQuotedText,
+  extractTargetPhrase,
+  extractTextAfterKeyword,
+  extractUrl,
+  isInformationalBrowserActionQuestion,
+  readScrollAmount,
+  stripBrowserActionSuffix
+} from "./intentResolver/parsing.js";
+
+export {
+  extractTargetPhrase,
+  isInformationalBrowserActionQuestion
+} from "./intentResolver/parsing.js";
 
 export function resolveBrowserActionIntent(text: string): BrowserActionIntent {
   const utterance = text.trim();
@@ -16,7 +35,18 @@ export function resolveBrowserActionIntent(text: string): BrowserActionIntent {
   let value: string | undefined = typedText;
   let reason = "Resolved Browser Action intent from deterministic command rules.";
 
-  if (/뒤로|go\s*back|\bback\b/i.test(utterance)) {
+  if (isClickThenContentRequest(utterance, targetPhrase)) {
+    actionType = "click";
+    targetRole = "link";
+    actions.push({ type: "click", target: { kind: "text", text: targetPhrase ?? stripBrowserActionSuffix(utterance) ?? utterance.slice(0, 80) } });
+    actions.push({ type: "click", target: { kind: "text", role: "link", text: readContentRequestTarget(utterance) } });
+    reason = "Resolved chained Browser Action intent: activate a filter/control, then open a representative content item.";
+  } else if (isContentOpenRequest(utterance)) {
+    actionType = "click";
+    targetRole = "link";
+    actions.push({ type: "click", target: { kind: "text", role: "link", text: readContentRequestTarget(utterance) } });
+    reason = "Resolved Browser Action intent to open a representative content item.";
+  } else if (/뒤로|go\s*back|\bback\b/i.test(utterance)) {
     actionType = "back";
     actions.push({ type: "back" });
   } else if (/앞으로|\bforward\b/i.test(utterance)) {
@@ -61,7 +91,7 @@ export function resolveBrowserActionIntent(text: string): BrowserActionIntent {
     actionType = "select";
     value = typedText ?? targetPhrase ?? "";
     actions.push({ type: "select", target: { kind: "text", text: targetPhrase || value || "select" }, value });
-  } else if (/클릭|눌러|click|press|펼쳐|expand/i.test(utterance)) {
+  } else if (/클릭|눌러|누르|click|press|펼쳐|expand/i.test(utterance)) {
     actionType = "click";
     actions.push({ type: "click", target: { kind: "text", text: targetPhrase || stripBrowserActionSuffix(utterance) || utterance.slice(0, 80) } });
   } else if (/읽어|요약|설명|describe|summarize|read|observe|봐줘/i.test(utterance)) {
@@ -82,43 +112,9 @@ export function resolveBrowserActionIntent(text: string): BrowserActionIntent {
     targetPhrase,
     targetRole,
     value,
-    confidence: actions.length > 0 ? readIntentConfidence({ utterance, targetPhrase, typedText, actionType }) : 0.35,
+    confidence: actions.length > 0 ? readIntentConfidence({ targetPhrase, typedText, actionType }) : 0.35,
     reason
   });
-}
-
-export function isInformationalBrowserActionQuestion(text: string): boolean {
-  return (
-    /(what\s+can|what\s+is|explain|help|capabilit|기능|무엇|뭐|뭔|어떤|설명).*(browser\s*action|브라우저\s*액션)/i.test(text) ||
-    /(browser\s*action|브라우저\s*액션).*(what\s+can|what\s+is|explain|help|capabilit|기능|무엇|뭐|뭔|어떤|설명)/i.test(text)
-  );
-}
-
-export function extractTargetPhrase(text: string): string | undefined {
-  const quoted = text.match(/[“"']([^“"']{1,120})[”"']/)?.[1];
-  const textWithoutQuote = quoted ? text.replace(quoted, " ") : text;
-  if (quoted && !/(http|검색|search|입력|type)/i.test(quoted) && !/(검색|search|입력|type|fill|입력창|검색창)/i.test(textWithoutQuote)) {
-    return normalizeTargetPhrase(quoted);
-  }
-  const patterns = [
-    /^(.{1,80}?)(?:을|를)?\s*(?:눌러서|클릭해서|누르고|클릭하고|press(?:ing)?\s+(?:and|then)|click(?:ing)?\s+(?:and|then))/i,
-    /(?:에서|on)\s+(.{1,80}?)(?:을|를)?\s*(?:눌러|클릭|click|press|펼쳐|expand)/i,
-    /(.{1,80}?)(?:\s*링크|\s*버튼|\s*button|\s*link)(?:을|를)?\s*(?:눌러|클릭|click|press)?/i,
-    /^(.{1,80}?)(?:을|를)?\s*(?:눌러(?:줘|주세요|봐|봐줘)?|클릭(?:해|해줘|해주세요)?|click|press|펼쳐(?:줘|주세요)?|expand)(?:\s*(?:줘|주세요|해줘|해주세요|please))?\.?$/i,
-    /(?:검색창|search box|input|입력칸)/i
-  ];
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (!match) {
-      continue;
-    }
-    const value = normalizeTargetPhrase((match[1] ?? match[0])
-      .replace(/현재 페이지|이 페이지|현재 화면|이 화면|페이지|화면|에서|링크|버튼|검색창|입력칸/gi, " "));
-    if (value) {
-      return value.slice(0, 120);
-    }
-  }
-  return undefined;
 }
 
 function createIntent(input: Omit<BrowserActionIntent, "id" | "alternatives"> & { alternatives?: string[] }): BrowserActionIntent {
@@ -127,62 +123,4 @@ function createIntent(input: Omit<BrowserActionIntent, "id" | "alternatives"> & 
     ...input,
     alternatives: input.alternatives ?? []
   };
-}
-
-function normalizeTargetPhrase(value: string): string {
-  return normalizeBrowserTargetText(value).replace(/\s+/g, " ").trim();
-}
-
-function extractQuotedText(text: string): string | undefined {
-  return text.match(/[“"']([^“"']{1,500})[”"']/)?.[1]?.trim();
-}
-
-function extractTextAfterKeyword(text: string, keywords: string[]): string | undefined {
-  for (const keyword of keywords) {
-    const index = text.toLowerCase().indexOf(keyword.toLowerCase());
-    if (index < 0) {
-      continue;
-    }
-    const value = text.slice(index + keyword.length).replace(/(?:하고|그리고|then|and).*/i, "").trim();
-    if (value) {
-      return value.slice(0, 500);
-    }
-  }
-  return undefined;
-}
-
-function extractUrl(text: string): string | undefined {
-  const match = text.match(/https?:\/\/[^\s)]+/i);
-  return match?.[0];
-}
-
-function readScrollAmount(text: string): "small" | "medium" | "large" {
-  if (/조금|small/i.test(text)) {
-    return "small";
-  }
-  if (/많이|끝까지|large|bottom/i.test(text)) {
-    return "large";
-  }
-  return "medium";
-}
-
-function readIntentConfidence(input: {
-  utterance: string;
-  targetPhrase?: string;
-  typedText?: string;
-  actionType: BrowserActionIntent["actionType"];
-}): number {
-  if (input.actionType === "read" || input.actionType === "back" || input.actionType === "forward" || input.actionType === "reload") {
-    return 0.86;
-  }
-  if (input.actionType === "navigate") {
-    return 0.88;
-  }
-  if ((input.actionType === "type" || input.actionType === "select") && input.typedText && input.targetPhrase) {
-    return 0.84;
-  }
-  if (input.actionType === "click" && input.targetPhrase) {
-    return 0.84;
-  }
-  return 0.72;
 }

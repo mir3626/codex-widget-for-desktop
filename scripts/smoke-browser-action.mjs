@@ -144,13 +144,18 @@ function verifyResolverAndSafety(snapshot) {
     throw new Error(`Korean new chat target should resolve with high confidence: ${JSON.stringify(newChat)}`);
   }
   const dcConceptPrompt = planBrowserActionFromPrompt({ text: "개념글 눌러서 재밌어보이는 글 보여줘", mode: "browser" });
-  if (!dcConceptPrompt || dcConceptPrompt.steps[0].action.type !== "click" || dcConceptPrompt.steps[0].targetSummary !== "개념글") {
+  if (!dcConceptPrompt || dcConceptPrompt.steps.length !== 2 || dcConceptPrompt.steps[0].action.type !== "click" || dcConceptPrompt.steps[0].targetSummary !== "개념글" || dcConceptPrompt.steps[1].targetSummary !== "link: 재밌어보이는 글") {
     throw new Error(`Korean connective click prompt should extract the first target phrase: ${JSON.stringify(dcConceptPrompt)}`);
   }
   const concept = resolveTarget({ graph, target: dcConceptPrompt.steps[0].action.target, hint: dcConceptPrompt.steps[0].targetSummary });
   assertEqual(concept.primary?.id, "concept-posts", "Korean concept posts target");
   if (concept.confidence < 0.9) {
     throw new Error(`Korean concept target should resolve with high confidence: ${JSON.stringify(concept)}`);
+  }
+  const content = resolveTarget({ graph, observation, target: dcConceptPrompt.steps[1].action.target, hint: dcConceptPrompt.steps[1].targetSummary });
+  assertEqual(content.primary?.id, "interesting-post", "Korean representative content target");
+  if (content.confidence < 0.75) {
+    throw new Error(`Representative content target should resolve with high confidence: ${JSON.stringify(content)}`);
   }
   const fallback = resolveTarget({ graph });
   if (fallback.confidence > 0.55) {
@@ -371,6 +376,36 @@ function createSnapshot(state) {
         selector: "a[href=\"/mgallery/board/lists/?id=thesingularity&exception_mode=recommend\"]",
         href: "https://gall.dcinside.com/mgallery/board/lists/?id=thesingularity&exception_mode=recommend",
         bbox: { x: 260, y: 200, w: 80, h: 36 },
+        visible: true,
+        enabled: true,
+        editable: false,
+        confidence: 0.96,
+        riskHints: []
+      },
+      {
+        id: "interesting-post",
+        role: "link",
+        tagName: "a",
+        label: "AI가 만든 재밌는 글",
+        text: "AI가 만든 재밌는 글",
+        selector: "a[href=\"/mgallery/board/view/?id=thesingularity&no=1169668&page=1\"]",
+        href: "https://example.test/browser-action/view/?id=thesingularity&no=1169668&page=1",
+        bbox: { x: 360, y: 260, w: 240, h: 28 },
+        visible: true,
+        enabled: true,
+        editable: false,
+        confidence: 0.94,
+        riskHints: []
+      },
+      {
+        id: "utility-points",
+        role: "link",
+        tagName: "a",
+        label: "잉여력: 6,483",
+        text: "잉여력: 6,483",
+        selector: "a[href=\"/index.php?mid=best&document_srl=1169668&act=dispCommunicationPointHistory\"]",
+        href: "https://example.test/index.php?mid=best&document_srl=1169668&act=dispCommunicationPointHistory",
+        bbox: { x: 30, y: 20, w: 160, h: 28 },
         visible: true,
         enabled: true,
         editable: false,

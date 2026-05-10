@@ -58,6 +58,7 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - 2026-05-08T12:50:38.055+09:00 Browser Bridge service-worker refactor completed without behavior changes: page-injected DOM snapshot/action functions moved to `providers/browser-dom-extension/bridge/injected-dom.js`, `service-worker.js` dropped from 1428 to 737 lines, and extension smoke now validates bridge modules plus package inclusion. Reload the unpacked extension to pick up the module split.
 - 2026-05-08T17:57:17.977+09:00 Added `docs/plans/semantic-interface-handoff.md` as the authoritative handoff for a reusable Semantic Interface: a deterministic observation-to-hypothesis decision boundary with evidence, intent frames, ranker/safety predicate contracts, trace/replay, Browser Action shadow migration, and Vision read/locate conformance.
 - 2026-05-08T23:05:00.000+09:00 Iteration `iter-15` completed the Semantic Interface from `docs/plans/semantic-interface-handoff.md`: `src/daemon/semantic-interface/` now owns v1 semantic types, ontology/versioning, intent frames, deterministic hypotheses/ranking, transition grammar, operating profiles, pure safety predicates, trace/replay, redacted trace projection, generic alias lexicon, Browser Action and Vision adapters, typed/untyped/adversarial golden trace harness, Browser Action low-risk live gate metadata, and `docs/reports/semantic-interface-dogfood-evidence-2026-05-08.md`.
+- 2026-05-09T02:55:00.000+09:00 Iteration `iter-16` completed Semantic Interface refinement plus Semantic Memory: typed evidence packets and ranker traces, Browser View Graph identity/node/edge mapping, local redacted Semantic Memory storage/read sets, live Browser Action memory integration, renderer Settings controls, `npm run smoke:semantic-memory`, and `docs/reports/semantic-memory-dogfood-evidence-2026-05-09.md`.
 - Current dev widget run is live after clearing port `5173`: Vite is listening on `127.0.0.1:5173`, daemon/app-server on `127.0.0.1:4128`, and startup logs are under `dist/logs/widget-dev-20260506-071947.*.log`.
 - Browser store submission runbook is source-controlled at `docs/release/browser-store-submission.md`; deferral is recorded in `docs/release/deferred-gates.json`. Use the runbook after dogfooding to clear the deferred public-release gate and then rerun strict readiness.
 
@@ -72,8 +73,9 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 
 ## Active Iteration
 
-- Current iteration: `iter-15` (`Semantic Interface`) complete; the reusable daemon-side Semantic Interface is implemented for Browser Action and Vision Context conformance with redacted traces, golden/adversarial evidence, and low-risk Browser Action target gating.
-- Remaining precise blockers/future consumers: first-class Codex app-server custom Browser Action tools require a stable custom-tool/client-tool contract; executable Windows browser chrome/restricted-page fallback requires a scoped UI Automation/native input helper; Terminal/Workspace/Screen/OCR/UIA Semantic Interface adapters are future consumers beyond iter-15.
+- Current iteration: `iter-17` (`Browser Action Runtime Closure`) complete; Browser Action now retries source-refresh mismatches, updates Browser Bridge active-tab status on extension poll, improves representative-content resolution, and shows clearer prompt failure/clarification messages.
+- Next recommended work: start from `docs/plans/browser-view-graph-v2-handoff.md`. View Graph v2 should be implemented before more resolver tuning because live dogfood shows the missing layer is prepared page understanding, not another site-specific target matcher.
+- Remaining precise blockers/future consumers: first-class Codex app-server custom Browser Action tools require a stable custom-tool/client-tool contract; executable Windows browser chrome/restricted-page fallback requires a scoped UI Automation/native input helper; Terminal/Workspace/Screen/OCR/UIA Semantic Interface adapters are future consumers beyond iter-16. Dedicated ranked-choice clarification card UX can still be refined on top of the existing unresolved-case logging and Browser Action clarification/approval surfaces.
 - Planned sprints:
   - `iter-13-sprint-01-extension-popup-options-and-settings` (complete)
   - `iter-13-sprint-02-badge-heartbeat-and-daemon-status` (complete)
@@ -100,7 +102,8 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 - Completed Iteration 8 focus: the Vision Context Interface now sits behind Agent screen sharing. The daemon can start/event/stop/cancel Vision Context sessions, collect timeline/provider observations, build TaskCapsules, render capsule markdown, convert to app-server `UserInput[]` with selected `localImage` evidence, delete raw video/audio temp files after processing, and send the result into the current Codex app-server thread. The transcription MVP includes mock ASR, sidecar boundary, lexicon correction, action-slot confidence, and clarification policy.
 - Vision Context semantic acceptance state: first dogfood evidence exists at `docs/reports/vision-context-dogfood-evidence-2026-05-07.md`; do not mark semantic acceptance complete until stronger live UI/live-model before-after evidence is collected or the product owner explicitly accepts this deterministic protocol artifact as sufficient.
 - Completed Iteration 9 focus: Browser Action now owns a typed, auditable browser actuator interface. The daemon can start/observe/execute/cancel Browser Action sessions, normalize active-tab DOM snapshots into structured observations with stable element ids, resolve exact/role-text/focused/bbox/ambiguous/low-confidence targets, enforce allow/confirm/block/clarify safety policy, queue typed commands for the extension, accept extension before/after results, verify outcomes, and record Activity audit rows without persisting sensitive page state.
-- Browser Action deferred state: CDP, Playwright, and `full_control_dev` evaluate are implemented for the production interface scope. The remaining future boundary is executable Windows UI Automation/browser-chrome control through a scoped helper and broader end-to-end Agent tool UX from `docs/plans/browser-action-end-to-end-control-handoff.md`.
+- Browser Action deferred state: CDP, Playwright, and `full_control_dev` evaluate are implemented for the production interface scope. The remaining future boundary is executable Windows UI Automation/browser-chrome control through a scoped helper.
+- Completed Iteration 16 focus: Semantic Interface evidence packets and Semantic Memory. Browser observations now carry View Graph identity/node/edge data into Semantic Interface; ranker traces include candidate-generation provenance, pairwise margins, and target fingerprints; Semantic Memory persists only redacted local graph edges/unresolved cases/feedback events, exposes daemon report/read/reset/settings endpoints, contributes immutable read sets to ranking, records Browser Action unresolved target cases, and surfaces Settings enable/report/clear controls.
 
 ## Recent Work
 
@@ -1176,6 +1179,24 @@ Completed after Codex app-server browser-open duplicate correction:
 26. Run `npm run vibe:checkpoint` before ending any follow-up maintenance session.
 
 Use `docs/context/qa.md` for routine follow-up commands.
+
+## Latest Update: Browser View Graph v2 Handoff
+
+Added `docs/plans/browser-view-graph-v2-handoff.md` as the focused handoff for the next Browser Action prepared-context track.
+
+The plan scopes View Graph v2 as a schema-versioned, deterministic page-understanding model with view identity/freshness, regions, controls, content lists, forms, edges, affordance indexes, Semantic Interface evidence projection, extension metadata upgrades, SPA/query transition handling, privacy-safe audit summaries, and dogfood evidence. It should be implemented before further Browser Action resolver tuning because the current live failures are rooted in missing prepared page semantics rather than isolated target-normalization bugs.
+
+## Latest Update: iter-17 Browser Action Runtime Closure
+
+Completed the requested follow-up order `2 -> 3 -> 1 -> 6 -> 7 -> 5` through `$vibe-iterate`.
+
+- View Graph/runtime source handling: prompt-driven Browser Action now retries the affected step once when the extension reports expected-source URL/tab/window mismatch, using the returned active-tab snapshot to refresh observation and re-resolve.
+- Semantic Interface/Memory live path: smoke/dogfood verification passed, and representative-content resolution now rejects utility/profile/category/comment anchors while preferring article-like content links.
+- Browser Bridge status: `/browser-action/extension/poll` refreshes daemon-visible active-tab URL/title/tab/window/permission, reducing stale snapshot decisions between heartbeat updates.
+- UX cleanup: failed, clarification, and extension-pending prompt responses now return clearer user-facing text instead of raw execution receipts; successful read/show flows still render page observations.
+- Verification passed `npm run lint`, `npm run build:web`, `npm run smoke`, Browser Action core/e2e/prompt-classification smokes, Browser Bridge/extension smokes, Semantic Interface/Memory smokes, and the Browser Action/Semantic dogfood scripts.
+
+Manual follow-up: reload the unpacked Browser Bridge extension before live-site retesting so Chrome/Edge uses the updated service worker and bridge modules.
 
 ## Latest Update: iter-14 Browser Action Semantic Target Pipeline
 

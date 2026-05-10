@@ -1,0 +1,153 @@
+import type { WebSocket } from "ws";
+import {
+  BrowserActionSessionManager,
+  type BrowserActionApproval,
+  type BrowserActionPlan,
+  type BrowserActionResult,
+  type BrowserQueuedCommand
+} from "../../browser-action/index.js";
+import type { ProviderRegistry } from "../../providers/providerRegistry.js";
+import type { StorageService } from "../../storage/storage.js";
+import {
+  waitForBrowserActionCommandResult,
+  type BrowserActionCommandWaiter
+} from "./commandWaiters.js";
+import { summarizeBrowserActionPlan } from "./presentation.js";
+import { recordBrowserActionAudit } from "./helpers.js";
+import type { BrowserExtensionBridgeStore } from "../browser-bridge/store.js";
+import { broadcast } from "../events.js";
+import { recordRuntimeActivity } from "../runtimeActivity.js";
+import {
+  markPromptPlanStepFromResult,
+  preparePromptStepRetryAfterSourceRefresh
+} from "./promptPlanState.js";
+import { refreshPromptBrowserActionSnapshotAfterCommand } from "./promptSnapshotRefresh.js";
+
+export const BROWSER_ACTION_PROMPT_COMMAND_WAIT_MS = 60_000;
+
+export async function continuePromptBrowserActionPlan(input: {
+  plan: BrowserActionPlan;
+  initialResults: BrowserActionResult[];
+  completedCommandResult: BrowserActionResult;
+  providers: ProviderRegistry;
+  browserActions: BrowserActionSessionManager;
+  browserExtensionBridge: BrowserExtensionBridgeStore;
+  storage: StorageService;
+  clients: Set<WebSocket>;
+  sessionId: string;
+  waiters: Map<string, BrowserActionCommandWaiter>;
+}): Promise<{
+  plan: BrowserActionPlan;
+  results: BrowserActionResult[];
+  approval?: BrowserActionApproval;
+  pendingCommand?: BrowserQueuedCommand;
+}> {
+  const plan = input.plan;
+  const results = [...input.initialResults.slice(0, -1), input.completedCommandResult];
+  let snapshot: unknown = await refreshPromptBrowserActionSnapshotAfterCommand({
+    actionSessionId: plan.actionSessionId,
+    result: input.completedCommandResult,
+    providers: input.providers,
+    browserActions: input.browserActions,
+    browserExtensionBridge: input.browserExtensionBridge,
+    storage: input.storage,
+    clients: input.clients,
+    sessionId: input.sessionId
+  });
+  if (preparePromptStepRetryAfterSourceRefresh(plan, input.completedCommandResult)) {
+    recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", "Retrying prompt Browser Action after active view refresh", {
+      planId: plan.id,
+      resultId: input.completedCommandResult.id,
+      error: input.completedCommandResult.error,
+      refreshedUrl: input.completedCommandResult.after?.url
+    });
+  } else {
+    markPromptPlanStepFromResult(plan, input.completedCommandResult);
+  }
+
+  while (plan.status !== "failed" && plan.status !== "cancelled") {
+    const nextStep = plan.steps.find((step) => step.status === "pending");
+    if (!nextStep) {
+      plan.status = plan.steps.every((step) => step.status === "succeeded" || step.status === "skipped") ? "completed" : plan.status;
+      plan.summary = plan.status === "completed" ? `Browser Action plan completed with ${results.length} result(s).` : plan.summary;
+      return { plan, results };
+    }
+
+    nextStep.status = "running";
+    nextStep.startedAt = new Date().toISOString();
+    nextStep.attempts = (nextStep.attempts ?? 0) + 1;
+    const execution = await input.browserActions.execute({
+      actionSessionId: plan.actionSessionId,
+      action: nextStep.action,
+      snapshot,
+      adapterId: plan.adapterId,
+      targetHint: nextStep.targetSummary,
+      policies: input.storage.readBrowserActionPolicies()
+    });
+    recordBrowserActionAudit(input.storage, execution.audit);
+    results.push(execution.result);
+    nextStep.resultId = execution.result.id;
+    nextStep.safety = execution.result.safety;
+
+    if (execution.approval) {
+      nextStep.status = "awaiting_approval";
+      nextStep.completedAt = new Date().toISOString();
+      plan.status = "awaiting_approval";
+      plan.summary = `Plan paused for approval at ${nextStep.id}.`;
+      return { plan, results, approval: execution.approval };
+    }
+
+    if (execution.command) {
+      nextStep.status = "awaiting_extension";
+      nextStep.completedAt = new Date().toISOString();
+      plan.status = "paused";
+      plan.summary = `Plan paused while extension executes ${nextStep.id}.`;
+      const commandResultPromise = waitForBrowserActionCommandResult({
+        requestId: execution.command.requestId,
+        waiters: input.waiters,
+        timeoutMs: BROWSER_ACTION_PROMPT_COMMAND_WAIT_MS
+      });
+      broadcast(input.clients, {
+        type: "browserAction.progress",
+        actionSessionId: plan.actionSessionId,
+        status: "plan_paused_for_extension",
+        detail: { requestId: execution.command.requestId, action: execution.command.action.type, plan: summarizeBrowserActionPlan(plan) }
+      });
+      const commandResult = await commandResultPromise;
+      if (!commandResult) {
+        recordRuntimeActivity(input.storage, input.sessionId, "warn", "browser-action", "Prompt Browser Action follow-up command still pending after wait", {
+          requestId: execution.command.requestId,
+          action: execution.command.action.type,
+          waitedMs: BROWSER_ACTION_PROMPT_COMMAND_WAIT_MS,
+          planId: plan.id,
+          stepId: nextStep.id
+        });
+        return { plan, results, pendingCommand: execution.command };
+      }
+      results[results.length - 1] = commandResult;
+      markPromptPlanStepFromResult(plan, commandResult);
+      snapshot = await refreshPromptBrowserActionSnapshotAfterCommand({
+        actionSessionId: plan.actionSessionId,
+        result: commandResult,
+        providers: input.providers,
+        browserActions: input.browserActions,
+        browserExtensionBridge: input.browserExtensionBridge,
+        storage: input.storage,
+        clients: input.clients,
+        sessionId: input.sessionId
+      });
+      continue;
+    }
+
+    if (execution.result.status !== "succeeded") {
+      markPromptPlanStepFromResult(plan, execution.result);
+      return { plan, results };
+    }
+
+    nextStep.status = "succeeded";
+    nextStep.completedAt = new Date().toISOString();
+    snapshot = execution.result.after ?? snapshot;
+  }
+
+  return { plan, results };
+}

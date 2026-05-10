@@ -118,7 +118,10 @@ const popup = await readFile(path.join(extensionDir, "popup.html"), "utf8");
 if (!popup.includes("Browser Bridge") || popup.includes("Send DOM snapshot")) {
   throw new Error("Extension popup should expose Browser Bridge settings, not default snapshot UX.");
 }
-const popupScript = await readFile(popupPath, "utf8");
+const popupScript = [
+  await readFile(popupPath, "utf8"),
+  await readFile(path.join(extensionDir, "popup-utils.js"), "utf8")
+].join("\n");
 for (const marker of ["chrome.permissions.request", "chrome.permissions.remove", "bridge.refresh", "readCurrentOrigin", "requestSitePermission", "requestAllSitesPermission", "observeBlocklist"]) {
   if (!popupScript.includes(marker)) {
     throw new Error(`Extension popup is missing marker: ${marker}`);

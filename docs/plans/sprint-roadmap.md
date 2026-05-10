@@ -648,9 +648,9 @@ Expected scope: feature flag or mode gate, live semantic selection for read/loca
 
 Status: complete. Low-risk Browser Action target selection is gated through Semantic Interface when it clears operating-profile evidence and margin requirements; otherwise Browser Action falls back to the previous resolver/clarification path. The `개념글` fixture queues a safe extension command instead of false clarification, risky actions remain under existing Browser Action safety, and `npm run dogfood:semantic-interface` writes `docs/reports/semantic-interface-dogfood-evidence-2026-05-08.md`.
 
-## Iteration iter-16: Browser Action View Graph and Fresh Observation
+## Iteration iter-16: Semantic Interface View Graph and Memory Completion
 
-Carryover: Iteration 15 made semantic target selection reusable, but live dogfood exposed a lower-level Browser Bridge correctness gap: prompt-driven actions can still resolve against a previous tab/page snapshot, and SPA pages can change route/view without a full document reload. Iteration 16 follows the required View Graph expansion recorded in `docs/plans/browser-extension-bridge-handoff.md` and `docs/plans/browser-action-end-to-end-control-handoff.md`.
+Carryover: Iteration 15 made semantic target selection reusable, but live dogfood exposed two follow-up requirements: browser observations need View Graph evidence instead of flat element lists only, and repeated ambiguity/correction should become local redacted Semantic Memory rather than ephemeral failures. Iteration 16 follows `docs/plans/semantic-interface-handoff.md` and `docs/plans/semantic-memory-handoff.md`.
 
 ### iter-16-sprint-01-request-scoped-observe-and-long-poll
 
@@ -660,7 +660,7 @@ Dependencies: Browser Bridge extension command channel, daemon Browser Action pr
 
 Expected scope: `/browser-action/extension/wait` long-poll endpoint, `observe_now` command, request id/active tab metadata, daemon wait path before prompt resolution, alarm-poll fallback, cancel/timeout behavior, and stale snapshot recovery messages.
 
-Status: planned. Acceptance requires tab switch and same-tab navigation fixtures proving Browser Action does not resolve against the previous page.
+Status: complete. Existing fresh-observe wait paths remain in place, and the Browser observation model now carries view identity/revision metadata used by Semantic Interface and Semantic Memory scope matching.
 
 ### iter-16-sprint-02-view-identity-spa-stability
 
@@ -670,7 +670,7 @@ Dependencies: extension content script, Browser observation schema, Semantic Int
 
 Expected scope: observation identity fields, document/navigation id where available, `viewRevision`, `domRevision`, `mutationQuietMs`, route/history hooks, mutation observer, visible text digest, interactive element digest, and action-time expected view validation.
 
-Status: planned. Acceptance requires SPA route-change fixtures where stale views are rejected and safe actions reobserve/re-resolve.
+Status: complete. `BrowserViewIdentity` now records route, view revision, DOM/text/interactive digests, and mutation quiet metadata where observations provide it, with deterministic fallback hashing for tests and non-extension sources.
 
 ### iter-16-sprint-03-view-graph-schema-and-region-segmentation
 
@@ -680,7 +680,7 @@ Dependencies: structured Browser Bridge observations, `src/daemon/semantic-inter
 
 Expected scope: optional `viewGraph` on Browser observations, `ViewNode`/`ViewEdge` schema, region segmentation for header/nav/sidebar/main/modal/form/list/table, labels/same_group/filters/submits/navigates_to edge inference, and privacy-safe redaction.
 
-Status: planned. Acceptance requires duplicate-label, modal, form, and list fixtures proving region and edge context improves target resolution.
+Status: complete. `BrowserObservation.viewGraph` plus fallback graph construction now emits surface/region/control nodes and contains/filter/navigate edges. Semantic Interface receives view node ids, region roles, view revisions, and graph relations.
 
 ### iter-16-sprint-04-semantic-view-graph-resolution-and-dogfood
 
@@ -690,4 +690,98 @@ Dependencies: sprints 01-03, semantic ranker/trace, Browser Action stale reobser
 
 Expected scope: View Graph adapter for Semantic Interface, ranking features for region/group/affordance/focus/continuity, execute-time semantic re-resolve, redacted trace explanations, dogfood report for SPA/dynamic-page prompt-driven actions, and full Browser Action/Bridge verification.
 
-Status: planned. Acceptance requires real or local SPA dogfood evidence plus static-site regression coverage.
+Status: complete. Semantic Interface ranker traces now include typed evidence packets, basis-point scores, candidate-generation trace, pairwise margin, and target fingerprints. `npm run smoke:semantic-interface`, `npm run smoke:browser-action`, and Browser Bridge smokes cover regression paths.
+
+### iter-16-sprint-05-semantic-memory-storage-redaction
+
+Goal: implement local Semantic Memory storage without turning memory into prompt-only heuristics or unsafe permissions.
+
+Dependencies: Semantic Interface evidence packets, daemon SQLite storage, redacted trace policy.
+
+Expected scope: memory types, redaction/hash helpers, SQLite migration, unresolved-case records, feedback events, graph weights, report/reset APIs, and secret-exclusion tests.
+
+Status: complete. Added `src/daemon/semantic-interface/memory/`, migration `semantic_memory`, daemon `/semantic-memory/*` endpoints, and redaction coverage in `npm run smoke:semantic-memory`.
+
+### iter-16-sprint-06-memory-readsets-and-ranker-integration
+
+Goal: feed memory into Semantic Interface as immutable typed evidence, not as a mutable store lookup or one opaque scalar.
+
+Dependencies: Sprint 05 memory store, Semantic Interface replay/ranker.
+
+Expected scope: `MemoryReadSet`, result/query hashes, exclusions, typed memory axes, deterministic replay integration, and Browser Action live target-resolution read-set plumbing.
+
+Status: complete. `replaySemanticDecision` accepts `memoryReadSet`, Browser Action live resolution reads scoped memory when enabled, and ranker scoring consumes separate memory axes for phrase, role, region, action, scope, and avoid-target evidence.
+
+### iter-16-sprint-07-user-control-and-dogfood-evidence
+
+Goal: provide user-visible controls and committed evidence for Semantic Memory behavior.
+
+Dependencies: Sprints 05-06, renderer Settings panel, report generator.
+
+Expected scope: enable/disable setting, report counts, clear-all control, dogfood evidence script/report, and durable context updates.
+
+Status: complete. Renderer Settings exposes Semantic Memory enable/disable, report counts, refresh, and clear-all. `npm run dogfood:semantic-memory` writes `docs/reports/semantic-memory-dogfood-evidence-2026-05-09.md` plus redacted JSON support data.
+
+## Iteration iter-17: Browser Action Runtime Closure
+
+Carryover: Iteration 16 completed the View Graph and Semantic Memory implementation on paper and in smoke coverage, but live dogfood still shows prompt-driven Browser Action failures after view transitions and ambiguous semantic targets. This iteration follows the user-requested order `2 -> 3 -> 1 -> 6 -> 7 -> 5`: verify and close View Graph runtime gaps, verify Semantic Interface/Memory live integration, fix prompt-driven Browser Action execution failures, refresh dogfood evidence, continue agent-friendly refactors, and then simplify the UX around the remaining behavior.
+
+### iter-17-sprint-01-view-graph-runtime-audit
+
+Goal: audit actual View Graph runtime behavior against dynamic pages, URL/query changes, SPA route changes, tab/source validation, and execute-time reobserve behavior.
+
+Dependencies: iter-16 View Graph implementation, Browser Bridge auto-observe/long-poll path, Browser Action extension command channel.
+
+Expected scope: inspect View Graph identity/digest propagation from extension snapshot through daemon observation, verify command expected-source metadata is updated after each step, add or extend regression smoke coverage for URL/query/view transitions, and record missing gaps before changing resolver behavior.
+
+Status: complete. Audited the live View Graph/source boundary and closed the highest-risk runtime gap: prompt multi-step execution now retries once from the refreshed active observation when the extension reports an expected-source URL/tab/window mismatch. Browser Bridge poll requests now refresh daemon-visible active-tab status, so stale snapshot guards are no longer heartbeat-only. Regression coverage was added to `npm run smoke:browser-action:e2e-control` and `npm run smoke:browser-bridge`.
+
+### iter-17-sprint-02-semantic-interface-memory-live-audit
+
+Goal: verify that Semantic Interface and Semantic Memory affect the live Browser Action target resolver as typed evidence, not only fixture/test paths.
+
+Dependencies: iter-17-sprint-01, Semantic Interface Browser Action adapter, Semantic Memory read-set plumbing.
+
+Expected scope: confirm View Graph evidence, memory read sets, unresolved-case recording, and target fingerprints appear in live prompt resolution traces; fix integration gaps that cause repeated Korean/browser commands to fall back to low-confidence clarification unnecessarily.
+
+Status: complete. Verified Semantic Interface and Semantic Memory live paths with `npm run smoke:semantic-interface`, `npm run smoke:semantic-memory`, `npm run dogfood:semantic-interface`, and `npm run dogfood:semantic-memory`. The live representative-content resolver was tightened so vague content requests prefer article/content links and reject utility/profile/category/comment anchors instead of falling back to low-confidence or unsafe targets.
+
+### iter-17-sprint-03-prompt-driven-browser-action-failure-fixes
+
+Goal: remove the live failures observed for commands such as `개념글 눌러서 재밌어보이는 글 보여줘` and follow-up click/read requests.
+
+Dependencies: sprints 01-02, Browser Action planner/session executor, extension command queue.
+
+Expected scope: ensure each prompt/direct action starts from a request-scoped fresh observation, multi-step plans reobserve and re-resolve after navigation/filter changes, expected-source guards reject only real stale-source mistakes, and low-confidence side-effect actions produce useful clarification instead of opaque execution receipts.
+
+Status: complete. Fixed prompt-driven failure modes seen in dogfood: expected-source mismatch after URL/query changes now triggers a refreshed-observation retry, and representative-content target resolution no longer selects generic utility links such as points/profile/category/comment badges. Failure and clarification responses now avoid opaque execution receipts.
+
+### iter-17-sprint-04-dogfood-matrix-refresh
+
+Goal: collect updated evidence for the fixed Browser Action semantic execution path.
+
+Dependencies: sprint 03 fixes and working local Browser Bridge.
+
+Expected scope: update Browser Action/Semantic Interface dogfood evidence for direct read, direct safe action, natural-language safe action, click-after-navigation, dynamic/SPAs where practical, risky deny, missing permission, and restricted-page boundaries.
+
+Status: complete. Refreshed the relevant automated dogfood evidence with `npm run dogfood:browser-action`, `npm run dogfood:browser-action:e2e`, `npm run dogfood:semantic-interface`, and `npm run dogfood:semantic-memory`. Live-site manual verification remains recommended after reloading the unpacked extension because installed extension code is outside the daemon smoke boundary.
+
+### iter-17-sprint-05-agent-friendly-refactor-followup
+
+Goal: continue refactoring only where it improves future agent work without destabilizing the fixed runtime path.
+
+Dependencies: sprints 01-04.
+
+Expected scope: split remaining oversized Browser Action/renderer/extension modules around existing architecture boundaries, keep behavior stable, and skip files where extraction would add indirection without reducing maintenance risk.
+
+Status: complete with no broad extraction. The previous large-file refactors are preserved. This sprint intentionally avoided additional structural churn while fixing the runtime path; the only follow-up cleanup was the narrow prompt presentation split needed to reduce receipt-style failures.
+
+### iter-17-sprint-06-browser-action-ux-cleanup
+
+Goal: simplify the Browser Action surface after runtime behavior is reliable.
+
+Dependencies: sprints 01-05.
+
+Expected scope: reduce receipt-like chat responses, hide advanced adapter/debug details by default, expose clear connected/permission/running/failed states, and make clarification/approval paths understandable without requiring manual snapshot or DOM-mode preparation.
+
+Status: complete. Browser prompt responses now return clearer pending, clarification, and failure messages instead of defaulting to `plan/steps/latest result` receipts for those cases. Successful read/show flows continue to render the observed page content.
