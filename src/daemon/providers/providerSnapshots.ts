@@ -9,6 +9,7 @@ export type DomSnapshot = {
   focusedElementId?: string;
   readyState?: string;
   viewport?: unknown;
+  viewGraph?: unknown;
   capturedAt: string;
 };
 
@@ -42,6 +43,7 @@ export function createDomSnapshot(input: unknown): DomSnapshot {
     focusedElementId: trimField(record?.focusedElementId, MAX_PROVIDER_FIELD_LENGTH) || undefined,
     readyState: trimField(record?.readyState, MAX_PROVIDER_FIELD_LENGTH) || undefined,
     viewport: typeof record?.viewport === "object" && record.viewport !== null ? record.viewport : undefined,
+    viewGraph: typeof record?.viewGraph === "object" && record.viewGraph !== null ? record.viewGraph : undefined,
     capturedAt: new Date().toISOString()
   };
 

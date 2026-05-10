@@ -14,6 +14,10 @@ export function resolveSemanticContentTarget(
   elements: BrowserElement[],
   observation: BrowserObservation | undefined
 ): TargetResolution {
+  const graphResolution = resolveSemanticContentTargetFromViewGraph(elements, observation);
+  if (graphResolution.primary) {
+    return graphResolution;
+  }
   const ranked = elements
     .map((element) => ({ element, score: scoreSemanticContentElement(element, observation) }))
     .filter((item) => item.score >= 0.45)
@@ -26,6 +30,34 @@ export function resolveSemanticContentTarget(
     reason: primary
       ? `Selected representative content item ${summarizeBrowserElement(primary)} from the current view.`
       : "No representative content item was visible enough to select."
+  };
+}
+
+function resolveSemanticContentTargetFromViewGraph(
+  elements: BrowserElement[],
+  observation: BrowserObservation | undefined
+): TargetResolution {
+  const graph = observation?.viewGraph;
+  const representatives = graph?.contentLists
+    ?.flatMap((list) => list.representativeNodeIds.map((nodeId) => ({ nodeId, listConfidence: list.confidence }))) ?? [];
+  const ranked = representatives
+    .map(({ nodeId, listConfidence }) => {
+      const node = graph?.nodes.find((candidate) => candidate.id === nodeId);
+      const element = node?.elementId ? elements.find((candidate) => candidate.id === node.elementId) : undefined;
+      return {
+        element,
+        score: element ? Math.min(0.97, Math.max(listConfidence, (node?.confidence ?? 0.5) + 0.04)) : 0
+      };
+    })
+    .filter((item): item is { element: BrowserElement; score: number } => Boolean(item.element) && item.score >= 0.55)
+    .sort((left, right) => right.score - left.score || sortSemanticContentElement(left.element, right.element, observation));
+  return {
+    primary: ranked[0]?.element,
+    alternatives: ranked.slice(1, 5).map((item) => item.element),
+    confidence: ranked[0]?.score ?? 0,
+    reason: ranked[0]?.element
+      ? `Selected representative content item ${summarizeBrowserElement(ranked[0].element)} from Browser View Graph v2 content-list evidence.`
+      : "No representative content item was visible enough in Browser View Graph v2."
   };
 }
 

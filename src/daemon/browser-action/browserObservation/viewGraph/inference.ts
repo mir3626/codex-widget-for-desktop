@@ -28,13 +28,13 @@ export function inferRegionRole(element: BrowserElement): NonNullable<BrowserVie
 }
 
 export function normalizeViewNodeKind(value: unknown): BrowserViewNode["kind"] {
-  return ["surface", "region", "control", "field", "content_item", "list", "row", "modal", "form"].includes(String(value))
+  return ["surface", "region", "control", "field", "content_item", "text_block", "list", "row", "media", "table", "state", "modal", "form"].includes(String(value))
     ? String(value) as BrowserViewNode["kind"]
     : "content_item";
 }
 
 export function normalizeRegionRole(value: unknown): BrowserViewNode["regionRole"] {
-  return ["header", "nav", "sidebar", "main", "footer", "modal", "form", "list", "unknown"].includes(String(value))
+  return ["header", "nav", "sidebar", "main", "footer", "modal", "form", "list", "toolbar", "dialog", "article", "unknown"].includes(String(value))
     ? String(value) as BrowserViewNode["regionRole"]
     : undefined;
 }

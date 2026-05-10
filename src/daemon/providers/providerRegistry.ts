@@ -1,4 +1,5 @@
 import type { ProviderStatus, WidgetMode } from "../../shared/protocol.js";
+import { buildBrowserObservation, type BrowserObservation } from "../browser-action/index.js";
 import {
   createDomSnapshot,
   createScreenSnapshot,
@@ -13,16 +14,32 @@ export type { DomSnapshot, ScreenSnapshot } from "./providerSnapshots.js";
 
 export class ProviderRegistry {
   private domSnapshot: DomSnapshot | null = null;
+  private domObservation: BrowserObservation | null = null;
   private screenSnapshot: ScreenSnapshot | null = null;
 
   setDomSnapshot(input: unknown): DomSnapshot {
     const snapshot = createDomSnapshot(input);
+    const observation = buildBrowserObservation({
+      source: {
+        kind: "active_tab",
+        browser: "unknown",
+        url: snapshot.url,
+        title: snapshot.title
+      },
+      snapshot
+    });
+    snapshot.viewGraph = observation.viewGraph;
     this.domSnapshot = snapshot;
+    this.domObservation = observation;
     return snapshot;
   }
 
   getDomSnapshot(): DomSnapshot | null {
     return this.domSnapshot;
+  }
+
+  getDomObservation(): BrowserObservation | null {
+    return this.domObservation;
   }
 
   setScreenSnapshot(input: unknown): ScreenSnapshot {

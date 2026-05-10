@@ -30,6 +30,11 @@ export function applyBrowserActionViewGraph(input: {
           ...entity.tier2,
           viewNodeId: node.id,
           regionRole: node.regionRole ?? "",
+          viewActionHint: node.actionHint ?? "",
+          viewRiskHints: (node.riskHints ?? []).join(","),
+          viewListId: node.listId ?? "",
+          viewFormId: node.formId ?? "",
+          viewFreshness: graph.identity.freshness ?? "",
           viewRevision: graph.identity.viewRevision
         };
       }
@@ -59,6 +64,11 @@ export function applyBrowserActionViewGraph(input: {
         attributes: {
           viewNodeKind: node.kind,
           regionRole: node.regionRole ?? "unknown",
+          actionHint: node.actionHint ?? "unknown",
+          riskHints: (node.riskHints ?? []).join(","),
+          listId: node.listId ?? "",
+          formId: node.formId ?? "",
+          freshness: graph.identity.freshness ?? "unknown",
           viewRevision: graph.identity.viewRevision
         }
       }
@@ -76,6 +86,11 @@ export function applyBrowserActionViewGraph(input: {
       tier2: {
         viewNodeId: node.id,
         regionRole: node.regionRole ?? "",
+        viewActionHint: node.actionHint ?? "",
+        viewRiskHints: (node.riskHints ?? []).join(","),
+        viewListId: node.listId ?? "",
+        viewFormId: node.formId ?? "",
+        viewFreshness: graph.identity.freshness ?? "",
         viewRevision: graph.identity.viewRevision
       }
     });
@@ -98,7 +113,10 @@ export function applyBrowserActionViewGraph(input: {
 }
 
 function semanticRelationForViewEdge(relation: string): SemanticRelationType {
-  if (relation === "same_group" || relation === "filters" || relation === "submits" || relation === "navigates_to" || relation === "item_of" || relation === "labels") {
+  if (relation === "list_item_of") {
+    return "item_of";
+  }
+  if (relation === "same_group" || relation === "filters" || relation === "submits" || relation === "navigates_to" || relation === "item_of" || relation === "labels" || relation === "controls") {
     return relation;
   }
   return "contains";

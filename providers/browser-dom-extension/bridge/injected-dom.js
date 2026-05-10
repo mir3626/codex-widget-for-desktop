@@ -1,6 +1,7 @@
 export function collectDomSnapshot() {
   const MAX_ELEMENTS = 220;
   const MAX_TEXT = 20_000;
+  const mutationState = readMutationState();
 
   const selection = window.getSelection()?.toString() ?? "";
   const bodyText = document.body?.innerText ?? "";
@@ -102,6 +103,11 @@ export function collectDomSnapshot() {
     const text = readElementText(element);
     const value = sensitive ? undefined : readElementValue(element);
     const selector = buildSelector(element);
+    const nearestHeading = readNearestHeading(element);
+    const nearestLandmark = readNearestLandmark(element);
+    const formOwner = readOwnerHash(element.form || element.closest?.("form"));
+    const listOwner = readOwnerHash(element.closest?.("ul,ol,table,[role='list'],[role='table'],[role='grid'],[data-list],[data-testid*='list' i]"));
+    const computedVisibility = readComputedVisibility(element, bbox);
     return {
       id: readStableElementId(element, index),
       role,
@@ -122,7 +128,26 @@ export function collectDomSnapshot() {
       href: element instanceof HTMLAnchorElement ? element.href || undefined : undefined,
       inputType,
       confidence: selector ? 0.95 : 0.7,
-      riskHints: readRiskHints(element, label, text, inputType)
+      riskHints: readRiskHints(element, label, text, inputType),
+      sourceOrder: index,
+      domPathHash: hashString(buildDomPath(element)),
+      parentPathHash: element.parentElement ? hashString(buildDomPath(element.parentElement)) : undefined,
+      frameId: window.frameElement instanceof HTMLElement ? readStableElementId(window.frameElement, -2) : "top",
+      frameUrl: window.location.href,
+      shadowRootBoundary: Boolean(element.getRootNode?.() instanceof ShadowRoot),
+      ariaControls: readIdList(element.getAttribute("aria-controls")),
+      ariaDescribedBy: readIdList(element.getAttribute("aria-describedby")),
+      ariaLabelledBy: readIdList(element.getAttribute("aria-labelledby")),
+      headingLevel: readHeadingLevel(element),
+      nearestHeading,
+      nearestLandmark,
+      formOwner,
+      listOwner,
+      computedVisibility,
+      isStickyOrFixed: isStickyOrFixed(element),
+      isLikelyOverlay: isLikelyOverlay(element, bbox),
+      mutationRevision: String(mutationState.revision),
+      lastMutationAt: mutationState.lastMutationAt
     };
   }
 
@@ -262,6 +287,84 @@ export function collectDomSnapshot() {
       bbox.h > 0;
   }
 
+  function readComputedVisibility(element, bbox) {
+    const style = window.getComputedStyle(element);
+    if (style.display === "none" || style.visibility === "hidden") {
+      return "hidden";
+    }
+    if (Number(style.opacity || "1") <= 0) {
+      return "transparent";
+    }
+    if (bbox.w <= 0 || bbox.h <= 0 || bbox.y + bbox.h < 0 || bbox.x + bbox.w < 0 || bbox.y > window.innerHeight || bbox.x > window.innerWidth) {
+      return "offscreen";
+    }
+    return "visible";
+  }
+
+  function isStickyOrFixed(element) {
+    const position = window.getComputedStyle(element).position;
+    return position === "sticky" || position === "fixed";
+  }
+
+  function isLikelyOverlay(element, bbox) {
+    const style = window.getComputedStyle(element);
+    const zIndex = Number.parseInt(style.zIndex || "0", 10);
+    return (style.position === "fixed" || style.position === "absolute") &&
+      Number.isFinite(zIndex) &&
+      zIndex >= 10 &&
+      bbox.w >= window.innerWidth * 0.25 &&
+      bbox.h >= window.innerHeight * 0.12;
+  }
+
+  function readHeadingLevel(element) {
+    const tag = element.tagName.toLowerCase();
+    if (/^h[1-6]$/.test(tag)) {
+      return Number(tag.slice(1));
+    }
+    const ariaLevel = Number(element.getAttribute("aria-level"));
+    return Number.isFinite(ariaLevel) ? ariaLevel : undefined;
+  }
+
+  function readNearestHeading(element) {
+    const section = element.closest("article,section,main,aside,nav,form,li,tr,div") || element.parentElement;
+    const heading = section?.querySelector?.("h1,h2,h3,h4,h5,h6,[role='heading']");
+    return heading ? normalizeText(heading.textContent || "").slice(0, 160) || undefined : undefined;
+  }
+
+  function readNearestLandmark(element) {
+    const landmark = element.closest("main,nav,header,footer,aside,form,dialog,[role='main'],[role='navigation'],[role='banner'],[role='contentinfo'],[role='complementary'],[role='dialog'],[role='form'],[role='toolbar']");
+    if (!landmark) {
+      return undefined;
+    }
+    return landmark.getAttribute("role") || landmark.tagName.toLowerCase();
+  }
+
+  function readOwnerHash(element) {
+    return element instanceof HTMLElement ? hashString(buildDomPath(element)) : undefined;
+  }
+
+  function readIdList(value) {
+    return value ? value.split(/\s+/).map((item) => item.trim()).filter(Boolean).slice(0, 12) : undefined;
+  }
+
+  function buildDomPath(element) {
+    const path = [];
+    let current = element;
+    while (current && current.nodeType === Node.ELEMENT_NODE && current !== document.documentElement && path.length < 8) {
+      const tag = current.tagName.toLowerCase();
+      const parent = current.parentElement;
+      if (!parent) {
+        path.unshift(tag);
+        break;
+      }
+      const sameTag = Array.from(parent.children).filter((child) => child.tagName === current.tagName);
+      const nth = sameTag.indexOf(current) + 1;
+      path.unshift(`${tag}:${nth}`);
+      current = parent;
+    }
+    return path.join("/");
+  }
+
   function readRiskHints(element, label, text, inputType) {
     const value = `${label ?? ""} ${text ?? ""} ${element.getAttribute("name") ?? ""} ${element.id ?? ""} ${inputType ?? ""}`.toLowerCase();
     const hints = new Set();
@@ -277,7 +380,7 @@ export function collectDomSnapshot() {
     if (/delete|remove|destroy|discard|erase/.test(value)) {
       hints.add("delete");
     }
-    if (/submit|send|post|publish|share|save/.test(value) || inputType === "submit") {
+    if (/submit|send|publish|share|save/.test(value) || /게시(?!글)/.test(value) || inputType === "submit") {
       hints.add("submit");
     }
     if (inputType === "file" || /upload|attach file/.test(value)) {
@@ -344,6 +447,41 @@ export function collectDomSnapshot() {
       hash = Math.imul(hash, 16777619);
     }
     return (hash >>> 0).toString(16).padStart(8, "0");
+  }
+
+  function readMutationState() {
+    const key = "__codexWidgetDomMutationState";
+    const existing = window[key];
+    if (existing?.observer) {
+      return {
+        revision: existing.revision || 0,
+        lastMutationAt: existing.lastMutationAt
+      };
+    }
+    const state = {
+      revision: 0,
+      lastMutationAt: undefined,
+      observer: undefined
+    };
+    try {
+      state.observer = new MutationObserver(() => {
+        state.revision += 1;
+        state.lastMutationAt = new Date().toISOString();
+      });
+      state.observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        characterData: true
+      });
+    } catch {
+      // Some restricted frames disallow observation; snapshot collection can still continue.
+    }
+    window[key] = state;
+    return {
+      revision: state.revision,
+      lastMutationAt: state.lastMutationAt
+    };
   }
 }
 

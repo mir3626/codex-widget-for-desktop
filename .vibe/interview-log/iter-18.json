@@ -1,0 +1,24 @@
+{
+  "phase": "iterate",
+  "mode": "iterate",
+  "iterationId": "iter-18",
+  "carryoverIterationId": "iter-17",
+  "createdAt": "2026-05-10T14:05:12.307+09:00",
+  "note": "Codex Orchestrator invoked vibe-interview in iterate mode. The existing handoff was already specific enough, so this durable log records the selected iter-18 scope after the interactive interview session was closed.",
+  "carryoverSummary": "Iter-17 hardened Browser Action runtime recovery and UX, but Browser Action still needed a prepared page-understanding model instead of more prompt-time resolver tuning.",
+  "plannedSprints": [
+    "iter-18-sprint-01-view-graph-v2-types-identity-and-builder",
+    "iter-18-sprint-02-extension-metadata-and-prepared-provider-context",
+    "iter-18-sprint-03-semantic-evidence-and-target-resolution",
+    "iter-18-sprint-04-smoke-dogfood-and-completion"
+  ],
+  "sourceHandoff": "docs/plans/browser-view-graph-v2-handoff.md",
+  "selectedArchitecture": "Implement schema-versioned Browser View Graph v2 under browser-perception/view-graph while preserving BrowserObservation.viewGraph compatibility, Browser Action safety ownership, and Semantic Interface typed evidence boundaries.",
+  "nonGoals": [
+    "full Browser Perception scheduler",
+    "site-specific selector tuning",
+    "arbitrary JavaScript as default action abstraction",
+    "LLM-only page interpretation",
+    "sensitive page state persistence"
+  ]
+}

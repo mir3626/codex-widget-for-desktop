@@ -218,6 +218,11 @@ function detectSourceMismatch(expected, tab, before) {
   }
   const expectedUrl = expected.url || "";
   const actualUrl = tab.url || before?.url || "";
+  const expectedRouteKey = expected.routeKey || "";
+  const actualRouteKey = before?.viewGraph?.identity?.routeKey || "";
+  if (expectedRouteKey && actualRouteKey && expectedRouteKey === actualRouteKey) {
+    return "";
+  }
   if (expectedUrl && actualUrl && normalizeUrlForSource(expectedUrl) !== normalizeUrlForSource(actualUrl)) {
     return `Active tab URL changed before Browser Action execution: expected ${expectedUrl}, got ${actualUrl}.`;
   }

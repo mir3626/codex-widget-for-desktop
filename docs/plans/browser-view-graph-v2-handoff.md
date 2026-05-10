@@ -1,6 +1,6 @@
 # Browser View Graph v2 Handoff
 
-Status: planned; authoritative handoff for the View Graph v2-first Browser Action improvement track
+Status: implemented through Iteration `iter-18`; authoritative handoff for the View Graph v2-first Browser Action improvement track
 Target repo: `C:\Users\Tony\Workspace\codex-widget-for-desktop`
 Primary consumers:
 - Browser Action prompt/direct execution
@@ -9,6 +9,24 @@ Primary consumers:
 - future Browser Perception prepared-context service
 
 Primary goal: promote Browser Action from prompt-time DOM snapshot matching to a prepared, deterministic, auditable view model that understands the current browser page before a user asks for an action.
+
+## Implementation Status
+
+Implemented in Iteration `iter-18`:
+
+- `src/daemon/browser-perception/view-graph/` now owns the v2 builder, identity/freshness/digest helpers, element classification, affordance indexing, and Semantic Interface evidence projection helpers.
+- `BrowserObservation.viewGraph` now emits `schemaVersion: "browser-view-graph.v2"` from fallback graph construction while preserving existing Browser Action consumers.
+- View Graph v2 includes view identity, route key, query signature, freshness, regions, controls, forms, content lists, edges, affordance index, diagnostics, and metadata-only redaction summaries.
+- Browser Bridge observations now include additive source order, DOM path hash, parent hash, frame/url, ARIA refs, heading/landmark, form/list owner, computed visibility, sticky/overlay, mutation revision, and mutation timestamp metadata.
+- `ProviderRegistry` now retains a prepared `BrowserObservation` and attaches its v2 graph to the DOM snapshot, allowing prompt/direct Browser Action paths to consume prepared graph evidence before falling back to request-time snapshot waiting.
+- Semantic Interface Browser Action projection now carries view action hints, risk hints, list/form ids, freshness, and view revision metadata.
+- Representative content target resolution now prefers View Graph v2 content-list representative evidence before older heuristics.
+- `npm run smoke:browser-view-graph-v2` and `npm run dogfood:browser-view-graph-v2` were added.
+
+Still outside this handoff:
+
+- A full Browser Perception scheduler for continuous multi-tab preparation remains future work.
+- Live real-site dogfood should be repeated after reloading the unpacked Browser Bridge extension.
 
 ## 0. Why This Exists
 

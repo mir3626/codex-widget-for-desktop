@@ -14,8 +14,11 @@ export function normalizeViewGraph(
     url: string;
     title: string;
     capturedAt: string;
+    readyState?: BrowserObservation["readyState"];
+    focusedElementId?: string;
     text: string;
     elements: BrowserElement[];
+    now?: Date;
   }
 ): BrowserViewGraph {
   const record = readRecord(value);

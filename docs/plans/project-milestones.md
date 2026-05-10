@@ -160,3 +160,19 @@ Evidence:
 - Browser Action live target resolution reads scoped memory when enabled, records unresolved target cases on clarification, and attaches memory read-set provenance to safety metadata.
 - `npm run smoke:semantic-memory` covers redaction, settings, daemon endpoints, read-set hashes, blocked-edge exclusion, Browser Action live read-set plumbing, reset/report, and replay integration.
 - `docs/reports/semantic-memory-dogfood-evidence-2026-05-09.md` records redacted dogfood evidence.
+
+## browser-view-graph-v2
+
+Goal: provide Browser Action with a prepared, deterministic, auditable page-understanding model before prompts execute, so target resolution can use view identity, freshness, regions, controls, content lists, forms, affordances, and privacy-safe graph evidence instead of prompt-time DOM matching alone.
+
+Current progress: 1
+
+Evidence:
+- Iteration 18 added `src/daemon/browser-perception/view-graph/` with schema-versioned View Graph v2 construction.
+- `BrowserObservation.viewGraph` now emits v2 identity, route key, query signature, freshness, regions, controls, content lists, forms, edges, affordance index, diagnostics, and redaction summaries.
+- Browser Bridge snapshots include additive DOM path/source order/ARIA/heading/landmark/form/list/visibility/mutation metadata without changing the typed-action abstraction or enabling arbitrary JavaScript as a default action surface.
+- ProviderRegistry stores a prepared BrowserObservation and attaches its v2 graph to the DOM snapshot so prompt/direct Browser Action can use fresh prepared graph evidence before falling back to request-time snapshot wait.
+- Semantic Interface Browser Action projection receives view action hints, risk hints, list/form ids, freshness, and view revision metadata.
+- Representative content target resolution prefers View Graph v2 content-list representative evidence before older heuristics.
+- `npm run smoke:browser-view-graph-v2` covers schema shape, stable keys, prepared provider graph attachment, Semantic Interface projection, content-list evidence, forms, redaction, and diagnostics.
+- `docs/reports/browser-view-graph-v2-dogfood-evidence-2026-05-10.md` records deterministic dogfood evidence for the generic filter -> reobserve -> representative content flow.

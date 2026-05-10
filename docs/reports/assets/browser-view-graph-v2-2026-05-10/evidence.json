@@ -1,0 +1,235 @@
+{
+  "generatedAt": "2026-05-10T05:21:16.314Z",
+  "scenario": "deterministic generic board filter plus representative content flow",
+  "before": {
+    "url": "https://example.test/board/lists?id=topic",
+    "title": "Example board",
+    "viewRevision": "443d1861c45361e606df",
+    "routeKey": "7d9299dcb4d321de2560",
+    "freshness": "fresh",
+    "nodes": 12,
+    "edges": 18,
+    "regions": [
+      {
+        "id": "region-toolbar",
+        "role": "toolbar",
+        "nodeIds": 1
+      },
+      {
+        "id": "region-sidebar",
+        "role": "sidebar",
+        "nodeIds": 1
+      },
+      {
+        "id": "region-list",
+        "role": "list",
+        "nodeIds": 2
+      },
+      {
+        "id": "region-form",
+        "role": "form",
+        "nodeIds": 1
+      }
+    ],
+    "contentLists": [
+      {
+        "id": "list-6610c2b0846b",
+        "label": "list content list",
+        "regionId": "region-list",
+        "itemNodeIds": [
+          "view-post-fun-1",
+          "view-post-fun-2"
+        ],
+        "representativeNodeIds": [
+          "view-post-fun-1",
+          "view-post-fun-2"
+        ],
+        "confidence": 0.64
+      }
+    ],
+    "forms": [
+      {
+        "id": "form-region-form",
+        "label": "form form",
+        "fieldNodeIds": [
+          "view-password-field"
+        ],
+        "submitNodeIds": [],
+        "riskHints": [
+          "credential"
+        ],
+        "confidence": 0.72
+      }
+    ],
+    "diagnostics": {
+      "buildTimeMs": 5,
+      "truncatedElements": 0,
+      "totalElements": 5,
+      "graphNodeCount": 12,
+      "graphEdgeCount": 18,
+      "freshnessReason": "snapshot is recent and stable enough",
+      "warnings": []
+    },
+    "redaction": {
+      "redactedFieldCount": 1,
+      "redactedNodeIds": [
+        "view-password-field"
+      ],
+      "policy": "metadata_only"
+    }
+  },
+  "after": {
+    "url": "https://example.test/board/lists?id=topic&exception_mode=recommend",
+    "title": "Example board - recommended",
+    "viewRevision": "0a4a4eebd1af72eaf229",
+    "routeKey": "c4e53f04de8243d7572c",
+    "freshness": "fresh",
+    "nodes": 12,
+    "edges": 18,
+    "regions": [
+      {
+        "id": "region-toolbar",
+        "role": "toolbar",
+        "nodeIds": 1
+      },
+      {
+        "id": "region-sidebar",
+        "role": "sidebar",
+        "nodeIds": 1
+      },
+      {
+        "id": "region-list",
+        "role": "list",
+        "nodeIds": 2
+      },
+      {
+        "id": "region-form",
+        "role": "form",
+        "nodeIds": 1
+      }
+    ],
+    "contentLists": [
+      {
+        "id": "list-6610c2b0846b",
+        "label": "list content list",
+        "regionId": "region-list",
+        "itemNodeIds": [
+          "view-post-fun-1",
+          "view-post-fun-2"
+        ],
+        "representativeNodeIds": [
+          "view-post-fun-1",
+          "view-post-fun-2"
+        ],
+        "confidence": 0.64
+      }
+    ],
+    "forms": [
+      {
+        "id": "form-region-form",
+        "label": "form form",
+        "fieldNodeIds": [
+          "view-password-field"
+        ],
+        "submitNodeIds": [],
+        "riskHints": [
+          "credential"
+        ],
+        "confidence": 0.72
+      }
+    ],
+    "diagnostics": {
+      "buildTimeMs": 11,
+      "truncatedElements": 0,
+      "totalElements": 5,
+      "graphNodeCount": 12,
+      "graphEdgeCount": 18,
+      "freshnessReason": "snapshot is recent and stable enough",
+      "warnings": []
+    },
+    "redaction": {
+      "redactedFieldCount": 1,
+      "redactedNodeIds": [
+        "view-password-field"
+      ],
+      "policy": "metadata_only"
+    }
+  },
+  "conceptResolution": {
+    "primary": {
+      "id": "concept-filter",
+      "role": "button",
+      "label": "개념글",
+      "href": ""
+    },
+    "alternatives": [
+      {
+        "id": "sidebar-concept",
+        "label": "개념글[동물,기타]"
+      },
+      {
+        "id": "password-field",
+        "label": "password"
+      },
+      {
+        "id": "post-fun-1",
+        "label": "흥미로운 기술 글 제목"
+      },
+      {
+        "id": "post-fun-2",
+        "label": "또 다른 긴 게시글 제목"
+      }
+    ],
+    "confidence": 0.906,
+    "reason": "Semantic Interface selected button 개념글 for activate.",
+    "semanticOutcome": "act"
+  },
+  "contentResolution": {
+    "primary": {
+      "id": "post-fun-1",
+      "role": "link",
+      "label": "흥미로운 기술 글 제목",
+      "href": "https://example.test/board/view?id=topic&no=123456"
+    },
+    "alternatives": [
+      {
+        "id": "post-fun-2",
+        "label": "또 다른 긴 게시글 제목"
+      }
+    ],
+    "confidence": 0.97,
+    "reason": "Selected representative content item link 흥미로운 기술 글 제목 from Browser View Graph v2 content-list evidence."
+  },
+  "semanticProjection": {
+    "entities": 12,
+    "relations": 17,
+    "conceptEntity": {
+      "browserElementId": "concept-filter",
+      "viewNodeId": "view-concept-filter",
+      "regionRole": "toolbar",
+      "viewActionHint": "filter",
+      "viewRiskHints": "same_page_update",
+      "viewListId": "",
+      "viewFormId": "",
+      "viewFreshness": "fresh",
+      "role": "button",
+      "tagName": "button",
+      "redacted": "false",
+      "viewRevision": "0a4a4eebd1af72eaf229"
+    },
+    "contentEntity": {
+      "browserElementId": "post-fun-1",
+      "viewNodeId": "view-post-fun-1",
+      "regionRole": "list",
+      "viewActionHint": "navigate",
+      "viewRiskHints": "navigation",
+      "viewListId": "list-6610c2b0846b",
+      "viewFormId": "",
+      "viewFreshness": "fresh",
+      "role": "link",
+      "tagName": "a",
+      "redacted": "false",
+      "viewRevision": "0a4a4eebd1af72eaf229"
+    }
+  }
+}

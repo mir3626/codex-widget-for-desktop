@@ -11,6 +11,11 @@ export async function readFreshPromptBrowserSnapshot(input: BrowserActionPromptI
   snapshot?: unknown;
   handled: boolean;
 }> {
+  const preparedSnapshot = readPreparedPromptBrowserSnapshot(input);
+  if (preparedSnapshot) {
+    return { snapshot: preparedSnapshot, handled: false };
+  }
+
   const snapshot = await waitForFreshBrowserBridgeSnapshot({
     providers: input.providers,
     browserExtensionBridge: input.browserExtensionBridge,
@@ -35,4 +40,30 @@ export async function readFreshPromptBrowserSnapshot(input: BrowserActionPromptI
   input.emit({ type: "session.state", state: "idle", id: input.message.id });
   broadcastLedgerSnapshot(input.clients, input.storage, input.sessionId);
   return { snapshot, handled: true };
+}
+
+function readPreparedPromptBrowserSnapshot(input: BrowserActionPromptInput): unknown | undefined {
+  const snapshot = input.providers.getDomSnapshot();
+  const observation = input.providers.getDomObservation();
+  if (!snapshot || !observation?.viewGraph || observation.viewGraph.schemaVersion !== "browser-view-graph.v2") {
+    return undefined;
+  }
+  const mismatch = readBrowserBridgeSnapshotMismatch(input.browserExtensionBridge.snapshot(), snapshot);
+  if (mismatch) {
+    return undefined;
+  }
+  if (observation.viewGraph.identity.freshness !== "fresh") {
+    return undefined;
+  }
+  const capturedAt = Date.parse(observation.capturedAt);
+  if (!Number.isFinite(capturedAt) || Date.now() - capturedAt > 10_000) {
+    return undefined;
+  }
+  recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", "Using prepared Browser View Graph v2 for prompt Browser Action", {
+    viewRevision: observation.viewGraph.identity.viewRevision,
+    routeKey: observation.viewGraph.identity.routeKey,
+    freshness: observation.viewGraph.identity.freshness,
+    graphNodeCount: observation.viewGraph.nodes.length
+  });
+  return snapshot;
 }

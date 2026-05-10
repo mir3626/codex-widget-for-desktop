@@ -47,7 +47,26 @@ export function normalizeElement(input: unknown, index: number): BrowserElement 
     href,
     inputType,
     confidence: clampElementConfidence(record?.confidence, selector ? 0.85 : 0.65),
-    riskHints
+    riskHints,
+    sourceOrder: readOptionalInteger(record?.sourceOrder),
+    domPathHash: trimField(record?.domPathHash, 160),
+    parentPathHash: trimField(record?.parentPathHash, 160),
+    frameId: trimField(record?.frameId, 160),
+    frameUrl: trimField(record?.frameUrl, 1000),
+    shadowRootBoundary: typeof record?.shadowRootBoundary === "boolean" ? record.shadowRootBoundary : undefined,
+    ariaControls: readStringList(record?.ariaControls),
+    ariaDescribedBy: readStringList(record?.ariaDescribedBy),
+    ariaLabelledBy: readStringList(record?.ariaLabelledBy),
+    headingLevel: readOptionalInteger(record?.headingLevel),
+    nearestHeading: trimField(record?.nearestHeading, 500),
+    nearestLandmark: trimField(record?.nearestLandmark, 160),
+    formOwner: trimField(record?.formOwner, 160),
+    listOwner: trimField(record?.listOwner, 160),
+    computedVisibility: normalizeComputedVisibility(record?.computedVisibility),
+    isStickyOrFixed: typeof record?.isStickyOrFixed === "boolean" ? record.isStickyOrFixed : undefined,
+    isLikelyOverlay: typeof record?.isLikelyOverlay === "boolean" ? record.isLikelyOverlay : undefined,
+    mutationRevision: trimField(record?.mutationRevision, 160),
+    lastMutationAt: trimField(record?.lastMutationAt, 128)
   };
 }
 
@@ -88,7 +107,7 @@ function readRiskHints(input: { tagName: string; role: string; inputType: string
   }
   if (/(pay|purchase|checkout|billing|card|결제|구매|카드)/i.test(haystack)) hints.add("payment");
   if (/(delete|remove|archive|삭제|제거|지워)/i.test(haystack)) hints.add("delete");
-  if (input.inputType === "submit" || /(submit|send|post|publish|save|저장|보내|게시|제출)/i.test(haystack)) hints.add("submit");
+  if (input.inputType === "submit" || /(submit|send|publish|save|저장|보내|제출|게시(?!글))/i.test(haystack)) hints.add("submit");
   if (input.inputType === "file" || /(upload|첨부|업로드)/i.test(haystack)) hints.add("file_upload");
   if (/(download|다운로드)/i.test(haystack)) hints.add("download");
   return [...hints];
@@ -101,4 +120,25 @@ function shouldRedactInput(inputType: string, tagName: string): boolean {
 function clampElementConfidence(value: unknown, fallback: number): number {
   const number = typeof value === "number" ? value : Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function readOptionalInteger(value: unknown): number | undefined {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.floor(number) : undefined;
+}
+
+function readStringList(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const items = value
+    .map((item) => trimField(item, 160))
+    .filter(Boolean);
+  return items.length ? items : undefined;
+}
+
+function normalizeComputedVisibility(value: unknown): BrowserElement["computedVisibility"] {
+  return ["visible", "hidden", "transparent", "offscreen"].includes(String(value))
+    ? String(value) as BrowserElement["computedVisibility"]
+    : undefined;
 }

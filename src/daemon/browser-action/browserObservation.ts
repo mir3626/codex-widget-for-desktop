@@ -34,13 +34,17 @@ export function buildBrowserObservation(input: {
   const focusedElementId = resolveFocusedElementId(elements, record?.focusedElementId);
   const capturedAt = trimField(record?.capturedAt, 128) || (input.now ?? new Date()).toISOString();
   const text = trimField(record?.text, MAX_TEXT_LENGTH);
+  const readyState = normalizeReadyState(record?.readyState);
   const viewGraph = normalizeViewGraph(record?.viewGraph, {
     source,
     url,
     title,
     capturedAt,
+    readyState,
+    focusedElementId,
     text,
-    elements
+    elements,
+    now: input.now
   });
   return {
     id: `obs-${hashStable(`${url}:${title}:${record?.capturedAt ?? ""}:${elements.length}:${randomUUID()}`).slice(0, 16)}`,
@@ -55,7 +59,7 @@ export function buildBrowserObservation(input: {
     },
     url,
     title,
-    readyState: normalizeReadyState(record?.readyState),
+    readyState,
     viewport: normalizeViewport(record?.viewport),
     selection: trimField(record?.selection, MAX_TEXT_LENGTH),
     focusedElementId,

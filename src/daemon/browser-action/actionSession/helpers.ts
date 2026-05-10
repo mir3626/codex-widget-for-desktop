@@ -19,7 +19,10 @@ export function readExpectedSourceForCommand(session: BrowserActionSession, obse
     url: observation?.url || session.source.url,
     title: observation?.title || session.source.title,
     tabId: observation?.source.tabId ?? session.source.tabId,
-    windowId: observation?.source.windowId ?? session.source.windowId
+    windowId: observation?.source.windowId ?? session.source.windowId,
+    viewRevision: observation?.viewGraph?.identity.viewRevision ?? session.source.viewRevision,
+    routeKey: observation?.viewGraph?.identity.routeKey ?? session.source.routeKey,
+    freshness: observation?.viewGraph?.identity.freshness ?? session.source.freshness
   };
 }
 

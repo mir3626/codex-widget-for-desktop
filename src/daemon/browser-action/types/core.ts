@@ -14,6 +14,9 @@ export type BrowserActionSource = {
   url?: string;
   title?: string;
   windowId?: string;
+  viewRevision?: string;
+  routeKey?: string;
+  freshness?: "fresh" | "settling" | "stale" | "unknown";
 };
 
 export type BrowserViewport = {
@@ -57,6 +60,25 @@ export type BrowserElement = {
   inputType?: string;
   confidence: number;
   riskHints: BrowserElementRiskHint[];
+  sourceOrder?: number;
+  domPathHash?: string;
+  parentPathHash?: string;
+  frameId?: string;
+  frameUrl?: string;
+  shadowRootBoundary?: boolean;
+  ariaControls?: string[];
+  ariaDescribedBy?: string[];
+  ariaLabelledBy?: string[];
+  headingLevel?: number;
+  nearestHeading?: string;
+  nearestLandmark?: string;
+  formOwner?: string;
+  listOwner?: string;
+  computedVisibility?: "visible" | "hidden" | "transparent" | "offscreen";
+  isStickyOrFixed?: boolean;
+  isLikelyOverlay?: boolean;
+  mutationRevision?: string;
+  lastMutationAt?: string;
 };
 
 export type BrowserImageEvidence = {

@@ -47,7 +47,8 @@ export function normalizeProvidedViewGraph(
       interactiveDigest: trimField(identityRecord?.interactiveDigest, 160) || hashStable(fallback.elements.map((element) => `${element.id}:${element.label}`).join("|")).slice(0, 16)
     },
     nodes: (record.nodes as unknown[]).map((node, index) => normalizeViewNode(node, index)).filter((node): node is BrowserViewNode => Boolean(node)),
-    edges: (record.edges as unknown[]).map((edge) => normalizeViewEdge(edge)).filter((edge): edge is BrowserViewGraph["edges"][number] => Boolean(edge))
+    edges: (record.edges as unknown[]).map((edge) => normalizeViewEdge(edge)).filter((edge): edge is BrowserViewGraph["edges"][number] => Boolean(edge)),
+    schemaVersion: String(record.schemaVersion || identityRecord?.schemaVersion || "") === "browser-view-graph.v2" ? "browser-view-graph.v2" : "browser-view-graph.v1"
   };
 }
 
@@ -58,11 +59,19 @@ function normalizeViewNode(value: unknown, index: number): BrowserViewNode | und
     id: trimField(record.id, 160) || `view-node-${index + 1}`,
     kind: normalizeViewNodeKind(record.kind),
     label: trimField(record.label, 700),
+    text: trimField(record.text, 1000),
     role: trimField(record.role, 80),
     elementId: trimField(record.elementId, 120),
     regionRole: normalizeRegionRole(record.regionRole),
     bbox: normalizeRect(record.bbox),
-    visible: record.visible === undefined ? true : Boolean(record.visible)
+    visible: record.visible === undefined ? true : Boolean(record.visible),
+    actionHint: normalizeActionHint(record.actionHint),
+    riskHints: normalizeRiskHints(record.riskHints),
+    regionId: trimField(record.regionId, 160),
+    listId: trimField(record.listId, 160),
+    formId: trimField(record.formId, 160),
+    sourceElementIds: Array.isArray(record.sourceElementIds) ? record.sourceElementIds.map((item) => trimField(item, 160)).filter(Boolean) : undefined,
+    confidence: clampNumber(record.confidence, 0.7)
   };
 }
 
@@ -71,8 +80,23 @@ function normalizeViewEdge(value: unknown): BrowserViewGraph["edges"][number] | 
   const from = trimField(record?.from, 160);
   const to = trimField(record?.to, 160);
   if (!from || !to) return undefined;
-  const relation = ["contains", "labels", "same_group", "filters", "submits", "navigates_to", "item_of"].includes(String(record?.relation))
+  const relation = ["contains", "labels", "describes", "adjacent_to", "same_group", "filters", "controls", "submits", "navigates_to", "opens", "updates_region", "selected_in", "focused_in", "error_for", "depends_on", "item_of", "list_item_of"].includes(String(record?.relation))
     ? String(record?.relation) as BrowserViewGraph["edges"][number]["relation"]
     : "contains";
   return { from, to, relation, confidence: clampNumber(record?.confidence, 0.7) };
+}
+
+function normalizeActionHint(value: unknown): BrowserViewNode["actionHint"] {
+  return ["read", "navigate", "filter", "expand", "submit", "delete", "type", "select", "check", "scroll", "unknown"].includes(String(value))
+    ? String(value) as BrowserViewNode["actionHint"]
+    : undefined;
+}
+
+function normalizeRiskHints(value: unknown): BrowserViewNode["riskHints"] {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  return value
+    .map((item) => String(item))
+    .filter((item): item is NonNullable<BrowserViewNode["riskHints"]>[number] => ["safe_read", "same_page_update", "navigation", "submit", "destructive", "credential", "payment", "download", "file_upload", "cross_origin", "unknown"].includes(item));
 }

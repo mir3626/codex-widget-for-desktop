@@ -1180,7 +1180,22 @@ Completed after Codex app-server browser-open duplicate correction:
 
 Use `docs/context/qa.md` for routine follow-up commands.
 
-## Latest Update: Browser View Graph v2 Handoff
+## Latest Update: Browser View Graph v2 Implementation
+
+Iteration `iter-18` completed `docs/plans/browser-view-graph-v2-handoff.md`.
+
+- Browser Action previously relied on prompt-time snapshot/observation; View Graph v2 is now the prepared page-understanding foundation before broader Browser Perception.
+- Added `src/daemon/browser-perception/view-graph/` with schema-versioned v2 graph construction: identity, route key, query signature, freshness, regions, controls, forms, content lists, edges, affordance index, diagnostics, and redaction summary.
+- `BrowserObservation.viewGraph` now emits v2 graphs while preserving existing Browser Action consumers.
+- Browser Bridge snapshots include additive DOM/ARIA/landmark/form/list/mutation metadata; ProviderRegistry stores a prepared BrowserObservation and attaches its v2 graph to the DOM snapshot.
+- Prompt Browser Action can use a fresh prepared v2 graph before falling back to request-time snapshot waiting.
+- Semantic Interface projection carries graph action hints, risk hints, list/form ids, freshness, and view revision; representative content resolution now prefers v2 content-list evidence.
+- Added `npm run smoke:browser-view-graph-v2`, `npm run dogfood:browser-view-graph-v2`, and report `docs/reports/browser-view-graph-v2-dogfood-evidence-2026-05-10.md`.
+- Verification passed `npm run lint`, `npm run smoke` including `build:web`, focused Browser Action/Bridge/Semantic smokes, Browser Action/Semantic/View Graph dogfood scripts, UTF-8/mojibake checks, project report refresh, and `npm run vibe:checkpoint`.
+
+Manual follow-up: reload the unpacked Browser Bridge extension before live-site retesting so Chrome/Edge uses the updated metadata collection code.
+
+## Previous Update: Browser View Graph v2 Handoff
 
 Added `docs/plans/browser-view-graph-v2-handoff.md` as the focused handoff for the next Browser Action prepared-context track.
 

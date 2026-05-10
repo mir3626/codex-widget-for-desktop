@@ -128,6 +128,11 @@ export function browserObservationToSemanticSnapshot(input: {
         browserElementId: element.id,
         viewNodeId: viewNode?.id ?? "",
         regionRole: viewNode?.regionRole ?? "",
+        viewActionHint: viewNode?.actionHint ?? "",
+        viewRiskHints: (viewNode?.riskHints ?? []).join(","),
+        viewListId: viewNode?.listId ?? "",
+        viewFormId: viewNode?.formId ?? "",
+        viewFreshness: observation.viewGraph?.identity.freshness ?? "",
         role: element.role ?? "",
         tagName: element.tagName,
         redacted: sensitive ? "true" : "false"

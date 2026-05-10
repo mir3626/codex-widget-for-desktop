@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-17",
+  "currentIteration": "iter-18",
   "iterations": [
     {
       "id": "iter-1",
@@ -571,6 +571,42 @@
       },
       "summary": "Iteration 17 completed the requested 2 -> 3 -> 1 -> 6 -> 7 -> 5 pass. Browser Action prompt execution now recovers from extension expected-source URL/tab/window mismatch by refreshing the active observation and retrying the affected step once. Browser Bridge poll requests update daemon-visible active-tab status. Representative content resolution now rejects utility/profile/category/comment anchors and prefers article-like content links. Browser prompt failures, clarification, and pending-extension states render clearer user-facing messages instead of opaque execution receipts. Verification covered lint, build, Browser Action/Bridge/Semantic smokes, and dogfood evidence scripts.",
       "completedAt": "2026-05-10T13:45:00.000+09:00"
+    },
+    {
+      "id": "iter-18",
+      "label": "Browser View Graph v2 Prepared Context",
+      "startedAt": "2026-05-10T14:05:12.307+09:00",
+      "goal": "Implement docs/plans/browser-view-graph-v2-handoff.md: schema-versioned Browser View Graph v2 as the prepared-context foundation for Browser Action, integrated with BrowserObservation, Semantic Interface evidence, extension metadata, prompt/direct consumption, freshness/SPA handling, smokes, and dogfood evidence.",
+      "plannedSprints": [
+        "iter-18-sprint-01-view-graph-v2-types-identity-and-builder",
+        "iter-18-sprint-02-extension-metadata-and-prepared-provider-context",
+        "iter-18-sprint-03-semantic-evidence-and-target-resolution",
+        "iter-18-sprint-04-smoke-dogfood-and-completion"
+      ],
+      "completedSprints": [
+        "iter-18-sprint-01-view-graph-v2-types-identity-and-builder",
+        "iter-18-sprint-02-extension-metadata-and-prepared-provider-context",
+        "iter-18-sprint-03-semantic-evidence-and-target-resolution",
+        "iter-18-sprint-04-smoke-dogfood-and-completion"
+      ],
+      "carryover": "Iter-17 hardened Browser Action runtime recovery and UX, but prepared page understanding was still not a first-class module. Iter-18 records that Browser Action previously used prompt-time snapshot/observation and implements View Graph v2 before broader Browser Perception.",
+      "openRisks": [
+        "A full Browser Perception scheduler remains future work; this iteration prepares the schema/model and prompt fast path without claiming continuous multi-tab perception is complete.",
+        "Live Browser Bridge behavior still requires reloading the unpacked extension after service-worker changes.",
+        "Shadow DOM, cross-origin iframes, virtualized lists, and highly visual/icon-only UIs may need later adapter or Vision Context fusion."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.985,
+        "durable-codex-runtime": 0.97,
+        "real-tool-providers": 1,
+        "resident-desktop-readiness": 0.965,
+        "durable-product-state": 0.99,
+        "semantic-interface": 1,
+        "semantic-memory": 1,
+        "browser-view-graph-v2": 1
+      },
+      "summary": "Iteration 18 completed Browser View Graph v2 as a prepared-context foundation. BrowserObservation now emits schema-versioned v2 graphs with identity, freshness, route/query signatures, regions, controls, forms, content lists, edges, affordance indexes, diagnostics, and redaction summaries. Browser Bridge adds metadata for graph construction; ProviderRegistry stores prepared observations and prompt Browser Action can use a fresh prepared graph before falling back to request-time snapshot waits. Semantic Interface receives graph action/risk/list/form/freshness evidence, representative content resolution uses v2 content-list evidence, and smoke/dogfood evidence covers the generic filter -> reobserve -> representative content flow.",
+      "completedAt": "2026-05-10T14:18:48.082+09:00"
     }
   ]
 }
