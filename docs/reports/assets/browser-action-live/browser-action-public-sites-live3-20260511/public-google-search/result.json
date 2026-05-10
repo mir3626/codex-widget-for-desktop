@@ -1,0 +1,16 @@
+{
+  "scenarioId": "public-google-search",
+  "status": "fail",
+  "failureClass": "wrong_effect",
+  "elapsedMs": 6454,
+  "finalUrl": "https://www.google.com/",
+  "answer": "Browser Action 대상이 애매해서 바로 실행하지 않았습니다.\n\nbutton Google 검색\ncombobox 검색\nbutton I’m Feeling Lucky\nnavigation Google 정보 스토어 Gmail이미지 로그인\nlink Google 정보\n\n위 후보 중 번호를 선택하면 이어서 실행합니다.",
+  "answerRedacted": false,
+  "answerLength": 174,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-google-search\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-google-search\\screenshot-after.png",
+    "widgetBefore": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-google-search\\widget-before.png",
+    "widgetAfter": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-google-search\\widget-after.png"
+  }
+}

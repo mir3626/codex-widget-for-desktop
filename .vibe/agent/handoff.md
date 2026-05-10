@@ -4,6 +4,27 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Browser Action Public-Site Widget UI Dogfood
+
+Public-site Browser Action dogfood now has a reusable scenario file and runner support for isolated all-sites extension permission testing.
+
+- Added `docs/dogfood/browser-action-public-sites-smoke.jsonl` with widget-UI prompts for DCInside, FMKorea, Naver, and Google.
+- `scripts/browser-action-live-runner.mjs` now supports `--grant-all-site-permission`. The runner copies the unpacked extension into a temp directory, injects `http://*/*` and `https://*/*` host permissions into that temporary manifest, enables Browser Bridge `allowAllSites` for the temporary profile, and leaves the checked-in extension manifest unchanged.
+- The widget-UI runner can now answer clarification input cards via `clarificationChoice` before continuing approval handling.
+- Active-tab matching in the runner now tolerates same-origin/same-path URLs with browser-added query strings when the scenario expected URL had no query, which fixed Google `?zx=...` active-tab validation.
+- Browser Action intent classification no longer treats direct filter/navigation clicks such as `개념글 눌러줘` as representative content-open requests. This fixed the public DCInside concept-tab scenario without adding site-specific rules.
+
+Latest public-site run: `docs/reports/browser-action-live-report-browser-action-public-sites-live3-20260511.md`.
+
+Result: 6 passed / 2 failed.
+
+- Passed: DCInside read, DCInside concept click, FMKorea read, FMKorea back, Naver read, Google read.
+- Failed: Naver search and Google search. Both failures reached clarification, selected the search combobox, and typed the requested query successfully, but clarification resume completed only that clarified `type` step and did not continue the original multi-step plan to submit/search. This is a real Browser Interaction Transaction follow-up: clarification resume needs to preserve and continue remaining candidate steps and emit a final user-facing completion after extension-backed clarified commands.
+
+Verification for this change passed `node --check scripts/browser-action-live-runner.mjs`, `npm run lint`, `npm run smoke:browser-action:prompt-classification`, `npm run smoke:browser-action`, `git diff --check`, and mojibake scan.
+
+Runtime was restarted after the daemon-side intent change. Renderer is listening on `127.0.0.1:5173` with PID `113488`, daemon is healthy on `127.0.0.1:4128` with PID `106840`, and widget PID is `115152`.
+
 ## Latest Update: Browser Bridge Observe Wake-Up
 
 Follow-up live widget log review found one remaining Browser Action failure after the previous latency fix: connected/allowed Browser Bridge prompts could still time out waiting for a fresh active-tab observation because the extension WebSocket wake-up handler ignored `browser_perception_waiting` / `observe_queued` events. The handler now wakes command polling for fresh observe commands, prompt action commands (`plan_paused_for_extension`), approval/direct queued commands, and clarification-resume queued commands. Concurrent wake-ups are coalesced instead of dropped while a poll is already running.

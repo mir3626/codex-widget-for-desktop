@@ -1,0 +1,16 @@
+{
+  "scenarioId": "public-dcinside-read",
+  "status": "pass",
+  "failureClass": "",
+  "elapsedMs": 287,
+  "finalUrl": "https://gall.dcinside.com/mgallery/board/lists?id=thesingularity",
+  "answer": "현재 보고 있는 페이지는 특이점이 온다 마이너 갤러리 - 커뮤니티 포털 디시인사이드입니다. URL: https://gall.dcinside.com/mgallery/board/lists?id=thesingularity\n\n주요 내용:\n\n통합검색 바로가기 본문영역 바로가기 페이지 하단 게시물 리스트 바로가기 페이지 하단 로그인영역 바로가기 갤러리 미니갤 인물갤 갤로그 디시게임 이벤트 디시콘 로그인 야간모드 야간 모드를 이용해 보세요 갤러리 마이너갤 미니갤 인물갤 갤로그 BJ방송 어제 1,038,061개 게시글 등록 어제 2,653,718개 댓글 등록 총 갤러리 수 94,623개 디시 로터리 응모 최근 방문 특이점이 온다...\n\" 매니저 exp(ritorito) 부매니저 퐁칸8(zxvw157) かみ(thank346…) Asi(worship5…) 203847년걸리겠죠(awful685…) 2028재귀개선(tiger436…) 회색(counsel8…) 특갤봇(image848…) 얀로롱(indoor46…) 특갤에이전트(anecdote…) 일본에간대학원생(math4457) 개설일 2019-08-01 갤러리 관리 내역 전...\n운영자 26/05/11 - - 1102918 공지 특갤 통합 공지 / 신고 및 문의 [3] exp 26.04.12 35164 8 353422 공지 완몰가가 궁금한 사람들은 필독 (계속 추가 예정) [27] 부패하는유전자!!!\n23.09.03 51011 78 572295 공지 특갤 용어 모음집 [9] ㅇㅇ 24.11.24 19189 12 1045755 공지 특갤봇v2 신문고입니다.\n\n보이는 주요 조작 요소: 통합검색 바로가기, 본문영역 바로가기, 페이지 하단 게시물 리스트 바로가기, 페이지 하단 로그인영역 바로가기, #focus_retriever",
+  "answerRedacted": false,
+  "answerLength": 879,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-dcinside-read\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-dcinside-read\\screenshot-after.png",
+    "widgetBefore": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-dcinside-read\\widget-before.png",
+    "widgetAfter": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-dcinside-read\\widget-after.png"
+  }
+}

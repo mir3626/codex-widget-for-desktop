@@ -1,0 +1,32 @@
+{
+  "extensionVersion": "0.1.0",
+  "daemonBaseUrl": "http://127.0.0.1:40940",
+  "connected": true,
+  "mode": "idle",
+  "reason": "browser_bridge",
+  "updatedAt": "2026-05-10T17:50:39.776Z",
+  "lastSeenAt": "2026-05-10T17:50:39.776Z",
+  "lastObservationAt": "2026-05-10T17:50:39.768Z",
+  "lastError": null,
+  "nativeHost": "disabled",
+  "activeTab": {
+    "tabId": 1072242650,
+    "windowId": 1072242649,
+    "url": "https://www.fmkorea.com/",
+    "title": "에펨코리아 펨코 - 유머, 축구, 게임, 풋볼매니저",
+    "origin": "<all_urls>",
+    "permission": "allowed"
+  },
+  "settings": {
+    "daemonBaseUrl": "http://127.0.0.1:40940",
+    "autoConnect": true,
+    "autoObserve": true,
+    "allowAllSites": true,
+    "observeBlocklist": [],
+    "allowSafeReadScroll": true,
+    "requireApprovalForClickType": false,
+    "useNativeHost": false,
+    "debugSnapshot": false,
+    "pollIntervalSeconds": 5
+  }
+}

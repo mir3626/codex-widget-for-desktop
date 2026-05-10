@@ -1,0 +1,16 @@
+{
+  "scenarioId": "public-dcinside-concept-click",
+  "status": "pass",
+  "failureClass": "",
+  "elapsedMs": 3194,
+  "finalUrl": "https://gall.dcinside.com/mgallery/board/lists/?id=thesingularity&exception_mode=recommend",
+  "answer": "브라우저 동작을 완료했습니다. 실행: click 개념글 현재 페이지: 특이점이 온다 마이너 갤러리 - 커뮤니티 포털 디시인사이드 (https://gall.dcinside.com/mgallery/board/lists/?id=thesingularity&exception_mode=recommend) 검증: Action changed the browser route or URL.",
+  "answerRedacted": false,
+  "answerLength": 209,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-dcinside-concept-click\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-dcinside-concept-click\\screenshot-after.png",
+    "widgetBefore": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-dcinside-concept-click\\widget-before.png",
+    "widgetAfter": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-dcinside-concept-click\\widget-after.png"
+  }
+}

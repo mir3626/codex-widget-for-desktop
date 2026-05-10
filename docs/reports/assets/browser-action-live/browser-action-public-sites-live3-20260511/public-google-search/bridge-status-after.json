@@ -1,0 +1,32 @@
+{
+  "extensionVersion": "0.1.0",
+  "daemonBaseUrl": "http://127.0.0.1:40940",
+  "connected": true,
+  "mode": "idle",
+  "reason": "wake_retry:clarification_selected_queued:3000",
+  "updatedAt": "2026-05-10T17:51:23.728Z",
+  "lastSeenAt": "2026-05-10T17:51:23.728Z",
+  "lastObservationAt": "2026-05-10T17:51:18.742Z",
+  "lastError": null,
+  "nativeHost": "disabled",
+  "activeTab": {
+    "tabId": 1072242650,
+    "windowId": 1072242649,
+    "url": "https://www.google.com/",
+    "title": "Google",
+    "origin": "https://www.google.com/*",
+    "permission": "allowed"
+  },
+  "settings": {
+    "daemonBaseUrl": "http://127.0.0.1:40940",
+    "autoConnect": true,
+    "autoObserve": true,
+    "allowAllSites": true,
+    "observeBlocklist": [],
+    "allowSafeReadScroll": true,
+    "requireApprovalForClickType": false,
+    "useNativeHost": false,
+    "debugSnapshot": false,
+    "pollIntervalSeconds": 5
+  }
+}

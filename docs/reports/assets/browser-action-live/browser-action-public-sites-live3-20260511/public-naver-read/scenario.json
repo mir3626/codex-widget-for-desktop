@@ -1,0 +1,16 @@
+{
+  "id": "public-naver-read",
+  "mode": "widget-ui",
+  "url": "https://www.naver.com/",
+  "prompt": "지금 보고있는 네이버 페이지의 검색창과 주요 섹션을 간단히 설명해줘",
+  "expect": {
+    "forbidAnswer": [
+      "plan:",
+      "latest result",
+      "Browser Action을 실행했습니다.",
+      "완료하지 못했습니다",
+      "권한"
+    ],
+    "maxMs": 45000
+  }
+}

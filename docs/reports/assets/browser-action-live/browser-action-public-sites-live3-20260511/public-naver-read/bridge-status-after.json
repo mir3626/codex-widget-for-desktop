@@ -1,0 +1,32 @@
+{
+  "extensionVersion": "0.1.0",
+  "daemonBaseUrl": "http://127.0.0.1:40940",
+  "connected": true,
+  "mode": "idle",
+  "reason": "wake_retry:browser_perception_waiting:900",
+  "updatedAt": "2026-05-10T17:50:58.277Z",
+  "lastSeenAt": "2026-05-10T17:50:58.278Z",
+  "lastObservationAt": "2026-05-10T17:50:47.122Z",
+  "lastError": null,
+  "nativeHost": "disabled",
+  "activeTab": {
+    "tabId": 1072242650,
+    "windowId": 1072242649,
+    "url": "https://www.naver.com/",
+    "title": "NAVER",
+    "origin": "https://www.naver.com/*",
+    "permission": "allowed"
+  },
+  "settings": {
+    "daemonBaseUrl": "http://127.0.0.1:40940",
+    "autoConnect": true,
+    "autoObserve": true,
+    "allowAllSites": true,
+    "observeBlocklist": [],
+    "allowSafeReadScroll": true,
+    "requireApprovalForClickType": false,
+    "useNativeHost": false,
+    "debugSnapshot": false,
+    "pollIntervalSeconds": 5
+  }
+}

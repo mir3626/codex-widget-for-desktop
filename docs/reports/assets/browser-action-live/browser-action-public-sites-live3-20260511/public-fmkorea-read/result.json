@@ -1,0 +1,16 @@
+{
+  "scenarioId": "public-fmkorea-read",
+  "status": "pass",
+  "failureClass": "",
+  "elapsedMs": 12357,
+  "finalUrl": "https://www.fmkorea.com/",
+  "answer": "현재 보고 있는 페이지는 에펨코리아 펨코 - 유머, 축구, 게임, 풋볼매니저입니다. URL: https://www.fmkorea.com/\n\n주요 내용:\n\n에펨코리아 - 유머, 축구, 인터넷 방송, 게임, 풋볼매니저 종합 커뮤니티 포텐터짐 유머/정보 스포츠 쇼핑/투자 일반 게임 커뮤니티 갤러리 풋볼매니저 FC 2군 즐겨찾기 전체 게시판 회원 가입 비번 찾기 인증 메일 재발송 다크OFF 자동 로그인 로그인 신청하기 앳빌듀 분당 영어회화 학원 http://atbuildu.com/ 1.성인전문 2.소수정예 3.왕초보~실력자 4.스케줄자율 5.회...\nhttps://blog.naver.com/ismile_english 분당초등영어 초등영어는 아이스마일잉글리시 포텐 터진 게시판 포텐 터진 게시판 최신 화제 정치 텍스트 형식 이미지 형식 추천 844 선수 죽빵 갈긴 건 괜찮냐?\nㅅㅂ 새끼들아 ㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋ [519] 해외축구 - 첼시 / 3 분 전 / 메이플하고싶다 추천 2129 모수가서 뽕 뽑는 방법 [428] 유머 / 10 시간 전 / 오뚜기빌런 추천 2384 오늘자 MBC 뉴스데스크 레전드 클로징 멘트.avi [1605] 유머 - 움짤 / 5 시간 전 / 나락 추천 23 [11번가] 구글기프트코드 10만원권 (93,000원) (무료) [...\nㅅㅂ 새끼들아 ㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋ [519] 해외축구 - 첼시 3 분 전 / 메이플하고싶다 추천 72 [웨햄 vs 아스날] 온필드리뷰 보러가요 ㄷㄷㄷㄷㄷㄷㄷㄷㄷㄷ [111] 유머 - 움짤 3 분 전 / 우리미드쵸비 추천 178 현시각 지금 토트넘 상황.mp4 [103] 유머 - 움짤 5 분 전 / 구찌c 분당 정자동 초중고 소수정예 분당 정자동 15년 넘게 영어교육에 집중해...\n\n보이는 주요 조작 요소: 로그인, 아이디, 암호, 회원 가입, 비번 찾기",
+  "answerRedacted": false,
+  "answerLength": 917,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-fmkorea-read\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-fmkorea-read\\screenshot-after.png",
+    "widgetBefore": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-fmkorea-read\\widget-before.png",
+    "widgetAfter": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-fmkorea-read\\widget-after.png"
+  }
+}

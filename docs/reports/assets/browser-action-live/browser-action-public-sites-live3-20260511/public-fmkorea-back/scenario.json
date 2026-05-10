@@ -1,0 +1,24 @@
+{
+  "id": "public-fmkorea-back",
+  "mode": "widget-ui",
+  "setupUrls": [
+    "https://www.fmkorea.com/",
+    "https://www.fmkorea.com/best"
+  ],
+  "prompt": "뒤로가기",
+  "expect": {
+    "urlIncludes": [
+      "fmkorea.com/"
+    ],
+    "forbidFinalUrlIncludes": [
+      "/best"
+    ],
+    "forbidAnswer": [
+      "plan:",
+      "latest result",
+      "Browser Action을 실행했습니다.",
+      "완료하지 못했습니다"
+    ],
+    "maxMs": 20000
+  }
+}

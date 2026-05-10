@@ -1,0 +1,16 @@
+{
+  "scenarioId": "public-fmkorea-back",
+  "status": "pass",
+  "failureClass": "",
+  "elapsedMs": 874,
+  "finalUrl": "https://www.fmkorea.com/",
+  "answer": "브라우저 동작을 완료했습니다. 실행: back 현재 페이지: 포텐 터짐 최신순 - 에펨코리아 (https://www.fmkorea.com/best) 검증: Action changed the browser route key.",
+  "answerRedacted": false,
+  "answerLength": 124,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-fmkorea-back\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-fmkorea-back\\screenshot-after.png",
+    "widgetBefore": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-fmkorea-back\\widget-before.png",
+    "widgetAfter": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-fmkorea-back\\widget-after.png"
+  }
+}

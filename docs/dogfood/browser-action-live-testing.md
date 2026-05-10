@@ -40,6 +40,14 @@ Playwright types into the visible widget composer, clicks the real send button, 
 
 Keep target and widget browsers separate. If the widget UI runs in the same extension-enabled browser profile as the target page, the extension can observe the widget tab instead of the intended target page.
 
+For public-site dogfood in an isolated browser, grant host access to the temporary extension copy used by the runner:
+
+```powershell
+npm run dogfood:browser-action:live:widget-ui -- --scenarios docs/dogfood/browser-action-public-sites-smoke.jsonl --grant-all-site-permission
+```
+
+This does not modify the checked-in extension manifest. The runner copies the unpacked extension into a temp directory, adds `http://*/*` and `https://*/*` host permissions to that copy, and enables the Browser Bridge `allowAllSites` setting for the temporary profile.
+
 ## Real Browser Mode
 
 Run against the installed Browser Bridge extension and the currently active user browser tab:

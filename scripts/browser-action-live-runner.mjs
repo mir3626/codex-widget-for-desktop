@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import WebSocket from "ws";
@@ -80,7 +80,12 @@ async function runIsolatedMode(scenarios) {
   const daemon = await startDaemon({ port: options.daemonPort });
   const daemonUrl = `http://127.0.0.1:${daemon.port}`;
   const fixture = await startFixtureServer();
-  const browser = await launchIsolatedBrowser({ daemonUrl, extensionDir: options.extensionDir, headless: options.headless });
+  const browser = await launchIsolatedBrowser({
+    daemonUrl,
+    extensionDir: options.extensionDir,
+    grantAllSitePermission: options.grantAllSitePermission,
+    headless: options.headless
+  });
   const socket = await connectDaemonSocket(daemonUrl);
   const results = [];
 
@@ -162,7 +167,12 @@ async function runWidgetUiMode(scenarios) {
   const daemonUrl = `http://127.0.0.1:${daemon.port}`;
   const fixture = await startFixtureServer();
   const renderer = await startWidgetRendererServer();
-  const targetBrowser = await launchIsolatedBrowser({ daemonUrl, extensionDir: options.extensionDir, headless: options.headless });
+  const targetBrowser = await launchIsolatedBrowser({
+    daemonUrl,
+    extensionDir: options.extensionDir,
+    grantAllSitePermission: options.grantAllSitePermission,
+    headless: options.headless
+  });
   const widgetBrowser = await launchWidgetBrowser({ rendererUrl: renderer.url, daemonPort: daemon.port, headless: options.headless });
   const monitorSocket = await connectDaemonSocket(daemonUrl);
   const results = [];
@@ -609,11 +619,12 @@ function classifyFailure(input) {
 
 async function launchIsolatedBrowser(input) {
   const userDataDir = await mkdtemp(path.join(tmpdir(), "codex-widget-browser-action-live-profile-"));
+  const extension = await prepareExtensionForLiveRun(input.extensionDir, input.grantAllSitePermission);
   const context = await chromium.launchPersistentContext(userDataDir, {
     headless: input.headless,
     args: [
-      `--disable-extensions-except=${input.extensionDir}`,
-      `--load-extension=${input.extensionDir}`,
+      `--disable-extensions-except=${extension.dir}`,
+      `--load-extension=${extension.dir}`,
       "--no-first-run",
       "--no-default-browser-check"
     ]
@@ -628,7 +639,7 @@ async function launchIsolatedBrowser(input) {
     daemonBaseUrl: input.daemonUrl,
     autoConnect: true,
     autoObserve: true,
-    allowAllSites: false,
+    allowAllSites: Boolean(input.grantAllSitePermission),
     observeBlocklist: [],
     allowSafeReadScroll: true,
     requireApprovalForClickType: false,
@@ -653,6 +664,28 @@ async function launchIsolatedBrowser(input) {
       }
       await context.close().catch(() => undefined);
       await rm(userDataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }).catch(() => undefined);
+      await extension.cleanup();
+    }
+  };
+}
+
+async function prepareExtensionForLiveRun(extensionDir, grantAllSitePermission) {
+  if (!grantAllSitePermission) {
+    return { dir: extensionDir, cleanup: async () => undefined };
+  }
+  const tempDir = await mkdtemp(path.join(tmpdir(), "codex-widget-browser-bridge-all-sites-"));
+  await cp(extensionDir, tempDir, { recursive: true });
+  const manifestPath = path.join(tempDir, "manifest.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const hostPermissions = new Set(Array.isArray(manifest.host_permissions) ? manifest.host_permissions : []);
+  hostPermissions.add("http://*/*");
+  hostPermissions.add("https://*/*");
+  manifest.host_permissions = [...hostPermissions];
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  return {
+    dir: tempDir,
+    cleanup: async () => {
+      await rm(tempDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }).catch(() => undefined);
     }
   };
 }
@@ -839,27 +872,52 @@ async function submitWidgetPrompt(page, prompt) {
 }
 
 async function maybeRespondToWidgetApproval(page, scenario, startedAt) {
-  if (!scenario.approval) {
+  if (!scenario.approval && !scenario.clarificationChoice) {
     return;
   }
   const maxMs = readMaxMs(scenario);
-  const approvalCard = page.locator(".interaction-card").first();
-  const waitMs = Math.max(1_000, Math.min(10_000, maxMs - (Date.now() - startedAt)));
-  try {
-    await approvalCard.waitFor({ timeout: waitMs });
-  } catch {
-    return;
-  }
+  const deadline = Date.now() + Math.max(1_000, Math.min(20_000, maxMs - (Date.now() - startedAt)));
+  let clarificationSubmitted = false;
+  let approvalSubmitted = false;
+  while (Date.now() < deadline) {
+    const interactionCard = page.locator(".interaction-card").first();
+    try {
+      await interactionCard.waitFor({ timeout: Math.max(500, Math.min(5_000, deadline - Date.now())) });
+    } catch {
+      return;
+    }
 
-  if (scenario.approval === "deny") {
-    await approvalCard.getByRole("button", { name: "Deny" }).click();
+    const sendButton = interactionCard.getByRole("button", { name: "Send" });
+    if (!clarificationSubmitted && scenario.clarificationChoice && await sendButton.count()) {
+      await interactionCard.locator("input, textarea").first().fill(String(scenario.clarificationChoice));
+      await sendButton.click();
+      clarificationSubmitted = true;
+      await page.waitForTimeout(100);
+      continue;
+    }
+
+    if (!scenario.approval || approvalSubmitted) {
+      return;
+    }
+    const denyButton = interactionCard.getByRole("button", { name: "Deny" });
+    const alwaysAllowButton = interactionCard.getByRole("button", { name: "Always allow" });
+    const allowButton = interactionCard.getByRole("button", { name: "Allow" });
+    if (scenario.approval === "deny" && await denyButton.count()) {
+      await denyButton.click();
+      return;
+    }
+    if (scenario.approval === "always_allow" && await alwaysAllowButton.count()) {
+      await alwaysAllowButton.click();
+      return;
+    }
+    if (await allowButton.count()) {
+      await allowButton.click();
+      approvalSubmitted = true;
+      await page.waitForTimeout(100);
+      continue;
+    }
     return;
   }
-  if (scenario.approval === "always_allow") {
-    await approvalCard.getByRole("button", { name: "Always allow" }).click();
-    return;
-  }
-  await approvalCard.getByRole("button", { name: "Allow" }).click();
 }
 
 async function waitForWidgetAssistantAnswer(page, input) {
@@ -922,12 +980,29 @@ async function waitForBridgeActiveTab(daemonUrl, expectedUrl, timeoutMs) {
   while (Date.now() < deadline) {
     const status = await readBridgeStatus(daemonUrl).catch(() => null);
     const activeUrl = status?.activeTab?.url ?? "";
-    if (status?.connected && status?.mode !== "disconnected" && normalizeUrl(activeUrl) === normalizeUrl(expectedUrl)) {
+    if (status?.connected && status?.mode !== "disconnected" && activeTabUrlMatchesExpected(activeUrl, expectedUrl)) {
       return status;
     }
     await sleep(300);
   }
   throw new Error(`Browser Bridge did not report the expected active tab: ${expectedUrl}`);
+}
+
+function activeTabUrlMatchesExpected(activeUrl, expectedUrl) {
+  const active = normalizeUrl(activeUrl);
+  const expected = normalizeUrl(expectedUrl);
+  if (active === expected) {
+    return true;
+  }
+  try {
+    const activeParsed = new URL(active);
+    const expectedParsed = new URL(expected);
+    return !expectedParsed.search &&
+      activeParsed.origin === expectedParsed.origin &&
+      normalizePathname(activeParsed.pathname) === normalizePathname(expectedParsed.pathname);
+  } catch {
+    return false;
+  }
 }
 
 async function readBridgeStatus(daemonUrl) {
@@ -1010,6 +1085,7 @@ function parseArgs(argv) {
     extensionDir: DEFAULT_EXTENSION_DIR,
     headless: false,
     keepBrowser: false,
+    grantAllSitePermission: false,
     dryRun: false,
     allowFailures: false,
     outputDir: "",
@@ -1028,6 +1104,7 @@ function parseArgs(argv) {
     else if (arg === "--headless") parsed.headless = true;
     else if (arg === "--headed") parsed.headless = false;
     else if (arg === "--keep-browser") parsed.keepBrowser = true;
+    else if (arg === "--grant-all-site-permission") parsed.grantAllSitePermission = true;
     else if (arg === "--dry-run") parsed.dryRun = true;
     else if (arg === "--allow-failures") parsed.allowFailures = true;
     else if (arg === "--output-dir") parsed.outputDir = next();
@@ -1060,6 +1137,7 @@ Options:
   --headed                     show the isolated browser window (default)
   --headless                   run isolated browser headless where the browser supports extensions
   --keep-browser               keep the isolated browser open after the run
+  --grant-all-site-permission  use a temporary unpacked extension copy with http/https host permissions for public-site dogfood
   --daemon-url <url>           real-mode daemon URL, default http://127.0.0.1:4128
   --dry-run                    parse scenarios and write a report without launching browser/daemon
   --allow-failures             keep exit code 0 even when scenarios fail
@@ -1109,6 +1187,10 @@ function normalizeUrl(value) {
   } catch {
     return String(value ?? "").replace(/#.*$/, "");
   }
+}
+
+function normalizePathname(value) {
+  return String(value || "/").replace(/\/$/, "") || "/";
 }
 
 function formatKstDate(date) {

@@ -1,0 +1,21 @@
+{
+  "id": "public-google-search",
+  "mode": "widget-ui",
+  "url": "https://www.google.com/",
+  "prompt": "검색창에 'codex widget browser action' 입력하고 Google 검색 버튼 눌러줘",
+  "clarificationChoice": "2",
+  "approval": "allow",
+  "expect": {
+    "urlIncludes": [
+      "search"
+    ],
+    "forbidAnswer": [
+      "plan:",
+      "latest result",
+      "Browser Action을 실행했습니다.",
+      "완료하지 못했습니다",
+      "확정하지 못"
+    ],
+    "maxMs": 45000
+  }
+}

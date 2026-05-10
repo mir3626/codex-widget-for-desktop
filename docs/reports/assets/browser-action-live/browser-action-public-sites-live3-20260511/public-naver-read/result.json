@@ -1,0 +1,16 @@
+{
+  "scenarioId": "public-naver-read",
+  "status": "pass",
+  "failureClass": "",
+  "elapsedMs": 1005,
+  "finalUrl": "https://www.naver.com/",
+  "answer": "현재 보고 있는 페이지는 NAVER입니다. URL: https://www.naver.com/\n\n주요 내용:\n\n상단영역 바로가기 서비스 메뉴 바로가기 새소식 블록 바로가기 쇼핑 블록 바로가기 관심사 블록 바로가기 MY 영역 바로가기 위젯 보드 바로가기 보기 설정 바로가기 개인정보 보호를 위해 웨일 브라우저를 설치하세요 다운로드 배너 닫기 NAVER 검색 검색 자동완성/최근검색어펼치기 메일 카페 블로그 스토어 뉴스 증권 부동산 지도 웹툰 치지직 추천 바로가기 펼침 확장 영역 페이 바로가기 알림 장...\n부크럼 재생시간 00:56 변호사가 알려주는 올바른 진상 대처법 신동우 변호사 '가장 많이 후회한다..' 60대가 되어보니 진짜 무서운 건 '이것' 다산북스 오직 가정교육 잘 받은 아이만 하는 행동 Top3 피카 출판사 마음까지 채우는 클릭 해피빈 전체보기 기부 아이의 숨소리만 지켰던 20대, 다시 꿈을 꾸는 엄마 플랜코리아 7% 달성 펀딩 사라져 가는 바다의 생명을 기억하는 상괭이 티...\n#책추천 #책클립 #베스트셀러 #추천도서 #소설추천 여르미 도서관 펼쳐보기 네이버를 더 안전하고 편리하게 이용하세요 NAVER 로그인 아이디 찾기비밀번호 찾기회원가입 날씨 예보 비교 성남시 야탑동 9.3° 맑음 최저기온 12° 최고기온 21° 미세좋음초미세좋음 3시 맑음 11° 5 구름많음 10° 7 맑음 13° 9 흐림 17° 11 비 19° 증시 정보 더보기 05.11.\n02:50 새로고침 나스닥 26,247.08 상승 440.88+1.71% 환율 USD 1,464.50 상승 6.50+0.45% 3개월 차트 삼성전자 하락 1.10% 268,500 SK하이닉스 상승 1.93% 1,686,000 현대차 상승 7.17% 613,000 인기종목 더보기 위젯 보드 캘린더 5.11월 로그인하기 2026년 5월 캘린더 - 이번 달의 일정을 날짜별로 확인할 수 있는...\n\n보이는 주요 조작 요소: 배너 닫기, 다운로드, 확장 영역, 페이 바로가기, 알림",
+  "answerRedacted": false,
+  "answerLength": 980,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-naver-read\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-naver-read\\screenshot-after.png",
+    "widgetBefore": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-naver-read\\widget-before.png",
+    "widgetAfter": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-naver-read\\widget-after.png"
+  }
+}

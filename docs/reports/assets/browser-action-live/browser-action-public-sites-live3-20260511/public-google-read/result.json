@@ -1,0 +1,16 @@
+{
+  "scenarioId": "public-google-read",
+  "status": "pass",
+  "failureClass": "",
+  "elapsedMs": 184,
+  "finalUrl": "https://www.google.com/?zx=1778435475818",
+  "answer": "현재 보고 있는 페이지는 Google입니다. URL: https://www.google.com/?zx=[redacted-number]\n\n주요 내용:\n\nGoogle 정보 스토어 Gmail이미지 로그인 AI 모드 대한민국 광고 비즈니스 검색의 원리 개인정보처리방침 약관 설정 Google이 만든 브라우저인 Chrome을 선택하세요 자동 업데이트를 통해 빠르고 안전한 브라우저를 사용해 보세요.\nChrome 사용 안함 Chrome 다운로드\n\n보이는 주요 조작 요소: Google 앱, 로그인, Google 정보, 스토어, Gmail",
+  "answerRedacted": false,
+  "answerLength": 294,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-google-read\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-google-read\\screenshot-after.png",
+    "widgetBefore": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-google-read\\widget-before.png",
+    "widgetAfter": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-google-read\\widget-after.png"
+  }
+}

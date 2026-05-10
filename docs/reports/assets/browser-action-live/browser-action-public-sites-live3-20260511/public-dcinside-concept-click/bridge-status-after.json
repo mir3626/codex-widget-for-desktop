@@ -1,0 +1,32 @@
+{
+  "extensionVersion": "0.1.0",
+  "daemonBaseUrl": "http://127.0.0.1:40940",
+  "connected": true,
+  "mode": "idle",
+  "reason": "wake_retry:browser_perception_waiting:3000",
+  "updatedAt": "2026-05-10T17:50:17.228Z",
+  "lastSeenAt": "2026-05-10T17:50:17.228Z",
+  "lastObservationAt": "2026-05-10T17:50:12.564Z",
+  "lastError": null,
+  "nativeHost": "disabled",
+  "activeTab": {
+    "tabId": 1072242650,
+    "windowId": 1072242649,
+    "url": "https://gall.dcinside.com/mgallery/board/lists/?id=thesingularity&exception_mode=recommend",
+    "title": "특이점이 온다 마이너 갤러리 - 커뮤니티 포털 디시인사이드",
+    "origin": "https://gall.dcinside.com/*",
+    "permission": "allowed"
+  },
+  "settings": {
+    "daemonBaseUrl": "http://127.0.0.1:40940",
+    "autoConnect": true,
+    "autoObserve": true,
+    "allowAllSites": true,
+    "observeBlocklist": [],
+    "allowSafeReadScroll": true,
+    "requireApprovalForClickType": false,
+    "useNativeHost": false,
+    "debugSnapshot": false,
+    "pollIntervalSeconds": 5
+  }
+}

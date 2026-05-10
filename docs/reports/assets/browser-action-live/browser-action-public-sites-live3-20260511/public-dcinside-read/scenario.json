@@ -1,0 +1,16 @@
+{
+  "id": "public-dcinside-read",
+  "mode": "widget-ui",
+  "url": "https://gall.dcinside.com/mgallery/board/lists?id=thesingularity",
+  "prompt": "지금 보고있는 갤러리 페이지의 주요 메뉴와 글 목록을 간단히 설명해줘",
+  "expect": {
+    "forbidAnswer": [
+      "plan:",
+      "latest result",
+      "Browser Action을 실행했습니다.",
+      "완료하지 못했습니다",
+      "권한"
+    ],
+    "maxMs": 45000
+  }
+}

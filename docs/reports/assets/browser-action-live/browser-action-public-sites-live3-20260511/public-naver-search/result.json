@@ -1,0 +1,16 @@
+{
+  "scenarioId": "public-naver-search",
+  "status": "fail",
+  "failureClass": "wrong_effect",
+  "elapsedMs": 6572,
+  "finalUrl": "https://www.naver.com/",
+  "answer": "Browser Action 대상이 애매해서 바로 실행하지 않았습니다.\n\ncombobox 검색어를 입력해 주세요.\nbutton 검색\nlink https://news.naver.com/election/region2026\ntabpanel div:nth-of-type(3) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(3)\nlink https://www.naver.com/#\n\n위 후보 중 번호를 선택하면 이어서 실행합니다.",
+  "answerRedacted": false,
+  "answerLength": 289,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-naver-search\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-naver-search\\screenshot-after.png",
+    "widgetBefore": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-naver-search\\widget-before.png",
+    "widgetAfter": "docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511\\public-naver-search\\widget-after.png"
+  }
+}

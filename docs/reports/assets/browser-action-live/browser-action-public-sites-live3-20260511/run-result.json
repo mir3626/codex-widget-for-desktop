@@ -1,0 +1,99 @@
+{
+  "runId": "browser-action-public-sites-live3-20260511",
+  "mode": "widget-ui",
+  "daemonUrl": "http://127.0.0.1:40940",
+  "rendererUrl": "http://127.0.0.1:5174",
+  "outputDir": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\browser-action-live\\browser-action-public-sites-live3-20260511",
+  "reportPath": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\browser-action-live-report-browser-action-public-sites-live3-20260511.md",
+  "startedAt": "2026-05-10T17:51:26.736Z",
+  "results": [
+    {
+      "id": "public-dcinside-read",
+      "mode": "widget-ui",
+      "prompt": "지금 보고있는 갤러리 페이지의 주요 메뉴와 글 목록을 간단히 설명해줘",
+      "status": "pass",
+      "failureClass": "",
+      "elapsedMs": 292,
+      "finalUrl": "https://gall.dcinside.com/mgallery/board/lists?id=thesingularity",
+      "answerPreview": "현재 보고 있는 페이지는 특이점이 온다 마이너 갤러리 - 커뮤니티 포털 디시인사이드입니다. URL: https://gall.dcinside.com/mgallery/board/lists?id=thesingularity\n\n주요 내용:\n\n통합검색 바로가기 본문영역 바로가기 페이지 하단 게시물 리스트 바로가기 페이지 하단 로그인영역 바로가기 갤러리 미니갤 인물갤 갤로그 디시게임 이벤트 디시콘 로그인 야간모드 야간 모드를 이용해 보세요 갤러리 마이너갤 미니갤 인물갤 갤로그 BJ방송 어제 1,038,061개 게시글 등록 어제 2,653,718개 댓글 등록 총 갤러리 수 94,623개 디시 로터리 응모 최근 방문 특이점이 온다...\n\" 매니저 exp(ritorito) 부매니저 퐁칸8(zxvw157) かみ(thank346…) Asi(worship5…) 203847년걸리겠죠(awful685…) 2028재귀개선(tiger436…) 회색(counsel8…) 특갤봇(image848…) 얀로롱(indoor",
+      "artifactDir": "docs/reports/assets/browser-action-live/browser-action-public-sites-live3-20260511/public-dcinside-read"
+    },
+    {
+      "id": "public-dcinside-concept-click",
+      "mode": "widget-ui",
+      "prompt": "개념글 눌러줘",
+      "status": "pass",
+      "failureClass": "",
+      "elapsedMs": 3200,
+      "finalUrl": "https://gall.dcinside.com/mgallery/board/lists/?id=thesingularity&exception_mode=recommend",
+      "answerPreview": "브라우저 동작을 완료했습니다. 실행: click 개념글 현재 페이지: 특이점이 온다 마이너 갤러리 - 커뮤니티 포털 디시인사이드 (https://gall.dcinside.com/mgallery/board/lists/?id=thesingularity&exception_mode=recommend) 검증: Action changed the browser route or URL.",
+      "artifactDir": "docs/reports/assets/browser-action-live/browser-action-public-sites-live3-20260511/public-dcinside-concept-click"
+    },
+    {
+      "id": "public-fmkorea-read",
+      "mode": "widget-ui",
+      "prompt": "지금 보고있는 페이지에서 보이는 주요 메뉴와 글 목록을 간단히 설명해줘",
+      "status": "pass",
+      "failureClass": "",
+      "elapsedMs": 12362,
+      "finalUrl": "https://www.fmkorea.com/",
+      "answerPreview": "현재 보고 있는 페이지는 에펨코리아 펨코 - 유머, 축구, 게임, 풋볼매니저입니다. URL: https://www.fmkorea.com/\n\n주요 내용:\n\n에펨코리아 - 유머, 축구, 인터넷 방송, 게임, 풋볼매니저 종합 커뮤니티 포텐터짐 유머/정보 스포츠 쇼핑/투자 일반 게임 커뮤니티 갤러리 풋볼매니저 FC 2군 즐겨찾기 전체 게시판 회원 가입 비번 찾기 인증 메일 재발송 다크OFF 자동 로그인 로그인 신청하기 앳빌듀 분당 영어회화 학원 http://atbuildu.com/ 1.성인전문 2.소수정예 3.왕초보~실력자 4.스케줄자율 5.회...\nhttps://blog.naver.com/ismile_english 분당초등영어 초등영어는 아이스마일잉글리시 포텐 터진 게시판 포텐 터진 게시판 최신 화제 정치 텍스트 형식 이미지 형식 추천 844 선수 죽빵 갈긴 건 괜찮냐?\nㅅㅂ 새끼들아 ㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋ [519] 해외축구 - 첼시 / 3 분 전 / 메이플하고싶다 추천 212",
+      "artifactDir": "docs/reports/assets/browser-action-live/browser-action-public-sites-live3-20260511/public-fmkorea-read"
+    },
+    {
+      "id": "public-fmkorea-back",
+      "mode": "widget-ui",
+      "prompt": "뒤로가기",
+      "status": "pass",
+      "failureClass": "",
+      "elapsedMs": 880,
+      "finalUrl": "https://www.fmkorea.com/",
+      "answerPreview": "브라우저 동작을 완료했습니다. 실행: back 현재 페이지: 포텐 터짐 최신순 - 에펨코리아 (https://www.fmkorea.com/best) 검증: Action changed the browser route key.",
+      "artifactDir": "docs/reports/assets/browser-action-live/browser-action-public-sites-live3-20260511/public-fmkorea-back"
+    },
+    {
+      "id": "public-naver-read",
+      "mode": "widget-ui",
+      "prompt": "지금 보고있는 네이버 페이지의 검색창과 주요 섹션을 간단히 설명해줘",
+      "status": "pass",
+      "failureClass": "",
+      "elapsedMs": 1009,
+      "finalUrl": "https://www.naver.com/",
+      "answerPreview": "현재 보고 있는 페이지는 NAVER입니다. URL: https://www.naver.com/\n\n주요 내용:\n\n상단영역 바로가기 서비스 메뉴 바로가기 새소식 블록 바로가기 쇼핑 블록 바로가기 관심사 블록 바로가기 MY 영역 바로가기 위젯 보드 바로가기 보기 설정 바로가기 개인정보 보호를 위해 웨일 브라우저를 설치하세요 다운로드 배너 닫기 NAVER 검색 검색 자동완성/최근검색어펼치기 메일 카페 블로그 스토어 뉴스 증권 부동산 지도 웹툰 치지직 추천 바로가기 펼침 확장 영역 페이 바로가기 알림 장...\n부크럼 재생시간 00:56 변호사가 알려주는 올바른 진상 대처법 신동우 변호사 '가장 많이 후회한다..' 60대가 되어보니 진짜 무서운 건 '이것' 다산북스 오직 가정교육 잘 받은 아이만 하는 행동 Top3 피카 출판사 마음까지 채우는 클릭 해피빈 전체보기 기부 아이의 숨소리만 지켰던 20대, 다시 꿈을 꾸는 엄마 플랜코리아 7% 달성 펀딩 사라져 가는 바다의 생명을 기억하는 상괭이 티.",
+      "artifactDir": "docs/reports/assets/browser-action-live/browser-action-public-sites-live3-20260511/public-naver-read"
+    },
+    {
+      "id": "public-naver-search",
+      "mode": "widget-ui",
+      "prompt": "검색창에 '브라우저 액션 테스트' 입력하고 검색 버튼 눌러줘",
+      "status": "fail",
+      "failureClass": "wrong_effect",
+      "elapsedMs": 6576,
+      "finalUrl": "https://www.naver.com/",
+      "answerPreview": "Browser Action 대상이 애매해서 바로 실행하지 않았습니다.\n\ncombobox 검색어를 입력해 주세요.\nbutton 검색\nlink https://news.naver.com/election/region2026\ntabpanel div:nth-of-type(3) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(3)\nlink https://www.naver.com/#\n\n위 후보 중 번호를 선택하면 이어서 실행합니다.",
+      "artifactDir": "docs/reports/assets/browser-action-live/browser-action-public-sites-live3-20260511/public-naver-search"
+    },
+    {
+      "id": "public-google-read",
+      "mode": "widget-ui",
+      "prompt": "지금 보고있는 구글 페이지를 간단히 설명해줘",
+      "status": "pass",
+      "failureClass": "",
+      "elapsedMs": 188,
+      "finalUrl": "https://www.google.com/?zx=1778435475818",
+      "answerPreview": "현재 보고 있는 페이지는 Google입니다. URL: https://www.google.com/?zx=[redacted-number]\n\n주요 내용:\n\nGoogle 정보 스토어 Gmail이미지 로그인 AI 모드 대한민국 광고 비즈니스 검색의 원리 개인정보처리방침 약관 설정 Google이 만든 브라우저인 Chrome을 선택하세요 자동 업데이트를 통해 빠르고 안전한 브라우저를 사용해 보세요.\nChrome 사용 안함 Chrome 다운로드\n\n보이는 주요 조작 요소: Google 앱, 로그인, Google 정보, 스토어, Gmail",
+      "artifactDir": "docs/reports/assets/browser-action-live/browser-action-public-sites-live3-20260511/public-google-read"
+    },
+    {
+      "id": "public-google-search",
+      "mode": "widget-ui",
+      "prompt": "검색창에 'codex widget browser action' 입력하고 Google 검색 버튼 눌러줘",
+      "status": "fail",
+      "failureClass": "wrong_effect",
+      "elapsedMs": 6459,
+      "finalUrl": "https://www.google.com/",
+      "answerPreview": "Browser Action 대상이 애매해서 바로 실행하지 않았습니다.\n\nbutton Google 검색\ncombobox 검색\nbutton I’m Feeling Lucky\nnavigation Google 정보 스토어 Gmail이미지 로그인\nlink Google 정보\n\n위 후보 중 번호를 선택하면 이어서 실행합니다.",
+      "artifactDir": "docs/reports/assets/browser-action-live/browser-action-public-sites-live3-20260511/public-google-search"
+    }
+  ]
+}
