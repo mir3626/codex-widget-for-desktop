@@ -22,14 +22,24 @@ import {
 } from "./bridge/tab-state.js";
 import {
   assertTabCanRunBrowserAction,
+  executeBrowserPerceptionObserveCommand,
+  executePolledBrowserActionCommand,
   isBrowserActionPollOnlyError,
   pollAndExecuteBrowserAction,
   readSnapshotFromTab
 } from "./bridge/action-channel.js";
 
+const BRIDGE_COMMAND_SOCKET_KEEPALIVE_MS = 20_000;
+const BRIDGE_COMMAND_SOCKET_RECONNECT_MS = 2_000;
+
 let bridgeCommandPumpTimer = null;
 let bridgeCommandPumpRunning = false;
 let bridgeCommandPumpAbort = null;
+let bridgeCommandSocket = null;
+let bridgeCommandSocketUrl = "";
+let bridgeCommandSocketReconnectTimer = null;
+let bridgeCommandSocketKeepaliveTimer = null;
+let bridgeCommandSocketPollRunning = false;
 let activeTabGeneration = 0;
 let lastActiveTabSignature = "";
 
@@ -132,6 +142,7 @@ async function refreshBridge(reason) {
   const status = createBaseStatus({ settings, tab, reason });
 
   if (!settings.autoConnect) {
+    closeBridgeCommandSocket("auto_connect_disabled");
     status.connected = false;
     status.mode = "off";
     status.lastError = "Auto-connect is disabled.";
@@ -142,11 +153,13 @@ async function refreshBridge(reason) {
   const health = await testDaemonConnection(daemonBaseUrl);
   status.connected = health.ok;
   if (!health.ok) {
+    closeBridgeCommandSocket("daemon_disconnected");
     status.mode = "disconnected";
     status.lastError = health.error;
     await setBridgeBadge("OFF");
     return status;
   }
+  scheduleBridgeCommandSocket(settings, reason, 0);
 
   status.activeTab = {
     ...status.activeTab,
@@ -178,6 +191,22 @@ async function refreshBridge(reason) {
   status.lastError = null;
   await postHeartbeat(daemonBaseUrl, status);
   await setBridgeBadge("IDLE", tab?.id);
+
+  try {
+    const handledCommand = await pollAndExecuteBrowserAction(tab, settings, { waitMs: 0 });
+    if (handledCommand) {
+      scheduleBridgeCommandPump("refresh_command", 25, { force: true });
+      return status;
+    }
+  } catch (error) {
+    if (!isBrowserActionPollOnlyError(error)) {
+      status.mode = "error";
+      status.lastError = readError(error);
+      await setBridgeBadge("ERR", tab?.id);
+      await postHeartbeat(daemonBaseUrl, status);
+      return status;
+    }
+  }
 
   if (settings.autoObserve && tab?.id) {
     try {
@@ -211,7 +240,7 @@ async function refreshActiveTabBridge(reason) {
   activeTabGeneration += 1;
   abortBridgeCommandPump(reason);
   const status = await refreshBridge(reason);
-  scheduleBridgeCommandPump(reason, 25);
+  scheduleBridgeCommandPump(reason, 25, { force: true });
   return status;
 }
 
@@ -219,14 +248,169 @@ function shouldLongPollFromRefresh(reason) {
   return !/popup|test_connection|settings|debug_snapshot|tab_|window_|observed/i.test(String(reason ?? ""));
 }
 
-function scheduleBridgeCommandPump(reason, delayMs = 250) {
+function scheduleBridgeCommandPump(reason, delayMs = 250, options = {}) {
   if (bridgeCommandPumpTimer !== null) {
-    return;
+    if (!options.force) {
+      return;
+    }
+    clearTimeout(bridgeCommandPumpTimer);
+    bridgeCommandPumpTimer = null;
   }
   bridgeCommandPumpTimer = setTimeout(() => {
     bridgeCommandPumpTimer = null;
     void runBridgeCommandPump(reason);
   }, delayMs);
+}
+
+function scheduleBridgeCommandSocket(settings, reason, delayMs = BRIDGE_COMMAND_SOCKET_RECONNECT_MS) {
+  if (!settings.autoConnect) {
+    closeBridgeCommandSocket("auto_connect_disabled");
+    return;
+  }
+  if (bridgeCommandSocketReconnectTimer !== null) {
+    clearTimeout(bridgeCommandSocketReconnectTimer);
+    bridgeCommandSocketReconnectTimer = null;
+  }
+  bridgeCommandSocketReconnectTimer = setTimeout(() => {
+    bridgeCommandSocketReconnectTimer = null;
+    void ensureBridgeCommandSocket(settings, reason);
+  }, Math.max(0, delayMs));
+}
+
+async function ensureBridgeCommandSocket(settings, reason) {
+  const url = resolveBridgeCommandSocketUrl(settings.daemonBaseUrl);
+  if (bridgeCommandSocket && bridgeCommandSocketUrl === url && (bridgeCommandSocket.readyState === WebSocket.OPEN || bridgeCommandSocket.readyState === WebSocket.CONNECTING)) {
+    if (bridgeCommandSocket.readyState === WebSocket.OPEN) {
+      await sendBridgeCommandSocketPoll(`ensure:${reason}`);
+    }
+    return;
+  }
+  closeBridgeCommandSocket("reconnect");
+  bridgeCommandSocketUrl = url;
+  const socket = new WebSocket(url);
+  bridgeCommandSocket = socket;
+  socket.addEventListener("open", () => {
+    void sendBridgeCommandSocketPoll(`open:${reason}`);
+    scheduleBridgeCommandSocketKeepalive();
+  });
+  socket.addEventListener("message", (event) => {
+    void handleBridgeCommandSocketMessage(event.data).catch((error) => {
+      console.debug("[Codex Widget] Browser Bridge command socket message failed.", error);
+    });
+  });
+  socket.addEventListener("close", () => {
+    if (bridgeCommandSocket === socket) {
+      bridgeCommandSocket = null;
+      bridgeCommandSocketUrl = "";
+      clearBridgeCommandSocketKeepalive();
+      void readBridgeSettings().then((nextSettings) => scheduleBridgeCommandSocket(nextSettings, "socket_closed"));
+    }
+  });
+  socket.addEventListener("error", () => {
+    if (bridgeCommandSocket === socket) {
+      closeBridgeCommandSocket("socket_error");
+      void readBridgeSettings().then((nextSettings) => scheduleBridgeCommandSocket(nextSettings, "socket_error"));
+    }
+  });
+}
+
+function resolveBridgeCommandSocketUrl(daemonBaseUrl) {
+  const url = new URL(resolveDaemonUrl(daemonBaseUrl, "/"));
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  return url.toString();
+}
+
+function closeBridgeCommandSocket(reason) {
+  if (bridgeCommandSocketReconnectTimer !== null) {
+    clearTimeout(bridgeCommandSocketReconnectTimer);
+    bridgeCommandSocketReconnectTimer = null;
+  }
+  clearBridgeCommandSocketKeepalive();
+  const socket = bridgeCommandSocket;
+  bridgeCommandSocket = null;
+  bridgeCommandSocketUrl = "";
+  if (!socket || socket.readyState === WebSocket.CLOSED) {
+    return;
+  }
+  try {
+    socket.close(1000, String(reason ?? "closing").slice(0, 120));
+  } catch {
+    socket.close();
+  }
+}
+
+function scheduleBridgeCommandSocketKeepalive() {
+  clearBridgeCommandSocketKeepalive();
+  bridgeCommandSocketKeepaliveTimer = setTimeout(() => {
+    bridgeCommandSocketKeepaliveTimer = null;
+    if (bridgeCommandSocket?.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    try {
+      bridgeCommandSocket.send(JSON.stringify({ type: "ping" }));
+    } catch {
+      // The close/error handlers handle reconnect.
+    }
+    void sendBridgeCommandSocketPoll("keepalive");
+    scheduleBridgeCommandSocketKeepalive();
+  }, BRIDGE_COMMAND_SOCKET_KEEPALIVE_MS);
+}
+
+function clearBridgeCommandSocketKeepalive() {
+  if (bridgeCommandSocketKeepaliveTimer !== null) {
+    clearTimeout(bridgeCommandSocketKeepaliveTimer);
+    bridgeCommandSocketKeepaliveTimer = null;
+  }
+}
+
+async function sendBridgeCommandSocketPoll(reason) {
+  if (bridgeCommandSocket?.readyState !== WebSocket.OPEN || bridgeCommandSocketPollRunning) {
+    return;
+  }
+  bridgeCommandSocketPollRunning = true;
+  try {
+    const settings = await readBridgeSettings();
+    const tab = await readActiveTab();
+    if (!settings.autoConnect || !tab?.id) {
+      return;
+    }
+    const permission = await readTabPermission(tab, settings);
+    bridgeCommandSocket.send(JSON.stringify({
+      type: "browserBridge.command.poll",
+      reason,
+      tabId: tab.id,
+      windowId: tab.windowId,
+      url: tab.url,
+      title: tab.title,
+      permission: permission.permission,
+      mode: "browser_bridge"
+    }));
+  } finally {
+    bridgeCommandSocketPollRunning = false;
+  }
+}
+
+async function handleBridgeCommandSocketMessage(raw) {
+  const message = JSON.parse(typeof raw === "string" ? raw : String(raw ?? "{}"));
+  if (message?.type === "browserAction.progress" && message.status === "queued") {
+    await sendBridgeCommandSocketPoll("queued");
+    return;
+  }
+  if (message?.type !== "browserBridge.command" || !message.command) {
+    return;
+  }
+  const settings = await readBridgeSettings();
+  const tab = await readActiveTab();
+  if (!tab?.id) {
+    return;
+  }
+  const permission = await readTabPermission(tab, settings);
+  if (message.command.kind === "observe_now") {
+    await executeBrowserPerceptionObserveCommand(tab, settings, permission, message.command);
+  } else {
+    await executePolledBrowserActionCommand(tab, settings, permission, message.command);
+  }
+  await sendBridgeCommandSocketPoll("after_command");
 }
 
 async function runBridgeCommandPump(reason) {

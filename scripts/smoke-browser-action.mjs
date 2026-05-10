@@ -5,7 +5,10 @@ import {
   BrowserActionSessionManager,
   buildBrowserObservation,
   buildElementGraph,
+  createAlwaysAllowBrowserActionPolicyInput,
   decideBrowserActionSafety,
+  matchBrowserActionPolicy,
+  normalizeBrowserActionPolicy,
   planBrowserActionFromPrompt,
   resolveTarget
 } from "../dist/daemon/browser-action/index.js";
@@ -40,8 +43,10 @@ try {
   });
 
   verifyResolverAndSafety(beforeSnapshot);
+  verifyAlwaysAllowPolicyGrouping();
   await verifyTargetlessActionsIgnoreFallbackTargets();
   await verifyStaleReobserveRetry(beforeSnapshot, afterSnapshot);
+  await verifyExtensionCommandTimeoutCancellation(beforeSnapshot);
 
   await postDomSnapshot(beforeSnapshot);
   send({ type: "browserAction.start", actionSessionId: "browser-action-smoke", mode: "auto_safe_actions" });
@@ -119,6 +124,72 @@ try {
   smokeAppData.cleanup();
 }
 
+function verifyAlwaysAllowPolicyGrouping() {
+  const navigatePolicyInput = createAlwaysAllowBrowserActionPolicyInput({
+    approval: createApproval({
+      action: { type: "navigate", url: "https://first.example.test/path" },
+      actionLabel: "navigate https://first.example.test/path",
+      risk: "medium"
+    })
+  });
+  if (navigatePolicyInput.origin || navigatePolicyInput.actionLabel) {
+    throw new Error(`Always allow navigate policy should be grouped by action/risk, not URL or label: ${JSON.stringify(navigatePolicyInput)}`);
+  }
+  assertEqual(navigatePolicyInput.actionFamily, "navigate", "always allow navigate family");
+  const navigatePolicy = normalizeBrowserActionPolicy(navigatePolicyInput);
+  const navigateMatch = matchBrowserActionPolicy({
+    policies: [navigatePolicy],
+    action: { type: "navigate", url: "https://second.example.test/other" },
+    mode: "auto_safe_actions",
+    safety: createSafety({ actionLabel: "navigate https://second.example.test/other", risk: "medium" })
+  });
+  assertEqual(navigateMatch.decision, "allow", "grouped navigate policy should match a different URL");
+
+  const clickPolicyInput = createAlwaysAllowBrowserActionPolicyInput({
+    approval: createApproval({
+      action: { type: "click", target: { kind: "text", text: "Open details", role: "button" } },
+      actionLabel: "click",
+      targetSummary: "button Open details",
+      risk: "medium"
+    })
+  });
+  if (clickPolicyInput.origin || clickPolicyInput.actionLabel) {
+    throw new Error(`Always allow click policy should be grouped by safe click/type family, not exact target: ${JSON.stringify(clickPolicyInput)}`);
+  }
+  assertEqual(clickPolicyInput.actionFamily, "safe_click_type", "always allow click/type family");
+  const clickPolicy = normalizeBrowserActionPolicy(clickPolicyInput);
+  const typeMatch = matchBrowserActionPolicy({
+    policies: [clickPolicy],
+    action: { type: "type", target: { kind: "text", text: "Search", role: "textbox" }, text: "codex" },
+    mode: "auto_safe_actions",
+    safety: createSafety({ actionLabel: "type", targetSummary: "textbox Search", risk: "medium" })
+  });
+  assertEqual(typeMatch.decision, "allow", "grouped click/type policy should match similar typed actions");
+}
+
+function createApproval(input) {
+  return {
+    id: "approval-smoke",
+    actionSessionId: "policy-session",
+    resultId: "policy-result",
+    action: input.action,
+    safety: createSafety(input),
+    target: undefined,
+    adapterId: "extension"
+  };
+}
+
+function createSafety(input) {
+  return {
+    decision: "confirm",
+    risk: input.risk,
+    reason: "Browser Action smoke approval.",
+    actionLabel: input.actionLabel,
+    targetSummary: input.targetSummary ?? "(none)",
+    destructive: input.risk === "destructive"
+  };
+}
+
 function verifyResolverAndSafety(snapshot) {
   const observation = buildBrowserObservation({ snapshot });
   const providedGraphObservation = buildBrowserObservation({
@@ -175,8 +246,8 @@ function verifyResolverAndSafety(snapshot) {
     throw new Error(`Korean website-open prompt should not be treated as representative content: ${JSON.stringify(googleOpenPrompt)}`);
   }
   const urlLessMovePrompt = planBrowserActionFromPrompt({ text: "특이저 ㅁ 갤러리로 이동해줘", mode: "browser" });
-  if (!urlLessMovePrompt || urlLessMovePrompt.steps[0].action.type !== "click" || urlLessMovePrompt.steps[0].targetSummary !== "link: 특이저 ㅁ 갤러리") {
-    throw new Error(`URL-less target navigation should enter Browser Action candidate activation: ${JSON.stringify(urlLessMovePrompt)}`);
+  if (!urlLessMovePrompt || urlLessMovePrompt.steps[0].action.type !== "navigate" || !urlLessMovePrompt.steps[0].action.url.startsWith("https://www.google.com/search?q=")) {
+    throw new Error(`URL-less target navigation should use safe search navigation instead of clicking the current page: ${JSON.stringify(urlLessMovePrompt)}`);
   }
   const concept = resolveTarget({ graph, target: dcConceptPrompt.steps[0].action.target, hint: dcConceptPrompt.steps[0].targetSummary });
   assertEqual(concept.primary?.id, "concept-posts", "Korean concept posts target");
@@ -299,6 +370,25 @@ async function verifyTargetlessActionsIgnoreFallbackTargets() {
   if (!reload.command || reload.result.status === "needs_clarification") {
     throw new Error(`Targetless reload should queue without fallback-target clarification: ${JSON.stringify(reload.result)}`);
   }
+}
+
+async function verifyExtensionCommandTimeoutCancellation(snapshot) {
+  const manager = new BrowserActionSessionManager(new BrowserActionAdapterRegistry());
+  const session = manager.start({ id: "browser-action-command-timeout", mode: "auto_safe_actions" });
+  manager.observe({ actionSessionId: session.id, snapshot });
+  const execution = await manager.execute({
+    actionSessionId: session.id,
+    snapshot,
+    action: { type: "click", target: { kind: "element_id", id: "open-details" } }
+  });
+  if (!execution.command) {
+    throw new Error(`Expected queued extension command before timeout cancellation: ${JSON.stringify(execution.result)}`);
+  }
+  const failed = manager.failExtensionCommand(execution.command.requestId, "timeout smoke");
+  assertEqual(failed?.status, "failed", "timeout cancellation result status");
+  assertEqual(failed?.error, "timeout smoke", "timeout cancellation result error");
+  const leftover = manager.pollExtensionCommand();
+  assertEqual(leftover, undefined, "timeout cancellation removes queued command");
 }
 
 function createSnapshot(state) {
@@ -443,6 +533,22 @@ function createSnapshot(state) {
         enabled: true,
         editable: false,
         confidence: 0.94,
+        riskHints: []
+      },
+      {
+        id: "survey-post",
+        role: "link",
+        tagName: "a",
+        label: "[설문] 알리 할인상품 의견 요청",
+        text: "[설문] 알리 할인상품 의견 요청",
+        contextText: "설문 이벤트 운영자 [설문] 알리 할인상품 의견 요청",
+        selector: "a[href=\"/mgallery/board/view/?id=thesingularity&no=1169000&page=1\"]",
+        href: "https://example.test/browser-action/view/?id=thesingularity&no=1169000&page=1",
+        bbox: { x: 360, y: 248, w: 260, h: 28 },
+        visible: true,
+        enabled: true,
+        editable: false,
+        confidence: 0.96,
         riskHints: []
       },
       {

@@ -150,6 +150,7 @@ export type BrowserActionPolicySummary = {
   id: string;
   decision: BrowserActionPolicyDecision;
   actionFamily: BrowserActionInput["type"] | "safe_read_scroll" | "safe_click_type" | "all";
+  actionLabel?: string;
   origin?: string;
   targetRisk?: "low" | "medium" | "high" | "destructive" | "credential";
   mode?: BrowserActionMode | "any";

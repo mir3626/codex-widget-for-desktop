@@ -9,11 +9,11 @@ import {
   waitForBrowserActionCommandResult
 } from "./commandWaiters.js";
 import {
-  BROWSER_ACTION_PROMPT_COMMAND_WAIT_MS,
-  continuePromptBrowserActionPlan
+  continuePromptBrowserActionPlan,
+  readBrowserActionPromptCommandWaitMs
 } from "./promptPlan.js";
+import { markPromptPlanStepFromResult } from "./promptPlanState.js";
 import {
-  completePromptAsExtensionPending,
   completePromptWithResult,
   emitPromptApprovalRequired
 } from "./promptResponses.js";
@@ -28,7 +28,7 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
   const commandResultPromise = waitForBrowserActionCommandResult({
     requestId: detail.command.requestId,
     waiters: input.browserActionCommandWaiters,
-    timeoutMs: BROWSER_ACTION_PROMPT_COMMAND_WAIT_MS
+    timeoutMs: readBrowserActionPromptCommandWaitMs(detail.command.action)
   });
   broadcast(input.clients, {
     type: "browserAction.progress",
@@ -38,13 +38,28 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
   });
   const commandResult = await commandResultPromise;
   if (!commandResult) {
+    const waitedMs = readBrowserActionPromptCommandWaitMs(detail.command.action);
+    const error = `Browser Bridge did not pick up the action within ${Math.round(waitedMs / 1000)} seconds. The queued browser command was cancelled before it could execute.`;
+    const failedResult = input.browserActions.failExtensionCommand(detail.command.requestId, error);
+    const results = failedResult ? [...detail.results.slice(0, -1), failedResult] : detail.results;
+    if (failedResult) {
+      markPromptPlanStepFromResult(detail.plan, failedResult);
+    } else {
+      detail.plan.status = "failed";
+      detail.plan.summary = error;
+    }
     recordRuntimeActivity(input.storage, input.sessionId, "warn", "browser-action", "Prompt Browser Action extension command still pending after wait", {
       requestId: detail.command.requestId,
       action: detail.command.action.type,
-      waitedMs: BROWSER_ACTION_PROMPT_COMMAND_WAIT_MS,
-      planId: detail.plan.id
+      waitedMs,
+      planId: detail.plan.id,
+      cancelled: Boolean(failedResult)
     });
-    completePromptAsExtensionPending(input, detail.plan, detail.results);
+    completePromptWithResult(input, {
+      plan: detail.plan,
+      results,
+      runtimeSummary: "Prompt Browser Action failed because the extension did not pick up the command in time"
+    });
     return true;
   }
 
@@ -69,7 +84,11 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
     return true;
   }
   if (continued.pendingCommand) {
-    completePromptAsExtensionPending(input, continued.plan, continued.results);
+    completePromptWithResult(input, {
+      plan: continued.plan,
+      results: continued.results,
+      runtimeSummary: "Prompt Browser Action stopped with an extension command timeout"
+    });
     return true;
   }
   completePromptWithResult(input, {

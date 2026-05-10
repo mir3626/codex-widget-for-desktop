@@ -51,6 +51,8 @@
     "smoke:browser-action:transaction-concurrency": "npm run build:daemon && node scripts/smoke-browser-interaction-transaction.mjs concurrency",
     "dogfood:browser-action": "npm run build:daemon && node scripts/collect-browser-action-dogfood-evidence.mjs",
     "dogfood:browser-action:e2e": "npm run build:daemon && node scripts/collect-browser-action-e2e-dogfood-evidence.mjs",
+    "dogfood:browser-action:live": "npm run build:daemon && node scripts/browser-action-live-runner.mjs",
+    "dogfood:browser-action:live:real": "npm run build:daemon && node scripts/browser-action-live-runner.mjs --mode real",
     "dogfood:browser-view-graph-v2": "npm run build:daemon && node scripts/collect-browser-view-graph-v2-dogfood-evidence.mjs",
     "dogfood:browser-perception": "npm run build:daemon && node scripts/collect-browser-perception-dogfood-evidence.mjs",
     "dogfood:browser-bridge": "npm run build:daemon && node scripts/collect-browser-extension-bridge-dogfood-evidence.mjs",

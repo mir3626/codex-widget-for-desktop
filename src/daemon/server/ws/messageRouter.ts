@@ -3,6 +3,7 @@ import { runAskMessage } from "../ask/runAskMessage.js";
 import { handleBrowserActionMessage } from "../browser-action/messageHandler.js";
 import { send } from "../events.js";
 import { handleAuthMessage } from "./authMessages.js";
+import { handleBrowserBridgeMessage } from "./browserBridgeMessages.js";
 import type { MessageRouterContext } from "./context.js";
 import { handleInteractionMessage } from "./interactionMessages.js";
 import { handleProviderMessage } from "./providerMessages.js";
@@ -14,6 +15,7 @@ type MessageHandler = (message: ClientMessage, context: MessageRouterContext) =>
 
 const messageHandlers: MessageHandler[] = [
   handleAuthMessage,
+  handleBrowserBridgeMessage,
   handleSessionMessage,
   handleInteractionMessage,
   handleProviderMessage,

@@ -18,6 +18,9 @@ export type BrowserQueuedCommand = {
   expectedSource?: BrowserActionSource;
   createdAt: string;
   expiresAt?: string;
+  deliveredAt?: string;
+  deliveryAttempts?: number;
+  acknowledgedAt?: string;
 };
 
 export type BrowserActionPromptPlan = {

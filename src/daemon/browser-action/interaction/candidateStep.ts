@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { isNonRepresentativeContentLabel } from "../targetResolver/semanticContentTarget.js";
 import { normalizeBrowserTargetText, tokenizeBrowserTargetText } from "../targetLexicon.js";
 import type {
   BrowserAction,
@@ -24,8 +25,10 @@ export function generateCandidateSteps(input: {
     return [createSyntheticCandidate(input, "current_view", "이 작업은 특정 페이지 요소가 필요하지 않습니다.", 1)];
   }
   const hint = normalizeBrowserTargetText(input.hint || (input.target?.kind === "text" ? input.target.text : undefined) || "");
+  const representativeContent = isRepresentativeContentRequest(hint, input.action);
   const candidates = input.graph.elements
     .filter((element) => element.visible)
+    .filter((element) => !representativeContent || looksLikeContentElement(element))
     .map((element) => scoreElementCandidate({ ...input, element, hint }))
     .filter((candidate) => candidate.confidence > 0)
     .sort((a, b) => b.confidence - a.confidence || (a.element?.sourceOrder ?? 999999) - (b.element?.sourceOrder ?? 999999));
@@ -225,14 +228,24 @@ function scoreRoleFit(action: BrowserAction, element: BrowserElement): number {
 function looksLikeContentElement(element: BrowserElement): boolean {
   const role = `${element.role ?? ""} ${element.tagName ?? ""}`.toLowerCase();
   const text = `${element.text ?? ""} ${element.contextText ?? ""}`.trim();
-  return Boolean(element.href || /link|article|row/.test(role)) && text.length >= 8 && !/(로그인|설정|검색|댓글|profile|login|setting|comment)/i.test(text);
+  const href = element.href ?? "";
+  if (!Boolean(href || /link|article|row/.test(role)) || text.length < 8) {
+    return false;
+  }
+  if (isNonRepresentativeContentLabel(text) || /(로그인|설정|검색|댓글|목록|전체글|개념글|글쓰기|삭제|수정|신고|추천인\s*기록|profile|login|setting|comment|list|write|delete|edit|report)/i.test(text)) {
+    return false;
+  }
+  if (href && /(?:login|logout|signup|register|settings?|profile|notifications?|messages?|search|event|lottery|stats?|comment|reply)/i.test(href)) {
+    return false;
+  }
+  return true;
 }
 
 function isRepresentativeContentRequest(hint: string, action: BrowserAction): boolean {
   if (action.type !== "click") {
     return false;
   }
-  return /(아무|랜덤|대표|재밌|흥미|글|게시글|포스트|article|post|interesting|random|any)/i.test(hint);
+  return /(아무\s*글|랜덤|대표|재밌|흥미|게시글|게시물|포스트|article|post|interesting|random|any\s+(?:post|article|item))/i.test(hint);
 }
 
 function buildLocaleLabel(element: BrowserElement, label: string): string {

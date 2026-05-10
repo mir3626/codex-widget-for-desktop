@@ -1,0 +1,20 @@
+{
+  "id": "local-back-fast-path",
+  "mode": "isolated",
+  "setupUrls": [
+    "fixture:/forum",
+    "fixture:/view/interesting"
+  ],
+  "prompt": "뒤로가기",
+  "expect": {
+    "urlIncludes": [
+      "/forum"
+    ],
+    "forbidAnswer": [
+      "plan:",
+      "latest result",
+      "Browser Action을 실행했습니다."
+    ],
+    "maxMs": 8000
+  }
+}

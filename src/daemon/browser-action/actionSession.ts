@@ -35,8 +35,10 @@ import type {
 } from "./interaction/types.js";
 import { respondToBrowserActionInteraction } from "./actionSession/interactions.js";
 import {
+  acknowledgeBrowserExtensionCommand,
   cancelBrowserActionSession,
   completeBrowserExtensionCommand,
+  failPendingBrowserExtensionCommand,
   pollBrowserExtensionCommand
 } from "./actionSession/extensionCommands.js";
 import {
@@ -171,9 +173,31 @@ export class BrowserActionSessionManager {
   completeExtensionCommand(input: BrowserActionExecutionResult): BrowserActionExtensionCompletionOutput {
     return completeBrowserExtensionCommand({
       execution: input,
+      pendingCommands: this.pendingCommands,
       commandResultIds: this.commandResultIds,
       results: this.results,
       requireSession: (id) => this.requireSession(id)
+    });
+  }
+
+  acknowledgeExtensionCommand(requestId: string): BrowserActionResult | undefined {
+    return acknowledgeBrowserExtensionCommand({
+      requestId,
+      pendingCommands: this.pendingCommands,
+      results: this.results,
+      sessions: this.sessions,
+      commandResultIds: this.commandResultIds
+    });
+  }
+
+  failExtensionCommand(requestId: string, error: string): BrowserActionResult | undefined {
+    return failPendingBrowserExtensionCommand({
+      requestId,
+      error,
+      pendingCommands: this.pendingCommands,
+      results: this.results,
+      sessions: this.sessions,
+      commandResultIds: this.commandResultIds
     });
   }
 

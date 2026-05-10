@@ -42,7 +42,11 @@ export function decideCandidatePlanningGate(input: {
   const sideEffect = risk !== "read";
   const ambiguous = sorted.length > 1 && (top.confidence < 0.82 || margin < 0.14);
   const weak = top.confidence < (sideEffect ? 0.58 : 0.42);
-  if (sideEffect && (ambiguous || weak)) {
+  const representativeContentPick = sideEffect &&
+    top.referenceBindingScope === "content_list_representative" &&
+    top.reasonCodes.includes("representative_content") &&
+    top.confidence >= 0.5;
+  if (sideEffect && (ambiguous || weak) && !representativeContentPick) {
     return {
       decision: "clarify",
       clarificationOptions: sorted.slice(0, 5),

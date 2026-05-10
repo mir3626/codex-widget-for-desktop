@@ -242,11 +242,13 @@ export function ConversationPanel({
                               target="_blank"
                               rel="noreferrer"
                               onClick={(event) => {
-                                if (!href || !/^https?:\/\//i.test(href)) {
+                                const externalHref = normalizeExternalChatHref(href);
+                                if (!externalHref) {
                                   return;
                                 }
                                 event.preventDefault();
-                                void openExternalUrl(href);
+                                event.stopPropagation();
+                                void openExternalUrl(externalHref);
                               }}
                             >
                               {children}
@@ -313,6 +315,20 @@ export function ConversationPanel({
       ) : null}
     </section>
   );
+}
+
+function normalizeExternalChatHref(href: string | undefined): string | null {
+  const value = href?.trim();
+  if (!value) {
+    return null;
+  }
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
+  if (/^www\.[^\s/$.?#].[^\s]*$/i.test(value)) {
+    return `https://${value}`;
+  }
+  return null;
 }
 
 function shouldShowBrowserActionPanel(mode: WidgetMode, browserAction: BrowserActionUiState): boolean {

@@ -1,0 +1,15 @@
+{
+  "scenarioId": "local-navigate-always-allow-grouped",
+  "requestId": "browser-action-live-local-navigate-always-allow-grouped-1778431533591-5",
+  "status": "pass",
+  "failureClass": "",
+  "elapsedMs": 199,
+  "finalUrl": "http://127.0.0.1:34247/target-two",
+  "answer": "브라우저 동작을 완료했습니다.\n실행: navigate http://127.0.0.1:34247/target-two\n현재 페이지: Browser Action Live Fixture (http://127.0.0.1:34247/target-two)\n검증: Action changed the browser route or URL.",
+  "answerRedacted": false,
+  "answerLength": 180,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-ws-wakeup-always-allow-20260511\\local-navigate-always-allow-grouped\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-ws-wakeup-always-allow-20260511\\local-navigate-always-allow-grouped\\screenshot-after.png"
+  }
+}

@@ -5,6 +5,7 @@ export {
   matchBrowserActionPolicy
 } from "./permissionPolicy/matching.js";
 export {
+  createAlwaysAllowBrowserActionPolicyInput,
   normalizeBrowserActionPolicy,
   normalizeOrigin
 } from "./permissionPolicy/normalizers.js";

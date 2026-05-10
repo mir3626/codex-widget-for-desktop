@@ -129,6 +129,23 @@ try {
   assertEqual(polledStatus.activeTab.url, "https://example.test/browser-bridge/poll", "poll refreshes active tab URL");
   assertEqual(String(polledStatus.activeTab.tabId), "42", "poll refreshes active tab id");
 
+  socket.send(JSON.stringify({
+    type: "browserBridge.command.poll",
+    tabId: "43",
+    windowId: "5",
+    url: "https://example.test/browser-bridge/ws-poll",
+    title: "Browser Bridge WebSocket Poll",
+    permission: "allowed",
+    mode: "browser_bridge"
+  }));
+  const wsCommand = await waitFor(
+    (event) => event.type === "browserBridge.command",
+    "websocket bridge command poll"
+  );
+  assertEqual(wsCommand.command, null, "websocket bridge command poll empty command");
+  const wsPolledStatus = await readBridgeStatus();
+  assertEqual(wsPolledStatus.activeTab.url, "https://example.test/browser-bridge/ws-poll", "ws poll refreshes active tab URL");
+
   console.log(`browser extension bridge smoke ok on port ${daemon.port}`);
 } finally {
   socket.close();

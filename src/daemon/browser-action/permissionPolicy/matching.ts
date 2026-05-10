@@ -27,6 +27,9 @@ export function matchBrowserActionPolicy(input: {
     if (!matchesActionFamily(policy.actionFamily, input.action)) {
       continue;
     }
+    if (policy.actionLabel && !matchesActionLabel(policy.actionLabel, input.safety)) {
+      continue;
+    }
     if (policy.mode && policy.mode !== "any" && policy.mode !== input.mode) {
       continue;
     }
@@ -120,11 +123,28 @@ function matchesActionFamily(family: BrowserActionPolicy["actionFamily"], action
 
 function policySpecificity(policy: BrowserActionPolicy): number {
   return [
+    policy.actionLabel ? 5 : 0,
     policy.origin ? 4 : 0,
     policy.targetRisk ? 3 : 0,
     policy.mode && policy.mode !== "any" ? 2 : 0,
     policy.actionFamily !== "all" ? 1 : 0
   ].reduce((sum, value) => sum + value, 0);
+}
+
+function matchesActionLabel(policyLabel: string, safety: BrowserActionSafetyDecision): boolean {
+  const normalizedPolicy = normalizeLabel(policyLabel);
+  return readSafetyActionLabels(safety).some((label) => normalizeLabel(label) === normalizedPolicy);
+}
+
+function readSafetyActionLabels(safety: BrowserActionSafetyDecision): string[] {
+  return [
+    safety.actionLabel,
+    safety.targetSummary ? `${safety.actionLabel} ${safety.targetSummary}` : ""
+  ].filter(Boolean);
+}
+
+function normalizeLabel(value: string): string {
+  return value.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
 function isExpired(policy: BrowserActionPolicy): boolean {

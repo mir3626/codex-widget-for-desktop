@@ -71,10 +71,10 @@ export function resolveBrowserActionIntent(text: string): BrowserActionIntent {
   } else if (isNavigationRequest(utterance)) {
     actionType = "navigate";
     if (navigationTargetPhrase) {
-      actionType = "click";
-      targetRole = "link";
-      actions.push({ type: "click", target: { kind: "text", role: "link", text: navigationTargetPhrase } });
-      reason = "Resolved URL-less navigation request as a current-page link activation candidate.";
+      const searchUrl = buildSearchNavigationUrl(navigationTargetPhrase);
+      value = searchUrl;
+      actions.push({ type: "navigate", url: searchUrl });
+      reason = "Resolved URL-less navigation request as a search navigation instead of clicking an unrelated current-page link.";
     }
   } else if (/검색|search/i.test(utterance) && typedText) {
     actionType = "type";
@@ -154,6 +154,10 @@ function resolveKnownWebsiteUrl(value: string): string | undefined {
     [/^(chzzk|치지직)$/, "https://chzzk.naver.com/"]
   ];
   return aliases.find(([pattern]) => pattern.test(normalized))?.[1];
+}
+
+function buildSearchNavigationUrl(value: string): string {
+  return `https://www.google.com/search?q=${encodeURIComponent(value.trim())}`;
 }
 
 function createIntent(input: Omit<BrowserActionIntent, "id" | "alternatives"> & { alternatives?: string[] }): BrowserActionIntent {

@@ -152,10 +152,10 @@ export async function executeBrowserAction(input: {
   const targetResolution = shouldResolveTarget(input.action, input.targetHint)
     ? resolveTarget({ graph, observation, action: input.action, target, hint: input.targetHint, memoryReadSet })
     : { alternatives: [], confidence: 1, reason: "This browser action does not require a page element target." };
-  if (gate.decision === "clarify" && targetResolution.confidence < 0.74 && candidateSteps.length > 1) {
+  if (gate.decision === "clarify" && candidateSteps.length > 1 && !isExactElementBinding(target)) {
     targetResolution.primary = candidateSteps[0]?.element ?? targetResolution.primary;
     targetResolution.alternatives = candidateSteps.slice(1, 5).map((candidate) => candidate.element).filter((element): element is NonNullable<typeof element> => Boolean(element));
-    targetResolution.confidence = Math.min(targetResolution.confidence, candidateSteps[0]?.confidence ?? targetResolution.confidence);
+    targetResolution.confidence = Math.min(targetResolution.confidence, gate.confidence, 0.57);
     targetResolution.reason = `${gate.userFacingMessage} ${targetResolution.reason}`;
   }
   const baseSafety = decideBrowserActionSafety({
@@ -320,4 +320,8 @@ export async function executeBrowserAction(input: {
   input.pendingCommands.push(command);
   input.session.timeline.push(createTimelineEvent({ startedAt: input.session.startedAt, type: "execute", summary: `Queued browser action: ${input.action.type}`, detail: { requestId: command.requestId, resultId: result.id } }));
   return { session: cloneSession(input.session), result: cloneResult(result), command, audit: auditActionResult(input.session, result) };
+}
+
+function isExactElementBinding(target: ReturnType<typeof readActionTarget>): boolean {
+  return target?.kind === "element_id" || target?.kind === "focused" || target?.kind === "bbox";
 }

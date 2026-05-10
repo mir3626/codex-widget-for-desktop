@@ -1,0 +1,19 @@
+{
+  "id": "local-navigate-always-allow-prime",
+  "mode": "isolated",
+  "url": "fixture:/forum",
+  "prompt": "{{fixtureBaseUrl}}/target 열어줘",
+  "approval": "always_allow",
+  "expect": {
+    "urlIncludes": [
+      "/target"
+    ],
+    "forbidAnswer": [
+      "plan:",
+      "latest result",
+      "Browser Action을 실행했습니다.",
+      "승인 후 실행"
+    ],
+    "maxMs": 12000
+  }
+}

@@ -11,6 +11,7 @@ export { inferBrowserActionFromText } from "./intentToAction.js";
 export {
   BROWSER_ACTION_POLICY_SETTING_KEY,
   applyBrowserActionPolicyToSafety,
+  createAlwaysAllowBrowserActionPolicyInput,
   matchBrowserActionPolicy,
   normalizeBrowserActionPolicy,
   redactBrowserActionSecret,

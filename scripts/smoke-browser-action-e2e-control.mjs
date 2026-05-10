@@ -156,7 +156,7 @@ try {
   assertEqual(sourceRetryCommand?.expectedSource?.url, afterSnapshot.url, "source-refresh retry uses refreshed source");
   await postBrowserActionResult(sourceRetryCommand.requestId, true, afterSnapshot, afterSnapshot);
   const sourceRefreshAnswer = await waitFor((event) => event.type === "message.completed" && event.id === "prompt-browser-action-source-refresh", "source-refresh prompt answer");
-  if (!sourceRefreshAnswer.text.includes("plan: completed")) {
+  if (!sourceRefreshAnswer.text.includes("브라우저 동작을 완료했습니다") && !sourceRefreshAnswer.text.includes("Browser action completed")) {
     throw new Error(`Source-refresh retry prompt did not complete after refreshed observation: ${sourceRefreshAnswer.text}`);
   }
 

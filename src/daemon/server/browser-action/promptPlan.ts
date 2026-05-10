@@ -23,7 +23,14 @@ import {
 } from "./promptPlanState.js";
 import { refreshPromptBrowserActionSnapshotAfterCommand } from "./promptSnapshotRefresh.js";
 
-export const BROWSER_ACTION_PROMPT_COMMAND_WAIT_MS = 60_000;
+export const BROWSER_ACTION_PROMPT_COMMAND_WAIT_MS = 40_000;
+const BROWSER_ACTION_PROMPT_NAVIGATION_WAIT_MS = 12_000;
+
+export function readBrowserActionPromptCommandWaitMs(action: BrowserQueuedCommand["action"]): number {
+  return action.type === "back" || action.type === "forward" || action.type === "reload" || action.type === "navigate"
+    ? BROWSER_ACTION_PROMPT_NAVIGATION_WAIT_MS
+    : BROWSER_ACTION_PROMPT_COMMAND_WAIT_MS;
+}
 
 export async function continuePromptBrowserActionPlan(input: {
   plan: BrowserActionPlan;
@@ -107,7 +114,7 @@ export async function continuePromptBrowserActionPlan(input: {
       const commandResultPromise = waitForBrowserActionCommandResult({
         requestId: execution.command.requestId,
         waiters: input.waiters,
-        timeoutMs: BROWSER_ACTION_PROMPT_COMMAND_WAIT_MS
+        timeoutMs: readBrowserActionPromptCommandWaitMs(execution.command.action)
       });
       broadcast(input.clients, {
         type: "browserAction.progress",
@@ -117,14 +124,28 @@ export async function continuePromptBrowserActionPlan(input: {
       });
       const commandResult = await commandResultPromise;
       if (!commandResult) {
+        const waitedMs = readBrowserActionPromptCommandWaitMs(execution.command.action);
+        const error = `Browser Bridge did not pick up the follow-up action within ${Math.round(waitedMs / 1000)} seconds. The queued browser command was cancelled before it could execute.`;
+        const failedResult = input.browserActions.failExtensionCommand(execution.command.requestId, error);
+        if (failedResult) {
+          results[results.length - 1] = failedResult;
+          markPromptPlanStepFromResult(plan, failedResult);
+        } else {
+          nextStep.status = "failed";
+          nextStep.error = error;
+          nextStep.completedAt = new Date().toISOString();
+          plan.status = "failed";
+          plan.summary = `Plan stopped at ${nextStep.id}: ${error}`;
+        }
         recordRuntimeActivity(input.storage, input.sessionId, "warn", "browser-action", "Prompt Browser Action follow-up command still pending after wait", {
           requestId: execution.command.requestId,
           action: execution.command.action.type,
-          waitedMs: BROWSER_ACTION_PROMPT_COMMAND_WAIT_MS,
+          waitedMs,
           planId: plan.id,
-          stepId: nextStep.id
+          stepId: nextStep.id,
+          cancelled: Boolean(failedResult)
         });
-        return { plan, results, pendingCommand: execution.command };
+        return { plan, results };
       }
       results[results.length - 1] = commandResult;
       snapshot = await refreshPromptBrowserActionSnapshotAfterCommand({

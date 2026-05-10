@@ -32,17 +32,7 @@ export function renderBrowserPromptResponse(
   if (plan.status === "failed" || latest?.status === "failed") {
     return renderFailureResponse(latest, promptText);
   }
-  const lines = [
-    /[가-힣]/.test(promptText) ? "Browser Action을 실행했습니다." : "Browser Action completed.",
-    `- plan: ${plan.status}`,
-    `- steps: ${plan.steps.map((step) => `${step.id}:${step.status}`).join(", ")}`,
-    latest ? `- latest result: ${latest.status}; verification=${latest.verification.status}; ${latest.verification.reason}` : undefined,
-    terminalStatus === "approval_required"
-      ? /[가-힣]/.test(promptText)
-        ? "- next: 위험한 단계 실행 전 승인이 필요합니다."
-        : "- next: user approval is required before executing the risky step."
-      : undefined,
-  ].filter(Boolean);
+  const lines = renderActionCompletionResponse(plan, latest, terminalStatus, promptText);
   return lines.map((line) => String(redactBrowserActionSecret(line))).join("\n");
 }
 
@@ -70,9 +60,15 @@ function renderClarificationResponse(result: BrowserActionResult, promptText: st
       ? `\n후보: ${alternatives.join(", ")}`
       : `\nCandidates: ${alternatives.join(", ")}`
     : "";
+  const observed = result.before ?? result.after;
+  const page = observed?.url
+    ? korean
+      ? `\n현재 인식한 탭: ${observed.title || "제목 없음"} (${observed.url})`
+      : `\nRecognized tab: ${observed.title || "Untitled"} (${observed.url})`
+    : "";
   return korean
-    ? `브라우저에서 실행할 대상을 확정하지 못했습니다. 더 구체적인 이름이나 위치를 알려주세요.${suffix}`
-    : `I could not resolve the browser target confidently. Please name the target or location more specifically.${suffix}`;
+    ? `브라우저에서 실행할 대상을 확정하지 못했습니다. 더 구체적인 이름이나 위치를 알려주세요.${page}${suffix}`
+    : `I could not resolve the browser target confidently. Please name the target or location more specifically.${page}${suffix}`;
 }
 
 function renderApprovalRequiredResponse(result: BrowserActionResult, promptText: string): string {
@@ -108,10 +104,78 @@ function summarizeActionForApproval(action: BrowserAction): string | undefined {
   return undefined;
 }
 
+function renderActionCompletionResponse(
+  plan: BrowserActionPlan,
+  latest: BrowserActionResult | undefined,
+  terminalStatus: string,
+  promptText: string
+): string[] {
+  const korean = /[가-힣]/.test(promptText);
+  const stepSummary = plan.steps
+    .filter((step) => step.status !== "skipped")
+    .map((step) => summarizePlanStep(step.action, step.targetSummary))
+    .filter(Boolean)
+    .join(korean ? " -> " : " -> ");
+  const page = latest?.after ?? latest?.before;
+  const pageLine = page?.url
+    ? korean
+      ? `현재 페이지: ${page.title || "제목 없음"} (${page.url})`
+      : `Current page: ${page.title || "Untitled"} (${page.url})`
+    : undefined;
+  const verification = latest?.verification.reason
+    ? korean
+      ? `검증: ${latest.verification.reason}`
+      : `Verification: ${latest.verification.reason}`
+    : undefined;
+  return [
+    korean ? "브라우저 동작을 완료했습니다." : "Browser action completed.",
+    stepSummary ? (korean ? `실행: ${stepSummary}` : `Action: ${stepSummary}`) : undefined,
+    pageLine,
+    verification,
+    terminalStatus === "approval_required"
+      ? korean
+        ? "다음 단계는 승인 후 실행됩니다."
+        : "The next step requires approval before it runs."
+      : undefined
+  ].filter((line): line is string => Boolean(line));
+}
+
+function summarizePlanStep(action: BrowserAction, targetSummary: string | undefined): string {
+  if (targetSummary) {
+    return `${action.type} ${targetSummary}`;
+  }
+  if (action.type === "navigate") {
+    return `navigate ${action.url}`;
+  }
+  if (action.type === "scroll") {
+    return `scroll ${action.direction}`;
+  }
+  if (action.type === "type") {
+    return "type into field";
+  }
+  return action.type;
+}
+
 function renderFailureResponse(result: BrowserActionResult | undefined, promptText: string): string {
   const korean = /[가-힣]/.test(promptText);
-  const reason = result?.error || result?.verification.reason;
+  const reason = localizeFailureReason(result?.error || result?.verification.reason, korean);
   return korean
     ? `Browser Action을 완료하지 못했습니다.${reason ? ` 이유: ${reason}` : ""}`
     : `Browser Action did not complete.${reason ? ` Reason: ${reason}` : ""}`;
+}
+
+function localizeFailureReason(reason: string | undefined, korean: boolean): string | undefined {
+  if (!reason || !korean) {
+    return reason;
+  }
+  if (/did not pick up .* within \d+ seconds|timed out before the extension picked it up/i.test(reason)) {
+    return "Browser Bridge가 제한 시간 안에 작업을 가져가지 못해 명령을 취소했습니다. 확장프로그램 상태, 현재 탭, 사이트 권한을 확인한 뒤 다시 시도하세요.";
+  }
+  if (/Active tab URL changed before Browser Action execution/i.test(reason)) {
+    return "실행 직전 활성 탭 또는 페이지 주소가 바뀌어서 중단했습니다. 현재 탭을 다시 확인한 뒤 요청을 다시 보내세요.";
+  }
+  if (/specific browser element|resolve the browser target|not resolved confidently/i.test(reason)) {
+    return "현재 화면에서 실행 대상을 충분히 확정하지 못했습니다. 대상의 정확한 텍스트나 위치를 함께 알려주세요.";
+  }
+  return reason;
 }

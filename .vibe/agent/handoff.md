@@ -4,6 +4,57 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Browser Action Command Ack and Live Latency
+
+Follow-up live-runner work addressed the latest Browser Action dogfood issues: slow/inconsistent `뒤로가기`, repeated approval prompts, and approval-result responses ending at the approval receipt.
+
+- Extension action commands are now acked through `/browser-action/extension/action-ack` as soon as the Browser Bridge receives them.
+- Daemon Browser Action commands are no longer destructively removed on poll response alone; they remain redeliverable until extension ack/result, which prevents Manifest V3 long-poll abort/response-loss races and avoids duplicate back/forward execution after ack.
+- Browser Action command polling now prioritizes queued action commands over perception observe commands once the prompt has already planned an action.
+- Prompt approvals now persist `always_allow` Browser Action policy labels and asynchronously update the original prompt message with the final action result after approval execution.
+- The live runner now measures prompt-to-result latency separately from test setup, captures post-approval final messages, and includes a `local-back-single-step` scenario to prove `뒤로가기` executes once.
+- Browser Bridge refresh now checks pending Browser Action commands before auto-observe so browser default actions and post-approval commands are not delayed behind snapshot work.
+- Real-browser live-runner artifacts now redact active-tab answer/event/page strings by default; real-mode reports keep status, latency, IDs, and diagnostics without persisting the user's page content.
+
+Latest focused verification passed `npm run lint`, `npm run build:web`, `npm run smoke`, `npm run smoke:browser-action`, `npm run smoke:browser-action:e2e-control`, `npm run smoke:browser-action:prompt-classification`, `npm run smoke:browser-action:fresh-context`, `npm run smoke:browser-perception:extension-command`, `npm run smoke:browser-bridge`, `npm run smoke:extension`, repeated `npm run dogfood:browser-action:live`, and `npm run dogfood:browser-action:live:real -- --scenario real-active-read`. Latest isolated live-runner report: `docs/reports/browser-action-live-report-browser-action-final-regression2-20260511.md` with prompt latencies around read 123ms, back 186-195ms, normal navigate reuse 183ms, and approval navigate 2803ms. Latest real-mode read report: `docs/reports/browser-action-live-report-browser-action-real-read-redacted2-20260511.md` passed in 556ms with redacted artifacts. The live daemon was restarted; `/storage/health` is ok on `127.0.0.1:4128` with daemon PID `60440`.
+
+Manual follow-up: reload the unpacked Browser Bridge extension before retesting the installed browser extension, because extension bridge files changed.
+
+## Latest Update: Browser Action Live Test Fixes
+
+After live widget testing exposed Browser Action regressions, the prompt path has been tightened without adding site-specific rules.
+
+- Extension-backed prompt commands now fail and remove their queued command if the Browser Bridge does not pick them up within the prompt wait window. This prevents stale commands from executing later against a new prompt/session.
+- Representative content selection now rejects survey/notice/admin/event/guide/policy style rows in View Graph content-list representatives, transaction candidates, and semantic content target resolution.
+- URL-less navigation requests such as fuzzy gallery/site names no longer turn into arbitrary current-page link clicks. Unknown destinations route to safe search navigation instead of misusing the active page.
+- Candidate-gate ambiguity now overrides late resolver confidence for side-effect text targets, while exact element bindings still execute normally.
+- Prompt responses now summarize completed browser actions in user-facing text instead of exposing raw `plan/steps/latest result` receipts; failures localize extension timeout, source-change, and target-resolution reasons.
+- Chat markdown links now normalize `www.*` external URLs and prevent widget-internal navigation before opening them through the external URL bridge.
+- Prompt command wait was reduced from 60s to 40s to improve worst-case response latency while still allowing one long-poll cycle plus browser action execution.
+
+Verification passed `npm run lint`, `npm run build:web`, `npm run smoke`, `npm run smoke:browser-action`, `npm run smoke:browser-action:e2e-control`, `npm run smoke:browser-action:prompt-classification`, `npm run smoke:browser-interaction-transaction`, Browser Perception focused smokes, `npm run smoke:browser-bridge`, `npm run smoke:extension`, `npm run smoke:dom`, `npm run smoke:semantic-interface`, `npm run smoke:semantic-memory`, and mojibake scan. Live daemon/widget were restarted; daemon PID is `78340`, widget PID is `105248`, Vite remains on `127.0.0.1:5173`, and `/storage/health` returned ok.
+
+Manual follow-up: reload the unpacked Browser Bridge extension before retesting if Chrome/Edge still has an older service worker loaded.
+
+## Latest Update: Browser Action Live Test Automation
+
+Added Browser Action live dogfood automation so manual prompt testing no longer requires hand-copying logs for every failure.
+
+- Added `scripts/browser-action-live-runner.mjs`.
+- Added npm scripts:
+  - `npm run dogfood:browser-action:live`
+  - `npm run dogfood:browser-action:live:real`
+- Added scenario/docs files:
+  - `docs/dogfood/browser-action-live-scenarios.jsonl`
+  - `docs/dogfood/browser-action-live-testing.md`
+- `isolated` mode starts a temporary daemon, launches a dedicated Chromium profile with the unpacked Browser Bridge extension, configures the extension daemon URL, opens a local fixture page, sends widget-style Browser mode prompts over the daemon websocket, auto-responds to safe approvals, and writes failure packets with daemon events, bridge status, screenshots, and result JSON.
+- `real` mode connects to the live daemon and installed Browser Bridge extension for the currently active user browser tab. This mode is for observing real browser progress; do not touch the active tab/window while a scenario is running.
+- Default isolated scenarios now cover representative content opening and current-page read behavior.
+- A live isolated run passed both default scenarios and wrote `docs/reports/browser-action-live-report-browser-action-live-final-20260510.md` plus assets under `docs/reports/assets/browser-action-live/browser-action-live-final-20260510/`.
+- The live runner exposed one real Browser Action issue: representative-content requests with multiple valid content items were clarified too aggressively. `planningGate` now permits a top `content_list_representative` candidate when the user explicitly asks for representative/any/interesting content, while keeping non-representative ambiguous side-effect actions gated.
+
+Verification passed `npm run lint`, `npm run build:web`, `npm run smoke:browser-action`, `npm run smoke:browser-interaction-transaction`, `npm run smoke:extension`, `node --check scripts/browser-action-live-runner.mjs`, `npm run dogfood:browser-action:live -- --dry-run`, and the headed isolated live runner. The live daemon/widget were restarted again after the daemon change; daemon PID is `105696`, widget PID is `66116`, and `/storage/health` returned ok.
+
 ## Latest Update: Browser Interaction Transaction
 
 Iteration `iter-20` completed `docs/plans/browser-interaction-transaction-handoff.md`.
@@ -1194,7 +1245,19 @@ Completed after Codex app-server browser-open duplicate correction:
 
 Use `docs/context/qa.md` for routine follow-up commands.
 
-## Latest Update: Browser Perception Interface Implementation
+## Latest Update: Browser Action Live Latency And Grouped Always Allow
+
+Completed the live Browser Action follow-up for slow/inconsistent `뒤로가기`, repeated Always Allow prompts, and general action startup latency.
+
+- Browser Action Always Allow now stores grouped policies through `createAlwaysAllowBrowserActionPolicyInput()` instead of URL-specific `actionLabel` values for normal safe action families. Navigation Always Allow covers similar navigate actions without pinning to one target URL; click/type/check/select share the `safe_click_type` family; read/scroll/screenshot share `safe_read_scroll`.
+- Browser Bridge now deduplicates in-flight/recent extension command `requestId`s so stale redelivery cannot execute a previous back/navigate command after a later scenario setup.
+- Browser Bridge adds a daemon WebSocket command wake-up path. The extension still keeps HTTP long-poll as fallback, but it now listens for daemon `browserAction.progress: queued` events and immediately requests `browserBridge.command`, avoiding Manifest V3 alarm wake-up delays.
+- `npm run dogfood:browser-action:live -- --run-id browser-action-ws-wakeup-always-allow-20260511` passed all seven scenarios. Latest latency evidence: concept random post 554ms, read 113ms, back 178/185ms, first approval navigate 329ms, grouped Always Allow navigate 199ms, reuse navigate 198ms.
+- `npm run smoke:browser-bridge` now covers the WebSocket command poll path in addition to HTTP poll/status refresh.
+
+Manual follow-up: reload the unpacked Browser Bridge extension once in Chrome/Edge so the installed service worker uses the WebSocket wake-up and command dedupe code.
+
+## Previous Update: Browser Perception Interface Implementation
 
 Iteration `iter-19` completed `docs/plans/browser-perception-interface-handoff.md`.
 

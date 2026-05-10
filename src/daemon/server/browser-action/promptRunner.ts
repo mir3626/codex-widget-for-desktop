@@ -59,13 +59,13 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
     transactionId: transaction.transactionId
   });
 
-  const snapshotResult = await readFreshPromptBrowserSnapshot(input, new Date());
+  const firstAction = promptPlan.steps[0]?.action;
+  const snapshotResult = await readFreshPromptBrowserSnapshot(input, new Date(), firstAction);
   if (snapshotResult.handled) {
     return true;
   }
 
   const snapshot = snapshotResult.snapshot;
-  const firstAction = promptPlan.steps[0]?.action;
   const contextLease = snapshotResult.context && firstAction
     ? createBrowserViewContextLease({
         context: snapshotResult.context,

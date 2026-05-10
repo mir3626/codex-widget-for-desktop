@@ -7,26 +7,40 @@ import { readHostLabel } from "./presentation.js";
 import type { BrowserActionPromptInput } from "./promptTypes.js";
 import { recordRuntimeActivity } from "../runtimeActivity.js";
 import type { PreparedBrowserViewContext } from "../../browser-perception/types.js";
+import type { BrowserAction } from "../../browser-action/types.js";
 
 export async function readFreshPromptBrowserSnapshot(input: BrowserActionPromptInput, requestStartedAt: Date): Promise<{
   snapshot?: unknown;
   context?: PreparedBrowserViewContext;
   handled: boolean;
+}>;
+export async function readFreshPromptBrowserSnapshot(input: BrowserActionPromptInput, requestStartedAt: Date, firstAction?: BrowserAction): Promise<{
+  snapshot?: unknown;
+  context?: PreparedBrowserViewContext;
+  handled: boolean;
+}>;
+export async function readFreshPromptBrowserSnapshot(input: BrowserActionPromptInput, requestStartedAt: Date, firstAction?: BrowserAction): Promise<{
+  snapshot?: unknown;
+  context?: PreparedBrowserViewContext;
+  handled: boolean;
 }> {
-  const actionRisk = readPromptActionRisk(input.message.text);
+  const promptRisk = readPromptActionRisk(input.message.text, firstAction);
+  const isFastNavigation = promptRisk === "safe_navigation";
+  const minCapturedAt = isFastNavigation || promptRisk === "read" ? undefined : requestStartedAt;
+  const timeoutMs = promptRisk === "read" ? 12_000 : isFastNavigation ? 3_500 : 35_000;
   const context = await input.browserPerception.ensureFreshContext({
     providers: input.providers,
     bridgeStatus: input.browserExtensionBridge.snapshot(),
     request: {
       requestId: input.message.id,
       reason: "prompt",
-      requiredFreshness: "stable",
-      actionRisk,
-      allowSettlingForRead: actionRisk === "read",
-      minCapturedAt: actionRisk === "read" ? undefined : requestStartedAt,
-      maxAgeMs: actionRisk === "read" ? 3_000 : 10_000,
-      timeoutMs: actionRisk === "read" ? 12_000 : 35_000,
-      settleQuietMs: 500
+      requiredFreshness: isFastNavigation ? "any_visible" : "stable",
+      actionRisk: promptRisk,
+      allowSettlingForRead: promptRisk === "read" || isFastNavigation,
+      minCapturedAt,
+      maxAgeMs: promptRisk === "read" ? 3_000 : isFastNavigation ? 30_000 : 10_000,
+      timeoutMs,
+      settleQuietMs: isFastNavigation ? 0 : 500
     },
     onProgress: (detail) => {
       input.emit({
@@ -58,7 +72,8 @@ export async function readFreshPromptBrowserSnapshot(input: BrowserActionPromptI
     browserExtensionBridge: input.browserExtensionBridge,
     storage: input.storage,
     sessionId: input.sessionId,
-    minCapturedAt: requestStartedAt
+    minCapturedAt,
+    timeoutMs
   });
   const staleSnapshot = readBrowserBridgeSnapshotMismatch(input.browserExtensionBridge.snapshot(), snapshot, requestStartedAt);
   if (!staleSnapshot) {
@@ -129,8 +144,15 @@ function readEnglishPerceptionFailure(status: string, userRecovery: string | und
   return `Browser Bridge could not read the current page. ${userRecovery ?? "Check Browser Bridge status."}`;
 }
 
-function readPromptActionRisk(text: string): "read" | "side_effect" {
+function readPromptActionRisk(text: string, firstAction?: BrowserAction): "read" | "safe_navigation" | "side_effect" {
+  if (firstAction && isTargetlessNavigationAction(firstAction)) {
+    return "safe_navigation";
+  }
   return isLikelyReadPrompt(text) ? "read" : "side_effect";
+}
+
+function isTargetlessNavigationAction(action: BrowserAction): boolean {
+  return action.type === "navigate" || action.type === "back" || action.type === "forward" || action.type === "reload";
 }
 
 function isLikelyReadPrompt(text: string): boolean {

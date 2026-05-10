@@ -71,6 +71,7 @@ function scoreSemanticContentElement(element: BrowserElement, observation: Brows
   const href = element.href ?? "";
   const contentHref = isLikelyContentHref(href, observation?.url);
   if (!label || label.length < 4) return 0;
+  if (isNonRepresentativeContentLabel(`${label} ${element.contextText ?? ""} ${element.nearestHeading ?? ""}`)) return 0;
   if (isPinnedOrAnnouncementElement(element, label)) return 0;
   if (isLikelyStalePinnedContentElement(element, observation)) return 0;
   if (isNavigationOrUtilityLabel(label, href, observation?.url, contentHref)) return 0;
@@ -94,7 +95,7 @@ function isNavigationOrUtilityLabel(label: string, href: string, currentUrl: str
   if (/^\[[0-9]+\]$|^[0-9]+개?$|^(이전|다음|목록|전체글|개념글|글쓰기|검색|삭제|수정|댓글|추천|공지|더보기|로그인|회원가입|로그아웃|본문영역 바로가기|best|hot|new)$/i.test(label)) {
     return true;
   }
-  if (/(바로가기|관리 내역|페이지 하단|설정|포인트|내\s*(?:정보|글|댓글)|쪽지함|menu|login|logout|sign in|write|delete|edit|reply|comment|next|previous|more|point|profile|message|notification|setting|lottery|event|stats?)/i.test(label)) {
+  if (isNonRepresentativeContentLabel(label) || /(바로가기|관리 내역|페이지 하단|설정|포인트|내\s*(?:정보|글|댓글)|쪽지함|menu|login|logout|sign in|write|delete|edit|reply|comment|next|previous|more|point|profile|message|notification|setting|lottery|event|stats?)/i.test(label)) {
     return true;
   }
   if (!contentHref && label.length <= 8 && isLikelySectionNavigationHref(href)) {
@@ -111,7 +112,11 @@ function hasContentStructure(element: BrowserElement): boolean {
 function isPinnedOrAnnouncementElement(element: BrowserElement, label: string): boolean {
   const context = `${element.contextText ?? ""} ${element.nearestHeading ?? ""}`.replace(/\s+/g, " ").trim();
   if (!context || context === label) return false;
-  return /(^|[\s\[\]()/|:：-])(?:공지|고정|알림|필독|notice|announcement|pinned|sticky)(?:$|[\s\[\]()/|:：-])/i.test(context);
+  return isNonRepresentativeContentLabel(context);
+}
+
+export function isNonRepresentativeContentLabel(text: string): boolean {
+  return /(^|[\s\[\]()/|:：-])(?:공지|고정|알림|필독|설문|이벤트|광고|운영|관리자|가이드|규칙|문의|안내|정책|notice|announcement|pinned|sticky|survey|poll|event|promo|ad|admin|moderator|guide|rule|policy)(?:$|[\s\[\]()/|:：-])/i.test(text);
 }
 
 function isLikelyStalePinnedContentElement(element: BrowserElement, observation: BrowserObservation | undefined): boolean {
@@ -285,7 +290,7 @@ function isNonContentViewNode(node: BrowserViewNode | undefined): boolean {
   if (node.kind !== "content_item" && node.kind !== "row") return true;
   if (node.regionRole === "header" || node.regionRole === "nav" || node.regionRole === "toolbar" || node.regionRole === "footer") return true;
   const label = compactText(node.label || node.text || "");
-  return isGlobalStatisticLabel(label);
+  return isGlobalStatisticLabel(label) || isNonRepresentativeContentLabel(label);
 }
 
 function sortSemanticContentElement(left: BrowserElement, right: BrowserElement, observation: BrowserObservation | undefined): number {

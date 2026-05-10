@@ -181,6 +181,10 @@ export type ServerEvent =
       status: BrowserExtensionBridgeStatus;
     }
   | {
+      type: "browserBridge.command";
+      command: unknown;
+    }
+  | {
       type: "browserAction.plan";
       actionSessionId: string;
       plan: unknown;

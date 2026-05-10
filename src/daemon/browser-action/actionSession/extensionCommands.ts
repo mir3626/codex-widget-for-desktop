@@ -12,6 +12,8 @@ import type {
 } from "../types.js";
 import { cloneResult, cloneSession } from "./cloning.js";
 
+const COMMAND_REDELIVERY_WAIT_MS = 2_500;
+
 export function pollBrowserExtensionCommand(input: {
   pendingCommands: BrowserQueuedCommand[];
   results: Map<string, BrowserActionResult>;
@@ -19,11 +21,8 @@ export function pollBrowserExtensionCommand(input: {
   commandResultIds: Map<string, string>;
 }): BrowserQueuedCommand | undefined {
   const now = Date.now();
-  while (true) {
-    const command = input.pendingCommands.shift();
-    if (!command) {
-      return undefined;
-    }
+  for (let index = 0; index < input.pendingCommands.length; index += 1) {
+    const command = input.pendingCommands[index];
     if (command.expiresAt && Date.parse(command.expiresAt) <= now) {
       failQueuedBrowserCommand({
         command,
@@ -32,14 +31,98 @@ export function pollBrowserExtensionCommand(input: {
         sessions: input.sessions,
         commandResultIds: input.commandResultIds
       });
+      input.pendingCommands.splice(index, 1);
+      index -= 1;
       continue;
     }
+    if (command.acknowledgedAt) {
+      continue;
+    }
+    const deliveredAt = command.deliveredAt ? Date.parse(command.deliveredAt) : 0;
+    if (deliveredAt && now - deliveredAt < COMMAND_REDELIVERY_WAIT_MS) {
+      continue;
+    }
+    command.deliveredAt = new Date(now).toISOString();
+    command.deliveryAttempts = (command.deliveryAttempts ?? 0) + 1;
     return command;
   }
+  return undefined;
+}
+
+export function acknowledgeBrowserExtensionCommand(input: {
+  requestId: string;
+  pendingCommands: BrowserQueuedCommand[];
+  results: Map<string, BrowserActionResult>;
+  sessions: Map<string, BrowserActionSession>;
+  commandResultIds: Map<string, string>;
+}): BrowserActionResult | undefined {
+  const command = input.pendingCommands.find((item) => item.requestId === input.requestId);
+  const resultId = input.commandResultIds.get(input.requestId);
+  const result = resultId ? input.results.get(resultId) : undefined;
+  if (!command || !result) {
+    return undefined;
+  }
+  command.acknowledgedAt = new Date().toISOString();
+  const session = input.sessions.get(command.actionSessionId);
+  if (session) {
+    session.timeline.push(createTimelineEvent({
+      startedAt: session.startedAt,
+      type: "execute",
+      summary: `Browser action picked up by extension: ${command.action.type}`,
+      detail: {
+        requestId: input.requestId,
+        resultId: result.id,
+        deliveryAttempts: command.deliveryAttempts ?? 1
+      }
+    }));
+  }
+  return cloneResult(result);
+}
+
+export function failPendingBrowserExtensionCommand(input: {
+  requestId: string;
+  error: string;
+  pendingCommands: BrowserQueuedCommand[];
+  results: Map<string, BrowserActionResult>;
+  sessions: Map<string, BrowserActionSession>;
+  commandResultIds: Map<string, string>;
+}): BrowserActionResult | undefined {
+  const index = input.pendingCommands.findIndex((command) => command.requestId === input.requestId);
+  const command = index >= 0 ? input.pendingCommands.splice(index, 1)[0] : undefined;
+  if (command) {
+    return failQueuedBrowserCommand({
+      command,
+      error: input.error,
+      results: input.results,
+      sessions: input.sessions,
+      commandResultIds: input.commandResultIds
+    });
+  }
+  const resultId = input.commandResultIds.get(input.requestId);
+  const result = resultId ? input.results.get(resultId) : undefined;
+  if (!result || result.status !== "pending") {
+    return undefined;
+  }
+  const session = input.sessions.get(result.actionSessionId);
+  result.status = "failed";
+  result.completedAt = new Date().toISOString();
+  result.error = input.error;
+  result.verification = { status: "failed", reason: input.error };
+  input.commandResultIds.delete(input.requestId);
+  if (session) {
+    session.timeline.push(createTimelineEvent({
+      startedAt: session.startedAt,
+      type: "error",
+      summary: input.error,
+      detail: { requestId: input.requestId, resultId: result.id }
+    }));
+  }
+  return cloneResult(result);
 }
 
 export function completeBrowserExtensionCommand(input: {
   execution: BrowserActionExecutionResult;
+  pendingCommands: BrowserQueuedCommand[];
   commandResultIds: Map<string, string>;
   results: Map<string, BrowserActionResult>;
   requireSession: (id: string) => BrowserActionSession;
@@ -48,6 +131,10 @@ export function completeBrowserExtensionCommand(input: {
   const commandResult = commandResultId ? input.results.get(commandResultId) : undefined;
   if (!commandResult) {
     throw new Error(`Browser action result not found for request: ${input.execution.requestId}`);
+  }
+  const commandIndex = input.pendingCommands.findIndex((command) => command.requestId === input.execution.requestId);
+  if (commandIndex >= 0) {
+    input.pendingCommands.splice(commandIndex, 1);
   }
   input.commandResultIds.delete(input.execution.requestId);
   const session = input.requireSession(commandResult.actionSessionId);
@@ -119,10 +206,10 @@ function failQueuedBrowserCommand(input: {
   results: Map<string, BrowserActionResult>;
   sessions: Map<string, BrowserActionSession>;
   commandResultIds: Map<string, string>;
-}): void {
+}): BrowserActionResult | undefined {
   const result = input.results.get(input.command.resultId);
   if (!result) {
-    return;
+    return undefined;
   }
   const session = input.sessions.get(input.command.actionSessionId);
   result.status = "failed";
@@ -138,4 +225,5 @@ function failQueuedBrowserCommand(input: {
       detail: { requestId: input.command.requestId, resultId: result.id }
     }));
   }
+  return cloneResult(result);
 }

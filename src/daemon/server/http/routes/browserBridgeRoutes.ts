@@ -76,6 +76,33 @@ export async function handleBrowserBridgeRoute(
     return true;
   }
 
+  if (request.method === "POST" && url.pathname === "/browser-action/extension/action-ack") {
+    try {
+      const payload = JSON.parse(await readRequestBody(request, 128 * 1024)) as { requestId?: string };
+      const requestId = typeof payload.requestId === "string" ? payload.requestId.trim() : "";
+      if (!requestId) {
+        writeJsonResponse(response, 400, { ok: false, error: "Browser Action command acknowledgement requires requestId." });
+        return true;
+      }
+      const result = browserActions.acknowledgeExtensionCommand(requestId);
+      if (result) {
+        broadcast(clients, {
+          type: "browserAction.progress",
+          actionSessionId: result.actionSessionId,
+          status: "extension_command_acknowledged",
+          detail: { requestId, action: result.action.type }
+        });
+      }
+      writeJsonResponse(response, 200, { ok: true, acknowledged: Boolean(result) });
+    } catch (error) {
+      writeJsonResponse(response, 400, {
+        ok: false,
+        error: error instanceof Error ? error.message : "Invalid Browser Action command acknowledgement."
+      });
+    }
+    return true;
+  }
+
   if (request.method === "POST" && url.pathname === "/browser-action/extension/observe-result") {
     try {
       const payload = JSON.parse(await readRequestBody(request, 1024 * 1024));
@@ -152,7 +179,7 @@ export async function handleBrowserBridgeRoute(
   return false;
 }
 
-function browserBridgeActiveTabChanged(
+export function browserBridgeActiveTabChanged(
   previous: BrowserExtensionBridgeStatus,
   next: BrowserExtensionBridgeStatus
 ): boolean {
@@ -170,19 +197,19 @@ function browserBridgeActiveTabSignature(status: BrowserExtensionBridgeStatus): 
   ].join("|");
 }
 
-async function pollBrowserBridgeCommand(input: {
+export async function pollBrowserBridgeCommand(input: {
   browserPerception: HttpRouteContext["browserPerception"];
   browserActions: HttpRouteContext["browserActions"];
   waitMs: number;
 }) {
-  const immediate = input.browserPerception.pollExtensionCommand() ?? input.browserActions.pollExtensionCommand() ?? null;
+  const immediate = input.browserActions.pollExtensionCommand() ?? input.browserPerception.pollExtensionCommand() ?? null;
   if (immediate || input.waitMs <= 0) {
     return immediate;
   }
   const deadline = Date.now() + input.waitMs;
   while (Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, 250));
-    const command = input.browserPerception.pollExtensionCommand() ?? input.browserActions.pollExtensionCommand() ?? null;
+    const command = input.browserActions.pollExtensionCommand() ?? input.browserPerception.pollExtensionCommand() ?? null;
     if (command) {
       return command;
     }
@@ -198,7 +225,7 @@ function readPollWaitMs(value: string | null): number {
   return Math.min(25_000, Math.floor(number));
 }
 
-function buildBrowserBridgePollStatus(url: URL, previous: BrowserExtensionBridgeStatus): BrowserExtensionBridgeStatus {
+export function buildBrowserBridgePollStatus(url: URL, previous: BrowserExtensionBridgeStatus): BrowserExtensionBridgeStatus {
   const permission = readBridgePollPermission(url.searchParams.get("permission"));
   return {
     ...previous,

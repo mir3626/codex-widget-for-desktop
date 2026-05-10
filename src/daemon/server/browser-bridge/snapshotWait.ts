@@ -22,8 +22,10 @@ export async function waitForFreshBrowserBridgeSnapshot(input: {
   storage: StorageService;
   sessionId: string;
   minCapturedAt?: Date;
+  timeoutMs?: number;
 }): Promise<DomSnapshot | null> {
   const startedAt = Date.now();
+  const timeoutMs = Math.max(500, input.timeoutMs ?? BROWSER_BRIDGE_FRESH_SNAPSHOT_WAIT_MS);
   const initialSnapshot = input.providers.getDomSnapshot();
   const initialMismatch = readBrowserBridgeSnapshotMismatch(input.browserExtensionBridge.snapshot(), initialSnapshot, input.minCapturedAt);
   if (!initialMismatch) {
@@ -31,7 +33,7 @@ export async function waitForFreshBrowserBridgeSnapshot(input: {
   }
 
   recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", "Waiting for fresh Browser Bridge snapshot", initialMismatch);
-  while (Date.now() - startedAt < BROWSER_BRIDGE_FRESH_SNAPSHOT_WAIT_MS) {
+  while (Date.now() - startedAt < timeoutMs) {
     await sleep(BROWSER_BRIDGE_FRESH_SNAPSHOT_POLL_MS);
     const latestSnapshot = input.providers.getDomSnapshot();
     const mismatch = readBrowserBridgeSnapshotMismatch(input.browserExtensionBridge.snapshot(), latestSnapshot, input.minCapturedAt);

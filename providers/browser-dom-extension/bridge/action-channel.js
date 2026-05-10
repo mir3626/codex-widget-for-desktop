@@ -1,6 +1,7 @@
 import { collectDomSnapshot, executeBrowserActionInPage } from "./injected-dom.js";
 import {
   DEFAULT_BROWSER_ACTION_ACK_PATH,
+  DEFAULT_BROWSER_ACTION_COMMAND_ACK_PATH,
   DEFAULT_BROWSER_ACTION_OBSERVE_RESULT_PATH,
   DEFAULT_BROWSER_ACTION_POLL_PATH,
   DEFAULT_BROWSER_ACTION_RESULT_PATH
@@ -8,6 +9,10 @@ import {
 import { resolveDaemonUrl } from "./settings.js";
 import { setBridgeBadge } from "./badge.js";
 import { readTabPermission } from "./tab-state.js";
+
+const inFlightBrowserActionRequestIds = new Set();
+const recentBrowserActionRequestIds = new Map();
+const RECENT_BROWSER_ACTION_REQUEST_TTL_MS = 60_000;
 
 export async function pollAndExecuteBrowserAction(tab, settings, options = {}) {
   if (!tab?.id) {
@@ -32,7 +37,6 @@ export async function pollAndExecuteBrowserAction(tab, settings, options = {}) {
   if (waitMs > 0) {
     pollUrl.searchParams.set("waitMs", String(Math.min(25_000, Math.max(0, Math.floor(waitMs)))));
   }
-  const resultUrl = resolveDaemonUrl(settings.daemonBaseUrl, DEFAULT_BROWSER_ACTION_RESULT_PATH);
   const response = await fetch(pollUrl.toString(), { method: "GET", cache: "no-store", signal: options.signal });
   if (!response.ok) {
     throw new Error(`Browser Action poll failed (${response.status}).`);
@@ -47,44 +51,107 @@ export async function pollAndExecuteBrowserAction(tab, settings, options = {}) {
   if (!command?.requestId || !command?.action) {
     return false;
   }
+  if (isDuplicateBrowserActionCommand(command.requestId)) {
+    await postBrowserActionCommandAck(settings, tab, command).catch(() => undefined);
+    return true;
+  }
 
-  await setBridgeBadge("RUN", tab.id);
-  const permissionError = permission.permission === "allowed" ? "" : permission.detail ?? "Site permission is required before Browser Action execution.";
-  const before = permissionError ? null : await safeReadSnapshotFromTab(tab.id);
-  const sourceMismatch = permissionError || detectSourceMismatch(command.expectedSource, tab, before);
-  const result = sourceMismatch
-    ? {
-        ok: false,
-        error: sourceMismatch,
-        after: before,
-        metadata: { actualUrl: tab.url ?? before?.url, actualTitle: tab.title ?? before?.title, permission: permission.permission }
-      }
-    : await executeBrowserActionCommand(tab, command);
-  const after = await readPostActionSnapshot(tab.id, command.action, result.after);
-  const afterTab = await safeReadTab(tab.id) ?? tab;
-  await postBrowserActionResultWithRetry(resultUrl, {
-    requestId: command.requestId,
-    ok: result.ok,
-    before,
-    after,
-    error: result.error,
-    metadata: {
-      ...result.metadata,
-      actualTab: {
-        tabId: afterTab.id ?? tab.id,
-        windowId: afterTab.windowId ?? tab.windowId,
-        url: afterTab.url ?? after?.url ?? tab.url,
-        title: afterTab.title ?? after?.title ?? tab.title
-      },
-      permission: permission.permission,
-      bridgeMode: "command_first"
-    }
-  });
-  await setBridgeBadge(result.ok ? "IDLE" : "ERR", tab.id);
+  await executePolledBrowserActionCommand(tab, settings, permission, command);
   return true;
 }
 
-async function executeBrowserPerceptionObserveCommand(tab, settings, permission, command) {
+export async function executePolledBrowserActionCommand(tab, settings, permission, command) {
+  if (!tab?.id || !command?.requestId || !command?.action) {
+    return false;
+  }
+  if (isDuplicateBrowserActionCommand(command.requestId)) {
+    await postBrowserActionCommandAck(settings, tab, command).catch(() => undefined);
+    return true;
+  }
+
+  markBrowserActionCommandInFlight(command.requestId);
+  await setBridgeBadge("RUN", tab.id);
+  const resultUrl = resolveDaemonUrl(settings.daemonBaseUrl, DEFAULT_BROWSER_ACTION_RESULT_PATH);
+  try {
+    await postBrowserActionCommandAck(settings, tab, command);
+    const permissionError = permission.permission === "allowed" ? "" : permission.detail ?? "Site permission is required before Browser Action execution.";
+    const before = permissionError ? null : await safeReadSnapshotFromTab(tab.id);
+    const sourceMismatch = permissionError || detectSourceMismatch(command.expectedSource, tab, before);
+    const result = sourceMismatch
+      ? {
+          ok: false,
+          error: sourceMismatch,
+          after: before,
+          metadata: { actualUrl: tab.url ?? before?.url, actualTitle: tab.title ?? before?.title, permission: permission.permission }
+        }
+      : await executeBrowserActionCommand(tab, command);
+    const after = await readPostActionSnapshot(tab.id, command.action, result.after);
+    const afterTab = await safeReadTab(tab.id) ?? tab;
+    await postBrowserActionResultWithRetry(resultUrl, {
+      requestId: command.requestId,
+      ok: result.ok,
+      before,
+      after,
+      error: result.error,
+      metadata: {
+        ...result.metadata,
+        actualTab: {
+          tabId: afterTab.id ?? tab.id,
+          windowId: afterTab.windowId ?? tab.windowId,
+          url: afterTab.url ?? after?.url ?? tab.url,
+          title: afterTab.title ?? after?.title ?? tab.title
+        },
+        permission: permission.permission,
+        bridgeMode: "command_first"
+      }
+    });
+    markBrowserActionCommandRecent(command.requestId);
+    await setBridgeBadge(result.ok ? "IDLE" : "ERR", tab.id);
+    return true;
+  } finally {
+    inFlightBrowserActionRequestIds.delete(command.requestId);
+  }
+}
+
+function isDuplicateBrowserActionCommand(requestId) {
+  pruneRecentBrowserActionRequestIds();
+  return inFlightBrowserActionRequestIds.has(requestId) || recentBrowserActionRequestIds.has(requestId);
+}
+
+function markBrowserActionCommandInFlight(requestId) {
+  pruneRecentBrowserActionRequestIds();
+  inFlightBrowserActionRequestIds.add(requestId);
+}
+
+function markBrowserActionCommandRecent(requestId) {
+  recentBrowserActionRequestIds.set(requestId, Date.now());
+}
+
+function pruneRecentBrowserActionRequestIds() {
+  const now = Date.now();
+  for (const [requestId, timestamp] of recentBrowserActionRequestIds.entries()) {
+    if (now - timestamp > RECENT_BROWSER_ACTION_REQUEST_TTL_MS) {
+      recentBrowserActionRequestIds.delete(requestId);
+    }
+  }
+}
+
+async function postBrowserActionCommandAck(settings, tab, command) {
+  const ackUrl = resolveDaemonUrl(settings.daemonBaseUrl, DEFAULT_BROWSER_ACTION_COMMAND_ACK_PATH);
+  await postJsonWithRetry(ackUrl, {
+    requestId: command.requestId,
+    action: command.action?.type,
+    receivedAt: new Date().toISOString(),
+    activeTab: {
+      tabId: tab?.id,
+      windowId: tab?.windowId,
+      url: tab?.url,
+      title: tab?.title
+    }
+  });
+}
+
+export async function executeBrowserPerceptionObserveCommand(tab, settings, permission, command) {
   const ackUrl = resolveDaemonUrl(settings.daemonBaseUrl, DEFAULT_BROWSER_ACTION_ACK_PATH);
   const resultUrl = resolveDaemonUrl(settings.daemonBaseUrl, DEFAULT_BROWSER_ACTION_OBSERVE_RESULT_PATH);
   const activeTab = {
