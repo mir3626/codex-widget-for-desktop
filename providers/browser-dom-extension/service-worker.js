@@ -40,6 +40,7 @@ let bridgeCommandSocketUrl = "";
 let bridgeCommandSocketReconnectTimer = null;
 let bridgeCommandSocketKeepaliveTimer = null;
 let bridgeCommandSocketPollRunning = false;
+let bridgeCommandSocketPollQueued = false;
 let activeTabGeneration = 0;
 let lastActiveTabSignature = "";
 
@@ -364,7 +365,11 @@ function clearBridgeCommandSocketKeepalive() {
 }
 
 async function sendBridgeCommandSocketPoll(reason) {
-  if (bridgeCommandSocket?.readyState !== WebSocket.OPEN || bridgeCommandSocketPollRunning) {
+  if (bridgeCommandSocket?.readyState !== WebSocket.OPEN) {
+    return;
+  }
+  if (bridgeCommandSocketPollRunning) {
+    bridgeCommandSocketPollQueued = true;
     return;
   }
   bridgeCommandSocketPollRunning = true;
@@ -387,13 +392,19 @@ async function sendBridgeCommandSocketPoll(reason) {
     }));
   } finally {
     bridgeCommandSocketPollRunning = false;
+    if (bridgeCommandSocketPollQueued) {
+      bridgeCommandSocketPollQueued = false;
+      setTimeout(() => {
+        void sendBridgeCommandSocketPoll(`coalesced:${reason}`);
+      }, 25);
+    }
   }
 }
 
 async function handleBridgeCommandSocketMessage(raw) {
   const message = JSON.parse(typeof raw === "string" ? raw : String(raw ?? "{}"));
-  if (message?.type === "browserAction.progress" && message.status === "queued") {
-    await sendBridgeCommandSocketPoll("queued");
+  if (isBridgeCommandWakeEvent(message)) {
+    await sendBridgeCommandSocketPoll(String(message.status ?? "queued"));
     return;
   }
   if (message?.type !== "browserBridge.command" || !message.command) {
@@ -411,6 +422,22 @@ async function handleBridgeCommandSocketMessage(raw) {
     await executePolledBrowserActionCommand(tab, settings, permission, message.command);
   }
   await sendBridgeCommandSocketPoll("after_command");
+}
+
+function isBridgeCommandWakeEvent(message) {
+  if (message?.type !== "browserAction.progress") {
+    return false;
+  }
+  if (message.status === "queued") {
+    return true;
+  }
+  if (message.status === "plan_paused_for_extension") {
+    return Boolean(message.detail?.requestId && message.detail?.action);
+  }
+  if (message.status === "clarification_selected_queued") {
+    return Boolean(message.detail?.requestId && message.detail?.action);
+  }
+  return message.status === "browser_perception_waiting" && message.detail?.status === "observe_queued";
 }
 
 async function runBridgeCommandPump(reason) {

@@ -1,0 +1,32 @@
+{
+  "extensionVersion": "0.1.0",
+  "daemonBaseUrl": "http://127.0.0.1:30527",
+  "connected": true,
+  "mode": "restricted",
+  "reason": "ensure:tab_activated",
+  "updatedAt": "2026-05-10T17:01:51.861Z",
+  "lastSeenAt": "2026-05-10T17:01:51.861Z",
+  "lastError": "This browser page does not allow extension page access.",
+  "nativeHost": "disabled",
+  "activeTab": {
+    "tabId": 52443713,
+    "windowId": 52443712,
+    "url": "about:blank",
+    "title": "about:blank",
+    "origin": "null/*",
+    "permission": "restricted",
+    "detail": "This browser page does not allow extension page access."
+  },
+  "settings": {
+    "daemonBaseUrl": "http://127.0.0.1:30527",
+    "autoConnect": true,
+    "autoObserve": true,
+    "allowAllSites": false,
+    "observeBlocklist": [],
+    "allowSafeReadScroll": true,
+    "requireApprovalForClickType": false,
+    "useNativeHost": false,
+    "debugSnapshot": false,
+    "pollIntervalSeconds": 5
+  }
+}

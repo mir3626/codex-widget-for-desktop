@@ -29,7 +29,6 @@ try {
     socket.once("error", reject);
   });
   await postHeartbeat("https://example.test/perception-live");
-  const pendingLongPoll = pollObserveCommand("https://example.test/perception-live", 5_000);
   socket.send(JSON.stringify({
     type: "ask",
     id: "browser-perception-fresh-context",
@@ -42,7 +41,21 @@ try {
       event.status === "browser_perception_waiting",
     "perception waiting progress"
   );
-  const command = await pendingLongPoll;
+  socket.send(JSON.stringify({
+    type: "browserBridge.command.poll",
+    tabId: 99,
+    windowId: 5,
+    url: "https://example.test/perception-live",
+    title: "Browser Perception Live Page",
+    permission: "allowed",
+    mode: "browser_bridge",
+    reason: "smoke_ws_observe_wakeup"
+  }));
+  const commandEvent = await waitFor(
+    (event) => event.type === "browserBridge.command" && event.command?.kind === "observe_now",
+    "websocket observe command"
+  );
+  const command = commandEvent.command;
   assertEqual(command?.kind, "observe_now", "observe command kind");
   assertEqual(command?.commandId, progress.detail?.commandId, "progress command id");
   await postAck(command.commandId, "accepted");
@@ -95,24 +108,6 @@ async function postHeartbeat(url) {
   if (!response.ok) {
     throw new Error(`heartbeat failed: ${response.status}`);
   }
-}
-
-async function pollObserveCommand(url, waitMs = 0) {
-  const pollUrl = new URL(`${baseUrl}/browser-action/extension/poll`);
-  pollUrl.searchParams.set("tabId", "99");
-  pollUrl.searchParams.set("windowId", "5");
-  pollUrl.searchParams.set("url", url);
-  pollUrl.searchParams.set("title", "Browser Perception Live Page");
-  pollUrl.searchParams.set("permission", "allowed");
-  pollUrl.searchParams.set("mode", "browser_bridge");
-  if (waitMs > 0) {
-    pollUrl.searchParams.set("waitMs", String(waitMs));
-  }
-  const response = await fetch(pollUrl);
-  if (!response.ok) {
-    throw new Error(`poll failed: ${response.status}`);
-  }
-  return (await response.json()).command;
 }
 
 async function postAck(commandId, status) {

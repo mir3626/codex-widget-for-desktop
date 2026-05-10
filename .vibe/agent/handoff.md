@@ -4,6 +4,14 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Browser Bridge Observe Wake-Up
+
+Follow-up live widget log review found one remaining Browser Action failure after the previous latency fix: connected/allowed Browser Bridge prompts could still time out waiting for a fresh active-tab observation because the extension WebSocket wake-up handler ignored `browser_perception_waiting` / `observe_queued` events. The handler now wakes command polling for fresh observe commands, prompt action commands (`plan_paused_for_extension`), approval/direct queued commands, and clarification-resume queued commands. Concurrent wake-ups are coalesced instead of dropped while a poll is already running.
+
+`npm run smoke:browser-perception:extension-command` now exercises WebSocket command delivery for `observe_now` instead of the HTTP long-poll fallback. Focused verification passed `node --check` for the changed extension/smoke scripts, `npm run build:daemon`, `npm run smoke:browser-perception:extension-command`, `npm run smoke:browser-bridge`, `npm run smoke:extension`, `npm run lint`, `npm run smoke`, `npm run smoke:browser-action`, and `npm run dogfood:browser-action:live -- --run-id browser-action-wakeup-final-20260511`. The final live report passed all seven isolated scenarios: current-page read 128ms, back 192/198ms, approval prime 337ms, grouped Always Allow passed, and reuse 204ms.
+
+Manual follow-up: reload the unpacked Browser Bridge extension before retesting the installed browser extension, because `providers/browser-dom-extension/service-worker.js` changed.
+
 ## Latest Update: Browser Action Command Ack and Live Latency
 
 Follow-up live-runner work addressed the latest Browser Action dogfood issues: slow/inconsistent `뒤로가기`, repeated approval prompts, and approval-result responses ending at the approval receipt.

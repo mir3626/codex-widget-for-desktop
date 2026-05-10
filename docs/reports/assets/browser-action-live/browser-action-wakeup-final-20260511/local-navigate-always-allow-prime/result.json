@@ -1,0 +1,15 @@
+{
+  "scenarioId": "local-navigate-always-allow-prime",
+  "requestId": "browser-action-live-local-navigate-always-allow-prime-1778432517787-4",
+  "status": "pass",
+  "failureClass": "",
+  "elapsedMs": 337,
+  "finalUrl": "http://127.0.0.1:30528/target",
+  "answer": "브라우저 동작을 완료했습니다.\n실행: navigate http://127.0.0.1:30528/target\n현재 페이지: Browser Action Live Fixture (http://127.0.0.1:30528/target)\n검증: Action changed the browser route or URL.",
+  "answerRedacted": false,
+  "answerLength": 172,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-wakeup-final-20260511\\local-navigate-always-allow-prime\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-wakeup-final-20260511\\local-navigate-always-allow-prime\\screenshot-after.png"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "extensionVersion": "0.1.0",
+  "daemonBaseUrl": "http://127.0.0.1:30527",
+  "connected": true,
+  "mode": "idle",
+  "reason": "browser_bridge",
+  "updatedAt": "2026-05-10T17:01:55.608Z",
+  "lastSeenAt": "2026-05-10T17:01:55.608Z",
+  "lastObservationAt": "2026-05-10T17:01:55.575Z",
+  "lastError": null,
+  "nativeHost": "disabled",
+  "activeTab": {
+    "tabId": 52443713,
+    "windowId": 52443712,
+    "url": "http://127.0.0.1:30528/forum",
+    "title": "Browser Action Live Fixture",
+    "origin": "http://127.0.0.1:30528/*",
+    "permission": "allowed"
+  },
+  "settings": {
+    "daemonBaseUrl": "http://127.0.0.1:30527",
+    "autoConnect": true,
+    "autoObserve": true,
+    "allowAllSites": false,
+    "observeBlocklist": [],
+    "allowSafeReadScroll": true,
+    "requireApprovalForClickType": false,
+    "useNativeHost": false,
+    "debugSnapshot": false,
+    "pollIntervalSeconds": 5
+  }
+}
