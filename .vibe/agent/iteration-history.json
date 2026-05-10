@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-19",
+  "currentIteration": "iter-20",
   "iterations": [
     {
       "id": "iter-1",
@@ -648,6 +648,48 @@
       },
       "summary": "Iteration 19 completed the Browser Perception request-scoped observation layer. The daemon now has PreparedBrowserViewContext storage, freshness/stability policy, and ensureFreshContext. Browser Bridge poll can deliver observe_now commands with ack/result/timeout/cancel/error semantics, snapshots include top-level mutation quietness metadata, and prompt/direct Browser Action paths wait for fresh active-tab context before extension-backed planning/execution. Focused smokes and dogfood evidence prove the previous retry-later final answer is avoided for connected/allowed prompt flows.",
       "completedAt": "2026-05-10T14:57:26.289+09:00"
+    },
+    {
+      "id": "iter-20",
+      "label": "Browser Interaction Transaction",
+      "startedAt": "2026-05-10T22:21:39.955+09:00",
+      "goal": "Implement docs/plans/browser-interaction-transaction-handoff.md: request-scoped BrowserInteractionTransaction pipeline with fresh BrowserViewContextLease, finite View Graph candidate steps, deterministic planning gate, clarification resume, stepwise execution binding, expected-effect verification, advisory Semantic Memory feedback, smokes, and dogfood evidence.",
+      "plannedSprints": [
+        "iter-20-sprint-01-transaction-and-lease-foundation",
+        "iter-20-sprint-02-intent-candidate-and-planning-gate",
+        "iter-20-sprint-03-prompt-direct-and-clarification-integration",
+        "iter-20-sprint-04-stepwise-binding-and-verification",
+        "iter-20-sprint-05-memory-feedback-dogfood-and-completion"
+      ],
+      "completedSprints": [
+        "iter-20-sprint-01-transaction-and-lease-foundation",
+        "iter-20-sprint-02-intent-candidate-and-planning-gate",
+        "iter-20-sprint-03-prompt-direct-and-clarification-integration",
+        "iter-20-sprint-04-stepwise-binding-and-verification",
+        "iter-20-sprint-05-memory-feedback-dogfood-and-completion"
+      ],
+      "carryover": "Iter-19 completed request-scoped Browser Perception, but live dogfood still shows resolver-first Browser Action prompt handling cannot universally understand natural-language browser tasks. Iter-20 moves Browser Action to a transaction discipline: fresh active-tab lease before decision, finite candidates before grounding, concrete clarification, stepwise reobserve/rebind, and effect-specific verification.",
+      "openRisks": [
+        "Live browser verification requires reloading the unpacked Browser Bridge extension so Chrome/Edge uses the latest service-worker and bridge scripts.",
+        "Ranked-choice clarification card UX can be polished further; the daemon transaction model now emits concrete candidate choices and transaction metadata.",
+        "Native browser chrome/restricted-page executable fallback remains blocked on a scoped Windows UI Automation/native input helper.",
+        "Codex app-server custom Browser Action tools remain blocked on a stable custom-tool/client-tool contract; the daemon prompt/tool simulation path remains the verified local bridge.",
+        "Semantic Memory remains advisory and cannot bypass freshness, safety, visibility, approval, or current view evidence."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.985,
+        "durable-codex-runtime": 0.97,
+        "real-tool-providers": 1,
+        "resident-desktop-readiness": 0.965,
+        "durable-product-state": 0.99,
+        "semantic-interface": 1,
+        "semantic-memory": 1,
+        "browser-view-graph-v2": 1,
+        "browser-perception-interface": 1,
+        "browser-interaction-transaction": 1
+      },
+      "summary": "Iteration 20 completed the Browser Interaction Transaction pipeline. Browser Action prompt/direct/clarification paths now coordinate request-scoped transactions, fresh Browser Perception leases, finite View Graph candidates, deterministic planning gates, late resolver grounding, expected-effect verification, per-active-tab concurrency cancellation, and redacted advisory Semantic Memory feedback. New transaction smokes and refreshed Browser Action dogfood evidence cover the core interface behavior without site-specific rules.",
+      "completedAt": "2026-05-10T22:41:00.000+09:00"
     }
   ]
 }

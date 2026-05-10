@@ -8,7 +8,7 @@ import {
   resolveTarget,
 } from "../dist/daemon/browser-action/index.js";
 
-const evidenceDate = process.env.BROWSER_ACTION_DOGFOOD_DATE || "2026-05-08";
+const evidenceDate = process.env.BROWSER_ACTION_DOGFOOD_DATE || "2026-05-10";
 const reportPath = join("docs", "reports", `browser-action-dogfood-evidence-${evidenceDate}.md`);
 const assetDir = join("docs", "reports", "assets", `browser-action-dogfood-${evidenceDate}`);
 const jsonPath = join(assetDir, "evidence.json");
@@ -28,6 +28,15 @@ const session = {
 };
 const manager = new BrowserActionSessionManager(new BrowserActionAdapterRegistry([playwrightAdapter]));
 manager.start({ id: session.id, mode: session.mode, source: session.source });
+const transaction = manager.beginInteraction({
+  requestId: `browser-action-dogfood-${evidenceDate}`,
+  actionSessionId: session.id,
+  sessionId: session.id,
+  utterance: "Example Domain을 읽고 Learn more 링크를 눌러 이동을 확인해줘",
+  source: "prompt",
+  mode: "auto_safe_actions",
+  browserSource: session.source
+});
 
 const transcript = [];
 const observed = await manager.observeViaAdapter({ actionSessionId: session.id, adapterId: "playwright", providerState: { url: startUrl } });
@@ -45,6 +54,7 @@ const screenshot = await manager.execute({
   actionSessionId: session.id,
   adapterId: "playwright",
   snapshot: {},
+  transaction,
   action: { type: "screenshot", fullPage: false }
 });
 const dataUrl = String(screenshot.result.after?.screenshot?.dataUrl ?? "");
@@ -70,6 +80,8 @@ const clicked = await manager.execute({
   actionSessionId: session.id,
   adapterId: "playwright",
   snapshot: {},
+  transaction,
+  expected: [{ type: "custom", description: "Target activation produces the expected visible page, route, selection, or content change." }],
   action: { type: "click", target: { kind: "element_id", id: linkResolution.primary.id } }
 });
 transcript.push({
@@ -105,6 +117,13 @@ const evidence = {
     capturedBeforeAfter: true,
     screenshotAsset: screenshotPath,
     notes: "Safe read/screenshot/link navigation against public Example Domain; no credentials or form submission."
+  },
+  transactionEvidence: {
+    transactionId: transaction.transactionId,
+    clickResultTransaction: clicked.result.transaction,
+    verificationStatus: clicked.result.verification.status,
+    verificationReason: clicked.result.verification.reason,
+    expectedEffectChecked: true
   }
 };
 
@@ -144,6 +163,8 @@ function renderReport(evidence) {
 - Click result: ${click.ok ? "passed" : "failed"}
 - Verification status: ${click.verification.status}
 - Verification reason: ${click.verification.reason}
+- Transaction id: \`${evidence.transactionEvidence.transactionId}\`
+- Result transaction metadata: \`${JSON.stringify(evidence.transactionEvidence.clickResultTransaction)}\`
 - Supporting JSON: \`${jsonPath.replace(/\\/g, "/")}\`
 
 ## Notes

@@ -11,9 +11,14 @@ import type {
   BrowserActionResult,
   BrowserActionSession,
   BrowserActionSource,
+  BrowserExpectedState,
   BrowserObservation,
   BrowserQueuedCommand
 } from "../types.js";
+import type {
+  BrowserInteractionTransaction,
+  BrowserViewContextLease
+} from "../interaction/types.js";
 
 export type BrowserActionSessionStartInput = {
   id?: string;
@@ -34,6 +39,9 @@ export type BrowserActionExecuteInput = {
   actionSessionId: string;
   action: BrowserAction;
   snapshot: unknown;
+  contextLease?: BrowserViewContextLease;
+  transaction?: BrowserInteractionTransaction;
+  expected?: BrowserExpectedState[];
   adapterId?: string;
   approved?: boolean;
   targetHint?: string;
@@ -60,6 +68,8 @@ export type BrowserActionInteractionOutput = {
 export type BrowserActionPlanExecuteInput = {
   plan: BrowserActionPlan;
   snapshot: unknown;
+  contextLease?: BrowserViewContextLease;
+  transaction?: BrowserInteractionTransaction;
   adapterId?: string;
   approvedStepIds?: string[];
   policyMatches?: Record<string, BrowserActionPolicyMatch | undefined>;

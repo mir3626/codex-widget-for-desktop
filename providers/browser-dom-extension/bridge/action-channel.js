@@ -9,9 +9,9 @@ import { resolveDaemonUrl } from "./settings.js";
 import { setBridgeBadge } from "./badge.js";
 import { readTabPermission } from "./tab-state.js";
 
-export async function pollAndExecuteBrowserAction(tab, settings) {
+export async function pollAndExecuteBrowserAction(tab, settings, options = {}) {
   if (!tab?.id) {
-    return;
+    return false;
   }
 
   const permission = await readTabPermission(tab, settings);
@@ -28,8 +28,12 @@ export async function pollAndExecuteBrowserAction(tab, settings) {
   }
   pollUrl.searchParams.set("permission", permission.permission);
   pollUrl.searchParams.set("mode", "browser_bridge");
+  const waitMs = Number(options.waitMs) || 0;
+  if (waitMs > 0) {
+    pollUrl.searchParams.set("waitMs", String(Math.min(25_000, Math.max(0, Math.floor(waitMs)))));
+  }
   const resultUrl = resolveDaemonUrl(settings.daemonBaseUrl, DEFAULT_BROWSER_ACTION_RESULT_PATH);
-  const response = await fetch(pollUrl.toString(), { method: "GET" });
+  const response = await fetch(pollUrl.toString(), { method: "GET", cache: "no-store", signal: options.signal });
   if (!response.ok) {
     throw new Error(`Browser Action poll failed (${response.status}).`);
   }
@@ -38,10 +42,10 @@ export async function pollAndExecuteBrowserAction(tab, settings) {
   const command = payload?.command;
   if (command?.kind === "observe_now") {
     await executeBrowserPerceptionObserveCommand(tab, settings, permission, command);
-    return;
+    return true;
   }
   if (!command?.requestId || !command?.action) {
-    return;
+    return false;
   }
 
   await setBridgeBadge("RUN", tab.id);
@@ -77,6 +81,7 @@ export async function pollAndExecuteBrowserAction(tab, settings) {
     }
   });
   await setBridgeBadge(result.ok ? "IDLE" : "ERR", tab.id);
+  return true;
 }
 
 async function executeBrowserPerceptionObserveCommand(tab, settings, permission, command) {
@@ -209,6 +214,10 @@ export function assertTabCanRunBrowserAction(tab) {
 async function executeBrowserActionCommand(tab, command) {
   try {
     assertTabCanRunBrowserAction(tab);
+    const tabNavigation = await executeTabNavigationAction(tab, command.action);
+    if (tabNavigation) {
+      return tabNavigation;
+    }
     if (command.action?.type === "screenshot") {
       const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
       const after = await safeReadSnapshotFromTab(tab.id);
@@ -235,6 +244,62 @@ async function executeBrowserActionCommand(tab, command) {
       after: await safeReadSnapshotFromTab(tab.id)
     };
   }
+}
+
+async function executeTabNavigationAction(tab, action) {
+  if (!["navigate", "back", "forward", "reload"].includes(action?.type)) {
+    return null;
+  }
+  if ((action.type === "back" && !chrome.tabs.goBack) || (action.type === "forward" && !chrome.tabs.goForward)) {
+    return null;
+  }
+  if (!tab?.id) {
+    return { ok: false, error: "Browser tab is unavailable for navigation.", after: null };
+  }
+  const before = await safeReadSnapshotFromTab(tab.id);
+  try {
+    if (action.type === "navigate") {
+      if (!action.url) {
+        throw new Error("Navigate action requires a URL.");
+      }
+      await callChromeTabApi((done) => chrome.tabs.update(tab.id, { url: action.url }, () => done()));
+    } else if (action.type === "back") {
+      await callChromeTabApi((done) => chrome.tabs.goBack(tab.id, () => done()));
+    } else if (action.type === "forward") {
+      await callChromeTabApi((done) => chrome.tabs.goForward(tab.id, () => done()));
+    } else if (action.type === "reload") {
+      await callChromeTabApi((done) => chrome.tabs.reload(tab.id, {}, () => done()));
+    }
+    const after = await readPostActionSnapshot(tab.id, action, before);
+    return { ok: true, after, metadata: { tabNavigation: true } };
+  } catch (error) {
+    const fallback = await safeReadSnapshotFromTab(tab.id);
+    return { ok: false, error: error instanceof Error ? error.message : String(error), after: fallback ?? before, metadata: { tabNavigation: true } };
+  }
+}
+
+function callChromeTabApi(invoker) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const done = (explicitError) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      const runtimeError = chrome.runtime?.lastError;
+      const error = explicitError || (runtimeError ? new Error(runtimeError.message) : null);
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve();
+    };
+    try {
+      invoker(done);
+    } catch (error) {
+      reject(error);
+    }
+  });
 }
 
 async function safeReadSnapshotFromTab(tabId) {

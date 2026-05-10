@@ -174,29 +174,45 @@
       "command": "npm run dogfood:browser-perception",
       "expectExitCode": 0,
       "expectStdoutContains": "browser perception dogfood evidence written"
+    },
+    {
+      "id": "smoke-browser-interaction-transaction",
+      "command": "npm run smoke:browser-interaction-transaction",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser interaction transaction smoke ok"
+    },
+    {
+      "id": "smoke-browser-action-transaction-clarification",
+      "command": "npm run smoke:browser-action:transaction-clarification",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser action transaction clarification smoke ok"
+    },
+    {
+      "id": "smoke-browser-action-transaction-verification",
+      "command": "npm run smoke:browser-action:transaction-verification",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser action transaction verification smoke ok"
+    },
+    {
+      "id": "smoke-browser-action-transaction-concurrency",
+      "command": "npm run smoke:browser-action:transaction-concurrency",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser action transaction concurrency smoke ok"
     }
   ],
   "handoff": {
-    "currentSprintId": "iter-19-complete",
-    "lastActionSummary": "Iteration 19 completed Browser Perception: request-scoped PreparedBrowserViewContext, ensureFreshContext, extension observe_now ack/result/timeout/cancel flow, mutation quietness stabilization, prompt/direct Browser Action integration, focused smokes, dogfood evidence, project report refresh, and checkpoint.",
+    "currentSprintId": "iter-20-complete",
+    "lastActionSummary": "Iteration 20 completed Browser Interaction Transaction: request-scoped transactions, fresh Browser Perception leases, finite View Graph candidates, deterministic planning gates, clarification resume with fresh lease, late resolver grounding, expected-effect verification, per-active-tab concurrency cancellation, Semantic Memory advisory feedback, focused smokes, and Browser Action dogfood evidence.",
     "openIssues": [
-      "Semantic Interface v1 is complete for Browser Action and Vision Context conformance; Terminal/Workspace/Screen/OCR/UIA adapters are future consumers beyond iter-16.",
-      "Dedicated ranked-choice clarification card UX can still be refined; current behavior records unresolved cases, uses existing Browser Action clarification/approval surfaces, and keeps side-effect safety feature-owned.",
-      "Manual live-site Browser Action verification should be repeated after reloading the installed unpacked Browser Bridge extension so the service worker receives the latest command/status changes.",
-      "Semantic Memory uses Node's experimental built-in SQLite module and may print ExperimentalWarning during dogfood scripts.",
-      "Semantic Interface statistical calibration is deferred until a held-out dogfood trace set exists; v1 uses operating profiles plus top-vs-runner-up margin.",
-      "Codex app-server protocol remains experimental; stale persisted thread ids fall back safely, but live cross-process resume behavior needs dogfooding validation.",
-      "Browser store account submission is deferred until after dogfooding.",
-      "Vision recording/screen streaming has consent, retention, history, cleanup, skipped-frame diagnostics, resource guardrails, and Vision Context capsule preprocessing; longer CPU/memory tuning remains dogfood-dependent.",
-      "Vision Context real local ASR production backend remains behind the transcription sidecar interface until dogfooding chooses the first installed model/runtime.",
-      "Mascot motion must be reworked with real authored pose/expression/state animation assets; generated static-pose sprites are not accepted.",
-      "Browser Action native desktop executable browser chrome control is BLOCKED on a scoped Windows UI Automation or bounded native input helper; current adapter reports browser-window diagnostics, attempted PowerShell enumeration, required helper scope, and unsupported-action errors.",
+      "Reload the installed unpacked Browser Bridge extension before live-site retesting so Chrome/Edge uses the latest service-worker and bridge scripts.",
+      "Ranked-choice clarification card UX can still be polished; the daemon transaction model already emits concrete candidate choices and transaction metadata.",
+      "Browser Action native desktop executable browser chrome control is BLOCKED on a scoped Windows UI Automation or bounded native input helper; current adapter reports diagnostics and unsupported-action errors.",
       "Browser Action custom Codex app-server tool bridge is BLOCKED on a stable app-server custom tool/client-tool contract; current coverage uses daemon prompt/tool simulation, protocol events, approval, audit, and widget-context visibility.",
       "Restricted browser pages remain subject to browser/extension/CDP security boundaries and should report unsupported state rather than bypassing protections.",
-      "Browser Bridge uses explicit site permission for automatic page context sharing; users must enable each site or opt into broader origin permissions through extension settings.",
-      "The installed unpacked Browser Bridge extension must be reloaded after service-worker changes before the live browser uses the HTTP-first auto-observe transport.",
-      "The installed unpacked Browser Bridge extension must be reloaded after Browser Perception extension changes before live browser testing uses observe_now ack/result handling.",
-      "A broader continuous multi-tab Browser Perception scheduler can still be expanded later; iter-19 completes the request-scoped active-tab foundation required by Browser Action."
+      "Semantic Memory remains advisory and cannot bypass freshness, safety, visibility, approval, or current view evidence.",
+      "Semantic Interface statistical calibration is deferred until a held-out dogfood trace set exists; v1 uses operating profiles plus top-vs-runner-up margin.",
+      "Vision Context real local ASR production backend remains behind the transcription sidecar interface until dogfooding chooses the first installed model/runtime.",
+      "Mascot motion must be reworked with real authored pose/expression/state animation assets; generated static-pose sprites are not accepted."
     ],
     "orchestratorContextBudget": "medium",
     "preferencesActive": [
@@ -205,11 +221,11 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-10T14:57:26.289+09:00"
+    "updatedAt": "2026-05-10T22:41:00.000+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-10T14:57:26.289+09:00"
+  "stateUpdatedAt": "2026-05-10T22:41:00.000+09:00"
 }

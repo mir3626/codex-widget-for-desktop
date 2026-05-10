@@ -25,7 +25,12 @@ export async function handleBrowserBridgeRoute(
 
   if (request.method === "POST" && url.pathname === "/browser-action/extension/heartbeat") {
     try {
-      const status = browserExtensionBridge.update(JSON.parse(await readRequestBody(request, 128 * 1024)));
+      const previous = browserExtensionBridge.snapshot();
+      const payload = JSON.parse(await readRequestBody(request, 128 * 1024));
+      const status = browserExtensionBridge.update(payload);
+      if (browserBridgeActiveTabChanged(previous, status)) {
+        browserPerception.markDirty(`bridge_active_tab_changed:${status.reason ?? "heartbeat"}`);
+      }
       broadcast(clients, { type: "browserExtensionBridge.status", status });
       writeJsonResponse(response, 200, { ok: true, status });
     } catch (error) {
@@ -43,9 +48,17 @@ export async function handleBrowserBridgeRoute(
   }
 
   if (request.method === "GET" && url.pathname === "/browser-action/extension/poll") {
-    const status = browserExtensionBridge.update(buildBrowserBridgePollStatus(url, browserExtensionBridge.snapshot()));
+    const previous = browserExtensionBridge.snapshot();
+    const status = browserExtensionBridge.update(buildBrowserBridgePollStatus(url, previous));
+    if (browserBridgeActiveTabChanged(previous, status)) {
+      browserPerception.markDirty(`bridge_active_tab_changed:${status.reason ?? "poll"}`);
+    }
     broadcast(clients, { type: "browserExtensionBridge.status", status });
-    const command = browserPerception.pollExtensionCommand() ?? browserActions.pollExtensionCommand() ?? null;
+    const command = await pollBrowserBridgeCommand({
+      browserPerception,
+      browserActions,
+      waitMs: readPollWaitMs(url.searchParams.get("waitMs"))
+    });
     writeJsonResponse(response, 200, { ok: true, command });
     return true;
   }
@@ -137,6 +150,52 @@ export async function handleBrowserBridgeRoute(
   }
 
   return false;
+}
+
+function browserBridgeActiveTabChanged(
+  previous: BrowserExtensionBridgeStatus,
+  next: BrowserExtensionBridgeStatus
+): boolean {
+  return browserBridgeActiveTabSignature(previous) !== browserBridgeActiveTabSignature(next);
+}
+
+function browserBridgeActiveTabSignature(status: BrowserExtensionBridgeStatus): string {
+  const active = status.activeTab;
+  return [
+    active?.windowId ?? "",
+    active?.tabId ?? "",
+    active?.url ?? "",
+    active?.title ?? "",
+    active?.permission ?? ""
+  ].join("|");
+}
+
+async function pollBrowserBridgeCommand(input: {
+  browserPerception: HttpRouteContext["browserPerception"];
+  browserActions: HttpRouteContext["browserActions"];
+  waitMs: number;
+}) {
+  const immediate = input.browserPerception.pollExtensionCommand() ?? input.browserActions.pollExtensionCommand() ?? null;
+  if (immediate || input.waitMs <= 0) {
+    return immediate;
+  }
+  const deadline = Date.now() + input.waitMs;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const command = input.browserPerception.pollExtensionCommand() ?? input.browserActions.pollExtensionCommand() ?? null;
+    if (command) {
+      return command;
+    }
+  }
+  return null;
+}
+
+function readPollWaitMs(value: string | null): number {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) {
+    return 0;
+  }
+  return Math.min(25_000, Math.floor(number));
 }
 
 function buildBrowserBridgePollStatus(url: URL, previous: BrowserExtensionBridgeStatus): BrowserExtensionBridgeStatus {

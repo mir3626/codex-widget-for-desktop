@@ -114,6 +114,7 @@ export type BrowserActionResult = {
   actionSessionId: string;
   adapterId?: string;
   action: BrowserAction;
+  expected?: BrowserExpectedState[];
   target?: BrowserElement;
   alternatives?: BrowserElement[];
   startedAt: string;
@@ -124,6 +125,15 @@ export type BrowserActionResult = {
   after?: BrowserObservation;
   verification: BrowserVerificationResult;
   error?: string;
+  transaction?: {
+    transactionId?: string;
+    leaseId?: string;
+    contextId?: string;
+    candidateId?: string;
+    bindingId?: string;
+    viewRevision?: string;
+    graphDigest?: string;
+  };
 };
 
 export type BrowserActionTimelineEvent = {

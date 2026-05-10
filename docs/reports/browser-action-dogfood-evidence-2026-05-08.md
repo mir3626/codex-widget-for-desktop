@@ -26,7 +26,9 @@
 
 - Click result: passed
 - Verification status: passed
-- Verification reason: Action returned a refreshed browser observation.
+- Verification reason: Action changed the browser route or URL.
+- Transaction id: `browser-transaction-81f8a7b7-94e6-4797-8660-46fd6ca713f2`
+- Result transaction metadata: `{"transactionId":"browser-transaction-81f8a7b7-94e6-4797-8660-46fd6ca713f2","candidateId":"browser-candidate-a6e92e6e-d28e-4a48-9ddc-38ed2cef535a"}`
 - Supporting JSON: `docs/reports/assets/browser-action-dogfood-2026-05-08/evidence.json`
 
 ## Notes

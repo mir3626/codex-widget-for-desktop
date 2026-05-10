@@ -2,6 +2,7 @@ import { createTimelineEvent } from "../actionTimeline.js";
 import type {
   BrowserActionApproval,
   BrowserActionAuditEntry,
+  BrowserExpectedState,
   BrowserActionPlan,
   BrowserActionPolicy,
   BrowserActionPolicyMatch,
@@ -9,6 +10,10 @@ import type {
   BrowserActionSession,
   BrowserQueuedCommand
 } from "../types.js";
+import type {
+  BrowserInteractionTransaction,
+  BrowserViewContextLease
+} from "../interaction/types.js";
 import {
   clonePlan,
   cloneResult,
@@ -19,6 +24,8 @@ export async function executeBrowserActionPlan(input: {
   session: BrowserActionSession;
   plan: BrowserActionPlan;
   snapshot: unknown;
+  contextLease?: BrowserViewContextLease;
+  transaction?: BrowserInteractionTransaction;
   adapterId?: string;
   approvedStepIds?: string[];
   policyMatches?: Record<string, BrowserActionPolicyMatch | undefined>;
@@ -27,6 +34,9 @@ export async function executeBrowserActionPlan(input: {
     actionSessionId: string;
     action: BrowserActionPlan["steps"][number]["action"];
     snapshot: unknown;
+    contextLease?: BrowserViewContextLease;
+    transaction?: BrowserInteractionTransaction;
+    expected?: BrowserExpectedState[];
     adapterId?: string;
     approved?: boolean;
     targetHint?: string;
@@ -77,6 +87,9 @@ export async function executeBrowserActionPlan(input: {
       actionSessionId: input.session.id,
       action: step.action,
       snapshot: input.snapshot,
+      contextLease: input.contextLease,
+      transaction: input.transaction,
+      expected: step.expected,
       adapterId: plan.adapterId,
       approved: input.approvedStepIds?.includes(step.id),
       targetHint: step.targetSummary,

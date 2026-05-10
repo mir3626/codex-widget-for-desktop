@@ -13,6 +13,15 @@ export type DomSnapshot = {
   mutationRevision?: string;
   lastMutationAt?: string;
   mutationQuietMs?: number;
+  bridge?: {
+    tabId?: string | number;
+    windowId?: string | number;
+    url?: string;
+    title?: string;
+    reason?: string;
+    observedAt?: string;
+    permission?: string;
+  };
   capturedAt: string;
 };
 
@@ -50,6 +59,7 @@ export function createDomSnapshot(input: unknown): DomSnapshot {
     mutationRevision: trimField(record?.mutationRevision, MAX_PROVIDER_FIELD_LENGTH) || undefined,
     lastMutationAt: trimField(record?.lastMutationAt, MAX_PROVIDER_FIELD_LENGTH) || undefined,
     mutationQuietMs: typeof record?.mutationQuietMs === "number" && Number.isFinite(record.mutationQuietMs) ? record.mutationQuietMs : undefined,
+    bridge: normalizeDomSnapshotBridge(record?.bridge),
     capturedAt: new Date().toISOString()
   };
 
@@ -58,6 +68,31 @@ export function createDomSnapshot(input: unknown): DomSnapshot {
   }
 
   return snapshot;
+}
+
+function normalizeDomSnapshotBridge(value: unknown): DomSnapshot["bridge"] {
+  const record = readRecord(value);
+  if (!record) {
+    return undefined;
+  }
+  const bridge = {
+    tabId: readOptionalId(record.tabId),
+    windowId: readOptionalId(record.windowId),
+    url: trimField(record.url, MAX_PROVIDER_FIELD_LENGTH) || undefined,
+    title: trimField(record.title, MAX_PROVIDER_FIELD_LENGTH) || undefined,
+    reason: trimField(record.reason, 160) || undefined,
+    observedAt: trimField(record.observedAt, 160) || undefined,
+    permission: trimField(record.permission, 160) || undefined
+  };
+  return Object.values(bridge).some((item) => item !== undefined) ? bridge : undefined;
+}
+
+function readOptionalId(value: unknown): string | number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  const text = trimField(value, 160);
+  return text || undefined;
 }
 
 export function createScreenSnapshot(input: unknown, previous: ScreenSnapshot | null): ScreenSnapshot {

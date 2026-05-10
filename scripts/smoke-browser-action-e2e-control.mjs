@@ -13,6 +13,7 @@ const events = [];
 const waiters = [];
 const beforeSnapshot = createSnapshot("before");
 const afterSnapshot = createSnapshot("after");
+const routeChangedSnapshot = createSnapshot("query-normalized");
 
 try {
   verifyPromptPlanner();
@@ -51,6 +52,27 @@ try {
   await postDomSnapshot(beforeSnapshot);
   send({
     type: "ask",
+    id: "prompt-browser-action-google",
+    text: "구글 홈페이지 열어줘",
+    mode: "browser"
+  });
+  const googleApproval = await waitFor(
+    (event) => event.type === "interaction.required" &&
+      event.interaction?.requestId === "prompt-browser-action-google" &&
+      event.interaction?.kind === "approval",
+    "prompt google navigation approval"
+  );
+  if (!googleApproval.interaction.body.includes("navigate https://www.google.com/")) {
+    throw new Error(`Google prompt should request approval for the intended navigation: ${JSON.stringify(googleApproval.interaction)}`);
+  }
+  const googleAnswer = await waitFor((event) => event.type === "message.completed" && event.id === "prompt-browser-action-google", "prompt google navigation answer");
+  if (!googleAnswer.text.includes("https://www.google.com/") || googleAnswer.text.includes("Browser Action E2E test page")) {
+    throw new Error(`Prompt google navigation answer should not read the current page: ${googleAnswer.text}`);
+  }
+
+  await postDomSnapshot(beforeSnapshot);
+  send({
+    type: "ask",
     id: "prompt-browser-action-chain",
     text: "개념글 눌러서 재밌어보이는 글 보여줘",
     mode: "browser"
@@ -75,7 +97,25 @@ try {
   const secondChainCommand = await pollBrowserActionCommand(afterSnapshot);
   assertEqual(secondChainCommand?.requestId, secondChainQueued.detail?.requestId, "second chained command request id");
   assertEqual(secondChainCommand?.expectedSource?.url, afterSnapshot.url, "second chained command expected source follows first result URL");
-  await postBrowserActionResult(secondChainCommand.requestId, true, afterSnapshot, createSnapshot("view"));
+  await postBrowserActionResult(
+    secondChainCommand.requestId,
+    false,
+    afterSnapshot,
+    routeChangedSnapshot,
+    `Active tab URL changed before Browser Action execution: expected ${afterSnapshot.url}, got ${routeChangedSnapshot.url}.`
+  );
+  const secondChainRetryQueued = await waitFor(
+    (event) => event.type === "browserAction.progress" &&
+      event.actionSessionId.includes("prompt-browser-action-chain") &&
+      event.status === "plan_paused_for_extension" &&
+      event.detail?.requestId !== firstChainCommand.requestId &&
+      event.detail?.requestId !== secondChainCommand.requestId,
+    "second chained source-refresh retry command"
+  );
+  const secondChainRetryCommand = await pollBrowserActionCommand(routeChangedSnapshot);
+  assertEqual(secondChainRetryCommand?.requestId, secondChainRetryQueued.detail?.requestId, "second chained retry command request id");
+  assertEqual(secondChainRetryCommand?.expectedSource?.url, routeChangedSnapshot.url, "second chained retry uses refreshed route source");
+  await postBrowserActionResult(secondChainRetryCommand.requestId, true, routeChangedSnapshot, createSnapshot("view"));
   const chainAnswer = await waitFor((event) => event.type === "message.completed" && event.id === "prompt-browser-action-chain", "chained prompt answer");
   if (!chainAnswer.text.includes("https://example.test/browser-action-e2e/view")) {
     throw new Error(`Chained Browser Action answer did not use the final observation: ${chainAnswer.text}`);
@@ -263,9 +303,16 @@ function verifyPromptPlanner() {
 }
 
 function createSnapshot(state) {
+  const url = state === "after"
+    ? "https://example.test/browser-action-e2e/lists/?id=pathofexile&exception_mode=recommend"
+    : state === "query-normalized"
+      ? "https://example.test/browser-action-e2e/lists?id=pathofexile"
+      : state === "google"
+        ? "https://www.google.com/"
+      : `https://example.test/browser-action-e2e/${state}`;
   return {
-    url: `https://example.test/browser-action-e2e/${state}`,
-    title: "Browser Action E2E",
+    url,
+    title: state === "google" ? "Google" : "Browser Action E2E",
     readyState: "complete",
     viewport: { width: 1280, height: 720, scrollX: 0, scrollY: 0, devicePixelRatio: 1 },
     text: state === "after" ? "Details opened" : "Browser Action E2E test page",

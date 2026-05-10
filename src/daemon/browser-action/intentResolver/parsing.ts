@@ -36,6 +36,24 @@ export function extractTargetPhrase(text: string): string | undefined {
   return undefined;
 }
 
+export function extractNavigationTargetPhrase(text: string): string | undefined {
+  const patterns = [
+    /(?:^|[.!?。！？]\s*)([^.!?。！？]{1,120}?)(?:로|으로)?\s*(?:이동|접속|열어|켜|가)(?:줘|주세요|달라|달라고|해줘|해|자|자고|라)?/i,
+    /(?:go\s*to|open|navigate\s*to)\s+(.{1,120})/i
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const value = normalizeTargetPhrase((match?.[1] ?? "")
+      .replace(/^(?:왜|좀|제발|바로|그냥)\s+/i, " ")
+      .replace(/(?:라고\s*했잖아|라고\s*했잖아요|라고\s*했는데|해달라고\s*했잖아).*$/i, " ")
+      .replace(/(?:홈페이지|웹사이트|사이트|페이지)\s*$/i, " "));
+    if (value) {
+      return value.slice(0, 120);
+    }
+  }
+  return undefined;
+}
+
 export function extractQuotedText(text: string): string | undefined {
   return text.match(/[“"']([^“"']{1,500})[”"']/)?.[1]?.trim();
 }

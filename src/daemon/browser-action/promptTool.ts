@@ -44,10 +44,10 @@ export function isBrowserActionPrompt(text: string, mode: WidgetMode): boolean {
   if (/\bbrowser\s*action\b|\bba:|\[browser-action\]|브라우저\s*액션/i.test(text)) {
     return true;
   }
-  if (mode === "browser" && /(현재\s*페이지|보고\s*있는|페이지|화면|사이트|문서|설명|요약|읽어|봐줘|보여|글|게시글|포스트|게시물|링크|버튼|검색창|입력칸|클릭|눌러|누르|스크롤|뒤로|앞으로|새로고침|이동|열어|펼쳐|체크|선택|describe|summarize|search|click|type|scroll|navigate|reload|back|forward|show|open|post|article)/i.test(normalized)) {
+  if (mode === "browser" && /(현재\s*페이지|보고\s*있는|페이지|화면|사이트|문서|설명|요약|읽어|봐줘|보여|글|게시글|포스트|게시물|링크|버튼|검색창|입력칸|클릭|눌러|누르|스크롤|뒤로|앞으로|새로고침|이동|접속|열어|켜|펼쳐|체크|선택|describe|summarize|search|click|type|scroll|navigate|reload|back|forward|show|open|post|article|go\s*to)/i.test(normalized)) {
     return true;
   }
-  return /(현재\s*페이지|active\s*tab).*(눌러|누르|클릭|입력|검색|스크롤|열어|이동|펼쳐|click|type|search|scroll|navigate)/i.test(text);
+  return /(현재\s*페이지|active\s*tab).*(눌러|누르|클릭|입력|검색|스크롤|열어|켜|이동|접속|펼쳐|click|type|search|scroll|navigate|open|go\s*to)/i.test(text);
 }
 
 function readRequestedAdapter(text: string): string | undefined {

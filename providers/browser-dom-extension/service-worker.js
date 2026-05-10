@@ -27,6 +27,12 @@ import {
   readSnapshotFromTab
 } from "./bridge/action-channel.js";
 
+let bridgeCommandPumpTimer = null;
+let bridgeCommandPumpRunning = false;
+let bridgeCommandPumpAbort = null;
+let activeTabGeneration = 0;
+let lastActiveTabSignature = "";
+
 chrome.runtime.onInstalled.addListener(() => {
   void initializeBridge("installed");
 });
@@ -42,21 +48,21 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 chrome.tabs.onActivated.addListener(() => {
-  void refreshBridge("tab_activated").catch((error) => console.debug("[Codex Widget] Browser Bridge tab activation refresh failed.", error));
+  void refreshActiveTabBridge("tab_activated").catch((error) => console.debug("[Codex Widget] Browser Bridge tab activation refresh failed.", error));
 });
 
 chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
   if (!tab?.active || changeInfo.status !== "complete") {
     return;
   }
-  void refreshBridge("tab_complete").catch((error) => console.debug("[Codex Widget] Browser Bridge tab update refresh failed.", error));
+  void refreshActiveTabBridge("tab_complete").catch((error) => console.debug("[Codex Widget] Browser Bridge tab update refresh failed.", error));
 });
 
 chrome.windows.onFocusChanged.addListener((windowId) => {
   if (windowId === chrome.windows.WINDOW_ID_NONE) {
     return;
   }
-  void refreshBridge("window_focused").catch((error) => console.debug("[Codex Widget] Browser Bridge window focus refresh failed.", error));
+  void refreshActiveTabBridge("window_focused").catch((error) => console.debug("[Codex Widget] Browser Bridge window focus refresh failed.", error));
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -72,6 +78,7 @@ async function initializeBridge(reason) {
   const settings = await readBridgeSettings();
   await configureBridgeAlarm(settings);
   await refreshBridge(reason);
+  scheduleBridgeCommandPump("initialized");
 }
 
 async function handleRuntimeMessage(message) {
@@ -145,6 +152,13 @@ async function refreshBridge(reason) {
     ...status.activeTab,
     ...(await readTabPermission(tab, settings))
   };
+  const nextSignature = readActiveTabSignature(tab, status.activeTab.permission);
+  const activeTabChanged = nextSignature !== lastActiveTabSignature;
+  if (activeTabChanged) {
+    lastActiveTabSignature = nextSignature;
+    activeTabGeneration += 1;
+    abortBridgeCommandPump(`active_tab_changed:${reason}`);
+  }
   if (status.activeTab.permission === "restricted") {
     status.mode = "restricted";
     status.lastError = status.activeTab.detail ?? "This browser page is restricted.";
@@ -169,6 +183,7 @@ async function refreshBridge(reason) {
     try {
       await syncActiveTabObservation(tab, settings, "auto_observe");
       status.lastObservationAt = new Date().toISOString();
+      await postHeartbeat(daemonBaseUrl, { ...status, reason: `${reason}:observed` });
     } catch (error) {
       status.lastError = readError(error);
       await setBridgeBadge("ERR", tab.id);
@@ -178,7 +193,8 @@ async function refreshBridge(reason) {
   }
 
   try {
-    await pollAndExecuteBrowserAction(tab, settings);
+    await pollAndExecuteBrowserAction(tab, settings, { waitMs: shouldLongPollFromRefresh(reason) ? 15_000 : 0 });
+    scheduleBridgeCommandPump("refresh");
   } catch (error) {
     if (!isBrowserActionPollOnlyError(error)) {
       status.mode = "error";
@@ -189,6 +205,97 @@ async function refreshBridge(reason) {
   }
 
   return status;
+}
+
+async function refreshActiveTabBridge(reason) {
+  activeTabGeneration += 1;
+  abortBridgeCommandPump(reason);
+  const status = await refreshBridge(reason);
+  scheduleBridgeCommandPump(reason, 25);
+  return status;
+}
+
+function shouldLongPollFromRefresh(reason) {
+  return !/popup|test_connection|settings|debug_snapshot|tab_|window_|observed/i.test(String(reason ?? ""));
+}
+
+function scheduleBridgeCommandPump(reason, delayMs = 250) {
+  if (bridgeCommandPumpTimer !== null) {
+    return;
+  }
+  bridgeCommandPumpTimer = setTimeout(() => {
+    bridgeCommandPumpTimer = null;
+    void runBridgeCommandPump(reason);
+  }, delayMs);
+}
+
+async function runBridgeCommandPump(reason) {
+  if (bridgeCommandPumpRunning) {
+    scheduleBridgeCommandPump(`pump_busy:${reason}`, 250);
+    return;
+  }
+  bridgeCommandPumpRunning = true;
+  const generation = activeTabGeneration;
+  const abortController = new AbortController();
+  bridgeCommandPumpAbort = abortController;
+  let shouldContinue = false;
+  try {
+    const settings = await readBridgeSettings();
+    if (!settings.autoConnect) {
+      return;
+    }
+    const tab = await readActiveTab();
+    if (!tab?.id) {
+      return;
+    }
+    const health = await testDaemonConnection(settings.daemonBaseUrl);
+    if (!health.ok) {
+      await setBridgeBadge("OFF", tab.id);
+      return;
+    }
+    const permission = await readTabPermission(tab, settings);
+    if (permission.permission !== "allowed") {
+      await setBridgeBadge(permission.permission === "needs_site_permission" ? "ASK" : "ERR", tab.id);
+      return;
+    }
+    shouldContinue = true;
+    await pollAndExecuteBrowserAction(tab, settings, { waitMs: 25_000, signal: abortController.signal });
+  } catch (error) {
+    if (abortController.signal.aborted) {
+      shouldContinue = false;
+    } else if (!isBrowserActionPollOnlyError(error)) {
+      console.debug("[Codex Widget] Browser Bridge long-poll command pump failed.", error);
+    }
+  } finally {
+    if (bridgeCommandPumpAbort === abortController) {
+      bridgeCommandPumpAbort = null;
+    }
+    bridgeCommandPumpRunning = false;
+    if (shouldContinue && generation === activeTabGeneration) {
+      scheduleBridgeCommandPump(`long_poll:${reason}`, 250);
+    }
+  }
+}
+
+function abortBridgeCommandPump(reason) {
+  if (!bridgeCommandPumpAbort) {
+    return;
+  }
+  try {
+    bridgeCommandPumpAbort.abort(reason);
+  } catch {
+    bridgeCommandPumpAbort.abort();
+  }
+}
+
+function readActiveTabSignature(tab, permission) {
+  return [
+    tab?.windowId ?? "",
+    tab?.id ?? "",
+    tab?.url ?? "",
+    tab?.title ?? "",
+    permission ?? ""
+  ].join("|");
 }
 
 async function syncActiveTabObservation(tab, settings, reason) {
@@ -205,7 +312,11 @@ async function syncActiveTabObservation(tab, settings, reason) {
   snapshot.bridge = {
     reason,
     observedAt: new Date().toISOString(),
-    permission: permission.permission
+    permission: permission.permission,
+    tabId: tab.id,
+    windowId: tab.windowId,
+    url: tab.url,
+    title: tab.title
   };
   const snapshotUrl = resolveDaemonUrl(settings.daemonBaseUrl, "/providers/dom/snapshot");
   const httpResult = await tryPostSnapshotToDaemon(snapshot, snapshotUrl);

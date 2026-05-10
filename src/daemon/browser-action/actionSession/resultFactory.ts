@@ -14,6 +14,8 @@ export function createPendingBrowserActionResult(
     session: BrowserActionSession;
     adapterId?: string;
     action: BrowserAction;
+    expected?: BrowserActionResult["expected"];
+    transaction?: BrowserActionResult["transaction"];
   },
   observation: BrowserObservation,
   targetResolution: TargetResolution,
@@ -24,13 +26,15 @@ export function createPendingBrowserActionResult(
     actionSessionId: input.session.id,
     adapterId: input.adapterId,
     action: input.action,
+    expected: input.expected,
     target: targetResolution.primary,
     alternatives: targetResolution.alternatives,
     startedAt: new Date().toISOString(),
     status: "pending",
     safety,
     before: observation,
-    verification: { status: "unknown", reason: "Action has not completed yet." }
+    verification: { status: "unknown", reason: "Action has not completed yet." },
+    transaction: input.transaction
   };
 }
 

@@ -11,6 +11,7 @@ export type PendingSemanticClarification = {
   adapterId?: string;
   action: BrowserAction;
   utterance: string;
+  transactionId?: string;
   targetHint?: string;
   observationUrl?: string;
   candidates: BrowserElement[];

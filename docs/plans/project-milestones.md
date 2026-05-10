@@ -190,3 +190,18 @@ Evidence:
 - SPA/dynamic-page stabilization has mutation revision, mutation quiet duration, route/view identity, and side-effect fresh/stable gates.
 - `npm run smoke:browser-perception`, `npm run smoke:browser-perception:extension-command`, `npm run smoke:browser-perception:stabilization`, and `npm run smoke:browser-action:fresh-context` cover the new contract.
 - `docs/reports/browser-perception-dogfood-evidence-2026-05-10.md` proves a request-scoped observe flow avoids the previous retry-later final answer and continues a generic filter -> representative content prompt.
+
+## browser-interaction-transaction
+
+Goal: replace resolver-first Browser Action prompt handling with a request-scoped transaction that binds natural-language browser work to fresh view leases, finite candidates, explicit clarification/approval gates, late grounding, typed execution, reobserve, expected-effect verification, and redacted advisory feedback.
+
+Current progress: 1
+
+Evidence:
+- Iteration 20 added `src/daemon/browser-action/interaction/` with `BrowserInteractionTransaction`, `BrowserViewContextLease`, intent frames, candidate steps, deterministic planning gates, transaction management, effect verification helpers, and Semantic Memory feedback publishing.
+- Prompt, direct UI, plan continuation, and clarification resume Browser Action paths now carry transaction/lease metadata through the daemon execution pipeline.
+- Side-effect execution prefers the leased Browser Perception observation and records transaction ids, lease ids, candidate ids, view revisions, and graph digests on results.
+- Clarification resume reacquires a fresh before-step lease and rebinds the selected candidate instead of reusing a stale latest DOM snapshot.
+- `resultVerifier` checks expected effects such as route/query/content/field/selection/focus/scroll/history/no-submit changes, so a refreshed observation alone is not treated as success.
+- New smokes cover transaction core behavior, Korean concrete clarification, expected-effect verification failure, and per-active-tab concurrency cancellation.
+- `docs/reports/browser-action-dogfood-evidence-2026-05-10.md` records refreshed Browser Action dogfood evidence with transaction metadata.

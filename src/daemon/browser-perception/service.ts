@@ -41,6 +41,9 @@ export class BrowserPerceptionService {
     if (!snapshot || !observation) {
       return undefined;
     }
+    if (input.bridgeStatus && !snapshotMatchesBridgeStatus(snapshot, input.bridgeStatus)) {
+      return undefined;
+    }
     return this.store.ingest({
       snapshot,
       observation,
@@ -297,6 +300,24 @@ export class BrowserPerceptionService {
     this.pending.delete(commandId);
     pending.resolve(result);
   }
+}
+
+function snapshotMatchesBridgeStatus(snapshot: DomSnapshot, status: BrowserExtensionBridgeStatus): boolean {
+  const active = status.activeTab;
+  if (!status.connected || active?.permission !== "allowed") {
+    return true;
+  }
+  const bridge = snapshot.bridge;
+  if (bridge?.tabId !== undefined && active.tabId !== undefined && String(bridge.tabId) !== String(active.tabId)) {
+    return false;
+  }
+  if (bridge?.windowId !== undefined && active.windowId !== undefined && String(bridge.windowId) !== String(active.windowId)) {
+    return false;
+  }
+  if (bridge?.url && active.url && bridge.url !== active.url) {
+    return false;
+  }
+  return true;
 }
 
 type RequiredObserveRequest = Required<Omit<BrowserPerceptionObserveRequest, "minCapturedAt">> & {

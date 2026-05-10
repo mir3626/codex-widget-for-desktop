@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { BrowserExtensionBridgeStatus } from "../../shared/protocol.js";
+import type { BrowserExtensionBridgePermission, BrowserExtensionBridgeStatus } from "../../shared/protocol.js";
 import type { BrowserObservation } from "../browser-action/types.js";
 import type { DomSnapshot } from "../providers/providerSnapshots.js";
 import type {
@@ -17,13 +17,14 @@ export function buildPreparedBrowserViewContext(input: {
 }): PreparedBrowserViewContext {
   const now = input.now ?? new Date();
   const graph = input.observation.viewGraph;
+  const bridge = input.snapshot.bridge;
   const source = {
-    tabId: input.bridgeStatus?.activeTab?.tabId ?? input.observation.source.tabId,
-    windowId: input.bridgeStatus?.activeTab?.windowId ?? input.observation.source.windowId,
-    url: input.snapshot.url || input.observation.url || input.bridgeStatus?.activeTab?.url,
-    title: input.snapshot.title || input.observation.title || input.bridgeStatus?.activeTab?.title,
+    tabId: bridge?.tabId ?? input.bridgeStatus?.activeTab?.tabId ?? input.observation.source.tabId,
+    windowId: bridge?.windowId ?? input.bridgeStatus?.activeTab?.windowId ?? input.observation.source.windowId,
+    url: bridge?.url || input.snapshot.url || input.observation.url || input.bridgeStatus?.activeTab?.url,
+    title: bridge?.title || input.snapshot.title || input.observation.title || input.bridgeStatus?.activeTab?.title,
     origin: input.bridgeStatus?.activeTab?.origin,
-    permission: input.bridgeStatus?.activeTab?.permission
+    permission: readBridgePermission(bridge?.permission) ?? input.bridgeStatus?.activeTab?.permission
   };
   const graphDigest = hashParts([
     graph?.identity?.routeKey,
@@ -71,6 +72,16 @@ export function buildPreparedBrowserViewContext(input: {
       persistedFields: ["source", "viewRevision", "routeKey", "freshness", "stability", "diagnostics"]
     }
   };
+}
+
+function readBridgePermission(value: string | undefined): BrowserExtensionBridgePermission | undefined {
+  return value === "allowed" ||
+    value === "needs_site_permission" ||
+    value === "restricted" ||
+    value === "unavailable" ||
+    value === "unknown"
+    ? value
+    : undefined;
 }
 
 export function contextMatchesBridgeStatus(
@@ -186,4 +197,3 @@ function hashParts(parts: unknown[]): string {
   }
   return hash.digest("hex").slice(0, 24);
 }
-

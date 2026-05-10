@@ -72,6 +72,7 @@ export type BrowserElement = {
   headingLevel?: number;
   nearestHeading?: string;
   nearestLandmark?: string;
+  contextText?: string;
   formOwner?: string;
   listOwner?: string;
   computedVisibility?: "visible" | "hidden" | "transparent" | "offscreen";

@@ -20,6 +20,8 @@ export async function handleInteractionMessage(message: ClientMessage, context: 
     browserActions,
     semanticMemory,
     semanticClarifications,
+    browserPerception,
+    browserExtensionBridge,
     codexAppServer
   } = context;
 
@@ -30,6 +32,8 @@ export async function handleInteractionMessage(message: ClientMessage, context: 
       clients,
       storage,
       providers,
+      browserPerception,
+      browserExtensionBridge,
       browserActions,
       semanticMemory,
       semanticClarifications

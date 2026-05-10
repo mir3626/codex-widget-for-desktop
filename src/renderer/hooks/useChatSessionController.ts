@@ -192,12 +192,24 @@ export function useChatSessionController(input: UseChatSessionControllerInput) {
   }
 
   function completeAssistantMessage(id: string, text: string) {
+    const existingBuffer = streamBuffersRef.current.get(id);
+    const shouldApplyImmediately = text && (existingBuffer === undefined || existingBuffer.length === 0);
     if (text) {
       streamBuffersRef.current.set(id, text);
     } else if (!streamBuffersRef.current.has(id)) {
       streamBuffersRef.current.set(id, "");
     }
     completedResponseIdsRef.current.add(id);
+    if (shouldApplyImmediately) {
+      setChatMessages((current) =>
+        ensureAssistantMessage(current, id).map((message) =>
+          message.role === "assistant" && message.id === id
+            ? { ...message, text, status: "done" }
+            : message
+        )
+      );
+      return;
+    }
     setChatMessages((current) => ensureAssistantMessage(current, id));
     scheduleAssistantTyping();
   }

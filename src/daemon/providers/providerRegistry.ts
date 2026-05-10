@@ -23,6 +23,8 @@ export class ProviderRegistry {
       source: {
         kind: "active_tab",
         browser: "unknown",
+        tabId: snapshot.bridge?.tabId !== undefined ? String(snapshot.bridge.tabId) : undefined,
+        windowId: snapshot.bridge?.windowId !== undefined ? String(snapshot.bridge.windowId) : undefined,
         url: snapshot.url,
         title: snapshot.title
       },
@@ -129,6 +131,7 @@ export function augmentRequestWithProviderContext<T extends {
   if (!snapshot) {
     return input;
   }
+  const observation = providers?.getDomObservation();
 
   return {
     ...input,
@@ -137,8 +140,9 @@ export function augmentRequestWithProviderContext<T extends {
       `URL: ${snapshot.url || "(unknown)"}`,
       `Title: ${snapshot.title || "(unknown)"}`,
       snapshot.selection ? `Selection:\n${snapshot.selection}` : "",
-      snapshot.text ? `Page text excerpt:\n${snapshot.text}` : "",
-      snapshot.elements.length > 0 ? `Interactive elements: ${snapshot.elements.length} structured candidates attached.` : "",
+      snapshot.text ? `Page text excerpt:\n${summarizeDomTextForAgent(snapshot.text)}` : "",
+      renderViewGraphContextForAgent(observation),
+      snapshot.elements.length > 0 ? `Interactive elements: ${snapshot.elements.length} structured candidates attached; top controls: ${summarizeInteractiveElements(observation)}` : "",
       "",
       "User request:",
       input.text
@@ -146,6 +150,50 @@ export function augmentRequestWithProviderContext<T extends {
       .filter(Boolean)
       .join("\n")
   } as T;
+}
+
+function summarizeDomTextForAgent(text: string): string {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  const compacted = lines.length > 0 ? lines.join("\n") : text.replace(/\s+/g, " ").trim();
+  return compacted.length > 2600 ? `${compacted.slice(0, 2600)}...` : compacted;
+}
+
+function renderViewGraphContextForAgent(observation: BrowserObservation | null | undefined): string {
+  const graph = observation?.viewGraph;
+  if (!graph) {
+    return "";
+  }
+  const representatives = (graph.contentLists ?? [])
+    .flatMap((list) => list.representativeNodeIds.map((nodeId) => graph.nodes.find((node) => node.id === nodeId)))
+    .filter(Boolean)
+    .slice(0, 10)
+    .map((node) => {
+      const label = cleanLine(node?.label || node?.text || node?.href || "");
+      return label ? `- ${label}` : "";
+    })
+    .filter(Boolean);
+  const line = [
+    `View graph: schema=${graph.schemaVersion ?? "unknown"}; nodes=${graph.nodes.length}; lists=${graph.contentLists?.length ?? 0}; revision=${graph.identity.viewRevision}`,
+    representatives.length > 0 ? `Representative content candidates:\n${representatives.join("\n")}` : ""
+  ].filter(Boolean).join("\n");
+  return line.length > 1800 ? `${line.slice(0, 1800)}...` : line;
+}
+
+function summarizeInteractiveElements(observation: BrowserObservation | null | undefined): string {
+  return (observation?.elements ?? [])
+    .filter((element) => element.visible && (element.role === "button" || element.role === "link" || Boolean(element.href) || element.editable))
+    .slice(0, 12)
+    .map((element) => cleanLine(element.label || element.text || element.ariaLabel || element.title || element.href || element.id))
+    .filter(Boolean)
+    .join(", ")
+    .slice(0, 900);
+}
+
+function cleanLine(value: string): string {
+  return value.replace(/\s+/g, " ").trim().slice(0, 240);
 }
 
 export function renderScreenSnapshotToolOutput(snapshot: ScreenSnapshot | null): string {

@@ -80,6 +80,8 @@ export async function continuePromptBrowserActionPlan(input: {
       actionSessionId: plan.actionSessionId,
       action: nextStep.action,
       snapshot,
+      transaction: input.browserActions.getInteraction(input.completedCommandResult.transaction?.transactionId),
+      expected: nextStep.expected,
       adapterId: plan.adapterId,
       targetHint: nextStep.targetSummary,
       policies: input.storage.readBrowserActionPolicies()
@@ -125,7 +127,6 @@ export async function continuePromptBrowserActionPlan(input: {
         return { plan, results, pendingCommand: execution.command };
       }
       results[results.length - 1] = commandResult;
-      markPromptPlanStepFromResult(plan, commandResult);
       snapshot = await refreshPromptBrowserActionSnapshotAfterCommand({
         actionSessionId: plan.actionSessionId,
         result: commandResult,
@@ -136,6 +137,16 @@ export async function continuePromptBrowserActionPlan(input: {
         clients: input.clients,
         sessionId: input.sessionId
       });
+      if (preparePromptStepRetryAfterSourceRefresh(plan, commandResult)) {
+        recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", "Retrying prompt Browser Action follow-up after active view refresh", {
+          planId: plan.id,
+          resultId: commandResult.id,
+          error: commandResult.error,
+          refreshedUrl: commandResult.after?.url
+        });
+        continue;
+      }
+      markPromptPlanStepFromResult(plan, commandResult);
       continue;
     }
 

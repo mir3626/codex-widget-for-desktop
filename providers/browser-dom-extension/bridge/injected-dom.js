@@ -108,6 +108,7 @@ export function collectDomSnapshot() {
     const selector = buildSelector(element);
     const nearestHeading = readNearestHeading(element);
     const nearestLandmark = readNearestLandmark(element);
+    const contextText = readContextText(element);
     const formOwner = readOwnerHash(element.form || element.closest?.("form"));
     const listOwner = readOwnerHash(element.closest?.("ul,ol,table,[role='list'],[role='table'],[role='grid'],[data-list],[data-testid*='list' i]"));
     const computedVisibility = readComputedVisibility(element, bbox);
@@ -144,6 +145,7 @@ export function collectDomSnapshot() {
       headingLevel: readHeadingLevel(element),
       nearestHeading,
       nearestLandmark,
+      contextText,
       formOwner,
       listOwner,
       computedVisibility,
@@ -340,6 +342,15 @@ export function collectDomSnapshot() {
       return undefined;
     }
     return landmark.getAttribute("role") || landmark.tagName.toLowerCase();
+  }
+
+  function readContextText(element) {
+    const container = element.closest?.("tr,[role='row'],li,article,[data-row],[data-testid*='row' i],[class*='row' i],[class*='item' i]");
+    if (!container || container === element) {
+      return undefined;
+    }
+    const text = normalizeText(container.innerText || container.textContent || "");
+    return text && text !== readElementText(element) ? text.slice(0, 700) : undefined;
   }
 
   function readOwnerHash(element) {

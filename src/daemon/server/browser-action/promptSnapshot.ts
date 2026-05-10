@@ -6,11 +6,14 @@ import {
 import { readHostLabel } from "./presentation.js";
 import type { BrowserActionPromptInput } from "./promptTypes.js";
 import { recordRuntimeActivity } from "../runtimeActivity.js";
+import type { PreparedBrowserViewContext } from "../../browser-perception/types.js";
 
 export async function readFreshPromptBrowserSnapshot(input: BrowserActionPromptInput, requestStartedAt: Date): Promise<{
   snapshot?: unknown;
+  context?: PreparedBrowserViewContext;
   handled: boolean;
 }> {
+  const actionRisk = readPromptActionRisk(input.message.text);
   const context = await input.browserPerception.ensureFreshContext({
     providers: input.providers,
     bridgeStatus: input.browserExtensionBridge.snapshot(),
@@ -18,11 +21,11 @@ export async function readFreshPromptBrowserSnapshot(input: BrowserActionPromptI
       requestId: input.message.id,
       reason: "prompt",
       requiredFreshness: "stable",
-      actionRisk: readPromptActionRisk(input.message.text),
-      allowSettlingForRead: isLikelyReadPrompt(input.message.text),
-      minCapturedAt: requestStartedAt,
-      maxAgeMs: 10_000,
-      timeoutMs: 35_000,
+      actionRisk,
+      allowSettlingForRead: actionRisk === "read",
+      minCapturedAt: actionRisk === "read" ? undefined : requestStartedAt,
+      maxAgeMs: actionRisk === "read" ? 3_000 : 10_000,
+      timeoutMs: actionRisk === "read" ? 12_000 : 35_000,
       settleQuietMs: 500
     },
     onProgress: (detail) => {
@@ -42,7 +45,7 @@ export async function readFreshPromptBrowserSnapshot(input: BrowserActionPromptI
       freshness: context.context.freshness,
       stability: context.context.stability
     });
-    return { snapshot: context.context.snapshot, handled: false };
+    return { snapshot: context.context.snapshot, context: context.context, handled: false };
   }
 
   if (context.status !== "timeout") {

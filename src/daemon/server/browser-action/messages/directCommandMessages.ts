@@ -1,5 +1,8 @@
 import {
   buildBrowserActionPlanFromCommand,
+  buildIntentFrameFromAction,
+  classifyBrowserActionRisk,
+  createBrowserViewContextLease,
   summarizeBrowserActionResult,
   summarizeBrowserActionSession,
   summarizeBrowserObservation
@@ -78,6 +81,38 @@ export async function handleBrowserActionDirectCommandMessage(
       broadcast(clients, { type: "browserAction.started", actionSessionId: session.id, summary: summarizeBrowserActionSession(session) });
     }
 
+    const plan = command.kind === "observe"
+      ? undefined
+      : buildBrowserActionPlanFromCommand({ actionSessionId: session.id, command });
+    const firstAction = plan?.steps[0]?.action;
+    const transaction = firstAction
+      ? browserActions.beginInteraction({
+          requestId,
+          actionSessionId: session.id,
+          sessionId,
+          utterance: plan?.goal ?? command.kind,
+          source: "direct_ui",
+          mode: command.mode ?? session.mode,
+          browserSource: command.source
+        })
+      : undefined;
+    const contextLease = perception?.context && firstAction
+      ? createBrowserViewContextLease({
+          context: perception.context,
+          leaseReason: command.kind === "read" ? "direct_action" : "before_step",
+          requiredRiskClass: classifyBrowserActionRisk(firstAction)
+        })
+      : undefined;
+    if (transaction && contextLease && firstAction) {
+      browserActions.attachInteractionLease(transaction.transactionId, contextLease);
+      browserActions.recordInteractionIntent(transaction.transactionId, buildIntentFrameFromAction({
+        utterance: plan?.goal ?? command.kind,
+        action: firstAction,
+        targetPhrase: plan?.steps[0]?.targetSummary,
+        confidence: plan?.confidence
+      }));
+    }
+
     const observed = command.adapterId && command.adapterId !== "extension"
       ? await browserActions.observeViaAdapter({ actionSessionId: session.id, adapterId: command.adapterId })
       : browserActions.observe({ actionSessionId: session.id, snapshot: perception?.context?.snapshot ?? providers.getDomSnapshot() });
@@ -94,10 +129,14 @@ export async function handleBrowserActionDirectCommandMessage(
       return true;
     }
 
-    const plan = buildBrowserActionPlanFromCommand({ actionSessionId: session.id, command });
+    if (!plan) {
+      throw new Error(`Browser Action command cannot be planned: ${command.kind}`);
+    }
     const execution = await browserActions.executePlan({
       plan,
       snapshot: perception?.context?.snapshot ?? providers.getDomSnapshot(),
+      contextLease,
+      transaction,
       adapterId: command.adapterId,
       policies: storage.readBrowserActionPolicies()
     });

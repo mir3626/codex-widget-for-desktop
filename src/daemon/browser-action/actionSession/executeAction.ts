@@ -9,6 +9,18 @@ import { applyBrowserActionPolicyToSafety, matchBrowserActionPolicy } from "../p
 import { decideBrowserActionSafety } from "../safetyPolicy.js";
 import { resolveTarget } from "../targetResolver.js";
 import type { SemanticMemoryStore } from "../../semantic-interface/memory/types.js";
+import {
+  buildIntentFrameFromAction,
+  decideCandidatePlanningGate,
+  generateCandidateSteps,
+  isBrowserViewContextLeaseFresh,
+  publishBrowserInteractionFeedback,
+  summarizeBrowserViewContextLease
+} from "../interaction/index.js";
+import type {
+  BrowserInteractionTransaction,
+  BrowserViewContextLease
+} from "../interaction/types.js";
 import type {
   BrowserAction,
   BrowserActionApproval,
@@ -17,6 +29,7 @@ import type {
   BrowserActionPolicyMatch,
   BrowserActionResult,
   BrowserActionSession,
+  BrowserExpectedState,
   BrowserQueuedCommand
 } from "../types.js";
 import { cloneResult, cloneSession } from "./cloning.js";
@@ -48,16 +61,24 @@ export async function executeBrowserAction(input: {
   semanticMemory?: SemanticMemoryStore;
   action: BrowserAction;
   snapshot: unknown;
+  contextLease?: BrowserViewContextLease;
+  transaction?: BrowserInteractionTransaction;
+  expected?: BrowserExpectedState[];
   adapterId?: string;
   approved?: boolean;
   targetHint?: string;
   policyMatch?: BrowserActionPolicyMatch;
   policies?: BrowserActionPolicy[];
 }): Promise<{ session: BrowserActionSession; result: BrowserActionResult; command?: BrowserQueuedCommand; approval?: BrowserActionApproval; audit: BrowserActionAuditEntry }> {
-  const observation = input.session.latestObservation ?? buildBrowserObservation({ source: input.session.source, snapshot: input.snapshot });
+  const observation = input.contextLease?.context.observation ?? input.session.latestObservation ?? buildBrowserObservation({ source: input.session.source, snapshot: input.snapshot });
   input.session.latestObservation = observation;
   const graph = buildElementGraph({ observationId: observation.id, focusedElementId: observation.focusedElementId, elements: observation.elements });
   const target = readActionTarget(input.action);
+  const intentFrame = buildIntentFrameFromAction({
+    utterance: input.transaction?.utterance ?? input.targetHint ?? input.action.type,
+    action: input.action,
+    targetPhrase: input.targetHint || (target?.kind === "text" ? target.text : undefined)
+  });
   const memoryReadSet = readSemanticMemoryForAction({
     enabled: input.semanticMemoryEnabled,
     semanticMemory: input.semanticMemory,
@@ -66,9 +87,77 @@ export async function executeBrowserAction(input: {
     target,
     hint: input.targetHint
   });
+  const candidateSteps = generateCandidateSteps({
+    action: input.action,
+    graph,
+    target,
+    hint: input.targetHint,
+    lease: input.contextLease,
+    expected: input.expected,
+    memoryEvidence: memoryReadSet ? {
+      readSetId: memoryReadSet.id,
+      edgeCount: memoryReadSet.edges.length,
+      exclusionCount: memoryReadSet.exclusions.length
+    } : undefined
+  });
+  const gate = decideCandidatePlanningGate({
+    action: input.action,
+    candidates: candidateSteps,
+    locale: input.transaction?.locale,
+    requireFreshLease: Boolean(input.contextLease)
+  });
+  const selectedCandidate = candidateSteps.find((candidate) => candidate.candidateId === gate.selectedCandidateId) ?? candidateSteps[0];
+  if (input.contextLease && !isBrowserViewContextLeaseFresh(input.contextLease) && selectedCandidate?.riskClass !== "read") {
+    const reason = input.transaction?.locale === "ko"
+      ? "페이지 이해가 최신 상태가 아니어서 실행 전에 다시 읽어야 합니다."
+      : "The browser view lease is stale and must be refreshed before execution.";
+    const result = createPendingBrowserActionResult({
+      ...input,
+      expected: input.expected,
+      transaction: {
+        transactionId: input.transaction?.transactionId,
+        leaseId: input.contextLease.leaseId,
+        contextId: input.contextLease.contextId,
+        candidateId: selectedCandidate?.candidateId,
+        viewRevision: input.contextLease.viewRevision,
+        graphDigest: input.contextLease.graphDigest
+      }
+    }, observation, {
+      primary: selectedCandidate?.element,
+      alternatives: candidateSteps.slice(1, 5).map((candidate) => candidate.element).filter((element): element is NonNullable<typeof element> => Boolean(element)),
+      confidence: selectedCandidate?.confidence ?? 0,
+      reason
+    }, {
+      decision: "clarify",
+      risk: "medium",
+      reason,
+      actionLabel: input.action.type,
+      targetSummary: input.targetHint,
+      destructive: false,
+      metadata: {
+        browserInteraction: {
+          intentFrame,
+          gate,
+          lease: summarizeBrowserViewContextLease(input.contextLease)
+        }
+      }
+    });
+    result.status = "needs_clarification";
+    result.completedAt = new Date().toISOString();
+    result.error = reason;
+    result.verification = { status: "failed", reason };
+    input.results.set(result.id, result);
+    return { session: cloneSession(input.session), result: cloneResult(result), audit: auditActionResult(input.session, result) };
+  }
   const targetResolution = shouldResolveTarget(input.action, input.targetHint)
     ? resolveTarget({ graph, observation, action: input.action, target, hint: input.targetHint, memoryReadSet })
     : { alternatives: [], confidence: 1, reason: "This browser action does not require a page element target." };
+  if (gate.decision === "clarify" && targetResolution.confidence < 0.74 && candidateSteps.length > 1) {
+    targetResolution.primary = candidateSteps[0]?.element ?? targetResolution.primary;
+    targetResolution.alternatives = candidateSteps.slice(1, 5).map((candidate) => candidate.element).filter((element): element is NonNullable<typeof element> => Boolean(element));
+    targetResolution.confidence = Math.min(targetResolution.confidence, candidateSteps[0]?.confidence ?? targetResolution.confidence);
+    targetResolution.reason = `${gate.userFacingMessage} ${targetResolution.reason}`;
+  }
   const baseSafety = decideBrowserActionSafety({
     action: input.action,
     target: targetResolution.primary,
@@ -107,8 +196,43 @@ export async function executeBrowserAction(input: {
       }
     };
   }
+  safety.metadata = {
+    ...(safety.metadata ?? {}),
+    browserInteraction: {
+      transactionId: input.transaction?.transactionId,
+      intentFrame,
+      gate: {
+        decision: gate.decision,
+        selectedCandidateId: gate.selectedCandidateId,
+        confidence: gate.confidence,
+        margin: gate.margin,
+        reasonCodes: gate.reasonCodes
+      },
+      candidates: candidateSteps.slice(0, 5).map((candidate) => ({
+        candidateId: candidate.candidateId,
+        label: candidate.label,
+        role: candidate.role,
+        region: candidate.region,
+        confidence: candidate.confidence,
+        reasonCodes: candidate.reasonCodes,
+        elementId: candidate.element?.id
+      })),
+      lease: summarizeBrowserViewContextLease(input.contextLease)
+    }
+  };
 
-  const result = createPendingBrowserActionResult(input, observation, targetResolution, safety);
+  const result = createPendingBrowserActionResult({
+    ...input,
+    expected: input.expected,
+    transaction: {
+      transactionId: input.transaction?.transactionId,
+      leaseId: input.contextLease?.leaseId,
+      contextId: input.contextLease?.contextId,
+      candidateId: gate.selectedCandidateId ?? selectedCandidate?.candidateId,
+      viewRevision: input.contextLease?.viewRevision,
+      graphDigest: input.contextLease?.graphDigest
+    }
+  }, observation, targetResolution, safety);
   input.results.set(result.id, result);
   input.session.timeline.push(createTimelineEvent({
     startedAt: input.session.startedAt,
@@ -117,7 +241,8 @@ export async function executeBrowserAction(input: {
     detail: {
       confidence: targetResolution.confidence,
       alternatives: targetResolution.alternatives.map((element) => element.id),
-      semantic: targetResolution.semantic
+      semantic: targetResolution.semantic,
+      browserInteraction: safety.metadata?.browserInteraction
     }
   }));
 
@@ -138,6 +263,15 @@ export async function executeBrowserAction(input: {
     result.error = safety.reason;
     result.verification = { status: "failed", reason: safety.reason };
     input.session.timeline.push(createTimelineEvent({ startedAt: input.session.startedAt, type: "result", summary: `Browser action ${result.status}`, detail: { safety } }));
+    publishBrowserInteractionFeedback({
+      enabled: input.semanticMemoryEnabled,
+      semanticMemory: input.semanticMemory,
+      transaction: input.transaction,
+      intentFrame,
+      candidates: candidateSteps,
+      result,
+      utterance: input.transaction?.utterance
+    });
     return { session: cloneSession(input.session), result: cloneResult(result), audit: auditActionResult(input.session, result) };
   }
 
@@ -155,6 +289,15 @@ export async function executeBrowserAction(input: {
     result.after = observation;
     result.verification = { status: "passed", reason: "Read action returned the current browser observation." };
     input.session.timeline.push(createTimelineEvent({ startedAt: input.session.startedAt, type: "result", summary: "Browser read completed", detail: { resultId: result.id } }));
+    publishBrowserInteractionFeedback({
+      enabled: input.semanticMemoryEnabled,
+      semanticMemory: input.semanticMemory,
+      transaction: input.transaction,
+      intentFrame,
+      candidates: candidateSteps,
+      result,
+      utterance: input.transaction?.utterance
+    });
     return { session: cloneSession(input.session), result: cloneResult(result), audit: auditActionResult(input.session, result) };
   }
 

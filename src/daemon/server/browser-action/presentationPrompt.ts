@@ -26,6 +26,9 @@ export function renderBrowserPromptResponse(
   if (latest?.status === "needs_clarification") {
     return renderClarificationResponse(latest, promptText);
   }
+  if (terminalStatus === "approval_required" && latest) {
+    return renderApprovalRequiredResponse(latest, promptText);
+  }
   if (plan.status === "failed" || latest?.status === "failed") {
     return renderFailureResponse(latest, promptText);
   }
@@ -70,6 +73,39 @@ function renderClarificationResponse(result: BrowserActionResult, promptText: st
   return korean
     ? `브라우저에서 실행할 대상을 확정하지 못했습니다. 더 구체적인 이름이나 위치를 알려주세요.${suffix}`
     : `I could not resolve the browser target confidently. Please name the target or location more specifically.${suffix}`;
+}
+
+function renderApprovalRequiredResponse(result: BrowserActionResult, promptText: string): string {
+  const korean = /[가-힣]/.test(promptText);
+  const target = result.target ? summarizeBrowserElement(result.target) : summarizeActionForApproval(result.action) ?? result.safety.targetSummary;
+  const reason = result.safety.reason || result.verification.reason;
+  return korean
+    ? [
+        `다음 브라우저 동작은 승인 후 실행됩니다: ${target}`,
+        reason ? `사유: ${reason}` : "",
+        "의도한 대상이 아니면 거절하세요."
+      ].filter(Boolean).join("\n")
+    : [
+        `Approval is required before running the next browser action: ${target}`,
+        reason ? `Reason: ${reason}` : "",
+        "Deny it if this is not the intended target."
+      ].filter(Boolean).join("\n");
+}
+
+function summarizeActionForApproval(action: BrowserAction): string | undefined {
+  if (action.type === "navigate") {
+    return `navigate ${action.url}`;
+  }
+  if (action.type === "back" || action.type === "forward" || action.type === "reload") {
+    return action.type;
+  }
+  if (action.type === "scroll") {
+    return `scroll ${action.direction}`;
+  }
+  if (action.type === "type") {
+    return "type into field";
+  }
+  return undefined;
 }
 
 function renderFailureResponse(result: BrowserActionResult | undefined, promptText: string): string {

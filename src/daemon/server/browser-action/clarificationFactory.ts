@@ -34,6 +34,7 @@ export function createSemanticTargetClarification(input: {
     adapterId: input.adapterId,
     action: input.action,
     utterance: input.utterance,
+    transactionId: input.latestResult.transaction?.transactionId,
     targetHint: input.targetHint,
     observationUrl: input.latestResult.before?.url,
     candidates

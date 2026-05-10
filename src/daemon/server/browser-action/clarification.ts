@@ -1,13 +1,17 @@
 import type { WebSocket } from "ws";
 import {
   BrowserActionSessionManager,
+  classifyBrowserActionRisk,
+  createBrowserViewContextLease,
   summarizeBrowserActionResult,
   summarizeBrowserElement
 } from "../../browser-action/index.js";
+import type { BrowserPerceptionService } from "../../browser-perception/index.js";
 import type { ProviderRegistry } from "../../providers/providerRegistry.js";
 import type { SemanticMemoryStore } from "../../semantic-interface/index.js";
 import type { StorageService } from "../../storage/storage.js";
 import type { ClientMessage } from "../../../shared/protocol.js";
+import type { BrowserExtensionBridgeStore } from "../browser-bridge/store.js";
 import { broadcastLedgerSnapshot } from "../clientEvents.js";
 import { broadcast, send } from "../events.js";
 import {
@@ -42,6 +46,8 @@ export async function respondToSemanticTargetClarification(input: {
   clients: Set<WebSocket>;
   storage: StorageService;
   providers: ProviderRegistry;
+  browserPerception: BrowserPerceptionService;
+  browserExtensionBridge: BrowserExtensionBridgeStore;
   browserActions: BrowserActionSessionManager;
   semanticMemory: SemanticMemoryStore;
   semanticClarifications: Map<string, PendingSemanticClarification>;
@@ -84,10 +90,41 @@ export async function respondToSemanticTargetClarification(input: {
   });
 
   const action = retargetBrowserAction(pending.action, selected);
+  const perception = await input.browserPerception.ensureFreshContext({
+    providers: input.providers,
+    bridgeStatus: input.browserExtensionBridge.snapshot(),
+    request: {
+      requestId: pending.requestId ?? pending.id,
+      reason: "before_step",
+      requiredFreshness: "stable",
+      actionRisk: classifyBrowserActionRisk(action) === "read" ? "read" : "side_effect",
+      allowSettlingForRead: classifyBrowserActionRisk(action) === "read",
+      timeoutMs: 35_000,
+      settleQuietMs: 500
+    },
+    onProgress: (detail) => broadcast(input.clients, {
+      type: "browserAction.progress",
+      actionSessionId: pending.actionSessionId,
+      status: "browser_perception_waiting",
+      detail: { ...detail, interactionId: pending.id, reason: "clarification_resume" }
+    })
+  });
+  const contextLease = perception.context
+    ? createBrowserViewContextLease({
+        context: perception.context,
+        leaseReason: "clarification_resume",
+        requiredRiskClass: classifyBrowserActionRisk(action)
+      })
+    : undefined;
+  if (pending.transactionId && contextLease) {
+    input.browserActions.attachInteractionLease(pending.transactionId, contextLease);
+  }
   const execution = await input.browserActions.execute({
     actionSessionId: pending.actionSessionId,
     action,
-    snapshot: input.providers.getDomSnapshot(),
+    snapshot: perception.context?.snapshot ?? input.providers.getDomSnapshot(),
+    contextLease,
+    transaction: input.browserActions.getInteraction(pending.transactionId),
     adapterId: pending.adapterId,
     targetHint: summarizeBrowserElement(selected),
     policies: input.storage.readBrowserActionPolicies()

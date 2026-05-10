@@ -60,6 +60,7 @@ export function completeBrowserExtensionCommand(input: {
   commandResult.error = input.execution.error;
   commandResult.verification = verifyBrowserAction({
     action: commandResult.action,
+    expected: commandResult.expected,
     before: commandResult.before,
     after,
     ok: input.execution.ok,

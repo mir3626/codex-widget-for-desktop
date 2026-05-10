@@ -4,6 +4,20 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Browser Interaction Transaction
+
+Iteration `iter-20` completed `docs/plans/browser-interaction-transaction-handoff.md`.
+
+- Browser Action's resolver-first prompt path is now treated as insufficient for universal natural-language control; prompt/direct/clarification paths route through request-scoped `BrowserInteractionTransaction` metadata.
+- Added `src/daemon/browser-action/interaction/` with transaction/lease types, fresh/stable lease helpers, intent frame construction, finite candidate generation from current browser evidence, deterministic planning gates, transaction management, expected-effect verification helpers, and Semantic Memory feedback publishing.
+- Prompt runner, direct UI command handling, prompt plan continuation, and clarification resume now carry transaction ids, lease ids, candidate ids, view revisions, and graph digests into execution.
+- Clarification resume reacquires fresh Browser Perception context before acting; it no longer blindly resumes against whichever DOM snapshot is latest.
+- `resultVerifier` now checks expected effects so wrong clicks can fail even when an action returns a refreshed observation.
+- Added `npm run smoke:browser-interaction-transaction`, `npm run smoke:browser-action:transaction-clarification`, `npm run smoke:browser-action:transaction-verification`, and `npm run smoke:browser-action:transaction-concurrency`.
+- Dogfood report: `docs/reports/browser-action-dogfood-evidence-2026-05-10.md`.
+
+Manual follow-up: reload the unpacked Browser Bridge extension before live-site retesting because extension service-worker/bridge files changed.
+
 ## Current Readiness Snapshot
 
 - 2026-05-06T07:22:23.060+09:00 strict `node scripts/release-readiness.mjs --require-manual-gates` re-check passed all automated release, resource, store-packet, and two-hour soak gates except the external browser-store submission gate.
@@ -73,9 +87,9 @@ The project is a Tauri + React + Node daemon desktop widget. The native widget l
 
 ## Active Iteration
 
-- Current iteration: `iter-17` (`Browser Action Runtime Closure`) complete; Browser Action now retries source-refresh mismatches, updates Browser Bridge active-tab status on extension poll, improves representative-content resolution, and shows clearer prompt failure/clarification messages.
-- Next recommended work: start from `docs/plans/browser-view-graph-v2-handoff.md`. View Graph v2 should be implemented before more resolver tuning because live dogfood shows the missing layer is prepared page understanding, not another site-specific target matcher.
-- Remaining precise blockers/future consumers: first-class Codex app-server custom Browser Action tools require a stable custom-tool/client-tool contract; executable Windows browser chrome/restricted-page fallback requires a scoped UI Automation/native input helper; Terminal/Workspace/Screen/OCR/UIA Semantic Interface adapters are future consumers beyond iter-16. Dedicated ranked-choice clarification card UX can still be refined on top of the existing unresolved-case logging and Browser Action clarification/approval surfaces.
+- Current iteration: `iter-20` (`Browser Interaction Transaction`) complete; Browser Action prompt/direct/clarification paths now use request-scoped transactions, fresh Browser Perception leases, finite View Graph candidates, deterministic gates, late grounding, expected-effect verification, and advisory Semantic Memory feedback.
+- Next queued Browser Action follow-up: reload the unpacked Browser Bridge extension and dogfood live sites against the transaction path, especially ambiguous Korean action prompts, multi-step content-list actions, tab-switch behavior, and ranked-choice clarification presentation.
+- Remaining precise blockers/future consumers: first-class Codex app-server custom Browser Action tools require a stable custom-tool/client-tool contract; executable Windows browser chrome/restricted-page fallback requires a scoped UI Automation/native input helper; Terminal/Workspace/Screen/OCR/UIA Semantic Interface adapters are future consumers beyond iter-16. Dedicated ranked-choice clarification card UX can still be refined on top of the transaction candidate/clarification model.
 - Planned sprints:
   - `iter-13-sprint-01-extension-popup-options-and-settings` (complete)
   - `iter-13-sprint-02-badge-heartbeat-and-daemon-status` (complete)

@@ -9,7 +9,7 @@ import type { BrowserViewElementClassification } from "./types.js";
 import { compactViewText } from "./digest.js";
 
 export function classifyBrowserViewElement(element: BrowserElement): BrowserViewElementClassification {
-  const text = compactViewText([element.role, element.tagName, element.label, element.text, element.ariaLabel, element.title, element.href].filter(Boolean).join(" "));
+  const text = compactViewText([element.role, element.tagName, element.label, element.text, element.ariaLabel, element.title, element.contextText, element.href].filter(Boolean).join(" "));
   const regionRole = inferRegionRole(element, text);
   const actionHint = inferActionHint(element, text);
   const riskHints = inferRiskHints(element, actionHint, text);
@@ -39,6 +39,9 @@ export function isLikelyUtilityElement(element: BrowserElement): boolean {
   if (!label) {
     return true;
   }
+  if (isLikelyCollectionNavigationHref(href)) {
+    return true;
+  }
   if (/^(이전|다음|목록|전체글|글쓰기|검색|삭제|수정|댓글|추천|공지|더보기|로그인|회원가입|로그아웃|best|hot|new|menu|next|previous|more|login|logout|write|edit|delete|reply|comment)$/.test(label)) {
     return true;
   }
@@ -46,6 +49,23 @@ export function isLikelyUtilityElement(element: BrowserElement): boolean {
     return true;
   }
   return /^javascript:|^mailto:|^tel:/i.test(href);
+}
+
+function isLikelyCollectionNavigationHref(href: string): boolean {
+  if (!href) {
+    return false;
+  }
+  try {
+    const url = new URL(href);
+    const path = url.pathname.toLowerCase();
+    if (/\/(?:lists?|categories?|category|tags?|search)(?:\/|$)/i.test(path)) {
+      return !/[?&](?:no|post|article|item|document_srl)=\d+/i.test(url.search);
+    }
+    return false;
+  } catch {
+    return /\/(?:lists?|categories?|category|tags?|search)(?:\/|$)/i.test(href) &&
+      !/[?&](?:no|post|article|item|document_srl)=\d+/i.test(href);
+  }
 }
 
 export function isLikelyContentElement(element: BrowserElement): boolean {
@@ -89,7 +109,7 @@ function inferRegionRole(element: BrowserElement, text: string): BrowserViewRegi
   if (/dialog|modal|popup/.test(haystack) || element.isLikelyOverlay) return "modal";
   if (/header|banner|gnb|\btop\b/.test(haystack) || (element.bbox?.y ?? 9999) < 96) return "header";
   if (/nav|navigation|menu/.test(haystack)) return "nav";
-  if (/sidebar|aside|side/.test(haystack) || (element.bbox?.x ?? 9999) < 180) return "sidebar";
+  if (/(^|[\s._#-])(?:sidebar|aside|side)(?:$|[\s._#-])/.test(haystack) || (element.bbox?.x ?? 9999) < 180) return "sidebar";
   if (/toolbar|filter|tablist/.test(haystack)) return "toolbar";
   if (/form|search|input|textarea|select/.test(haystack) || element.formOwner) return "form";
   if (/article|main|content|post|board|list|table|row/.test(haystack) || element.listOwner) return "list";

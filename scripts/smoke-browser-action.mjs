@@ -121,6 +121,25 @@ try {
 
 function verifyResolverAndSafety(snapshot) {
   const observation = buildBrowserObservation({ snapshot });
+  const providedGraphObservation = buildBrowserObservation({
+    snapshot: {
+      ...snapshot,
+      viewGraph: {
+        ...observation.viewGraph,
+        contentLists: [{
+          id: "provided-content-list",
+          label: "provided content list",
+          regionId: "region-main",
+          itemNodeIds: ["view-interesting-post"],
+          representativeNodeIds: ["view-interesting-post"],
+          confidence: 0.91
+        }]
+      }
+    }
+  });
+  if ((providedGraphObservation.viewGraph?.contentLists ?? []).length === 0) {
+    throw new Error("Provided Browser View Graph v2 should preserve content-list metadata through normalization.");
+  }
   const graph = buildElementGraph({
     observationId: observation.id,
     focusedElementId: observation.focusedElementId,
@@ -146,6 +165,18 @@ function verifyResolverAndSafety(snapshot) {
   const dcConceptPrompt = planBrowserActionFromPrompt({ text: "개념글 눌러서 재밌어보이는 글 보여줘", mode: "browser" });
   if (!dcConceptPrompt || dcConceptPrompt.steps.length !== 2 || dcConceptPrompt.steps[0].action.type !== "click" || dcConceptPrompt.steps[0].targetSummary !== "개념글" || dcConceptPrompt.steps[1].targetSummary !== "link: 재밌어보이는 글") {
     throw new Error(`Korean connective click prompt should extract the first target phrase: ${JSON.stringify(dcConceptPrompt)}`);
+  }
+  const googlePrompt = planBrowserActionFromPrompt({ text: "구글 홈페이지 켜줘", mode: "browser" });
+  if (!googlePrompt || googlePrompt.steps[0].action.type !== "navigate" || googlePrompt.steps[0].action.url !== "https://www.google.com/") {
+    throw new Error(`Korean website-open prompt should navigate instead of reading the current page: ${JSON.stringify(googlePrompt)}`);
+  }
+  const googleOpenPrompt = planBrowserActionFromPrompt({ text: "구글 홈페이지 열어줘", mode: "browser" });
+  if (!googleOpenPrompt || googleOpenPrompt.steps[0].action.type !== "navigate" || googleOpenPrompt.steps[0].action.url !== "https://www.google.com/") {
+    throw new Error(`Korean website-open prompt should not be treated as representative content: ${JSON.stringify(googleOpenPrompt)}`);
+  }
+  const urlLessMovePrompt = planBrowserActionFromPrompt({ text: "특이저 ㅁ 갤러리로 이동해줘", mode: "browser" });
+  if (!urlLessMovePrompt || urlLessMovePrompt.steps[0].action.type !== "click" || urlLessMovePrompt.steps[0].targetSummary !== "link: 특이저 ㅁ 갤러리") {
+    throw new Error(`URL-less target navigation should enter Browser Action candidate activation: ${JSON.stringify(urlLessMovePrompt)}`);
   }
   const concept = resolveTarget({ graph, target: dcConceptPrompt.steps[0].action.target, hint: dcConceptPrompt.steps[0].targetSummary });
   assertEqual(concept.primary?.id, "concept-posts", "Korean concept posts target");
@@ -383,11 +414,44 @@ function createSnapshot(state) {
         riskHints: []
       },
       {
+        id: "global-stat-link",
+        role: "link",
+        tagName: "a",
+        label: "어제 990,699개 게시글 등록",
+        text: "어제 990,699개 게시글 등록",
+        selector: "a[href=\"/board/lists/?id=dclottery\"]",
+        href: "https://example.test/board/lists/?id=dclottery",
+        bbox: { x: 860, y: 96, w: 220, h: 24 },
+        nearestLandmark: "nav",
+        visible: true,
+        enabled: true,
+        editable: false,
+        confidence: 0.98,
+        riskHints: []
+      },
+      {
+        id: "notice-post",
+        role: "link",
+        tagName: "a",
+        label: "처음 오신 분을 위한 안내",
+        text: "처음 오신 분을 위한 안내",
+        contextText: "100 공지 처음 오신 분을 위한 안내 운영자 01.01 1000",
+        selector: "a[href=\"/mgallery/board/view/?id=thesingularity&no=100&page=1\"]",
+        href: "https://example.test/browser-action/view/?id=thesingularity&no=100&page=1",
+        bbox: { x: 360, y: 236, w: 240, h: 28 },
+        visible: true,
+        enabled: true,
+        editable: false,
+        confidence: 0.94,
+        riskHints: []
+      },
+      {
         id: "interesting-post",
         role: "link",
         tagName: "a",
         label: "AI가 만든 재밌는 글",
         text: "AI가 만든 재밌는 글",
+        contextText: "1171535 활용 AI가 만든 재밌는 글 작성자 오늘 1964 28",
         selector: "a[href=\"/mgallery/board/view/?id=thesingularity&no=1169668&page=1\"]",
         href: "https://example.test/browser-action/view/?id=thesingularity&no=1169668&page=1",
         bbox: { x: 360, y: 260, w: 240, h: 28 },

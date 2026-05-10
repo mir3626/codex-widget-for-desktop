@@ -3,6 +3,7 @@ import { compactText } from "../targetLexicon.js";
 import type {
   BrowserElement,
   BrowserObservation,
+  BrowserViewNode,
   TargetResolution
 } from "../types.js";
 
@@ -39,14 +40,17 @@ function resolveSemanticContentTargetFromViewGraph(
 ): TargetResolution {
   const graph = observation?.viewGraph;
   const representatives = graph?.contentLists
-    ?.flatMap((list) => list.representativeNodeIds.map((nodeId) => ({ nodeId, listConfidence: list.confidence }))) ?? [];
+    ?.flatMap((list) => list.representativeNodeIds.map((nodeId) => ({ nodeId, listConfidence: list.confidence, listId: list.id }))) ?? [];
   const ranked = representatives
-    .map(({ nodeId, listConfidence }) => {
+    .map(({ nodeId, listConfidence, listId }) => {
       const node = graph?.nodes.find((candidate) => candidate.id === nodeId);
       const element = node?.elementId ? elements.find((candidate) => candidate.id === node.elementId) : undefined;
+      const elementScore = element ? scoreSemanticContentElement(element, observation) : 0;
+      const regionPenalty = isNonContentViewNode(node) ? -0.4 : 0;
+      const listBonus = node?.listId === listId ? 0.06 : 0;
       return {
         element,
-        score: element ? Math.min(0.97, Math.max(listConfidence, (node?.confidence ?? 0.5) + 0.04)) : 0
+        score: element && elementScore > 0 ? Math.min(0.97, Math.max(listConfidence * 0.55, (node?.confidence ?? 0.5) * 0.45) + elementScore * 0.45 + listBonus + regionPenalty) : 0
       };
     })
     .filter((item): item is { element: BrowserElement; score: number } => Boolean(item.element) && item.score >= 0.55)
@@ -67,7 +71,11 @@ function scoreSemanticContentElement(element: BrowserElement, observation: Brows
   const href = element.href ?? "";
   const contentHref = isLikelyContentHref(href, observation?.url);
   if (!label || label.length < 4) return 0;
+  if (isPinnedOrAnnouncementElement(element, label)) return 0;
+  if (isLikelyStalePinnedContentElement(element, observation)) return 0;
   if (isNavigationOrUtilityLabel(label, href, observation?.url, contentHref)) return 0;
+  if (!contentHref && !hasContentStructure(element)) return 0;
+  if (isOutsidePrimaryReadingArea(element, observation)) return 0;
   let score = 0;
   if (element.role === "link") score += 0.34;
   if (href) score += 0.18;
@@ -82,16 +90,111 @@ function scoreSemanticContentElement(element: BrowserElement, observation: Brows
 
 function isNavigationOrUtilityLabel(label: string, href: string, currentUrl: string | undefined, contentHref: boolean): boolean {
   if (isSameDocumentOrUtilityHref(href, currentUrl)) return true;
+  if (isGlobalStatisticLabel(label) || isLikelyUtilityHref(href, currentUrl)) return true;
   if (/^\[[0-9]+\]$|^[0-9]+개?$|^(이전|다음|목록|전체글|개념글|글쓰기|검색|삭제|수정|댓글|추천|공지|더보기|로그인|회원가입|로그아웃|본문영역 바로가기|best|hot|new)$/i.test(label)) {
     return true;
   }
-  if (/(바로가기|갤로그로 이동|관리 내역|페이지 하단|디시콘|설정|포인트|잉여력|내\s*(?:정보|글|댓글)|쪽지함|menu|login|logout|sign in|write|delete|edit|reply|comment|next|previous|more|point|profile|message|notification|setting)/i.test(label)) {
+  if (/(바로가기|관리 내역|페이지 하단|설정|포인트|내\s*(?:정보|글|댓글)|쪽지함|menu|login|logout|sign in|write|delete|edit|reply|comment|next|previous|more|point|profile|message|notification|setting|lottery|event|stats?)/i.test(label)) {
     return true;
   }
   if (!contentHref && label.length <= 8 && isLikelySectionNavigationHref(href)) {
     return true;
   }
   return /^javascript:/i.test(href);
+}
+
+function hasContentStructure(element: BrowserElement): boolean {
+  const haystack = `${element.role ?? ""} ${element.tagName ?? ""} ${element.selector ?? ""} ${element.nearestHeading ?? ""} ${element.contextText ?? ""} ${element.listOwner ?? ""}`.toLowerCase();
+  return /(article|post|item|row|card|story|content|table|게시글|게시물|본문|제목)/i.test(haystack);
+}
+
+function isPinnedOrAnnouncementElement(element: BrowserElement, label: string): boolean {
+  const context = `${element.contextText ?? ""} ${element.nearestHeading ?? ""}`.replace(/\s+/g, " ").trim();
+  if (!context || context === label) return false;
+  return /(^|[\s\[\]()/|:：-])(?:공지|고정|알림|필독|notice|announcement|pinned|sticky)(?:$|[\s\[\]()/|:：-])/i.test(context);
+}
+
+function isLikelyStalePinnedContentElement(element: BrowserElement, observation: BrowserObservation | undefined): boolean {
+  const elementNumber = readContentNumber(element.href ?? "");
+  if (!elementNumber || !observation) return false;
+  const peers = observation.elements
+    .filter((candidate) => candidate.visible && isLikelyContentHref(candidate.href ?? "", observation.url))
+    .map((candidate) => ({
+      element: candidate,
+      number: readContentNumber(candidate.href ?? ""),
+      y: candidate.bbox?.y ?? Number.POSITIVE_INFINITY
+    }))
+    .filter((candidate): candidate is { element: BrowserElement; number: number; y: number } => Boolean(candidate.number) && Number.isFinite(candidate.y));
+  if (peers.length < 4) return false;
+  const sameSeries = peers.filter((candidate) => isSameContentSeries(candidate.element.href ?? "", element.href ?? "", observation.url));
+  if (sameSeries.length < 4) return false;
+  const sortedByNumber = [...sameSeries].sort((left, right) => right.number - left.number);
+  const medianNumber = sortedByNumber[Math.floor(sortedByNumber.length / 2)]?.number;
+  const sortedByViewport = [...sameSeries].sort((left, right) => left.y - right.y);
+  const viewportRank = sortedByViewport.findIndex((candidate) => candidate.element.id === element.id);
+  if (!medianNumber || viewportRank < 0 || viewportRank > 1) return false;
+  return elementNumber < medianNumber * 0.82;
+}
+
+function readContentNumber(href: string): number | undefined {
+  if (!href) return undefined;
+  try {
+    const url = new URL(href);
+    for (const key of ["no", "post", "article", "item", "document_srl"]) {
+      const value = Number(url.searchParams.get(key));
+      if (Number.isFinite(value) && value > 0) return value;
+    }
+    const segment = url.pathname.split("/").reverse().find((part) => /^\d{5,}$/.test(part));
+    const value = Number(segment);
+    return Number.isFinite(value) && value > 0 ? value : undefined;
+  } catch {
+    const match = href.match(/[?&](?:no|post|article|item|document_srl)=(\d{5,})|\/(\d{5,})(?:\/|$)/i);
+    const value = Number(match?.[1] ?? match?.[2]);
+    return Number.isFinite(value) && value > 0 ? value : undefined;
+  }
+}
+
+function isSameContentSeries(leftHref: string, rightHref: string, currentUrl: string | undefined): boolean {
+  try {
+    const left = new URL(leftHref, currentUrl);
+    const right = new URL(rightHref, currentUrl);
+    if (left.origin !== right.origin || left.pathname !== right.pathname) return false;
+    const leftSection = left.searchParams.get("id") ?? left.searchParams.get("board") ?? left.searchParams.get("category");
+    const rightSection = right.searchParams.get("id") ?? right.searchParams.get("board") ?? right.searchParams.get("category");
+    return !leftSection || !rightSection || leftSection === rightSection;
+  } catch {
+    return false;
+  }
+}
+
+function isOutsidePrimaryReadingArea(element: BrowserElement, observation: BrowserObservation | undefined): boolean {
+  const landmark = compactText(element.nearestLandmark ?? "");
+  if (/^(header|nav|navigation|menu|toolbar|footer)$/i.test(landmark)) return true;
+  if (!element.bbox || !observation?.viewport) return false;
+  const viewport = observation.viewport;
+  const centerX = element.bbox.x + element.bbox.w / 2;
+  const centerY = element.bbox.y + element.bbox.h / 2;
+  if (centerY >= 0 && centerY < Math.min(120, viewport.height * 0.14)) return true;
+  if (centerX > viewport.width * 0.82 && !isLikelyContentHref(element.href ?? "", observation.url)) return true;
+  return false;
+}
+
+function isGlobalStatisticLabel(label: string): boolean {
+  return /(?:어제|오늘|전체|총)?\s*[\d,]+\s*개\s*(?:게시글|댓글|글|갤러리|posts?|comments?|items?)\s*(?:등록|created|posted)?/i.test(label) ||
+    /(?:total|yesterday|today)\s*[\d,]+\s*(?:posts?|comments?|items?)/i.test(label);
+}
+
+function isLikelyUtilityHref(href: string, currentUrl: string | undefined): boolean {
+  if (!href) return false;
+  try {
+    const target = new URL(href, currentUrl);
+    const path = `${target.pathname} ${target.search}`.toLowerCase();
+    if (/(login|logout|signup|register|settings?|profile|notifications?|messages?|search|event|lottery|stats?)/i.test(path)) return true;
+    if (/\/(?:lists?|category|categories|tags?|search)(?:\/|$)/i.test(target.pathname) && !isLikelyContentHref(target.href, currentUrl)) return true;
+    return false;
+  } catch {
+    return /(login|logout|signup|register|settings?|profile|notification|message|search|event|lottery|stats?)/i.test(href);
+  }
 }
 
 function isSameDocumentOrUtilityHref(href: string, currentUrl: string | undefined): boolean {
@@ -175,6 +278,14 @@ function viewportContentScore(element: BrowserElement, observation: BrowserObser
   if (centerX > viewport.width * 0.84) score -= 0.08;
   if (centerY >= viewport.height * 0.1 && centerY <= viewport.height * 0.85) score += 0.06;
   return score;
+}
+
+function isNonContentViewNode(node: BrowserViewNode | undefined): boolean {
+  if (!node) return true;
+  if (node.kind !== "content_item" && node.kind !== "row") return true;
+  if (node.regionRole === "header" || node.regionRole === "nav" || node.regionRole === "toolbar" || node.regionRole === "footer") return true;
+  const label = compactText(node.label || node.text || "");
+  return isGlobalStatisticLabel(label);
 }
 
 function sortSemanticContentElement(left: BrowserElement, right: BrowserElement, observation: BrowserObservation | undefined): number {

@@ -1,0 +1,71 @@
+{
+  "date": "2026-05-10",
+  "adapter": "playwright",
+  "startUrl": "https://example.com/",
+  "transcript": [
+    {
+      "step": "observe",
+      "adapter": "playwright",
+      "url": "https://example.com/",
+      "title": "Example Domain",
+      "textLength": 129,
+      "elements": [
+        {
+          "id": "el-1",
+          "role": "link",
+          "label": "Learn more",
+          "text": "Learn more",
+          "selector": "a"
+        }
+      ]
+    },
+    {
+      "step": "screenshot",
+      "adapter": "playwright",
+      "ok": true,
+      "safety": "allow",
+      "verification": {
+        "status": "passed",
+        "reason": "Screenshot evidence is available after the action."
+      },
+      "asset": "docs\\reports\\assets\\browser-action-dogfood-2026-05-10\\example-com-before.png"
+    },
+    {
+      "step": "click",
+      "adapter": "playwright",
+      "target": {
+        "id": "el-1",
+        "selector": "a",
+        "label": "Learn more",
+        "text": "Learn more",
+        "confidence": 0.99
+      },
+      "ok": true,
+      "safety": "allow",
+      "beforeUrl": "https://example.com/",
+      "afterUrl": "https://www.iana.org/help/example-domains",
+      "afterTitle": "Example Domains",
+      "verification": {
+        "status": "passed",
+        "reason": "Action changed the browser route or URL."
+      }
+    }
+  ],
+  "semanticAcceptance": {
+    "observedRealSite": true,
+    "executedSafeAction": true,
+    "capturedBeforeAfter": true,
+    "screenshotAsset": "docs\\reports\\assets\\browser-action-dogfood-2026-05-10\\example-com-before.png",
+    "notes": "Safe read/screenshot/link navigation against public Example Domain; no credentials or form submission."
+  },
+  "transactionEvidence": {
+    "transactionId": "browser-transaction-b0871f13-c4a0-4612-a89f-5a7874b38595",
+    "clickResultTransaction": {
+      "transactionId": "browser-transaction-b0871f13-c4a0-4612-a89f-5a7874b38595",
+      "candidateId": "browser-candidate-ceaf1b9b-71f4-4f17-b543-a11ab7375f13"
+    },
+    "verificationStatus": "passed",
+    "verificationReason": "Action changed the browser route or URL.",
+    "expectedEffectChecked": true
+  }
+}

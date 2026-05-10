@@ -32,6 +32,18 @@ async function verifyCorePerception() {
   assert(ready.context?.routeKey, "context should include route key");
   assert(ready.context?.mutationRevision, "context should include mutation revision");
 
+  const switched = await service.ensureFreshContext({
+    providers,
+    bridgeStatus: createBridgeStatus("https://example.test/perception", { tabId: 99 }),
+    request: {
+      requestId: "core-tab-switched",
+      reason: "prompt",
+      requiredFreshness: "stable",
+      timeoutMs: 200
+    }
+  });
+  assertEqual(switched.status, "timeout", "same-url different tab must not reuse stale provider snapshot");
+
   const queuedService = new BrowserPerceptionService();
   const emptyProviders = new ProviderRegistry();
   const waiting = queuedService.ensureFreshContext({
@@ -137,15 +149,15 @@ async function verifyStabilization() {
   assertEqual(result.context?.mutationRevision, "view-2", "mutation revision updates after SPA transition");
 }
 
-function createBridgeStatus(url) {
+function createBridgeStatus(url, options = {}) {
   return {
     connected: true,
     mode: "idle",
     reason: "smoke",
     updatedAt: new Date().toISOString(),
     activeTab: {
-      tabId: 7,
-      windowId: 3,
+      tabId: options.tabId ?? 7,
+      windowId: options.windowId ?? 3,
       url,
       title: "Browser Perception Smoke",
       origin: "https://example.test/*",
@@ -162,6 +174,14 @@ function createSnapshot(options = {}) {
     mutationRevision: options.mutationRevision ?? "12",
     lastMutationAt: new Date(Date.now() - (options.mutationQuietMs ?? 900)).toISOString(),
     mutationQuietMs: options.mutationQuietMs ?? 900,
+    bridge: {
+      tabId: options.tabId ?? 7,
+      windowId: options.windowId ?? 3,
+      url: options.url ?? "https://example.test/perception",
+      title: "Browser Perception Smoke",
+      permission: "allowed",
+      reason: "smoke"
+    },
     text: "개념글\n흥미로운 글 제목\n검색",
     elements: [
       {
@@ -215,4 +235,3 @@ function assertEqual(actual, expected, message) {
     throw new Error(`${message}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
   }
 }
-

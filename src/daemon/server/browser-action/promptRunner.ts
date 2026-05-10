@@ -1,4 +1,7 @@
 import {
+  buildIntentFrameFromAction,
+  createBrowserViewContextLease,
+  classifyBrowserActionRisk,
   planBrowserActionFromPrompt,
   summarizeBrowserActionSession,
   summarizeBrowserObservation
@@ -40,10 +43,20 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
   });
   input.emit({ type: "session.state", state: "tooling", id: input.message.id });
   broadcast(input.clients, { type: "browserAction.started", actionSessionId: session.id, summary: summarizeBrowserActionSession(session) });
+  let transaction = input.browserActions.beginInteraction({
+    requestId: input.message.id,
+    actionSessionId: session.id,
+    sessionId: input.sessionId,
+    utterance: input.message.text,
+    source: "prompt",
+    mode: promptPlan.mode,
+    browserSource: promptPlan.source
+  });
   recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", "Prompt-driven Browser Action started", {
     requestId: input.message.id,
     planId: promptPlan.id,
-    reason: promptPlan.reason
+    reason: promptPlan.reason,
+    transactionId: transaction.transactionId
   });
 
   const snapshotResult = await readFreshPromptBrowserSnapshot(input, new Date());
@@ -52,6 +65,25 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
   }
 
   const snapshot = snapshotResult.snapshot;
+  const firstAction = promptPlan.steps[0]?.action;
+  const contextLease = snapshotResult.context && firstAction
+    ? createBrowserViewContextLease({
+        context: snapshotResult.context,
+        leaseReason: "prompt",
+        requiredRiskClass: classifyBrowserActionRisk(firstAction)
+      })
+    : undefined;
+  if (contextLease) {
+    transaction = input.browserActions.attachInteractionLease(transaction.transactionId, contextLease) ?? transaction;
+  }
+  if (firstAction) {
+    transaction = input.browserActions.recordInteractionIntent(transaction.transactionId, buildIntentFrameFromAction({
+      utterance: input.message.text,
+      action: firstAction,
+      targetPhrase: promptPlan.steps[0]?.targetSummary,
+      confidence: promptPlan.confidence
+    })) ?? transaction;
+  }
   const observed = input.browserActions.observe({ actionSessionId: session.id, snapshot });
   recordBrowserActionAudit(input.storage, observed.audit);
   broadcast(input.clients, {
@@ -74,6 +106,8 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
   const execution = await input.browserActions.executePlan({
     plan,
     snapshot,
+    contextLease,
+    transaction,
     adapterId: promptPlan.adapterId,
     policies: input.storage.readBrowserActionPolicies()
   });

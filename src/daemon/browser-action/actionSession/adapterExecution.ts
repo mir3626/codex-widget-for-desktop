@@ -78,6 +78,7 @@ export async function executeViaAdapter(input: {
     result.error = finalExecution.error;
     result.verification = verifyBrowserAction({
       action: result.action,
+      expected: result.expected,
       before: observation,
       after,
       ok: finalExecution.ok,

@@ -19,6 +19,7 @@ import type {
   TerminalLine
 } from "../types";
 import { assistantFallbackText, assistantStatusLabel, isAssistantWorking } from "../utils/chat";
+import { openExternalUrl } from "../shell";
 import { ArtifactLedger } from "./ArtifactLedger";
 import { AssistantResponseActions } from "./AssistantResponseActions";
 import { BrowserActionPanel } from "./BrowserActionPanel";
@@ -233,7 +234,24 @@ export function ConversationPanel({
                         remarkPlugins={[remarkGfm]}
                         components={{
                           pre: (props) => <MarkdownPre {...props} onCopyCode={onCopyCodeBlock} />,
-                          table: (props) => <MarkdownTable {...props} />
+                          table: (props) => <MarkdownTable {...props} />,
+                          a: ({ href, children, ...props }) => (
+                            <a
+                              {...props}
+                              href={href}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(event) => {
+                                if (!href || !/^https?:\/\//i.test(href)) {
+                                  return;
+                                }
+                                event.preventDefault();
+                                void openExternalUrl(href);
+                              }}
+                            >
+                              {children}
+                            </a>
+                          )
                         }}
                       >
                         {message.text}

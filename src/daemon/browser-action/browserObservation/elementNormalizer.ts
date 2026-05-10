@@ -60,6 +60,7 @@ export function normalizeElement(input: unknown, index: number): BrowserElement 
     headingLevel: readOptionalInteger(record?.headingLevel),
     nearestHeading: trimField(record?.nearestHeading, 500),
     nearestLandmark: trimField(record?.nearestLandmark, 160),
+    contextText: trimField(record?.contextText, 1000),
     formOwner: trimField(record?.formOwner, 160),
     listOwner: trimField(record?.listOwner, 160),
     computedVisibility: normalizeComputedVisibility(record?.computedVisibility),

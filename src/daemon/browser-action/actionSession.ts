@@ -25,6 +25,14 @@ import { cloneSession } from "./actionSession/cloning.js";
 import { executeBrowserActionPlan } from "./actionSession/planExecution.js";
 import { createDiagnosticSession } from "./actionSession/diagnostics.js";
 import { executeBrowserAction } from "./actionSession/executeAction.js";
+import { BrowserInteractionTransactionManager } from "./interaction/transactionManager.js";
+import type {
+  BrowserInteractionSource,
+  BrowserInteractionTransaction,
+  BrowserViewContextLease,
+  CandidateStep,
+  IntentFrame
+} from "./interaction/types.js";
 import { respondToBrowserActionInteraction } from "./actionSession/interactions.js";
 import {
   cancelBrowserActionSession,
@@ -49,6 +57,7 @@ export class BrowserActionSessionManager {
   private adapters: BrowserActionAdapterRegistry;
   private semanticMemory?: SemanticMemoryStore;
   private semanticMemoryEnabled = true;
+  private interactions = new BrowserInteractionTransactionManager();
 
   constructor(adapters = new BrowserActionAdapterRegistry(), semanticMemory?: SemanticMemoryStore) {
     this.adapters = adapters;
@@ -111,6 +120,9 @@ export class BrowserActionSessionManager {
       semanticMemory: this.semanticMemory,
       action: input.action,
       snapshot: input.snapshot,
+      contextLease: input.contextLease,
+      transaction: input.transaction,
+      expected: input.expected,
       adapterId: input.adapterId,
       approved: input.approved,
       targetHint: input.targetHint,
@@ -137,6 +149,8 @@ export class BrowserActionSessionManager {
       session,
       plan: input.plan,
       snapshot: input.snapshot,
+      contextLease: input.contextLease,
+      transaction: input.transaction,
       adapterId: input.adapterId,
       approvedStepIds: input.approvedStepIds,
       policyMatches: input.policyMatches,
@@ -172,6 +186,38 @@ export class BrowserActionSessionManager {
       pendingApprovals: this.pendingApprovals,
       results: this.results
     });
+  }
+
+  beginInteraction(input: {
+    requestId: string;
+    actionSessionId: string;
+    sessionId?: string;
+    utterance: string;
+    source: BrowserInteractionSource;
+    mode: BrowserActionSession["mode"];
+    browserSource?: Partial<BrowserActionSession["source"]>;
+  }): BrowserInteractionTransaction {
+    return this.interactions.begin(input);
+  }
+
+  attachInteractionLease(transactionId: string | undefined, lease: BrowserViewContextLease): BrowserInteractionTransaction | undefined {
+    return this.interactions.attachLease(transactionId, lease);
+  }
+
+  recordInteractionIntent(transactionId: string | undefined, intentFrame: IntentFrame): BrowserInteractionTransaction | undefined {
+    return this.interactions.recordIntent(transactionId, intentFrame);
+  }
+
+  recordInteractionCandidates(transactionId: string | undefined, candidates: CandidateStep[]): BrowserInteractionTransaction | undefined {
+    return this.interactions.recordCandidates(transactionId, candidates);
+  }
+
+  selectInteractionCandidate(transactionId: string | undefined, candidateId: string | undefined): BrowserInteractionTransaction | undefined {
+    return this.interactions.selectCandidate(transactionId, candidateId);
+  }
+
+  getInteraction(transactionId: string | undefined): BrowserInteractionTransaction | undefined {
+    return this.interactions.get(transactionId);
   }
 
   private requireSession(id: string): BrowserActionSession {

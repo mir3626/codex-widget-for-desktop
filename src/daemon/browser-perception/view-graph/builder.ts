@@ -240,6 +240,7 @@ function buildContentLists(input: {
 }): BrowserContentList[] {
   const contentNodes = input.nodes
     .filter((node) => node.elementId)
+    .filter((node) => node.regionRole === "list" || node.regionRole === "main")
     .filter((node) => {
       const element = input.input.elements.find((candidate) => candidate.id === node.elementId);
       return element ? isLikelyContentElement(element) : node.kind === "content_item";
@@ -259,7 +260,10 @@ function buildContentLists(input: {
       continue;
     }
     const representative = items
-      .map((node) => ({ node, score: representativeContentScore(node) }))
+      .map((node) => ({
+        node,
+        score: representativeContentScore(node, node.elementId ? input.input.elements.find((element) => element.id === node.elementId) : undefined)
+      }))
       .sort((left, right) => right.score - left.score)
       .slice(0, 5)
       .map((item) => item.node.id);
@@ -333,15 +337,20 @@ function buildAffordanceIndex(nodes: BrowserViewNode[]): BrowserAffordanceIndex 
   return index;
 }
 
-function representativeContentScore(node: BrowserViewNode): number {
+function representativeContentScore(node: BrowserViewNode, element?: BrowserViewGraphV2Input["elements"][number]): number {
   let score = 0;
   const labelLength = (node.label ?? "").length;
+  if (isPinnedOrAnnouncementText(`${node.label ?? ""} ${node.text ?? ""} ${element?.contextText ?? ""}`)) score -= 0.38;
   if (node.href) score += 0.2;
   if (labelLength >= 8 && labelLength <= 120) score += 0.18;
   if ((node.bbox?.y ?? 10_000) >= 0) score += 0.14;
   if ((node.regionRole ?? "") === "list" || (node.regionRole ?? "") === "main") score += 0.12;
   if (node.actionHint === "navigate") score += 0.08;
   return score + (node.confidence ?? 0.5);
+}
+
+function isPinnedOrAnnouncementText(text: string): boolean {
+  return /(^|[\s\[\]()/|:：-])(?:공지|고정|알림|필독|notice|announcement|pinned|sticky)(?:$|[\s\[\]()/|:：-])/i.test(text);
 }
 
 function pushIndex(index: Record<string, string[]>, key: string, nodeId: string): void {
