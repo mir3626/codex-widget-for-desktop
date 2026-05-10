@@ -4,6 +4,25 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Browser Action Search Clarification Continuation
+
+Public-site widget-UI dogfood is now green for the DCInside, FMKorea, Naver, and Google Browser Action matrix.
+
+- Clarification resume now preserves the original prompt `BrowserActionPlan`, completed results, and step id, so selecting a clarified search field continues the remaining submit/search step instead of ending after the `type` action.
+- Search intent parsing now separates the field target from the submit button target. Prompts such as `검색창에 '브라우저 액션 테스트' 입력하고 검색 버튼 눌러줘` produce `searchbox: 검색 -> button: 검색`, while branded labels such as `Google 검색 버튼` are preserved as `button: google 검색`.
+- Candidate scoring now gives explicit requested-role evidence (`searchbox`, `button`, `link`) to the intended role and penalizes mismatches, reducing broad page/link competition for typed search flows.
+- Late execution no longer lets an ambiguous pre-semantic candidate gate force confidence down when Semantic Interface has already selected the same browser element with high confidence.
+- Browser safety now treats explicit search-submit buttons as safe search/navigation activations while keeping generic submit/payment/delete/send/upload/download/auth buttons protected.
+- Focused smoke coverage was added for search intent/candidate gating and search-submit safety.
+
+Latest public-site run: `docs/reports/browser-action-live-report-browser-action-public-sites-search-final-20260511.md`.
+
+Result: 8 passed / 0 failed.
+
+Verification passed `npm run lint`, `npm run smoke:browser-action`, `npm run smoke:browser-action:prompt-classification`, `npm run smoke:browser-interaction-transaction`, and live widget-UI public-site dogfood. The Google-focused rerun `docs/reports/browser-action-live-report-browser-action-google-search-safe-submit-20260511.md` also passed after safe search-submit handling.
+
+Runtime was restarted after daemon-side changes. Renderer is listening on `127.0.0.1:5173` with PID `91084`, daemon is healthy on `127.0.0.1:4128` with PID `104280`, and widget PID is `99348`.
+
 ## Latest Update: Browser Action Public-Site Widget UI Dogfood
 
 Public-site Browser Action dogfood now has a reusable scenario file and runner support for isolated all-sites extension permission testing.

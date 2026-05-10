@@ -62,8 +62,9 @@ export function decideBrowserActionSafety(input: {
       destructive: false
     };
   }
-  const destructive = isDestructiveBrowserAction(input.action, input.target);
-  const sensitive = Boolean(input.target?.riskHints.some((hint) => ["password", "payment", "delete", "submit", "file_upload", "download", "auth"].includes(hint)));
+  const safeSearchSubmit = isSafeSearchSubmitActivation(input.action, input.target);
+  const destructive = !safeSearchSubmit && isDestructiveBrowserAction(input.action, input.target);
+  const sensitive = !safeSearchSubmit && Boolean(input.target?.riskHints.some((hint) => ["password", "payment", "delete", "submit", "file_upload", "download", "auth"].includes(hint)));
   if (requiresResolvedElement(input.action) && input.targetConfidence < 0.75) {
     return {
       decision: "clarify",
@@ -147,4 +148,25 @@ function labelAction(action: BrowserAction): string {
     return `evaluate ${action.code.length} chars`;
   }
   return action.type;
+}
+
+function isSafeSearchSubmitActivation(action: BrowserAction, target?: BrowserElement): boolean {
+  if (action.type !== "click" || !target?.riskHints.includes("submit")) {
+    return false;
+  }
+  const haystack = [
+    target.role,
+    target.label,
+    target.ariaLabel,
+    target.placeholder,
+    target.text,
+    target.title,
+    target.value,
+    target.selector,
+    target.href
+  ].filter(Boolean).join(" ");
+  if (/(delete|remove|send|post|publish|purchase|pay|checkout|logout|password|token|cookie|upload|download|삭제|제거|보내|게시|결제|구매|로그아웃|비밀번호|암호)/i.test(haystack)) {
+    return false;
+  }
+  return /(검색|search|find|lookup)/i.test(haystack);
 }

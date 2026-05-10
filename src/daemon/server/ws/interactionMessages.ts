@@ -46,7 +46,8 @@ export async function handleInteractionMessage(message: ClientMessage, context: 
       browserExtensionBridge,
       browserActions,
       semanticMemory,
-      semanticClarifications
+      semanticClarifications,
+      browserActionCommandWaiters: context.browserActionCommandWaiters
     })) {
       return true;
     }

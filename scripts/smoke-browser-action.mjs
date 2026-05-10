@@ -286,6 +286,20 @@ function verifyResolverAndSafety(snapshot) {
     target: observation.elements.find((element) => element.id === "delete-repo")
   });
   assertEqual(deleteSafety.decision, "confirm", "destructive click safety");
+  const searchSubmitSafety = decideBrowserActionSafety({
+    action: { type: "click", target: { kind: "element_id", id: "search-submit" } },
+    mode: "auto_safe_actions",
+    targetConfidence: 0.96,
+    target: observation.elements.find((element) => element.id === "search-submit")
+  });
+  assertEqual(searchSubmitSafety.decision, "allow", "explicit search submit safety");
+  const genericSubmitSafety = decideBrowserActionSafety({
+    action: { type: "click", target: { kind: "element_id", id: "submit-order" } },
+    mode: "auto_safe_actions",
+    targetConfidence: 0.96,
+    target: observation.elements.find((element) => element.id === "submit-order")
+  });
+  assertEqual(genericSubmitSafety.decision, "confirm", "generic submit safety remains protected");
   const lowConfidenceClickSafety = decideBrowserActionSafety({
     action: { type: "click", target: { kind: "text", text: "Open" } },
     mode: "auto_safe_actions",
@@ -429,6 +443,34 @@ function createSnapshot(state) {
         editable: false,
         confidence: 0.96,
         riskHints: []
+      },
+      {
+        id: "search-submit",
+        role: "button",
+        tagName: "button",
+        label: "Google 검색",
+        text: "Google 검색",
+        selector: "#search-submit",
+        bbox: { x: 300, y: 20, w: 120, h: 36 },
+        visible: true,
+        enabled: true,
+        editable: false,
+        confidence: 0.96,
+        riskHints: ["submit"]
+      },
+      {
+        id: "submit-order",
+        role: "button",
+        tagName: "button",
+        label: "Submit order",
+        text: "Submit order",
+        selector: "#submit-order",
+        bbox: { x: 440, y: 20, w: 140, h: 36 },
+        visible: true,
+        enabled: true,
+        editable: false,
+        confidence: 0.96,
+        riskHints: ["submit"]
       },
       {
         id: "delete-repo",

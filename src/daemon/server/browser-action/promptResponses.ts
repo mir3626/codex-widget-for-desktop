@@ -84,6 +84,8 @@ export function requestPromptTargetClarification(input: BrowserActionPromptInput
     action: detail.promptPlan.steps[0]?.action,
     utterance: input.message.text,
     targetHint: summarizePromptPlanTarget(detail.promptPlan),
+    plan: detail.plan,
+    results: detail.results,
     latestResult: detail.results.at(-1)
   });
   if (!clarification) {

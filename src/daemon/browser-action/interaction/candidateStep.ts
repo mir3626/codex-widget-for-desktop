@@ -153,6 +153,15 @@ function scoreElementCandidate(input: {
     scoreBreakdown.role_fit = roleScore;
     reasonCodes.push("role_fit");
   }
+  const requestedRoleScore = scoreRequestedRoleFit(input.action, input.element);
+  score += requestedRoleScore;
+  if (requestedRoleScore > 0) {
+    scoreBreakdown.requested_role_fit = requestedRoleScore;
+    reasonCodes.push("requested_role_fit");
+  } else if (requestedRoleScore < 0) {
+    scoreBreakdown.requested_role_mismatch = requestedRoleScore;
+    reasonCodes.push("requested_role_mismatch");
+  }
 
   if (isRepresentativeContentRequest(input.hint, input.action) && looksLikeContentElement(input.element)) {
     score += 0.22;
@@ -223,6 +232,27 @@ function scoreRoleFit(action: BrowserAction, element: BrowserElement): number {
     }
   }
   return 0;
+}
+
+function scoreRequestedRoleFit(action: BrowserAction, element: BrowserElement): number {
+  if (!("target" in action) || action.target?.kind !== "text" || !action.target.role) {
+    return 0;
+  }
+  const requested = action.target.role.toLowerCase();
+  const role = `${element.role ?? ""} ${element.tagName ?? ""} ${element.inputType ?? ""}`.toLowerCase();
+  if (requested === "searchbox") {
+    return element.editable || /searchbox|textbox|input|textarea|search/.test(role) ? 0.24 : -0.12;
+  }
+  if (requested === "button") {
+    return /button|submit|reset/.test(role) ? 0.24 : -0.12;
+  }
+  if (requested === "link") {
+    return /link|a/.test(role) || Boolean(element.href) ? 0.24 : -0.12;
+  }
+  if (role.includes(requested)) {
+    return 0.2;
+  }
+  return -0.08;
 }
 
 function looksLikeContentElement(element: BrowserElement): boolean {

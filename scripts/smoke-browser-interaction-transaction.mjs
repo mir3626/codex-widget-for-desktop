@@ -8,6 +8,7 @@ import {
   createBrowserViewContextLease,
   decideCandidatePlanningGate,
   generateCandidateSteps,
+  resolveBrowserActionIntent,
   verifyBrowserAction
 } from "../dist/daemon/browser-action/index.js";
 
@@ -72,6 +73,29 @@ async function verifyTransactionCore() {
   manager.recordCandidates(transaction.transactionId, candidates);
   assert(candidates.length >= 2, "duplicate concept controls should produce multiple candidates");
   assert(candidates.every((candidate) => candidate.leaseId === lease.leaseId), "candidate ids should be lease-scoped");
+  verifySearchIntentAndGate({ graph, lease });
+}
+
+function verifySearchIntentAndGate({ graph, lease }) {
+  const intent = resolveBrowserActionIntent("검색창에 '브라우저 액션 테스트' 입력하고 검색 버튼 눌러줘");
+  assertEqual(intent.actions.length, 2, "search intent should produce type + click");
+  const [typeAction, clickAction] = intent.actions;
+  assertEqual(typeAction.target.text, "검색", "search field target should not include typed text");
+  assertEqual(clickAction.target.text, "검색", "search submit target should not include typed text");
+  assertEqual(clickAction.target.role, "button", "search submit action should request button role");
+  const candidates = generateCandidateSteps({
+    action: clickAction,
+    graph,
+    target: clickAction.target,
+    hint: clickAction.target.text,
+    lease
+  });
+  const decision = decideCandidatePlanningGate({ action: clickAction, candidates, locale: "ko", requireFreshLease: true });
+  assertEqual(decision.decision, "proceed", "search button should not re-clarify after sanitized intent");
+  const selected = candidates.find((candidate) => candidate.candidateId === decision.selectedCandidateId);
+  assertEqual(selected?.element?.id, "search-button", "search submit should select the button candidate");
+  const brandedIntent = resolveBrowserActionIntent("검색창에 'codex widget browser action' 입력하고 Google 검색 버튼 눌러줘");
+  assertEqual(brandedIntent.actions[1].target.text, "google 검색", "branded search submit label should be preserved");
 }
 
 async function verifyTransactionClarification() {
@@ -245,6 +269,39 @@ function createSnapshot(options = {}) {
         mutationRevision
       },
       {
+        id: "search-button",
+        role: "button",
+        tagName: "button",
+        label: "검색",
+        text: "검색",
+        selector: "button[type='submit']",
+        bbox: { x: 326, y: 20, w: 64, h: 32 },
+        visible: true,
+        enabled: true,
+        confidence: 0.95,
+        sourceOrder: 4,
+        nearestLandmark: "toolbar",
+        domPathHash: "search-button",
+        mutationRevision
+      },
+      {
+        id: "search-help",
+        role: "link",
+        tagName: "a",
+        label: "검색 도움말",
+        text: "검색 도움말",
+        href: "https://example.test/help/search",
+        selector: "a.search-help",
+        bbox: { x: 400, y: 20, w: 88, h: 28 },
+        visible: true,
+        enabled: true,
+        confidence: 0.92,
+        sourceOrder: 5,
+        nearestLandmark: "toolbar",
+        domPathHash: "search-help",
+        mutationRevision
+      },
+      {
         id: "post-1",
         role: "link",
         tagName: "a",
@@ -256,7 +313,7 @@ function createSnapshot(options = {}) {
         visible: true,
         enabled: true,
         confidence: 0.94,
-        sourceOrder: 4,
+        sourceOrder: 6,
         nearestLandmark: "main",
         listOwner: "posts",
         contextText: "흥미로운 글 제목 작성자 조회수",

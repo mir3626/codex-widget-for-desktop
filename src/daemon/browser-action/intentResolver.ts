@@ -9,10 +9,12 @@ import { readIntentConfidence } from "./intentResolver/confidence.js";
 import {
   extractQuotedText,
   extractNavigationTargetPhrase,
+  extractSearchSubmitTargetPhrase,
   extractTargetPhrase,
   extractTextAfterKeyword,
   extractUrl,
   isInformationalBrowserActionQuestion,
+  readSearchFieldTargetPhrase,
   readScrollAmount,
   stripBrowserActionSuffix
 } from "./intentResolver/parsing.js";
@@ -79,15 +81,17 @@ export function resolveBrowserActionIntent(text: string): BrowserActionIntent {
   } else if (/검색|search/i.test(utterance) && typedText) {
     actionType = "type";
     targetRole = "searchbox";
+    const searchFieldTarget = readSearchFieldTargetPhrase(utterance, targetPhrase);
+    const searchSubmitTarget = extractSearchSubmitTargetPhrase(utterance);
     actions.push({
       type: "type",
-      target: { kind: "text", role: "searchbox", text: targetPhrase || "search" },
+      target: { kind: "text", role: "searchbox", text: searchFieldTarget },
       text: typedText,
       clearFirst: true,
       submit: false
     });
     if (!/제출하지|submit 하지|no submit|pre-submit|직전/i.test(utterance)) {
-      actions.push({ type: "click", target: { kind: "text", role: "button", text: targetPhrase || "search" } });
+      actions.push({ type: "click", target: { kind: "text", role: "button", text: searchSubmitTarget } });
     }
   } else if (/입력|type|fill|바꿔|수정/i.test(utterance) && typedText) {
     actionType = "type";

@@ -36,6 +36,29 @@ export function extractTargetPhrase(text: string): string | undefined {
   return undefined;
 }
 
+export function readSearchFieldTargetPhrase(text: string, targetPhrase: string | undefined): string {
+  if (targetPhrase && !isNoisySearchTargetPhrase(targetPhrase)) {
+    return targetPhrase;
+  }
+  return readDefaultSearchTargetPhrase(text);
+}
+
+export function extractSearchSubmitTargetPhrase(text: string): string {
+  const patterns = [
+    /(?:하고|그리고|then|and|click|press)\s+([^'"“”]{1,40}?)\s*(?:버튼|button)(?:을|를)?\s*(?:눌러|누르|클릭|click|press)?/i,
+    /(?:^|[\s"'“”])([^\s"'“”]{1,20}(?:\s+[^\s"'“”]{1,20})?)\s*(?:버튼|button)(?:을|를)?\s*(?:눌러|누르|클릭|click|press)?/i,
+    /(?:click|press)\s+([^\s"'“”]{1,40})(?:\s+button)?(?:\s|$)/i
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const value = normalizeTargetPhrase(match?.[1] ?? "");
+    if (value && !isNoisySearchTargetPhrase(value)) {
+      return value.slice(0, 80);
+    }
+  }
+  return readDefaultSearchTargetPhrase(text);
+}
+
 export function extractNavigationTargetPhrase(text: string): string | undefined {
   const patterns = [
     /(?:^|[.!?。！？]\s*)([^.!?。！？]{1,120}?)(?:로|으로)?\s*(?:이동|접속|열어|켜|가)(?:줘|주세요|달라|달라고|해줘|해|자|자고|라)?/i,
@@ -89,4 +112,12 @@ export function readScrollAmount(text: string): "small" | "medium" | "large" {
 
 function normalizeTargetPhrase(value: string): string {
   return normalizeBrowserTargetText(value).replace(/\s+/g, " ").trim();
+}
+
+function readDefaultSearchTargetPhrase(text: string): string {
+  return /검색|[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(text) ? "검색" : "search";
+}
+
+function isNoisySearchTargetPhrase(value: string): boolean {
+  return /['"“”‘’]|입력|검색어|검색창|입력창|type|fill|search\s+for|하고|그리고|then|and|click|press/i.test(value);
 }

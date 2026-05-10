@@ -30,7 +30,8 @@ import type {
   BrowserActionResult,
   BrowserActionSession,
   BrowserExpectedState,
-  BrowserQueuedCommand
+  BrowserQueuedCommand,
+  TargetResolution
 } from "../types.js";
 import { cloneResult, cloneSession } from "./cloning.js";
 import { executeViaAdapter } from "./adapterExecution.js";
@@ -152,7 +153,7 @@ export async function executeBrowserAction(input: {
   const targetResolution = shouldResolveTarget(input.action, input.targetHint)
     ? resolveTarget({ graph, observation, action: input.action, target, hint: input.targetHint, memoryReadSet })
     : { alternatives: [], confidence: 1, reason: "This browser action does not require a page element target." };
-  if (gate.decision === "clarify" && candidateSteps.length > 1 && !isExactElementBinding(target)) {
+  if (gate.decision === "clarify" && candidateSteps.length > 1 && !isExactElementBinding(target) && !hasStrongSemanticTargetSelection(targetResolution)) {
     targetResolution.primary = candidateSteps[0]?.element ?? targetResolution.primary;
     targetResolution.alternatives = candidateSteps.slice(1, 5).map((candidate) => candidate.element).filter((element): element is NonNullable<typeof element> => Boolean(element));
     targetResolution.confidence = Math.min(targetResolution.confidence, gate.confidence, 0.57);
@@ -324,4 +325,11 @@ export async function executeBrowserAction(input: {
 
 function isExactElementBinding(target: ReturnType<typeof readActionTarget>): boolean {
   return target?.kind === "element_id" || target?.kind === "focused" || target?.kind === "bbox";
+}
+
+function hasStrongSemanticTargetSelection(resolution: TargetResolution): boolean {
+  return resolution.semantic?.outcome === "act" &&
+    Boolean(resolution.primary) &&
+    resolution.semantic.selectedElementId === resolution.primary?.id &&
+    resolution.confidence >= 0.75;
 }

@@ -4,7 +4,11 @@ import {
   classifyBrowserActionRisk,
   createBrowserViewContextLease,
   summarizeBrowserActionResult,
-  summarizeBrowserElement
+  summarizeBrowserElement,
+  type BrowserAction,
+  type BrowserActionPlan,
+  type BrowserActionResult,
+  type BrowserQueuedCommand
 } from "../../browser-action/index.js";
 import type { BrowserPerceptionService } from "../../browser-perception/index.js";
 import type { ProviderRegistry } from "../../providers/providerRegistry.js";
@@ -18,6 +22,15 @@ import {
   buildBrowserActionApprovalBody,
   recordBrowserActionAudit
 } from "./helpers.js";
+import {
+  waitForBrowserActionCommandResult,
+  type BrowserActionCommandWaiter
+} from "./commandWaiters.js";
+import {
+  continuePromptBrowserActionPlan,
+  readBrowserActionPromptCommandWaitMs
+} from "./promptPlan.js";
+import { renderBrowserPromptResponse, summarizeBrowserActionPlan } from "./presentation.js";
 import { recordRuntimeActivity } from "../runtimeActivity.js";
 import { recordSemanticClarificationFeedback } from "./clarificationFeedback.js";
 import {
@@ -51,6 +64,7 @@ export async function respondToSemanticTargetClarification(input: {
   browserActions: BrowserActionSessionManager;
   semanticMemory: SemanticMemoryStore;
   semanticClarifications: Map<string, PendingSemanticClarification>;
+  browserActionCommandWaiters: Map<string, BrowserActionCommandWaiter>;
 }): Promise<boolean> {
   const pending = input.semanticClarifications.get(input.message.id);
   if (!pending) {
@@ -130,6 +144,16 @@ export async function respondToSemanticTargetClarification(input: {
     policies: input.storage.readBrowserActionPolicies()
   });
   recordBrowserActionAudit(input.storage, execution.audit);
+  if (!execution.approval && await continueClarifiedPromptPlanIfPossible({
+    ...input,
+    pending,
+    selected,
+    action,
+    initialResult: execution.result,
+    command: execution.command
+  })) {
+    return true;
+  }
   if (execution.approval) {
     broadcast(input.clients, {
       type: "interaction.required",
@@ -170,4 +194,166 @@ export async function respondToSemanticTargetClarification(input: {
   });
   broadcastLedgerSnapshot(input.clients, input.storage, pending.sessionId);
   return true;
+}
+
+async function continueClarifiedPromptPlanIfPossible(input: {
+  clients: Set<WebSocket>;
+  storage: StorageService;
+  providers: ProviderRegistry;
+  browserExtensionBridge: BrowserExtensionBridgeStore;
+  browserActions: BrowserActionSessionManager;
+  browserActionCommandWaiters: Map<string, BrowserActionCommandWaiter>;
+  pending: PendingSemanticClarification;
+  selected: NonNullable<PendingSemanticClarification["candidates"][number]>;
+  action: BrowserAction;
+  initialResult: BrowserActionResult;
+  command?: BrowserQueuedCommand;
+}): Promise<boolean> {
+  if (!input.pending.plan || !input.pending.results || !input.pending.requestId) {
+    return false;
+  }
+  const plan = prepareClarifiedPlan({
+    plan: cloneJson(input.pending.plan),
+    pending: input.pending,
+    action: input.action,
+    result: input.initialResult,
+    selected: input.selected
+  });
+  if (!plan) {
+    return false;
+  }
+
+  const initialResults = [
+    ...input.pending.results.slice(0, -1),
+    input.initialResult
+  ];
+  let completedResult = input.initialResult;
+  if (input.command) {
+    broadcast(input.clients, {
+      type: "browserAction.progress",
+      actionSessionId: input.pending.actionSessionId,
+      status: "clarification_selected_queued",
+      detail: { requestId: input.command.requestId, action: input.command.action.type, target: summarizeBrowserElement(input.selected) }
+    });
+    const commandResult = await waitForBrowserActionCommandResult({
+      requestId: input.command.requestId,
+      waiters: input.browserActionCommandWaiters,
+      timeoutMs: readBrowserActionPromptCommandWaitMs(input.command.action)
+    });
+    completedResult = commandResult ?? input.browserActions.failExtensionCommand(
+      input.command.requestId,
+      `Browser Bridge did not complete the clarified action within ${Math.round(readBrowserActionPromptCommandWaitMs(input.command.action) / 1000)} seconds.`
+    ) ?? input.initialResult;
+  }
+
+  const continued = await continuePromptBrowserActionPlan({
+    plan,
+    initialResults,
+    completedCommandResult: completedResult,
+    providers: input.providers,
+    browserActions: input.browserActions,
+    browserExtensionBridge: input.browserExtensionBridge,
+    storage: input.storage,
+    clients: input.clients,
+    sessionId: input.pending.sessionId,
+    waiters: input.browserActionCommandWaiters
+  });
+
+  if (continued.approval) {
+    const latestResult = continued.results.at(-1);
+    broadcast(input.clients, {
+      type: "interaction.required",
+      interaction: {
+        id: continued.approval.id,
+        requestId: input.pending.requestId,
+        kind: "approval",
+        title: "Browser action approval",
+        body: latestResult ? buildBrowserActionApprovalBody(latestResult) : "Browser Action requires approval.",
+        action: `Browser action: ${continued.approval.safety.actionLabel}`
+      }
+    });
+    completeClarifiedPromptWithResult({
+      ...input,
+      plan: continued.plan,
+      results: continued.results,
+      status: "approval_required"
+    });
+    return true;
+  }
+
+  completeClarifiedPromptWithResult({
+    ...input,
+    plan: continued.plan,
+    results: continued.results,
+    status: continued.plan.status
+  });
+  recordRuntimeActivity(input.storage, input.pending.sessionId, "info", "browser-action", `Prompt Browser Action ${continued.plan.status} after target clarification`, summarizeBrowserActionPlan(continued.plan));
+  return true;
+}
+
+function prepareClarifiedPlan(input: {
+  plan: BrowserActionPlan;
+  pending: PendingSemanticClarification;
+  action: BrowserAction;
+  result: BrowserActionResult;
+  selected: NonNullable<PendingSemanticClarification["candidates"][number]>;
+}): BrowserActionPlan | undefined {
+  const step = input.plan.steps.find((candidate) => candidate.id === input.pending.stepId) ??
+    input.plan.steps.find((candidate) => candidate.resultId === input.pending.results?.at(-1)?.id) ??
+    input.plan.steps.find((candidate) => candidate.status === "failed" || candidate.status === "running" || candidate.status === "awaiting_extension");
+  if (!step) {
+    return undefined;
+  }
+  step.action = input.action;
+  step.targetSummary = summarizeBrowserElement(input.selected);
+  step.resultId = input.result.id;
+  step.status = input.result.status === "pending" ? "awaiting_extension" : "running";
+  step.error = undefined;
+  step.safety = input.result.safety;
+  step.completedAt = input.result.completedAt;
+  input.plan.status = "running";
+  input.plan.summary = `Continuing Browser Action plan after target clarification at ${step.id}.`;
+  return input.plan;
+}
+
+function completeClarifiedPromptWithResult(input: {
+  clients: Set<WebSocket>;
+  storage: StorageService;
+  pending: PendingSemanticClarification;
+  plan: BrowserActionPlan;
+  results: BrowserActionResult[];
+  status: BrowserActionPlan["status"] | "approval_required";
+}): void {
+  broadcast(input.clients, {
+    type: "browserAction.result",
+    actionSessionId: input.pending.actionSessionId,
+    result: {
+      plan: summarizeBrowserActionPlan(input.plan),
+      results: input.results.map(summarizeBrowserActionResult)
+    }
+  });
+  const text = renderBrowserPromptResponse(input.plan, input.results, input.status, input.pending.utterance);
+  input.storage.updateAssistantMessage({
+    sessionId: input.pending.sessionId,
+    messageId: input.pending.requestId ?? input.pending.id,
+    text,
+    status: input.status === "approval_required" ? "tooling" : "done"
+  });
+  if (input.pending.requestId) {
+    broadcast(input.clients, {
+      type: "message.completed",
+      id: input.pending.requestId,
+      text
+    });
+    broadcast(input.clients, {
+      type: "session.state",
+      state: input.status === "approval_required" ? "tooling" : "idle",
+      id: input.pending.requestId
+    });
+  }
+  broadcastLedgerSnapshot(input.clients, input.storage, input.pending.sessionId);
+}
+
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }
