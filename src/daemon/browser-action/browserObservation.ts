@@ -42,6 +42,9 @@ export function buildBrowserObservation(input: {
     capturedAt,
     readyState,
     focusedElementId,
+    mutationRevision: trimField(record?.mutationRevision, MAX_FIELD_LENGTH) || undefined,
+    lastMutationAt: trimField(record?.lastMutationAt, MAX_FIELD_LENGTH) || undefined,
+    mutationQuietMs: typeof record?.mutationQuietMs === "number" && Number.isFinite(record.mutationQuietMs) ? record.mutationQuietMs : undefined,
     text,
     elements,
     now: input.now

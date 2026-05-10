@@ -1,0 +1,218 @@
+import { BrowserPerceptionService } from "../dist/daemon/browser-perception/index.js";
+import { ProviderRegistry } from "../dist/daemon/providers/providerRegistry.js";
+
+const mode = process.argv[2] ?? "core";
+
+if (mode === "core") {
+  await verifyCorePerception();
+  console.log("browser perception smoke ok");
+} else if (mode === "stabilization") {
+  await verifyStabilization();
+  console.log("browser perception stabilization smoke ok");
+} else {
+  throw new Error(`Unknown browser perception smoke mode: ${mode}`);
+}
+
+async function verifyCorePerception() {
+  const service = new BrowserPerceptionService();
+  const providers = new ProviderRegistry();
+  providers.setDomSnapshot(createSnapshot({ url: "https://example.test/perception", mutationQuietMs: 900 }));
+  const ready = await service.ensureFreshContext({
+    providers,
+    bridgeStatus: createBridgeStatus("https://example.test/perception"),
+    request: {
+      requestId: "core-ready",
+      reason: "prompt",
+      requiredFreshness: "stable",
+      timeoutMs: 200
+    }
+  });
+  assertEqual(ready.status, "ready", "prepared context status");
+  assert(ready.context?.viewGraph?.schemaVersion === "browser-view-graph.v2", "context should include View Graph v2");
+  assert(ready.context?.routeKey, "context should include route key");
+  assert(ready.context?.mutationRevision, "context should include mutation revision");
+
+  const queuedService = new BrowserPerceptionService();
+  const emptyProviders = new ProviderRegistry();
+  const waiting = queuedService.ensureFreshContext({
+    providers: emptyProviders,
+    bridgeStatus: createBridgeStatus("https://example.test/perception/fresh"),
+    request: {
+      requestId: "core-observe",
+      reason: "prompt",
+      requiredFreshness: "stable",
+      timeoutMs: 2_000
+    }
+  });
+  const command = queuedService.pollExtensionCommand();
+  assertEqual(command?.kind, "observe_now", "observe command kind");
+  queuedService.acknowledgeObserveCommand({
+    commandId: command.commandId,
+    status: "accepted",
+    activeTab: { tabId: 7, windowId: 3, url: "https://example.test/perception/fresh", title: "Fresh", permission: "allowed" },
+    receivedAt: new Date().toISOString(),
+    estimatedResultMs: 25
+  });
+  queuedService.completeObserveResult({
+    providers: emptyProviders,
+    bridgeStatus: createBridgeStatus("https://example.test/perception/fresh"),
+    payload: {
+      commandId: command.commandId,
+      status: "succeeded",
+      snapshot: createSnapshot({ url: "https://example.test/perception/fresh", mutationQuietMs: 1200 }),
+      mutationRevision: "13",
+      mutationQuietMs: 1200,
+      readyState: "complete"
+    }
+  });
+  const observed = await waiting;
+  assertEqual(observed.status, "ready", "queued observe result status");
+  assertEqual(observed.ack?.status, "accepted", "observe ack status");
+  assertEqual(observed.context?.snapshot.url, "https://example.test/perception/fresh", "observe result snapshot URL");
+
+  const permissionService = new BrowserPerceptionService();
+  const permissionWait = permissionService.ensureFreshContext({
+    providers: new ProviderRegistry(),
+    bridgeStatus: createBridgeStatus("https://example.test/private"),
+    request: { requestId: "permission", reason: "prompt", timeoutMs: 2_000 }
+  });
+  const permissionCommand = permissionService.pollExtensionCommand();
+  permissionService.acknowledgeObserveCommand({
+    commandId: permissionCommand.commandId,
+    status: "missing_permission",
+    activeTab: { tabId: 1, windowId: 1, url: "https://example.test/private", title: "Private", permission: "needs_site_permission" },
+    receivedAt: new Date().toISOString(),
+    error: "Site permission required."
+  });
+  const permission = await permissionWait;
+  assertEqual(permission.status, "permission_required", "permission ack maps to recovery status");
+}
+
+async function verifyStabilization() {
+  const service = new BrowserPerceptionService();
+  const providers = new ProviderRegistry();
+  providers.setDomSnapshot(createSnapshot({ url: "https://example.test/spa?view=1", mutationQuietMs: 80 }));
+  const read = await service.ensureFreshContext({
+    providers,
+    bridgeStatus: createBridgeStatus("https://example.test/spa?view=1"),
+    request: {
+      requestId: "settling-read",
+      reason: "prompt",
+      requiredFreshness: "stable",
+      actionRisk: "read",
+      allowSettlingForRead: true,
+      timeoutMs: 200
+    }
+  });
+  assertEqual(read.status, "settling_ready", "read may use settling context");
+
+  const sideEffect = service.ensureFreshContext({
+    providers,
+    bridgeStatus: createBridgeStatus("https://example.test/spa?view=1"),
+    request: {
+      requestId: "settling-side-effect",
+      reason: "before_step",
+      requiredFreshness: "stable",
+      actionRisk: "side_effect",
+      timeoutMs: 300
+    }
+  });
+  const command = service.pollExtensionCommand();
+  assertEqual(command?.kind, "observe_now", "side-effect queues fresh observe while mutating");
+  service.completeObserveResult({
+    providers,
+    bridgeStatus: createBridgeStatus("https://example.test/spa?view=2"),
+    payload: {
+      commandId: command.commandId,
+      status: "succeeded",
+      snapshot: createSnapshot({ url: "https://example.test/spa?view=2", mutationQuietMs: 800, mutationRevision: "view-2" }),
+      mutationRevision: "view-2",
+      mutationQuietMs: 800,
+      readyState: "complete"
+    }
+  });
+  const result = await sideEffect;
+  assertEqual(result.status, "ready", "side-effect waits for stable observe");
+  assert(result.context?.routeKey, "SPA transition should retain route identity");
+  assertEqual(result.context?.mutationRevision, "view-2", "mutation revision updates after SPA transition");
+}
+
+function createBridgeStatus(url) {
+  return {
+    connected: true,
+    mode: "idle",
+    reason: "smoke",
+    updatedAt: new Date().toISOString(),
+    activeTab: {
+      tabId: 7,
+      windowId: 3,
+      url,
+      title: "Browser Perception Smoke",
+      origin: "https://example.test/*",
+      permission: "allowed"
+    }
+  };
+}
+
+function createSnapshot(options = {}) {
+  return {
+    url: options.url ?? "https://example.test/perception",
+    title: "Browser Perception Smoke",
+    readyState: "complete",
+    mutationRevision: options.mutationRevision ?? "12",
+    lastMutationAt: new Date(Date.now() - (options.mutationQuietMs ?? 900)).toISOString(),
+    mutationQuietMs: options.mutationQuietMs ?? 900,
+    text: "개념글\n흥미로운 글 제목\n검색",
+    elements: [
+      {
+        id: "concept-filter",
+        role: "button",
+        tagName: "button",
+        label: "개념글",
+        text: "개념글",
+        selector: "button[data-filter='concept']",
+        bbox: { x: 120, y: 80, w: 80, h: 32 },
+        visible: true,
+        enabled: true,
+        confidence: 0.96,
+        sourceOrder: 1,
+        domPathHash: "path-concept",
+        nearestLandmark: "toolbar",
+        mutationRevision: options.mutationRevision ?? "12",
+        lastMutationAt: new Date(Date.now() - (options.mutationQuietMs ?? 900)).toISOString()
+      },
+      {
+        id: "post-1",
+        role: "link",
+        tagName: "a",
+        label: "흥미로운 글 제목",
+        text: "흥미로운 글 제목",
+        href: "https://example.test/post/1",
+        selector: "main a.post",
+        bbox: { x: 120, y: 140, w: 360, h: 28 },
+        visible: true,
+        enabled: true,
+        confidence: 0.94,
+        sourceOrder: 2,
+        domPathHash: "path-post-1",
+        nearestLandmark: "main",
+        listOwner: "posts",
+        mutationRevision: options.mutationRevision ?? "12",
+        lastMutationAt: new Date(Date.now() - (options.mutationQuietMs ?? 900)).toISOString()
+      }
+    ]
+  };
+}
+
+function assert(value, message) {
+  if (!value) {
+    throw new Error(message);
+  }
+}
+
+function assertEqual(actual, expected, message) {
+  if (actual !== expected) {
+    throw new Error(`${message}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+  }
+}
+

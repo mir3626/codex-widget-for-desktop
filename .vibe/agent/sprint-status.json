@@ -144,11 +144,41 @@
       "command": "npm run dogfood:browser-view-graph-v2",
       "expectExitCode": 0,
       "expectStdoutContains": "browser view graph v2 dogfood evidence written"
+    },
+    {
+      "id": "smoke-browser-perception",
+      "command": "npm run smoke:browser-perception",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser perception smoke ok"
+    },
+    {
+      "id": "smoke-browser-perception-extension-command",
+      "command": "npm run smoke:browser-perception:extension-command",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser perception extension command smoke ok"
+    },
+    {
+      "id": "smoke-browser-perception-stabilization",
+      "command": "npm run smoke:browser-perception:stabilization",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser perception stabilization smoke ok"
+    },
+    {
+      "id": "smoke-browser-action-fresh-context",
+      "command": "npm run smoke:browser-action:fresh-context",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser perception extension command smoke ok"
+    },
+    {
+      "id": "dogfood-browser-perception",
+      "command": "npm run dogfood:browser-perception",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser perception dogfood evidence written"
     }
   ],
   "handoff": {
-    "currentSprintId": "iter-18-complete",
-    "lastActionSummary": "Iteration 18 completed Browser View Graph v2 as prepared page-understanding before broader Browser Perception: schema-versioned v2 graph builder, prepared provider context, extension metadata enrichment, Semantic Interface evidence projection, content-list representative target resolution, focused smoke/dogfood evidence, full lint/build/base smoke verification, project report refresh, and checkpoint.",
+    "currentSprintId": "iter-19-complete",
+    "lastActionSummary": "Iteration 19 completed Browser Perception: request-scoped PreparedBrowserViewContext, ensureFreshContext, extension observe_now ack/result/timeout/cancel flow, mutation quietness stabilization, prompt/direct Browser Action integration, focused smokes, dogfood evidence, project report refresh, and checkpoint.",
     "openIssues": [
       "Semantic Interface v1 is complete for Browser Action and Vision Context conformance; Terminal/Workspace/Screen/OCR/UIA adapters are future consumers beyond iter-16.",
       "Dedicated ranked-choice clarification card UX can still be refined; current behavior records unresolved cases, uses existing Browser Action clarification/approval surfaces, and keeps side-effect safety feature-owned.",
@@ -165,7 +195,8 @@
       "Restricted browser pages remain subject to browser/extension/CDP security boundaries and should report unsupported state rather than bypassing protections.",
       "Browser Bridge uses explicit site permission for automatic page context sharing; users must enable each site or opt into broader origin permissions through extension settings.",
       "The installed unpacked Browser Bridge extension must be reloaded after service-worker changes before the live browser uses the HTTP-first auto-observe transport.",
-      "A full Browser Perception scheduler remains future work; View Graph v2 prepares identity/freshness/graph evidence and prompt fast-path consumption but does not claim continuous multi-tab perception is complete."
+      "The installed unpacked Browser Bridge extension must be reloaded after Browser Perception extension changes before live browser testing uses observe_now ack/result handling.",
+      "A broader continuous multi-tab Browser Perception scheduler can still be expanded later; iter-19 completes the request-scoped active-tab foundation required by Browser Action."
     ],
     "orchestratorContextBudget": "medium",
     "preferencesActive": [
@@ -174,11 +205,11 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-10T14:18:48.082+09:00"
+    "updatedAt": "2026-05-10T14:57:26.289+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-10T14:18:48.082+09:00"
+  "stateUpdatedAt": "2026-05-10T14:57:26.289+09:00"
 }

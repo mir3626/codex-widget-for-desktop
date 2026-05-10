@@ -3,6 +3,7 @@ import type { AgentSessionState } from "../../agent.js";
 import type { CodexAppServerBridge } from "../../codexAppServer.js";
 import type { OAuthSession } from "../../oauth.js";
 import type { BrowserActionSessionManager } from "../../browser-action/index.js";
+import type { BrowserPerceptionService } from "../../browser-perception/index.js";
 import type { ProviderRegistry } from "../../providers/providerRegistry.js";
 import type { StorageService } from "../../storage/storage.js";
 import type { SemanticMemoryStore } from "../../semantic-interface/index.js";
@@ -24,6 +25,7 @@ export type MessageRouterContext = {
   agentSession: AgentSessionState;
   codexAppServer: CodexAppServerBridge;
   providers: ProviderRegistry;
+  browserPerception: BrowserPerceptionService;
   visionContext: VisionContextSessionManager;
   browserActions: BrowserActionSessionManager;
   browserExtensionBridge: BrowserExtensionBridgeStore;

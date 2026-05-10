@@ -18,7 +18,7 @@ export async function handleBrowserActionPlanMessage(
   message: ClientMessage,
   context: BrowserActionMessageContext
 ): Promise<boolean> {
-  const { socket, clients, storage, providers, browserActions } = context;
+  const { socket, clients, storage, providers, browserPerception, browserActions, browserExtensionBridge } = context;
   if (message.type !== "browserAction.plan") {
     return false;
   }
@@ -31,9 +31,33 @@ export async function handleBrowserActionPlanMessage(
       actionSessionId: session.id,
       input: message.plan
     });
+    const requestId = message.requestId ?? message.plan.id ?? `browser-action-plan-${Date.now()}`;
+    const perception = message.plan.adapterId && message.plan.adapterId !== "extension"
+      ? undefined
+      : await browserPerception.ensureFreshContext({
+          providers,
+          bridgeStatus: browserExtensionBridge?.snapshot() ?? { connected: false, mode: "disconnected", updatedAt: new Date().toISOString() },
+          request: {
+            requestId,
+            reason: "before_step",
+            requiredFreshness: "stable",
+            actionRisk: "side_effect",
+            timeoutMs: 35_000,
+            settleQuietMs: 500
+          },
+          onProgress: (detail) => broadcast(clients, {
+            type: "browserAction.progress",
+            actionSessionId: session.id,
+            status: "browser_perception_waiting",
+            detail
+          })
+        });
+    if (perception && !perception.context) {
+      throw new Error(perception.userRecovery ?? `Browser Perception could not prepare active-tab context (${perception.status}).`);
+    }
     const execution = await browserActions.executePlan({
       plan,
-      snapshot: providers.getDomSnapshot(),
+      snapshot: perception?.context?.snapshot ?? providers.getDomSnapshot(),
       adapterId: message.plan.adapterId,
       policies: storage.readBrowserActionPolicies()
     });
@@ -48,7 +72,7 @@ export async function handleBrowserActionPlanMessage(
         type: "interaction.required",
         interaction: {
           id: execution.approval.id,
-          requestId: message.requestId,
+          requestId,
           kind: "approval",
           title: "Browser action plan approval",
           body: latestResult ? buildBrowserActionApprovalBody(latestResult) : "Browser Action plan requires approval.",

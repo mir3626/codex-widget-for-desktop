@@ -3,6 +3,7 @@ import { daemonInfo, type AgentSessionState } from "../../agent.js";
 import type { CodexAppServerBridge } from "../../codexAppServer.js";
 import type { OAuthSession } from "../../oauth.js";
 import type { BrowserActionSessionManager } from "../../browser-action/index.js";
+import type { BrowserPerceptionService } from "../../browser-perception/index.js";
 import type { ProviderRegistry } from "../../providers/providerRegistry.js";
 import type { SemanticMemoryStore } from "../../semantic-interface/index.js";
 import type { StorageService } from "../../storage/storage.js";
@@ -35,6 +36,7 @@ export function handleWebSocketConnection(input: {
   agentSession: AgentSessionState;
   codexAppServer: CodexAppServerBridge;
   providers: ProviderRegistry;
+  browserPerception: BrowserPerceptionService;
   visionContext: VisionContextSessionManager;
   browserActions: BrowserActionSessionManager;
   browserExtensionBridge: BrowserExtensionBridgeStore;
@@ -81,6 +83,7 @@ export function handleWebSocketConnection(input: {
       agentSession: input.agentSession,
       codexAppServer,
       providers,
+      browserPerception: input.browserPerception,
       visionContext: input.visionContext,
       browserActions: input.browserActions,
       browserExtensionBridge,

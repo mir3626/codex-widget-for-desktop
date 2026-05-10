@@ -1,6 +1,6 @@
 # Browser Perception Interface Handoff
 
-Status: draft handoff for the post-View Graph v2 implementation track
+Status: implemented through Iteration `iter-19`; authoritative handoff for the Browser Perception request-scoped observation track
 Target repo: `C:\Users\Tony\Workspace\codex-widget-for-desktop`
 Primary consumers:
 - Browser Action prompt execution
@@ -10,6 +10,24 @@ Primary consumers:
 - Semantic Memory unresolved/correction feedback
 
 Primary goal: turn Browser Action from "observe when the user asks" into a prepared, request-scoped, continuously refreshed browser perception layer that can reliably answer "what is on the active tab right now?" before resolving or executing actions.
+
+## Implementation Status
+
+Implemented in Iteration `iter-19`:
+
+- Added `src/daemon/browser-perception/` with `PreparedBrowserViewContext`, freshness/stability policy, context store, source identity helpers, and `BrowserPerceptionService.ensureFreshContext()`.
+- Browser Perception now queues `observe_now` commands and tracks explicit extension ack/result/timeout/cancel/error outcomes.
+- Browser Bridge poll responses can deliver perception observe commands before action commands; the extension posts ack to `/browser-action/extension/ack` and observe result to `/browser-action/extension/observe-result`.
+- Browser Bridge snapshots include top-level mutation revision, last mutation timestamp, and mutation quiet duration for SPA/dynamic-page stabilization.
+- Prompt, direct command, observe, and plan Browser Action paths call Browser Perception before planning or side-effect execution when using the extension path.
+- The previous final retry-later prompt response is replaced with progress plus bounded fresh-context waiting for connected/allowed states; true permission/restricted/disconnected/timeout states produce actionable failures.
+- `npm run smoke:browser-perception`, `npm run smoke:browser-perception:extension-command`, `npm run smoke:browser-perception:stabilization`, `npm run smoke:browser-action:fresh-context`, and `npm run dogfood:browser-perception` were added.
+- Dogfood evidence is recorded at `docs/reports/browser-perception-dogfood-evidence-2026-05-10.md`.
+
+Remaining follow-up:
+
+- Live manual testing should be repeated after reloading the unpacked Browser Bridge extension so Chrome/Edge uses the new observe ack/result code.
+- A multi-tab background scheduler can still be expanded later; this iteration implements the request-scoped active-tab foundation needed by Browser Action.
 
 ## 0. Why This Exists
 

@@ -11,9 +11,43 @@ export async function readFreshPromptBrowserSnapshot(input: BrowserActionPromptI
   snapshot?: unknown;
   handled: boolean;
 }> {
-  const preparedSnapshot = readPreparedPromptBrowserSnapshot(input);
-  if (preparedSnapshot) {
-    return { snapshot: preparedSnapshot, handled: false };
+  const context = await input.browserPerception.ensureFreshContext({
+    providers: input.providers,
+    bridgeStatus: input.browserExtensionBridge.snapshot(),
+    request: {
+      requestId: input.message.id,
+      reason: "prompt",
+      requiredFreshness: "stable",
+      actionRisk: readPromptActionRisk(input.message.text),
+      allowSettlingForRead: isLikelyReadPrompt(input.message.text),
+      minCapturedAt: requestStartedAt,
+      maxAgeMs: 10_000,
+      timeoutMs: 35_000,
+      settleQuietMs: 500
+    },
+    onProgress: (detail) => {
+      input.emit({
+        type: "browserAction.progress",
+        actionSessionId: `browser-action-prompt-${input.message.id}`,
+        status: "browser_perception_waiting",
+        detail
+      });
+    }
+  });
+  if (context.context) {
+    recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", "Using Browser Perception context for prompt Browser Action", {
+      status: context.status,
+      viewRevision: context.context.viewRevision,
+      routeKey: context.context.routeKey,
+      freshness: context.context.freshness,
+      stability: context.context.stability
+    });
+    return { snapshot: context.context.snapshot, handled: false };
+  }
+
+  if (context.status !== "timeout") {
+    completePromptWithPerceptionFailure(input, context.status, context.userRecovery, context.diagnostics);
+    return { handled: true };
   }
 
   const snapshot = await waitForFreshBrowserBridgeSnapshot({
@@ -29,41 +63,74 @@ export async function readFreshPromptBrowserSnapshot(input: BrowserActionPromptI
   }
 
   const korean = /[가-힣]/.test(input.message.text);
-  recordRuntimeActivity(input.storage, input.sessionId, "warn", "browser-action", "Prompt Browser Action held for stale Browser Bridge snapshot", staleSnapshot);
+  recordRuntimeActivity(input.storage, input.sessionId, "warn", "browser-action", "Browser Perception timed out before fresh active-tab observation", {
+    perceptionStatus: context.status,
+    diagnostics: context.diagnostics,
+    staleSnapshot
+  });
   input.emit({
     type: "message.completed",
     id: input.message.id,
     text: korean
-      ? `현재 활성 탭 관찰이 아직 갱신되지 않았습니다. Browser Bridge가 ${readHostLabel(staleSnapshot.expectedUrl) || staleSnapshot.expectedUrl} 페이지를 읽는 중입니다. 잠시 후 다시 실행해 주세요.`
-      : `The current active-tab observation is still refreshing. Browser Bridge is reading ${readHostLabel(staleSnapshot.expectedUrl) || staleSnapshot.expectedUrl}; try again shortly.`
+      ? `현재 활성 탭 관찰이 제한 시간 안에 완료되지 않았습니다. Browser Bridge 연결과 사이트 권한을 확인해 주세요. 대상: ${readHostLabel(staleSnapshot.expectedUrl) || staleSnapshot.expectedUrl}`
+      : `The current active-tab observation did not finish before the timeout. Check Browser Bridge connection and site permission for ${readHostLabel(staleSnapshot.expectedUrl) || staleSnapshot.expectedUrl}.`
   });
   input.emit({ type: "session.state", state: "idle", id: input.message.id });
   broadcastLedgerSnapshot(input.clients, input.storage, input.sessionId);
   return { snapshot, handled: true };
 }
 
-function readPreparedPromptBrowserSnapshot(input: BrowserActionPromptInput): unknown | undefined {
-  const snapshot = input.providers.getDomSnapshot();
-  const observation = input.providers.getDomObservation();
-  if (!snapshot || !observation?.viewGraph || observation.viewGraph.schemaVersion !== "browser-view-graph.v2") {
-    return undefined;
-  }
-  const mismatch = readBrowserBridgeSnapshotMismatch(input.browserExtensionBridge.snapshot(), snapshot);
-  if (mismatch) {
-    return undefined;
-  }
-  if (observation.viewGraph.identity.freshness !== "fresh") {
-    return undefined;
-  }
-  const capturedAt = Date.parse(observation.capturedAt);
-  if (!Number.isFinite(capturedAt) || Date.now() - capturedAt > 10_000) {
-    return undefined;
-  }
-  recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", "Using prepared Browser View Graph v2 for prompt Browser Action", {
-    viewRevision: observation.viewGraph.identity.viewRevision,
-    routeKey: observation.viewGraph.identity.routeKey,
-    freshness: observation.viewGraph.identity.freshness,
-    graphNodeCount: observation.viewGraph.nodes.length
+function completePromptWithPerceptionFailure(
+  input: BrowserActionPromptInput,
+  status: string,
+  userRecovery: string | undefined,
+  diagnostics: Record<string, unknown>
+): void {
+  const korean = /[가-힣]/.test(input.message.text);
+  recordRuntimeActivity(input.storage, input.sessionId, "warn", "browser-action", "Browser Perception could not prepare active-tab context", {
+    status,
+    diagnostics,
+    userRecovery
   });
-  return snapshot;
+  const text = korean
+    ? readKoreanPerceptionFailure(status, userRecovery)
+    : readEnglishPerceptionFailure(status, userRecovery);
+  input.emit({ type: "message.completed", id: input.message.id, text });
+  input.emit({ type: "session.state", state: "idle", id: input.message.id });
+  broadcastLedgerSnapshot(input.clients, input.storage, input.sessionId);
+}
+
+function readKoreanPerceptionFailure(status: string, userRecovery: string | undefined): string {
+  if (status === "permission_required") {
+    return `현재 사이트 권한이 필요합니다. ${userRecovery ?? "Browser Bridge 팝업에서 현재 사이트를 허용해 주세요."}`;
+  }
+  if (status === "restricted_page") {
+    return `이 페이지는 브라우저 보안 정책 때문에 Browser Bridge가 읽을 수 없습니다. ${userRecovery ?? ""}`.trim();
+  }
+  if (status === "disconnected") {
+    return `Browser Bridge가 연결되어 있지 않습니다. ${userRecovery ?? "확장프로그램의 daemon URL과 auto-connect 설정을 확인해 주세요."}`;
+  }
+  return `현재 브라우저 페이지를 읽을 수 없습니다. ${userRecovery ?? "Browser Bridge 상태를 확인해 주세요."}`;
+}
+
+function readEnglishPerceptionFailure(status: string, userRecovery: string | undefined): string {
+  if (status === "permission_required") {
+    return `The current site needs Browser Bridge permission. ${userRecovery ?? "Allow the site from the Browser Bridge popup."}`;
+  }
+  if (status === "restricted_page") {
+    return `Browser Bridge cannot read this page because the browser restricts extension access. ${userRecovery ?? ""}`.trim();
+  }
+  if (status === "disconnected") {
+    return `Browser Bridge is disconnected. ${userRecovery ?? "Check the extension daemon URL and auto-connect setting."}`;
+  }
+  return `Browser Bridge could not read the current page. ${userRecovery ?? "Check Browser Bridge status."}`;
+}
+
+function readPromptActionRisk(text: string): "read" | "side_effect" {
+  return isLikelyReadPrompt(text) ? "read" : "side_effect";
+}
+
+function isLikelyReadPrompt(text: string): boolean {
+  return /읽|설명|요약|보여|찾아|what|read|show|summar/i.test(text) &&
+    !/(누르|클릭|입력|작성|선택|이동|검색|click|type|select|navigate|search)/i.test(text);
 }

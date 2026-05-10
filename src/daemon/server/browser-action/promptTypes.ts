@@ -1,5 +1,6 @@
 import type { WebSocket } from "ws";
 import type { BrowserActionSessionManager } from "../../browser-action/index.js";
+import type { BrowserPerceptionService } from "../../browser-perception/index.js";
 import type { ProviderRegistry } from "../../providers/providerRegistry.js";
 import type { StorageService } from "../../storage/storage.js";
 import type { ClientMessage, ServerEvent } from "../../../shared/protocol.js";
@@ -14,6 +15,7 @@ export type BrowserActionPromptInput = {
   clients: Set<WebSocket>;
   storage: StorageService;
   providers: ProviderRegistry;
+  browserPerception: BrowserPerceptionService;
   browserActions: BrowserActionSessionManager;
   browserExtensionBridge: BrowserExtensionBridgeStore;
   semanticClarifications: Map<string, PendingSemanticClarification>;

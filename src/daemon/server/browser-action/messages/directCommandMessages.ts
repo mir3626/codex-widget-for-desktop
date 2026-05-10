@@ -23,13 +23,14 @@ export async function handleBrowserActionDirectCommandMessage(
   message: ClientMessage,
   context: BrowserActionMessageContext
 ): Promise<boolean> {
-  const { socket, clients, storage, providers, browserActions } = context;
+  const { socket, clients, storage, providers, browserPerception, browserActions, browserExtensionBridge } = context;
   if (message.type !== "browserAction.command") {
     return false;
   }
 
   try {
     const command = message.command;
+    const requestId = message.requestId ?? command.id ?? `browser-action-command-${Date.now()}`;
     if (command.kind === "adapter_status") {
       const adapters = await browserActions.getAdapterStatuses(command.actionSessionId);
       send(socket, {
@@ -42,11 +43,35 @@ export async function handleBrowserActionDirectCommandMessage(
 
     const sessionId = resolveClientSessionId(storage, command.sessionId);
     const existingSession = command.actionSessionId ? browserActions.get(command.actionSessionId) : undefined;
+    const perception = command.adapterId && command.adapterId !== "extension"
+      ? undefined
+      : await browserPerception.ensureFreshContext({
+          providers,
+          bridgeStatus: browserExtensionBridge?.snapshot() ?? { connected: false, mode: "disconnected", updatedAt: new Date().toISOString() },
+          request: {
+            requestId,
+            reason: command.kind === "observe" || command.kind === "read" ? "direct_action" : "before_step",
+            requiredFreshness: command.kind === "read" || command.kind === "observe" ? "any_visible" : "stable",
+            actionRisk: command.kind === "read" || command.kind === "observe" || command.kind === "scroll" ? "read" : "side_effect",
+            allowSettlingForRead: command.kind === "read" || command.kind === "observe" || command.kind === "scroll",
+            timeoutMs: 35_000,
+            settleQuietMs: 500
+          },
+          onProgress: (detail) => broadcast(clients, {
+            type: "browserAction.progress",
+            actionSessionId: command.actionSessionId ?? `browser-action-direct-${requestId}`,
+            status: "browser_perception_waiting",
+            detail
+          })
+        });
+    if (perception && !perception.context) {
+      throw new Error(perception.userRecovery ?? `Browser Perception could not prepare active-tab context (${perception.status}).`);
+    }
     const session = existingSession ?? browserActions.start({
       id: command.actionSessionId,
       sessionId,
       mode: command.mode,
-      source: command.source ?? readBrowserSourceFromSnapshot(providers.getDomSnapshot())
+      source: command.source ?? readBrowserSourceFromSnapshot(perception?.context?.snapshot ?? providers.getDomSnapshot())
     });
     if (!existingSession) {
       recordRuntimeActivity(storage, sessionId, "info", "browser-action", "Direct Browser Action session started", summarizeBrowserActionSession(session));
@@ -55,7 +80,7 @@ export async function handleBrowserActionDirectCommandMessage(
 
     const observed = command.adapterId && command.adapterId !== "extension"
       ? await browserActions.observeViaAdapter({ actionSessionId: session.id, adapterId: command.adapterId })
-      : browserActions.observe({ actionSessionId: session.id, snapshot: providers.getDomSnapshot() });
+      : browserActions.observe({ actionSessionId: session.id, snapshot: perception?.context?.snapshot ?? providers.getDomSnapshot() });
     recordBrowserActionAudit(storage, observed.audit);
     broadcast(clients, {
       type: "browserAction.observation",
@@ -72,7 +97,7 @@ export async function handleBrowserActionDirectCommandMessage(
     const plan = buildBrowserActionPlanFromCommand({ actionSessionId: session.id, command });
     const execution = await browserActions.executePlan({
       plan,
-      snapshot: providers.getDomSnapshot(),
+      snapshot: perception?.context?.snapshot ?? providers.getDomSnapshot(),
       adapterId: command.adapterId,
       policies: storage.readBrowserActionPolicies()
     });
@@ -86,7 +111,7 @@ export async function handleBrowserActionDirectCommandMessage(
         type: "interaction.required",
         interaction: {
           id: execution.approval.id,
-          requestId: message.requestId,
+          requestId,
           kind: "approval",
           title: "Browser action approval",
           body: latestResult ? buildBrowserActionApprovalBody(latestResult) : "Browser Action requires approval.",

@@ -84,6 +84,15 @@ function parseUrl(url: string): { origin: string; pathname: string; querySignatu
 }
 
 function readMutationQuietMs(input: BrowserViewGraphV2Input): number | undefined {
+  if (typeof input.mutationQuietMs === "number" && Number.isFinite(input.mutationQuietMs)) {
+    return Math.max(0, input.mutationQuietMs);
+  }
+  if (input.lastMutationAt) {
+    const parsed = Date.parse(input.lastMutationAt);
+    if (Number.isFinite(parsed)) {
+      return Math.max(0, (input.now ?? new Date()).getTime() - parsed);
+    }
+  }
   const values = input.elements
     .map((element) => element.lastMutationAt ? Date.parse(element.lastMutationAt) : Number.NaN)
     .filter(Number.isFinite);
@@ -99,6 +108,9 @@ function readDocumentId(input: BrowserViewGraphV2Input): string | undefined {
 }
 
 function readDomRevision(input: BrowserViewGraphV2Input): string | undefined {
+  if (input.mutationRevision) {
+    return input.mutationRevision;
+  }
   const revisions = input.elements.map((element) => element.mutationRevision).filter(Boolean);
   return revisions.length ? hashViewGraphParts(revisions) : undefined;
 }

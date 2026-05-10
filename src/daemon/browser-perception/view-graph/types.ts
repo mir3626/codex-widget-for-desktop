@@ -13,6 +13,9 @@ export type BrowserViewGraphV2Input = {
   text: string;
   readyState?: BrowserObservation["readyState"];
   focusedElementId?: string;
+  mutationRevision?: string;
+  lastMutationAt?: string;
+  mutationQuietMs?: number;
   elements: BrowserElement[];
   previous?: BrowserViewGraph;
   now?: Date;

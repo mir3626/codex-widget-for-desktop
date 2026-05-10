@@ -1,0 +1,18 @@
+{
+  "iterationId": "iter-19",
+  "mode": "iterate",
+  "carryover": "iter-18",
+  "createdAt": "2026-05-10T14:41:04.346+09:00",
+  "domain": "Daemon-side browser perception and request-scoped active-tab observation for a Tauri React Node desktop agent widget, adjacent to browser automation, extension bridges, semantic UI understanding, and safe computer-use control.",
+  "source": "docs/plans/browser-perception-interface-handoff.md",
+  "summary": "Browser Perception is the layer that lets Browser Action deterministically understand the active tab immediately before execution. Iter-19 closes the fresh-observation gap by implementing request-scoped observe_now, explicit extension ack/result/timeout/cancel semantics, PreparedBrowserViewContext storage, SPA stabilization evidence, prompt/direct Browser Action integration, and progress-first UX.",
+  "attribution": {
+    "domain_specifics": {
+      "value": "This iteration is not resolver tuning. It is a request-scoped fresh-observation contract between the Manifest V3 Browser Bridge and daemon."
+    },
+    "goal": {
+      "one_liner": "Browser Action gets a fresh prepared active-tab context before planning or executing.",
+      "primary_value": "Connected/allowed browser prompts no longer ask the user to retry while the bridge reads the page."
+    }
+  }
+}

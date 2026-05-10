@@ -7,6 +7,7 @@ import { ProviderRegistry } from "./providers/providerRegistry.js";
 import { subscribeTerminalSessionOutput } from "./providers/terminalSessionProvider.js";
 import { createStorageService } from "./storage/storage.js";
 import { BrowserActionSessionManager } from "./browser-action/index.js";
+import { BrowserPerceptionService } from "./browser-perception/index.js";
 import { VisionContextSessionManager } from "./vision-context/index.js";
 import { createSemanticMemoryStore } from "./semantic-interface/index.js";
 import { createBrowserExtensionBridgeStore } from "./server/browser-bridge/store.js";
@@ -43,6 +44,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
   const auth = new OAuthSession(() => (serverRef ? getServerPort(serverRef) : 0));
   const codexAppServer = new CodexAppServerBridge();
   const providers = new ProviderRegistry();
+  const browserPerception = new BrowserPerceptionService();
   const visionContext = new VisionContextSessionManager();
   const browserExtensionBridge = createBrowserExtensionBridgeStore();
   const storage = createStorageService();
@@ -61,7 +63,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
   };
 
   const server = createServer((request, response) => {
-    void handleHttpRequest(request, response, auth, onAuthChanged, providers, browserActions, browserExtensionBridge, clients, storage, semanticMemory, browserActionCommandWaiters);
+    void handleHttpRequest(request, response, auth, onAuthChanged, providers, browserPerception, browserActions, browserExtensionBridge, clients, storage, semanticMemory, browserActionCommandWaiters);
   });
   serverRef = server;
   const wss = new WebSocketServer({ server });
@@ -81,6 +83,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
       agentSession,
       codexAppServer,
       providers,
+      browserPerception,
       visionContext,
       browserActions,
       browserExtensionBridge,

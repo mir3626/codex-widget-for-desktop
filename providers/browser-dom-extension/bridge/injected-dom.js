@@ -27,6 +27,9 @@ export function collectDomSnapshot() {
     url: location.href,
     title: document.title,
     readyState: document.readyState,
+    mutationRevision: String(mutationState.revision),
+    lastMutationAt: mutationState.lastMutationAt,
+    mutationQuietMs: mutationState.lastMutationAt ? Date.now() - Date.parse(mutationState.lastMutationAt) : undefined,
     viewport: {
       width: window.innerWidth,
       height: window.innerHeight,

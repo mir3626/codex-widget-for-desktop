@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { WebSocket } from "ws";
 import type { OAuthSession } from "../../oauth.js";
 import type { BrowserActionSessionManager } from "../../browser-action/index.js";
+import type { BrowserPerceptionService } from "../../browser-perception/index.js";
 import type { ProviderRegistry } from "../../providers/providerRegistry.js";
 import type { SemanticMemoryStore } from "../../semantic-interface/index.js";
 import type { StorageService } from "../../storage/storage.js";
@@ -35,6 +36,7 @@ export async function handleHttpRequest(
   auth: OAuthSession,
   onAuthChanged: () => void,
   providers: ProviderRegistry,
+  browserPerception: BrowserPerceptionService,
   browserActions: BrowserActionSessionManager,
   browserExtensionBridge: BrowserExtensionBridgeStore,
   clients: Set<WebSocket>,
@@ -63,6 +65,7 @@ export async function handleHttpRequest(
     auth,
     onAuthChanged,
     providers,
+    browserPerception,
     browserActions,
     browserExtensionBridge,
     clients,

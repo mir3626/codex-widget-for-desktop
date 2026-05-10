@@ -1180,7 +1180,21 @@ Completed after Codex app-server browser-open duplicate correction:
 
 Use `docs/context/qa.md` for routine follow-up commands.
 
-## Latest Update: Browser Perception Interface Handoff
+## Latest Update: Browser Perception Interface Implementation
+
+Iteration `iter-19` completed `docs/plans/browser-perception-interface-handoff.md`.
+
+- Browser Perception is now implemented under `src/daemon/browser-perception/` with `PreparedBrowserViewContext`, source identity, freshness/stability policy, context store, and `ensureFreshContext`.
+- Browser Bridge command polling can deliver `observe_now` before action commands. The extension now posts fast observe acknowledgements to `/browser-action/extension/ack` and final observe results to `/browser-action/extension/observe-result`.
+- Browser Bridge snapshots include top-level mutation revision, last mutation timestamp, and mutation quiet duration for SPA/dynamic-page stabilization.
+- Prompt, direct command, direct observe, and plan Browser Action paths now call Browser Perception before extension-backed planning/execution.
+- Connected/allowed prompt flows emit `browser_perception_waiting` progress and wait for a bounded fresh context instead of returning the old retry-later final answer.
+- Added `npm run smoke:browser-perception`, `npm run smoke:browser-perception:extension-command`, `npm run smoke:browser-perception:stabilization`, `npm run smoke:browser-action:fresh-context`, and `npm run dogfood:browser-perception`.
+- Dogfood report: `docs/reports/browser-perception-dogfood-evidence-2026-05-10.md`.
+
+Manual follow-up: reload the unpacked Browser Bridge extension before live-site retesting so Chrome/Edge uses the new observe ack/result code.
+
+## Previous Update: Browser Perception Interface Handoff
 
 Added `docs/plans/browser-perception-interface-handoff.md` after live testing showed the next failure class:
 

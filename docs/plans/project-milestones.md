@@ -176,3 +176,17 @@ Evidence:
 - Representative content target resolution prefers View Graph v2 content-list representative evidence before older heuristics.
 - `npm run smoke:browser-view-graph-v2` covers schema shape, stable keys, prepared provider graph attachment, Semantic Interface projection, content-list evidence, forms, redaction, and diagnostics.
 - `docs/reports/browser-view-graph-v2-dogfood-evidence-2026-05-10.md` records deterministic dogfood evidence for the generic filter -> reobserve -> representative content flow.
+
+## browser-perception-interface
+
+Goal: ensure Browser Action can request, await, and consume a fresh active-tab prepared context before prompt/direct planning and before side-effect execution.
+
+Current progress: 1
+
+Evidence:
+- Iteration 19 added `src/daemon/browser-perception/` with `PreparedBrowserViewContext`, source identity, freshness/stability policy, context store, and request-scoped `ensureFreshContext`.
+- Browser Bridge extension command polling now supports `observe_now` with explicit ack/result endpoints, timeout/cancel/error states, and result-post retry compatibility.
+- Prompt/direct Browser Action paths use Browser Perception before planning or executing extension-backed actions.
+- SPA/dynamic-page stabilization has mutation revision, mutation quiet duration, route/view identity, and side-effect fresh/stable gates.
+- `npm run smoke:browser-perception`, `npm run smoke:browser-perception:extension-command`, `npm run smoke:browser-perception:stabilization`, and `npm run smoke:browser-action:fresh-context` cover the new contract.
+- `docs/reports/browser-perception-dogfood-evidence-2026-05-10.md` proves a request-scoped observe flow avoids the previous retry-later final answer and continues a generic filter -> representative content prompt.

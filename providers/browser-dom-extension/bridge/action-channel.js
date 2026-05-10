@@ -1,5 +1,7 @@
 import { collectDomSnapshot, executeBrowserActionInPage } from "./injected-dom.js";
 import {
+  DEFAULT_BROWSER_ACTION_ACK_PATH,
+  DEFAULT_BROWSER_ACTION_OBSERVE_RESULT_PATH,
   DEFAULT_BROWSER_ACTION_POLL_PATH,
   DEFAULT_BROWSER_ACTION_RESULT_PATH
 } from "./config.js";
@@ -34,6 +36,10 @@ export async function pollAndExecuteBrowserAction(tab, settings) {
 
   const payload = await response.json();
   const command = payload?.command;
+  if (command?.kind === "observe_now") {
+    await executeBrowserPerceptionObserveCommand(tab, settings, permission, command);
+    return;
+  }
   if (!command?.requestId || !command?.action) {
     return;
   }
@@ -71,6 +77,98 @@ export async function pollAndExecuteBrowserAction(tab, settings) {
     }
   });
   await setBridgeBadge(result.ok ? "IDLE" : "ERR", tab.id);
+}
+
+async function executeBrowserPerceptionObserveCommand(tab, settings, permission, command) {
+  const ackUrl = resolveDaemonUrl(settings.daemonBaseUrl, DEFAULT_BROWSER_ACTION_ACK_PATH);
+  const resultUrl = resolveDaemonUrl(settings.daemonBaseUrl, DEFAULT_BROWSER_ACTION_OBSERVE_RESULT_PATH);
+  const activeTab = {
+    tabId: tab.id,
+    windowId: tab.windowId,
+    url: tab.url,
+    title: tab.title,
+    permission: permission.permission
+  };
+  const ackStatus = readObserveAckStatus(tab, permission, command);
+  await postJsonWithRetry(ackUrl, {
+    commandId: command.commandId,
+    status: ackStatus.status,
+    activeTab,
+    receivedAt: new Date().toISOString(),
+    estimatedResultMs: ackStatus.status === "accepted" ? 350 : undefined,
+    error: ackStatus.error
+  });
+  if (ackStatus.status !== "accepted") {
+    await postJsonWithRetry(resultUrl, {
+      commandId: command.commandId,
+      status: "failed",
+      activeTab,
+      resultPostedAt: new Date().toISOString(),
+      error: ackStatus.error,
+      metadata: { ackStatus: ackStatus.status }
+    });
+    await setBridgeBadge(ackStatus.status === "missing_permission" ? "ASK" : "ERR", tab.id);
+    return;
+  }
+
+  await setBridgeBadge("RUN", tab.id);
+  try {
+    const snapshot = await readStableSnapshotFromTab(tab.id, command);
+    const afterTab = await safeReadTab(tab.id) ?? tab;
+    await postJsonWithRetry(resultUrl, {
+      commandId: command.commandId,
+      status: "succeeded",
+      snapshot,
+      activeTab: {
+        tabId: afterTab.id ?? tab.id,
+        windowId: afterTab.windowId ?? tab.windowId,
+        url: afterTab.url ?? snapshot?.url ?? tab.url,
+        title: afterTab.title ?? snapshot?.title ?? tab.title,
+        permission: permission.permission
+      },
+      mutationRevision: snapshot?.mutationRevision,
+      mutationQuietMs: snapshot?.mutationQuietMs,
+      readyState: snapshot?.readyState,
+      resultPostedAt: new Date().toISOString(),
+      metadata: { bridgeMode: "perception_observe_now", reason: command.reason }
+    });
+    await setBridgeBadge("IDLE", tab.id);
+  } catch (error) {
+    await postJsonWithRetry(resultUrl, {
+      commandId: command.commandId,
+      status: "failed",
+      activeTab,
+      resultPostedAt: new Date().toISOString(),
+      error: error instanceof Error ? error.message : String(error),
+      metadata: { bridgeMode: "perception_observe_now" }
+    });
+    await setBridgeBadge("ERR", tab.id);
+  }
+}
+
+function readObserveAckStatus(tab, permission, command) {
+  if (permission.permission === "needs_site_permission") {
+    return { status: "missing_permission", error: permission.detail ?? "Site permission is required before observation." };
+  }
+  if (permission.permission === "restricted") {
+    return { status: "restricted_page", error: permission.detail ?? "This browser page is restricted." };
+  }
+  if (permission.permission !== "allowed") {
+    return { status: "unsupported", error: permission.detail ?? "The active tab is unavailable for observation." };
+  }
+  try {
+    assertTabCanRunBrowserAction(tab);
+  } catch (error) {
+    return { status: "restricted_page", error: error instanceof Error ? error.message : String(error) };
+  }
+  const expected = command.expectedActiveTab;
+  if (expected?.tabId !== undefined && String(expected.tabId) !== String(tab.id)) {
+    return { status: "wrong_tab", error: `Active tab mismatch: expected tab ${expected.tabId}, got ${tab.id}.` };
+  }
+  if (expected?.windowId !== undefined && String(expected.windowId) !== String(tab.windowId)) {
+    return { status: "wrong_tab", error: `Active window mismatch: expected window ${expected.windowId}, got ${tab.windowId}.` };
+  }
+  return { status: "accepted" };
 }
 
 export function isBrowserActionPollOnlyError(error) {
@@ -147,6 +245,24 @@ async function safeReadSnapshotFromTab(tabId) {
   }
 }
 
+async function readStableSnapshotFromTab(tabId, command) {
+  const quietTarget = Math.max(0, Number(command.settleQuietMs) || 0);
+  const deadline = Date.parse(command.deadlineAt || "") || Date.now() + 10_000;
+  let latest = null;
+  while (Date.now() < deadline) {
+    latest = await readSnapshotFromTab(tabId);
+    const quietMs = Number(latest?.mutationQuietMs);
+    if (latest?.readyState === "complete" && (!quietTarget || !Number.isFinite(quietMs) || quietMs >= quietTarget)) {
+      return latest;
+    }
+    if (quietTarget && Number.isFinite(quietMs) && quietMs >= quietTarget) {
+      return latest;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  return latest ?? await readSnapshotFromTab(tabId);
+}
+
 async function safeReadTab(tabId) {
   try {
     return await chrome.tabs.get(tabId);
@@ -184,6 +300,10 @@ function mayChangePage(action) {
 }
 
 async function postBrowserActionResultWithRetry(url, payload) {
+  return postJsonWithRetry(url, payload);
+}
+
+async function postJsonWithRetry(url, payload) {
   let lastError = null;
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
@@ -195,13 +315,13 @@ async function postBrowserActionResultWithRetry(url, payload) {
       if (post.ok) {
         return;
       }
-      lastError = new Error(`Browser Action result post failed (${post.status}).`);
+      lastError = new Error(`Browser Bridge result post failed (${post.status}).`);
     } catch (error) {
       lastError = error;
     }
     await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
   }
-  throw lastError instanceof Error ? lastError : new Error("Browser Action result post failed.");
+  throw lastError instanceof Error ? lastError : new Error("Browser Bridge result post failed.");
 }
 
 function detectSourceMismatch(expected, tab, before) {

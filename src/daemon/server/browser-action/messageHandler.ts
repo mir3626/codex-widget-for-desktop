@@ -1,7 +1,9 @@
 import type { WebSocket } from "ws";
 import type { BrowserActionSessionManager } from "../../browser-action/index.js";
+import type { BrowserPerceptionService } from "../../browser-perception/index.js";
 import type { ProviderRegistry } from "../../providers/providerRegistry.js";
 import type { StorageService } from "../../storage/storage.js";
+import type { BrowserExtensionBridgeStore } from "../browser-bridge/store.js";
 import type { ClientMessage } from "../../../shared/protocol.js";
 import type { BrowserActionMessageContext } from "./messages/context.js";
 import { handleBrowserActionDirectCommandMessage } from "./messages/directCommandMessages.js";
@@ -27,14 +29,18 @@ export async function handleBrowserActionMessage(input: {
   clients: Set<WebSocket>;
   storage: StorageService;
   providers: ProviderRegistry;
+  browserPerception: BrowserPerceptionService;
   browserActions: BrowserActionSessionManager;
+  browserExtensionBridge?: BrowserExtensionBridgeStore;
 }): Promise<boolean> {
   const context: BrowserActionMessageContext = {
     socket: input.socket,
     clients: input.clients,
     storage: input.storage,
     providers: input.providers,
-    browserActions: input.browserActions
+    browserPerception: input.browserPerception,
+    browserActions: input.browserActions,
+    browserExtensionBridge: input.browserExtensionBridge
   };
   for (const handler of browserActionMessageHandlers) {
     if (await handler(input.message, context)) {

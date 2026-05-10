@@ -10,6 +10,9 @@ export type DomSnapshot = {
   readyState?: string;
   viewport?: unknown;
   viewGraph?: unknown;
+  mutationRevision?: string;
+  lastMutationAt?: string;
+  mutationQuietMs?: number;
   capturedAt: string;
 };
 
@@ -44,6 +47,9 @@ export function createDomSnapshot(input: unknown): DomSnapshot {
     readyState: trimField(record?.readyState, MAX_PROVIDER_FIELD_LENGTH) || undefined,
     viewport: typeof record?.viewport === "object" && record.viewport !== null ? record.viewport : undefined,
     viewGraph: typeof record?.viewGraph === "object" && record.viewGraph !== null ? record.viewGraph : undefined,
+    mutationRevision: trimField(record?.mutationRevision, MAX_PROVIDER_FIELD_LENGTH) || undefined,
+    lastMutationAt: trimField(record?.lastMutationAt, MAX_PROVIDER_FIELD_LENGTH) || undefined,
+    mutationQuietMs: typeof record?.mutationQuietMs === "number" && Number.isFinite(record.mutationQuietMs) ? record.mutationQuietMs : undefined,
     capturedAt: new Date().toISOString()
   };
 

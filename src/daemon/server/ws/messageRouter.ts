@@ -25,7 +25,9 @@ const messageHandlers: MessageHandler[] = [
       clients: context.clients,
       storage: context.storage,
       providers: context.providers,
-      browserActions: context.browserActions
+      browserPerception: context.browserPerception,
+      browserActions: context.browserActions,
+      browserExtensionBridge: context.browserExtensionBridge
     }),
   handleTerminalMessage
 ];
@@ -67,6 +69,7 @@ export async function handleMessage(raw: string, context: MessageRouterContext):
     agentSession: context.agentSession,
     codexAppServer: context.codexAppServer,
     providers: context.providers,
+    browserPerception: context.browserPerception,
     browserActions: context.browserActions,
     browserExtensionBridge: context.browserExtensionBridge,
     semanticClarifications: context.semanticClarifications,

@@ -16,6 +16,9 @@ export function normalizeViewGraph(
     capturedAt: string;
     readyState?: BrowserObservation["readyState"];
     focusedElementId?: string;
+    mutationRevision?: string;
+    lastMutationAt?: string;
+    mutationQuietMs?: number;
     text: string;
     elements: BrowserElement[];
     now?: Date;

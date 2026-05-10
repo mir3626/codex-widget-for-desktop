@@ -6,6 +6,7 @@ import type { OAuthSession } from "../../oauth.js";
 import type { ProviderRegistry } from "../../providers/providerRegistry.js";
 import type { StorageService } from "../../storage/storage.js";
 import type { BrowserActionSessionManager } from "../../browser-action/index.js";
+import type { BrowserPerceptionService } from "../../browser-perception/index.js";
 import type { ClientMessage, ServerEvent } from "../../../shared/protocol.js";
 import type { BrowserExtensionBridgeStore } from "../browser-bridge/store.js";
 import type { BrowserActionCommandWaiter } from "../browser-action/commandWaiters.js";
@@ -34,6 +35,7 @@ export async function runAskMessage(input: {
   agentSession: AgentSessionState;
   codexAppServer: CodexAppServerBridge;
   providers: ProviderRegistry;
+  browserPerception: BrowserPerceptionService;
   browserActions: BrowserActionSessionManager;
   browserExtensionBridge: BrowserExtensionBridgeStore;
   semanticClarifications: Map<string, PendingSemanticClarification>;
@@ -51,6 +53,7 @@ export async function runAskMessage(input: {
     agentSession,
     codexAppServer,
     providers,
+    browserPerception,
     browserActions,
     browserExtensionBridge,
     semanticClarifications,
@@ -89,6 +92,7 @@ export async function runAskMessage(input: {
       clients,
       storage,
       providers,
+      browserPerception,
       browserActions,
       browserExtensionBridge,
       semanticClarifications,

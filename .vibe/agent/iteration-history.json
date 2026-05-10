@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-18",
+  "currentIteration": "iter-19",
   "iterations": [
     {
       "id": "iter-1",
@@ -607,6 +607,47 @@
       },
       "summary": "Iteration 18 completed Browser View Graph v2 as a prepared-context foundation. BrowserObservation now emits schema-versioned v2 graphs with identity, freshness, route/query signatures, regions, controls, forms, content lists, edges, affordance indexes, diagnostics, and redaction summaries. Browser Bridge adds metadata for graph construction; ProviderRegistry stores prepared observations and prompt Browser Action can use a fresh prepared graph before falling back to request-time snapshot waits. Semantic Interface receives graph action/risk/list/form/freshness evidence, representative content resolution uses v2 content-list evidence, and smoke/dogfood evidence covers the generic filter -> reobserve -> representative content flow.",
       "completedAt": "2026-05-10T14:18:48.082+09:00"
+    },
+    {
+      "id": "iter-19",
+      "label": "Browser Perception Interface",
+      "startedAt": "2026-05-10T14:41:04.346+09:00",
+      "goal": "Implement docs/plans/browser-perception-interface-handoff.md: request-scoped Browser Perception as the active-tab prepared-context layer between Browser Bridge and Browser Action, with observe_now ack/result semantics, freshness/stability policy, SPA mutation stabilization, prompt/direct integration, smokes, and dogfood evidence.",
+      "plannedSprints": [
+        "iter-19-sprint-01-context-store-and-request-scoped-observe",
+        "iter-19-sprint-02-extension-command-ack-and-long-poll-observe",
+        "iter-19-sprint-03-spa-stabilization-and-active-tab-dirty-signals",
+        "iter-19-sprint-04-browser-action-prompt-direct-integration",
+        "iter-19-sprint-05-semantic-evidence-and-verification-refresh",
+        "iter-19-sprint-06-ux-diagnostics-and-completion"
+      ],
+      "completedSprints": [
+        "iter-19-sprint-01-context-store-and-request-scoped-observe",
+        "iter-19-sprint-02-extension-command-ack-and-long-poll-observe",
+        "iter-19-sprint-03-spa-stabilization-and-active-tab-dirty-signals",
+        "iter-19-sprint-04-browser-action-prompt-direct-integration",
+        "iter-19-sprint-05-semantic-evidence-and-verification-refresh",
+        "iter-19-sprint-06-ux-diagnostics-and-completion"
+      ],
+      "carryover": "Iter-18 completed Browser View Graph v2, but live dogfood still returned a retry-later final answer when prompt execution raced ahead of active-tab observation. Iter-19 implements request-scoped Browser Perception instead of another resolver/regex tuning pass.",
+      "openRisks": [
+        "Live browser verification requires reloading the unpacked Browser Bridge extension so Chrome/Edge uses the new observe ack/result code.",
+        "The request-scoped active-tab foundation is complete; a broader continuous multi-tab scheduler can still be expanded later.",
+        "Highly restricted pages remain governed by browser extension security boundaries and must report actionable unsupported states."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.985,
+        "durable-codex-runtime": 0.97,
+        "real-tool-providers": 1,
+        "resident-desktop-readiness": 0.965,
+        "durable-product-state": 0.99,
+        "semantic-interface": 1,
+        "semantic-memory": 1,
+        "browser-view-graph-v2": 1,
+        "browser-perception-interface": 1
+      },
+      "summary": "Iteration 19 completed the Browser Perception request-scoped observation layer. The daemon now has PreparedBrowserViewContext storage, freshness/stability policy, and ensureFreshContext. Browser Bridge poll can deliver observe_now commands with ack/result/timeout/cancel/error semantics, snapshots include top-level mutation quietness metadata, and prompt/direct Browser Action paths wait for fresh active-tab context before extension-backed planning/execution. Focused smokes and dogfood evidence prove the previous retry-later final answer is avoided for connected/allowed prompt flows.",
+      "completedAt": "2026-05-10T14:57:26.289+09:00"
     }
   ]
 }

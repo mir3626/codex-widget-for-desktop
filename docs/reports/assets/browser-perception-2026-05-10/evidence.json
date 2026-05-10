@@ -1,0 +1,74 @@
+{
+  "generatedAt": "2026-05-10T05:56:57.054Z",
+  "scenario": "request-scoped observe_now before prompt Browser Action",
+  "steps": [
+    {
+      "step": "heartbeat",
+      "url": "https://example.test/board/lists?id=topic",
+      "permission": "allowed"
+    },
+    {
+      "step": "request_scoped_observe",
+      "commandId": "browser-observe-1552f025-ca31-40da-b310-bcf199697f84",
+      "progressStatus": "browser_perception_waiting",
+      "route": "https://example.test/board/lists?id=topic",
+      "result": "ready"
+    },
+    {
+      "step": "filter_click",
+      "requestId": "browser-command-83dcfb31-588e-4bdc-ae0b-f220921bb59d",
+      "expectedSource": "https://example.test/board/lists?id=topic",
+      "target": "개념글",
+      "afterUrl": "https://example.test/board/lists?id=topic&exception_mode=recommend"
+    },
+    {
+      "step": "representative_content_click",
+      "requestId": "browser-command-13dc54ff-d61f-4562-9d58-47608c840e23",
+      "expectedSource": "https://example.test/board/lists?id=topic&exception_mode=recommend",
+      "target": "재밌어보이는 실험 글",
+      "afterUrl": "https://example.test/board/view?id=topic&no=123",
+      "queuedEvent": "plan_paused_for_extension"
+    }
+  ],
+  "result": "pass",
+  "finalAnswer": "현재 보고 있는 페이지는 **Generic Dynamic Board**입니다.\nURL: https://example.test/board/view?id=topic&no=123\n\n주요 내용:\n- 재밌어보이는 실험 글 본문\n\n보이는 주요 조작 요소: 개념글, 재밌어보이는 실험 글",
+  "eventTypes": [
+    "connected",
+    "auth.status",
+    "provider.status",
+    "runtime.status",
+    "browserExtensionBridge.status",
+    "execution.permissions",
+    "browserAction.policies",
+    "session.snapshot",
+    "ledger.snapshot",
+    "session.state",
+    "browserExtensionBridge.status",
+    "session.snapshot",
+    "ledger.snapshot",
+    "session.state",
+    "browserAction.started",
+    "browserAction.progress",
+    "browserExtensionBridge.status",
+    "provider.status",
+    "browserAction.progress",
+    "ledger.snapshot",
+    "browserAction.observation",
+    "browserAction.plan",
+    "browserAction.progress",
+    "browserExtensionBridge.status",
+    "browserAction.result",
+    "ledger.snapshot",
+    "browserAction.observation",
+    "browserAction.progress",
+    "browserExtensionBridge.status",
+    "browserAction.result",
+    "ledger.snapshot",
+    "browserAction.observation",
+    "browserAction.result",
+    "message.completed",
+    "ledger.snapshot",
+    "session.state",
+    "ledger.snapshot"
+  ]
+}

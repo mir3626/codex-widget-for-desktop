@@ -21,7 +21,7 @@ export async function handleBrowserBridgeRoute(
   url: URL,
   context: HttpRouteContext
 ): Promise<boolean> {
-  const { browserExtensionBridge, browserActions, browserActionCommandWaiters, clients, storage } = context;
+  const { browserExtensionBridge, browserPerception, browserActions, browserActionCommandWaiters, clients, providers, storage } = context;
 
   if (request.method === "POST" && url.pathname === "/browser-action/extension/heartbeat") {
     try {
@@ -45,7 +45,72 @@ export async function handleBrowserBridgeRoute(
   if (request.method === "GET" && url.pathname === "/browser-action/extension/poll") {
     const status = browserExtensionBridge.update(buildBrowserBridgePollStatus(url, browserExtensionBridge.snapshot()));
     broadcast(clients, { type: "browserExtensionBridge.status", status });
-    writeJsonResponse(response, 200, { ok: true, command: browserActions.pollExtensionCommand() ?? null });
+    const command = browserPerception.pollExtensionCommand() ?? browserActions.pollExtensionCommand() ?? null;
+    writeJsonResponse(response, 200, { ok: true, command });
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/browser-action/extension/ack") {
+    try {
+      const ack = browserPerception.acknowledgeObserveCommand(JSON.parse(await readRequestBody(request, 128 * 1024)));
+      writeJsonResponse(response, 200, { ok: true, ack });
+    } catch (error) {
+      writeJsonResponse(response, 400, {
+        ok: false,
+        error: error instanceof Error ? error.message : "Invalid Browser Perception observe acknowledgement."
+      });
+    }
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/browser-action/extension/observe-result") {
+    try {
+      const payload = JSON.parse(await readRequestBody(request, 512 * 1024));
+      const result = browserPerception.completeObserveResult({
+        providers,
+        bridgeStatus: browserExtensionBridge.snapshot(),
+        payload
+      });
+      if (result.context) {
+        const sessionId = storage.ensureSessionSnapshot().activeSessionId;
+        storage.recordProviderSnapshot({
+          sessionId,
+          provider: "dom",
+          title: result.context.snapshot.title || "Browser Perception observation",
+          summary: `Browser Perception ${result.status}: ${result.context.snapshot.title || result.context.snapshot.url || "active tab"}`,
+          data: {
+            url: result.context.snapshot.url,
+            title: result.context.snapshot.title,
+            capturedAt: result.context.snapshot.capturedAt,
+            viewRevision: result.context.viewRevision,
+            routeKey: result.context.routeKey,
+            freshness: result.context.freshness,
+            stability: result.context.stability
+          },
+          capturedAt: result.context.snapshot.capturedAt
+        });
+        broadcast(clients, { type: "provider.status", providers: context.providers.getStatuses() });
+        broadcast(clients, {
+          type: "browserAction.progress",
+          actionSessionId: result.context.contextId,
+          status: "browser_perception_ready",
+          detail: {
+            commandId: result.commandId,
+            freshness: result.context.freshness,
+            stability: result.context.stability,
+            routeKey: result.context.routeKey,
+            viewRevision: result.context.viewRevision
+          }
+        });
+        broadcastLedgerSnapshot(clients, storage, resolveClientSessionId(storage, sessionId));
+      }
+      writeJsonResponse(response, 200, { ok: true, result });
+    } catch (error) {
+      writeJsonResponse(response, 400, {
+        ok: false,
+        error: error instanceof Error ? error.message : "Invalid Browser Perception observe result."
+      });
+    }
     return true;
   }
 
