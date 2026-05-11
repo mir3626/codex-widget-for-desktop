@@ -471,9 +471,10 @@ export function useChatSessionController(input: UseChatSessionControllerInput) {
 
   function respondToInteraction(
     interaction: RuntimeInteraction,
-    decision: RuntimeInteractionDecision
+    decision: RuntimeInteractionDecision,
+    answerOverride?: Record<string, string>
   ) {
-    const answers = interactionDrafts[interaction.id] ?? {};
+    const answers = answerOverride ?? interactionDrafts[interaction.id] ?? {};
     input.send({
       type: "interaction.respond",
       id: interaction.id,

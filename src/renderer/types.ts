@@ -125,7 +125,7 @@ export type InteractionCardProps = {
   interaction: RuntimeInteraction;
   values: Record<string, string>;
   onChange: (interactionId: string, fieldId: string, value: string) => void;
-  onRespond: (interaction: RuntimeInteraction, decision: "approve" | "decline" | "submit") => void;
+  onRespond: (interaction: RuntimeInteraction, decision: "approve" | "decline" | "submit", answerOverride?: Record<string, string>) => void;
 };
 
 export type MarkdownPreProps = ComponentPropsWithoutRef<"pre"> & {

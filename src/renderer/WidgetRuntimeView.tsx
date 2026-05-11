@@ -207,7 +207,7 @@ type WidgetRuntimeViewProps = {
   updatePromptResize: (event: PointerEvent<HTMLDivElement>) => void;
   updateResize: (event: PointerEvent<HTMLDivElement>) => void;
   updateInteractionDraft: (interactionId: string, fieldId: string, value: string) => void;
-  respondToInteraction: (interaction: RuntimeInteraction, decision: RuntimeInteractionDecision) => void;
+  respondToInteraction: (interaction: RuntimeInteraction, decision: RuntimeInteractionDecision, answerOverride?: Record<string, string>) => void;
   viewTrashArtifacts: (sessionId: string) => void;
   visibleActivities: NonNullable<LedgerSnapshot["activities"]>;
   visionFrameStats: VisionFrameStats;

@@ -484,6 +484,56 @@
   color: #52606d;
   font-size: 11.5px;
   line-height: 1.42;
+  white-space: pre-wrap;
+}
+
+.interaction-choice-list {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.interaction-choice-list button {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(36, 42, 50, 0.1);
+  border-radius: 8px;
+  padding: 7px 8px;
+  color: #34404b;
+  background: rgba(255, 255, 255, 0.88);
+  cursor: pointer;
+  text-align: left;
+}
+
+.interaction-choice-list button:hover,
+.interaction-choice-list button.selected {
+  border-color: rgba(39, 119, 101, 0.34);
+  background: rgba(234, 247, 244, 0.96);
+}
+
+.interaction-choice-list strong,
+.interaction-choice-list span,
+.interaction-choice-list small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.interaction-choice-list strong {
+  color: #23323d;
+  font-size: 11.5px;
+  line-height: 1.25;
+}
+
+.interaction-choice-list span,
+.interaction-choice-list small {
+  color: #65707d;
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+.interaction-choice-list small {
+  color: #7c8792;
 }
 
 .interaction-fields {

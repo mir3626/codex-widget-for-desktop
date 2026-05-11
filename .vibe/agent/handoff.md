@@ -4,6 +4,20 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Browser Action Clarification Choice Cards
+
+Continued non-manual Browser Action work by closing the remaining ranked-choice UX gap where daemon clarification text was richer but the widget still showed it as a plain text input.
+
+Implemented:
+
+- `RuntimeInteraction` now supports optional structured `choices[]`.
+- Browser Action target clarification interactions include candidate choice metadata derived from the same daemon summaries used in chat text: label, region/position, link/nearby text, and confidence detail.
+- `InteractionCard` renders input choices as selectable cards; clicking a candidate submits the underlying `choice` answer immediately, so the user no longer has to read a long paragraph and type the candidate number manually.
+- Renderer styling keeps candidate cards compact and readable inside the chat surface without turning the Browser Action UI into a large dashboard.
+- `npm run smoke:browser-action:renderer` now verifies that a Browser target clarification choice card renders and submits `interaction.respond` with the selected target.
+
+Verification passed `npm run lint`, `npm run smoke:browser-action:renderer`, and `npm run smoke:browser-action:transaction-clarification`.
+
 ## Latest Update: Browser Action Native Helper Contract
 
 Continued the Browser Action 1-8 workstream closure after the history-latency push. The remaining feasible non-manual development item was the Windows native desktop fallback boundary: the adapter previously exposed browser-window diagnostics and a precise UI Automation `BLOCKED` record, but had no executable helper contract to attach a future scoped helper.

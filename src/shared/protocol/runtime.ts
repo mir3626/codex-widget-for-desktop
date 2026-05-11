@@ -17,6 +17,13 @@ export type RuntimeInteraction = {
     placeholder?: string;
     multiline?: boolean;
   }>;
+  choices?: Array<{
+    id: string;
+    label: string;
+    value: string;
+    description?: string;
+    detail?: string;
+  }>;
 };
 
 export type ExecutionPermissionDecision = "ask" | "allow" | "deny";

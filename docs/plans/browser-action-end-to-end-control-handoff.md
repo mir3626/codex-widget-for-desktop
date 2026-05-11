@@ -96,6 +96,7 @@ Completed in `iter-12`:
 - Prompt classification now keeps informational Browser Action questions in normal Agent context.
 - New smokes cover direct-menu rendering/request dispatch and prompt classification.
 - E2E dogfood evidence now includes direct UI-style observe, read, and safe action evidence.
+- Follow-up clarification UX now renders ambiguous Browser Action targets as structured selectable `RuntimeInteraction.choices[]` cards. Candidate cards include role/label, region/position, link/nearby detail, and confidence; clicking a card submits the selected `choice` without requiring manual number entry.
 
 Precisely blocked after `iter-11`:
 
@@ -489,7 +490,7 @@ Reasoning:
 Workstream status:
 
 1. Agent Tool Contract: implemented through deterministic daemon-side prompt/tool simulation. Stable app-server custom tools are `BLOCKED` on upstream contract availability, but prompt -> plan -> action -> Agent response is covered by `npm run smoke:browser-action:e2e-control`.
-2. Renderer Browser Action UX: implemented as `BrowserActionPanel` embedded in browser mode with adapter status, start/observe/cancel, safety mode, policy controls, plan/progress/result/error summaries, and existing approval cards for risky/evaluate actions.
+2. Renderer Browser Action UX: implemented as `BrowserActionPanel` embedded in browser mode with adapter status, start/observe/cancel, safety mode, policy controls, plan/progress/result/error summaries, approval cards for risky/evaluate actions, and selectable target clarification cards for ambiguous Browser Action candidates.
 3. Extension Action Channel Stability: implemented source matching, expected/actual tab metadata, command expiry, restricted-page errors, result-post retry, and smoke markers while preserving snapshot packaging compatibility.
 4. Managed Browser and CDP Operating Model: Playwright controlled-browser and CDP remote-debugging adapters remain functional through existing smokes; renderer adapter status now exposes unavailable reasons.
 5. Multi-Step Plan Execution: implemented `executePlan` with step statuses, safety/policy decisions, approval/extension pauses, direct-adapter execution, result ids, reobserve/verify events, failure, and cancellation boundaries.

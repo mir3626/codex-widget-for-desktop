@@ -70,7 +70,7 @@ type ConversationPanelProps = {
   onReadMessageAloud: (messageId: string, text: string) => void;
   onOpenArtifactFile: (artifactFileId: string, versionId?: string) => void;
   onInteractionChange: (interactionId: string, fieldId: string, value: string) => void;
-  onInteractionRespond: (interaction: RuntimeInteraction, decision: RuntimeInteractionDecision) => void;
+  onInteractionRespond: (interaction: RuntimeInteraction, decision: RuntimeInteractionDecision, answerOverride?: Record<string, string>) => void;
 };
 
 export function ConversationPanel({

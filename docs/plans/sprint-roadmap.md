@@ -784,7 +784,7 @@ Dependencies: sprints 01-05.
 
 Expected scope: reduce receipt-like chat responses, hide advanced adapter/debug details by default, expose clear connected/permission/running/failed states, and make clarification/approval paths understandable without requiring manual snapshot or DOM-mode preparation.
 
-Status: complete. Browser prompt responses now return clearer pending, clarification, and failure messages instead of defaulting to `plan/steps/latest result` receipts for those cases. Successful read/show flows continue to render the observed page content.
+Status: complete. Browser prompt responses now return clearer pending, clarification, and failure messages instead of defaulting to `plan/steps/latest result` receipts for those cases. Follow-up renderer work adds structured target clarification choice cards so ambiguous candidates can be selected directly instead of manually typing a number. Successful read/show flows continue to render the observed page content.
 
 ## Iteration iter-18: Browser View Graph v2 Prepared Context
 

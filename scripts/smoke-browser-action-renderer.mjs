@@ -120,6 +120,21 @@ daemon.on("connection", (socket) => {
       nativeHost: "enabled"
     }
   }));
+  socket.send(JSON.stringify({
+    type: "interaction.required",
+    interaction: {
+      id: "browser-target-clarification-renderer",
+      kind: "input",
+      title: "Browser target clarification",
+      body: "Browser Action 대상이 애매합니다. 실행할 대상을 선택하면 같은 요청을 이어서 수행합니다.",
+      action: "Browser action: click",
+      fields: [{ id: "choice", label: "Target", placeholder: "1" }],
+      choices: [
+        { id: "candidate-1", label: "1. 링크: 공지", value: "1", description: "영역: main/본문 · 위치: 상단 중앙", detail: "요소 신뢰도: 65%" },
+        { id: "candidate-2", label: "2. 링크: 일반 게시글", value: "2", description: "영역: content-list/본문 · 위치: 중단 중앙", detail: "요소 신뢰도: 82%" }
+      ]
+    }
+  }));
 
   socket.on("message", (raw) => {
     const message = JSON.parse(raw.toString());
@@ -143,6 +158,18 @@ try {
   }
   await page.goto(`http://127.0.0.1:${viteAddress.port}/?daemonPort=${daemonPort}`);
   await waitUntil(async () => (await page.locator(".browser-action-panel").count()) === 0, "Idle Browser Bridge panel should stay out of the chat top.");
+  await page.locator(".interaction-card").waitFor();
+  await waitUntil(async () => (await page.locator(".interaction-choice-list button").count()) === 2, "Clarification choices did not render as selectable cards.");
+  await page.locator(".interaction-choice-list button").nth(1).click();
+  await waitUntil(
+    () => clientMessages.some((message) =>
+      message.type === "interaction.respond" &&
+      message.id === "browser-target-clarification-renderer" &&
+      message.decision === "submit" &&
+      message.answers?.choice === "2"
+    ),
+    "Clarification choice card did not submit the selected target."
+  );
   await page.locator(".mode-row").getByRole("button", { name: "Browser" }).click();
   await page.locator(".browser-action-menu").waitFor();
   await expectMenuText(page, "Browser connected");

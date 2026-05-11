@@ -22,6 +22,7 @@ export function buildSemanticTargetClarificationInteraction(
     title: "Browser target clarification",
     body,
     action: `Browser action: ${pending.action.type}`,
+    choices: pending.candidates.map((candidate, index) => buildSemanticTargetChoice(candidate, index + 1)),
     fields: [{
       id: "choice",
       label: "Target",
@@ -63,6 +64,26 @@ export function formatSemanticTargetClarificationCandidate(
   const headline = `${prefix}${title}`;
   const details = parts.length ? `\n   ${parts.join(locale === "ko" ? "\n   " : "\n   ")}` : "";
   return `${headline}${alias ? `\n   ${alias}` : ""}${details}`;
+}
+
+function buildSemanticTargetChoice(element: BrowserElement, index: number): NonNullable<RuntimeInteraction["choices"]>[number] {
+  const label = readCandidateLabel(element);
+  const role = describeRole(element, "ko");
+  const summary = label ? `${role}: ${label}` : summarizeBrowserElement(element);
+  const details = [
+    summarizeRegion(element, "ko"),
+    summarizePosition(element, "ko"),
+    summarizeHref(element, "ko"),
+    summarizeNearbyText(element, label, "ko"),
+    summarizeConfidence(element, "ko")
+  ].filter(Boolean);
+  return {
+    id: `candidate-${index}`,
+    label: `${index}. ${summary}`,
+    value: String(index),
+    description: details.slice(0, 2).join(" · ") || undefined,
+    detail: details.slice(2).join(" · ") || undefined
+  };
 }
 
 function describeRole(element: BrowserElement, locale: "ko" | "en"): string {

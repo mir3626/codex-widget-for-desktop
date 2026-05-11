@@ -202,10 +202,10 @@
   ],
   "handoff": {
     "currentSprintId": "iter-20-complete",
-    "lastActionSummary": "Browser Action post-transaction hardening improved candidate clarity, history-action latency, and native fallback readiness. View Graph v2 representative content excludes pinned/notice/admin rows, clarification candidates now render readable localized multi-line summaries with ordinal aliases, Browser Bridge no longer double-waits after tab-navigation actions, live-runner coverage proves back/forward history behavior, and native desktop now has a mock-covered typed helper contract for future UI Automation/native-input execution.",
+    "lastActionSummary": "Browser Action post-transaction hardening improved candidate clarity, history-action latency, native fallback readiness, and clarification UX. View Graph v2 representative content excludes pinned/notice/admin rows, clarification candidates now render readable localized multi-line summaries plus selectable renderer choice cards, Browser Bridge no longer double-waits after tab-navigation actions, live-runner coverage proves back/forward history behavior, and native desktop now has a mock-covered typed helper contract for future UI Automation/native-input execution.",
     "openIssues": [
       "Reload the installed unpacked Browser Bridge extension before live-site retesting so Chrome/Edge uses the latest service-worker and bridge scripts.",
-      "Ranked-choice clarification card UX now has richer daemon text summaries, but renderer card layout/visual target highlighting can still be polished.",
+      "Ranked-choice clarification now has structured renderer choice cards; future polish can add visual page target highlighting when Browser Perception/extension can safely expose redacted bounding-box overlays.",
       "Browser Action native desktop live executable browser chrome control is BLOCKED until a scoped Windows UI Automation or bounded native input helper is supplied and validated; current adapter reports diagnostics, exposes CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER, and smoke-covers the helper JSON contract with a mock executable.",
       "Browser Action custom Codex app-server tool bridge is BLOCKED on a stable app-server custom tool/client-tool contract; current coverage uses daemon prompt/tool simulation, protocol events, approval, audit, and widget-context visibility.",
       "Restricted browser pages remain subject to browser/extension/CDP security boundaries and should report unsupported state rather than bypassing protections.",
@@ -221,11 +221,11 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-11T13:23:09.431+09:00"
+    "updatedAt": "2026-05-11T13:28:04.697+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-11T13:23:09.431+09:00"
+  "stateUpdatedAt": "2026-05-11T13:28:04.697+09:00"
 }
