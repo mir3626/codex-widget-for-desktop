@@ -248,7 +248,7 @@ function summarizeBridgeStatus(status: BrowserActionUiState["bridgeStatus"]): { 
     return { label: "Needs site permission", detail: tab?.origin || status.lastError || "Enable this site in the extension popup.", tone: "ask" };
   }
   if (status.mode === "restricted") {
-    return { label: "Restricted page", detail: status.lastError || "Open a supported http or https page.", tone: "error" };
+    return { label: "Restricted page", detail: restrictedBridgeDetail(status.lastError), tone: "error" };
   }
   if (status.mode === "error") {
     return { label: "Bridge failed", detail: status.lastError || "Check extension diagnostics.", tone: "error" };
@@ -257,4 +257,9 @@ function summarizeBridgeStatus(status: BrowserActionUiState["bridgeStatus"]): { 
     return { label: "Browser running", detail: tabLabel, tone: "run" };
   }
   return { label: "Browser connected", detail: tabLabel, tone: "ready" };
+}
+
+function restrictedBridgeDetail(lastError?: string | null): string {
+  return lastError ||
+    "Browser security blocks this page. Open a normal http/https tab, or use CDP/Playwright/native-helper diagnostics for browser chrome boundaries.";
 }

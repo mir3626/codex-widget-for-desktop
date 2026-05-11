@@ -60,3 +60,9 @@ Semantic Interface calibration. `npm run smoke:semantic-trace-corpus` verifies
 that the corpus maps to golden trace cases, covers the suite, and keeps current
 pass/fail metrics at the expected baseline. Real dogfood traces should be
 reviewed and redacted before promotion into this corpus.
+
+`docs/dogfood/browser-action-semantic-live-corpus.jsonl` records reviewed live
+Browser Action report rows as semantic feedback evidence. It references tracked
+report markdown, not raw screenshots or full page dumps.
+`npm run smoke:browser-action:semantic-live-corpus` verifies the referenced
+scenarios and intent coverage.

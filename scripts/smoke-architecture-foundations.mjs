@@ -11,7 +11,10 @@ import {
   terminalStateToPreparedContext
 } from "../dist/daemon/prepared-context/index.js";
 import { createSafetyDecision, decideTerminalCommandSafety } from "../dist/daemon/safety/index.js";
-import { createBrowserActionPromptToolInvocation } from "../dist/daemon/agent-tools/index.js";
+import {
+  browserActionAppServerClientToolContract,
+  createBrowserActionPromptToolInvocation
+} from "../dist/daemon/agent-tools/index.js";
 import { preparedContextToSemanticSnapshot } from "../dist/daemon/semantic-interface/adapters/index.js";
 
 const timing = createCapabilityTimingRecorder();
@@ -134,6 +137,8 @@ const toolInvocation = createBrowserActionPromptToolInvocation({
 });
 assert.equal(toolInvocation.capability, "browser_action");
 assert.equal(toolInvocation.runtime, "simulated_daemon");
+assert.equal(browserActionAppServerClientToolContract.status, "blocked");
+assert.equal(browserActionAppServerClientToolContract.safeFallbackRuntime, "simulated_daemon");
 
 const bundle = createCapabilityDebugBundle({
   capability: "browser_action",

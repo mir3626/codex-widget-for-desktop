@@ -15,6 +15,14 @@ app-server tools can be adopted without rewriting Browser Action.
 
 All variants must normalize into the same capability transaction shape.
 
+## Current App-Server Tool Status
+
+Browser Action's app-server client-tool path is explicitly `BLOCKED` until the
+app-server exposes a stable custom tool contract. The product must keep using
+the daemon-simulated tool runtime rather than prompt-only claims. The current
+blocked contract lives in `src/daemon/agent-tools/appServerClientTool.ts` and is
+covered by `npm run smoke:architecture-foundations`.
+
 ## Contract
 
 Tool runtime adapters should expose:
@@ -28,4 +36,3 @@ Tool runtime adapters should expose:
 
 The agent/tool boundary must never become prompt-only claims when protocol or
 daemon simulation can prove behavior.
-

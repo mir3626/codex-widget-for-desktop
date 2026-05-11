@@ -180,7 +180,6 @@ try {
     throw new Error("Vite did not bind.");
   }
   await page.goto(`http://127.0.0.1:${viteAddress.port}/?daemonPort=${daemonPort}`);
-  await waitUntil(async () => (await page.locator(".browser-action-panel").count()) === 0, "Idle Browser Bridge panel should stay out of the chat top.");
   await page.locator(".interaction-card").waitFor();
   await waitUntil(async () => (await page.locator(".interaction-choice-list button").count()) === 2, "Clarification choices did not render as selectable cards.");
   await waitUntil(async () => (await page.locator(".interaction-target-preview").count()) === 2, "Clarification target previews did not render.");
@@ -194,6 +193,9 @@ try {
     ),
     "Clarification choice card did not submit the selected target."
   );
+  await page.getByText("Timing / debug").click();
+  await waitUntil(async () => (await page.getByRole("button", { name: "Copy Timing / debug" }).count()) > 0, "Diagnostics copy action did not render.");
+  await waitUntil(async () => (await page.getByRole("button", { name: "Download Timing / debug" }).count()) > 0, "Diagnostics download action did not render.");
   await page.locator(".mode-row").getByRole("button", { name: "Browser" }).click();
   await page.locator(".browser-action-menu").waitFor();
   await expectMenuText(page, "Browser connected");
@@ -204,7 +206,7 @@ try {
   await expectMenuText(page, "CDP remote debugging");
   await expectMenuText(page, "Auto safe");
   await expectMenuText(page, "1 saved browser policy");
-  await page.getByRole("button", { name: "Deny risky" }).click();
+  await page.getByLabel("Browser Action menu").getByRole("button", { name: "Deny risky" }).click();
   await waitUntil(() => clientMessages.some((message) => message.type === "browserAction.policy.set" && message.policy?.decision === "deny"), "Renderer policy button did not send policy update.");
   console.log(`browser action renderer smoke ok on port ${daemonPort}`);
 } finally {

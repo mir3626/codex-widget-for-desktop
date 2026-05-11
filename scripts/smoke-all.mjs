@@ -24,6 +24,7 @@ const steps = [
   ["Browser Bridge extension package", process.execPath, ["scripts/smoke-browser-extension.mjs"]],
   ["Browser Bridge heartbeat/status", process.execPath, ["scripts/smoke-browser-extension-bridge.mjs"]],
   ["Semantic trace corpus", process.execPath, ["scripts/smoke-semantic-trace-corpus.mjs"]],
+  ["Browser Action semantic live corpus", process.execPath, ["scripts/smoke-browser-action-semantic-live-corpus.mjs"]],
   ["Browser native host", process.execPath, ["scripts/smoke-browser-native-host.mjs"]],
   ["Browser store readiness", process.execPath, ["scripts/smoke-browser-store-readiness.mjs"]],
   ["OCR runtime packaging", process.execPath, ["scripts/smoke-ocr-runtime.mjs"]],
@@ -47,7 +48,13 @@ console.log(`\nsmoke:all ok${includeLive ? " with live checks" : ""}`);
 
 function run(command, args) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: "inherit" });
+    const child = spawn(command, args, {
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        NODE_OPTIONS: appendNodeOption(process.env.NODE_OPTIONS, "--disable-warning=ExperimentalWarning")
+      }
+    });
     child.on("error", reject);
     child.on("close", (code, signal) => {
       if (code === 0) {
@@ -57,6 +64,11 @@ function run(command, args) {
       reject(new Error(`${command} ${args.join(" ")} failed with ${signal ?? code}`));
     });
   });
+}
+
+function appendNodeOption(current, option) {
+  const existing = String(current ?? "").trim();
+  return existing.includes(option) ? existing : [existing, option].filter(Boolean).join(" ");
 }
 
 function npmCommand() {

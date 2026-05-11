@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-22",
+  "currentIteration": "iter-23",
   "iterations": [
     {
       "id": "iter-1",
@@ -765,6 +765,47 @@
       },
       "summary": "Iteration 22 closed the current P0/P1 set. Browser Bridge status now includes extension build/source hash/runtime id plus daemon expected hash and reloadRequired detection. Browser Action broadcasts renderer-visible diagnostics with timing summaries and redacted debug bundles for non-completed transactions. Clarification choices can render redacted bounding-box previews. Screen snapshots now project into shared prepared contexts alongside Vision TaskCapsules and Terminal state. WidgetRuntime prompt submission moved into a dedicated hook. A semantic trace corpus and smoke gate seed deterministic calibration coverage, while Semantic Interface audit metadata now retains semantic traces for candidate-bound Browser Action executions.",
       "completedAt": "2026-05-11T15:45:00.000+09:00"
+    },
+    {
+      "id": "iter-23",
+      "label": "Post-Priority Hardening",
+      "startedAt": "2026-05-11T16:58:00.000+09:00",
+      "goal": "Complete the requested follow-up order after iter-22: renderer decomposition, live Browser Action semantic corpus, Browser Bridge reload UX, Browser Action debug export, newly discovered verification-noise fixes, and remaining feasible/blocker items.",
+      "plannedSprints": [
+        "iter-23-sprint-01-renderer-decomposition",
+        "iter-23-sprint-02-live-semantic-corpus",
+        "iter-23-sprint-03-extension-reload-and-debug-export",
+        "iter-23-sprint-04-verification-noise-and-blocker-records"
+      ],
+      "completedSprints": [
+        "iter-23-sprint-01-renderer-decomposition",
+        "iter-23-sprint-02-live-semantic-corpus",
+        "iter-23-sprint-03-extension-reload-and-debug-export",
+        "iter-23-sprint-04-verification-noise-and-blocker-records"
+      ],
+      "carryover": "The user requested the remaining work in priority order: renderer decomposition first, then live trace/corpus, extension reload UX, debug bundle export, newly discovered verification-noise fixes, and remaining items.",
+      "openRisks": [
+        "Browser Action app-server client tool remains blocked on an official custom client-tool contract; the daemon simulated runtime stays the safe fallback.",
+        "Live Windows UI Automation browser chrome control remains blocked until a bounded helper is supplied through CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER.",
+        "Vision ASR now has an executable JSON sidecar contract, but choosing/installing the first real local ASR model remains dogfood/environment work."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.985,
+        "durable-codex-runtime": 0.97,
+        "real-tool-providers": 1,
+        "resident-desktop-readiness": 0.965,
+        "durable-product-state": 0.99,
+        "semantic-interface": 1,
+        "semantic-memory": 1,
+        "browser-view-graph-v2": 1,
+        "browser-perception-interface": 1,
+        "browser-interaction-transaction": 1,
+        "architecture-foundation": 1,
+        "priority-p0-p1-closure": 1,
+        "post-priority-hardening": 1
+      },
+      "summary": "Iteration 23 hardened the remaining follow-up set. `useChatSessionController` now delegates assistant stream/typewriter state to `useAssistantMessageStream` and reuses the dismissable overlay hook. Reviewed live Browser Action report rows are recorded in `docs/dogfood/browser-action-semantic-live-corpus.jsonl` with a smoke gate. The Browser Bridge popup adds a reload button for stale extension builds. Browser Action diagnostics summaries can be copied or downloaded from the renderer. Vite renderer chunks are split into vendor chunks, smoke-all suppresses Node SQLite experimental warning noise, smoke temp cleanup schedules deferred retries, app-server client-tool BLOCKED status is encoded in code/docs, Vision ASR sidecar execution is implemented, and restricted-page recovery text is clearer.",
+      "completedAt": "2026-05-11T17:42:00.000+09:00"
     }
   ]
 }

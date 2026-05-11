@@ -17,6 +17,7 @@ const fields = {
   buildState: document.querySelector("#build-state"),
   diagnostic: document.querySelector("#diagnostic"),
   daemonBaseUrl: document.querySelector("#daemon-base-url"),
+  reloadExtension: document.querySelector("#reload-extension"),
   autoConnect: document.querySelector("#auto-connect"),
   autoObserve: document.querySelector("#auto-observe"),
   allowAllSites: document.querySelector("#allow-all-sites"),
@@ -45,6 +46,10 @@ document.querySelector("#test-connection").addEventListener("click", () => {
 
 document.querySelector("#enable-site").addEventListener("click", () => {
   void enableCurrentSite();
+});
+
+fields.reloadExtension.addEventListener("click", () => {
+  reloadExtension();
 });
 
 document.querySelector("#debug-capture").addEventListener("click", () => {
@@ -143,6 +148,7 @@ function render(status = {}, settings = DEFAULT_SETTINGS) {
   fields.connection.textContent = state.connection;
   fields.tabState.textContent = state.tab;
   fields.buildState.textContent = summarizeBuildState(status);
+  fields.reloadExtension.hidden = status.reloadRequired !== true;
   fields.diagnostic.textContent = status.lastError ?? status.reason ?? "";
 
   fields.daemonBaseUrl.value = settings.daemonBaseUrl ?? DEFAULT_SETTINGS.daemonBaseUrl;
@@ -164,8 +170,13 @@ function render(status = {}, settings = DEFAULT_SETTINGS) {
 function summarizeBuildState(status) {
   const buildId = status.extensionBuildId || status.extensionVersion || "unknown";
   return status.reloadRequired
-    ? `Build: ${buildId} · reload required`
+    ? `Build: ${buildId} · reload required. Use Reload bridge after saving diagnostics.`
     : `Build: ${buildId}`;
+}
+
+function reloadExtension() {
+  setStatus("Reloading Browser Bridge...");
+  chrome.runtime.reload();
 }
 
 function readSettingsFromForm() {

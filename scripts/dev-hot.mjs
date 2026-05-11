@@ -100,7 +100,8 @@ function startDaemon(reason) {
   daemonProcess = spawnManaged("daemon", process.execPath, [daemonEntry], {
     env: {
       ...process.env,
-      CODEX_WIDGET_PORT: daemonPort
+      CODEX_WIDGET_PORT: daemonPort,
+      NODE_OPTIONS: appendNodeOption(process.env.NODE_OPTIONS, "--disable-warning=ExperimentalWarning")
     }
   });
 }
@@ -121,7 +122,8 @@ function startDevAuthProxy() {
   spawnManaged("dev-auth-proxy", process.execPath, [devAuthProxyEntry], {
     env: {
       ...process.env,
-      CODEX_WIDGET_DEV_AUTH_PROXY_PORT: devAuthProxyPort
+      CODEX_WIDGET_DEV_AUTH_PROXY_PORT: devAuthProxyPort,
+      NODE_OPTIONS: appendNodeOption(process.env.NODE_OPTIONS, "--disable-warning=ExperimentalWarning")
     }
   });
 }
@@ -209,4 +211,9 @@ function commandFor(command, args) {
     file: command,
     args
   };
+}
+
+function appendNodeOption(current, option) {
+  const existing = String(current ?? "").trim();
+  return existing.includes(option) ? existing : [existing, option].filter(Boolean).join(" ");
 }

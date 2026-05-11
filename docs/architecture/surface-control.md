@@ -24,11 +24,10 @@ observe -> understand -> propose -> gate -> bind -> act -> verify -> remember
 
 `src/daemon/capability-transaction/surfaceControl.ts` defines the common stage
 names and capability description. `src/daemon/prepared-context/adapters/`
-contains initial projections for Vision TaskCapsules and Terminal state so those
-surfaces can enter the same prepared-context/semantic pipeline as Browser
-Action.
+contains projections for screen snapshots, Vision TaskCapsules, and Terminal
+state so those surfaces can enter the same prepared-context/semantic pipeline as
+Browser Action.
 
 Desktop control remains intentionally bounded: future helpers should target
 browser windows, permission prompts, file-picker boundaries, and restricted-page
 fallbacks before any broader desktop automation is considered.
-

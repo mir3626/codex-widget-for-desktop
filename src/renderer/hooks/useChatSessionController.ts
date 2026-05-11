@@ -14,26 +14,20 @@ import type {
   RuntimeInteractionDecision,
   SessionSnapshot,
   SessionSummary,
-  WidgetMode,
-  MessageSnapshotStatus
+  WidgetMode
 } from "../../shared/protocol.js";
 import {
   BRANCH_CONTEXT_STORAGE_KEY,
   CHAT_STORAGE_KEY,
   MODEL_STORAGE_KEY,
-  REASONING_STORAGE_KEY,
-  STREAM_TYPE_BASE_INTERVAL_MS
+  REASONING_STORAGE_KEY
 } from "../config";
 import type { AssistantMessageStatus, ChatMessage, InteractionDrafts, LogLine, TerminalLine } from "../types";
 import {
   ensureAssistantMessage,
   findPreviousUserMessage,
-  getNextTypingLength,
-  getTypingDelay,
-  isAssistantWorking,
   readWorkingAssistantId,
-  sessionMessageToChatMessage,
-  snapshotStatusToAssistantStatus
+  sessionMessageToChatMessage
 } from "../utils/chat";
 import {
   persistBranchContext,
@@ -45,7 +39,9 @@ import {
   createInteractionDraft,
   isDisposableNewChatSession
 } from "./chatSession/sessionHelpers";
+import { useAssistantMessageStream } from "./chatSession/useAssistantMessageStream";
 import { useAssistantSpeech } from "./chatSession/useAssistantSpeech";
+import { useDismissableOverlay } from "./useDismissableOverlay";
 
 type UseChatSessionControllerInput = {
   mode: WidgetMode;
@@ -84,10 +80,21 @@ export function useChatSessionController(input: UseChatSessionControllerInput) {
   const activeSessionIdRef = useRef<string | null>(activeSessionId);
   const trashArtifactSessionIdRef = useRef<string | null>(trashArtifactSessionId);
   const branchContextRef = useRef<BranchContextMessage[] | null>(branchContext);
-  const streamBuffersRef = useRef<Map<string, string>>(new Map());
-  const completedResponseIdsRef = useRef<Set<string>>(new Set());
-  const streamTypingTimerRef = useRef<number | null>(null);
   const sessionControlsPulseTimerRef = useRef<number | null>(null);
+  const {
+    streamBuffersRef,
+    completedResponseIdsRef,
+    appendAssistantDelta,
+    applyAssistantSnapshot,
+    cleanupAssistantMessageStream,
+    clearAssistantMessageStream,
+    completeAssistantMessage,
+    restoreMessageBuffers
+  } = useAssistantMessageStream({
+    chatMessagesRef,
+    setChatMessages,
+    setActiveId
+  });
   const {
     speakingMessageId,
     readMessageAloud,
@@ -99,59 +106,17 @@ export function useChatSessionController(input: UseChatSessionControllerInput) {
     closeActionMenu: () => setOpenActionMenuId(null)
   });
 
-  useEffect(() => {
-    if (!openActionMenuId) {
-      return;
-    }
+  useDismissableOverlay({
+    open: Boolean(openActionMenuId),
+    safeSelector: ".message-actions-shell, .message-action-menu",
+    onDismiss: () => setOpenActionMenuId(null)
+  });
 
-    function closeMenuFromOutside(event: MouseEvent | globalThis.PointerEvent) {
-      const target = event.target;
-      if (target instanceof Element && target.closest(".message-actions-shell, .message-action-menu")) {
-        return;
-      }
-      setOpenActionMenuId(null);
-    }
-
-    function closeMenuFromEscape(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpenActionMenuId(null);
-      }
-    }
-
-    document.addEventListener("pointerdown", closeMenuFromOutside, true);
-    document.addEventListener("keydown", closeMenuFromEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeMenuFromOutside, true);
-      document.removeEventListener("keydown", closeMenuFromEscape);
-    };
-  }, [openActionMenuId]);
-
-  useEffect(() => {
-    if (!showSessionTrash) {
-      return;
-    }
-
-    function closeTrashFromOutside(event: MouseEvent | globalThis.PointerEvent) {
-      const target = event.target;
-      if (target instanceof Element && target.closest(".session-strip, .session-trash-popover")) {
-        return;
-      }
-      setShowSessionTrash(false);
-    }
-
-    function closeTrashFromEscape(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") {
-        setShowSessionTrash(false);
-      }
-    }
-
-    document.addEventListener("pointerdown", closeTrashFromOutside, true);
-    document.addEventListener("keydown", closeTrashFromEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeTrashFromOutside, true);
-      document.removeEventListener("keydown", closeTrashFromEscape);
-    };
-  }, [showSessionTrash]);
+  useDismissableOverlay({
+    open: showSessionTrash,
+    safeSelector: ".session-strip, .session-trash-popover",
+    onDismiss: () => setShowSessionTrash(false)
+  });
 
   useEffect(() => {
     chatMessagesRef.current = chatMessages;
@@ -175,142 +140,6 @@ export function useChatSessionController(input: UseChatSessionControllerInput) {
     );
   }
 
-  function appendAssistantDelta(id: string, text: string) {
-    if (!text) {
-      return;
-    }
-
-    streamBuffersRef.current.set(id, `${streamBuffersRef.current.get(id) ?? ""}${text}`);
-    setChatMessages((current) =>
-      ensureAssistantMessage(current, id).map((message) =>
-        message.role === "assistant" && message.id === id && message.status !== "tooling"
-          ? { ...message, status: "streaming" }
-          : message
-      )
-    );
-    scheduleAssistantTyping();
-  }
-
-  function completeAssistantMessage(id: string, text: string) {
-    const existingBuffer = streamBuffersRef.current.get(id);
-    const shouldApplyImmediately = text && (existingBuffer === undefined || existingBuffer.length === 0);
-    if (text) {
-      streamBuffersRef.current.set(id, text);
-    } else if (!streamBuffersRef.current.has(id)) {
-      streamBuffersRef.current.set(id, "");
-    }
-    completedResponseIdsRef.current.add(id);
-    setChatMessages((current) =>
-      ensureAssistantMessage(current, id).map((message) => {
-        if (message.role !== "assistant" || message.id !== id) {
-          return message;
-        }
-        const replacesVisibleText = Boolean(text && message.text && !text.startsWith(message.text));
-        return shouldApplyImmediately || replacesVisibleText ? { ...message, text, status: "done" } : message;
-      })
-    );
-    scheduleAssistantTyping();
-  }
-
-  function applyAssistantSnapshot(id: string, text: string, status: MessageSnapshotStatus) {
-    streamBuffersRef.current.set(id, text);
-    if (status === "done") {
-      completedResponseIdsRef.current.add(id);
-    } else {
-      completedResponseIdsRef.current.delete(id);
-    }
-
-    const nextStatus = snapshotStatusToAssistantStatus(status);
-    setChatMessages((current) =>
-      ensureAssistantMessage(current, id).map((message) =>
-        message.role === "assistant" && message.id === id
-          ? {
-              ...message,
-              text,
-              status: nextStatus
-            }
-          : message
-      )
-    );
-
-    if (isAssistantWorking(nextStatus)) {
-      setActiveId(id);
-    } else if (activeId === id) {
-      setActiveId(null);
-    }
-  }
-
-  function scheduleAssistantTyping(delay = STREAM_TYPE_BASE_INTERVAL_MS) {
-    if (streamTypingTimerRef.current !== null) {
-      return;
-    }
-
-    streamTypingTimerRef.current = window.setTimeout(runAssistantTypingStep, delay);
-  }
-
-  function runAssistantTypingStep() {
-    streamTypingTimerRef.current = null;
-    let hasMore = false;
-    let changed = false;
-    let nextDelay = STREAM_TYPE_BASE_INTERVAL_MS;
-
-    const nextMessages: ChatMessage[] = chatMessagesRef.current.map((message): ChatMessage => {
-      if (message.role !== "assistant") {
-        return message;
-      }
-
-      const target = streamBuffersRef.current.get(message.id) ?? message.text;
-      const isCompleted = completedResponseIdsRef.current.has(message.id);
-      if (message.text.length < target.length) {
-        const remaining = target.length - message.text.length;
-        const nextLength = getNextTypingLength(target, message.text.length, remaining, isCompleted);
-        hasMore = hasMore || nextLength < target.length || nextLength === message.text.length;
-        if (nextLength === message.text.length) {
-          nextDelay = Math.min(nextDelay, 72);
-          return message;
-        }
-        changed = true;
-        nextDelay = Math.min(nextDelay, getTypingDelay(target.charAt(nextLength - 1), remaining));
-        const nextStatus: AssistantMessageStatus =
-          isCompleted && nextLength >= target.length ? "done" : isCompleted ? "typing" : "streaming";
-        return {
-          ...message,
-          text: target.slice(0, nextLength),
-          status: nextStatus
-        };
-      }
-
-      if (isCompleted && message.status !== "done") {
-        changed = true;
-        return { ...message, status: "done" };
-      }
-
-      return message;
-    });
-
-    if (changed) {
-      chatMessagesRef.current = nextMessages;
-      setChatMessages(nextMessages);
-    }
-
-    if (hasMore) {
-      scheduleAssistantTyping(nextDelay);
-    }
-  }
-
-  function restoreMessageBuffers(messages: ChatMessage[]) {
-    for (const message of messages) {
-      if (message.role !== "assistant") {
-        continue;
-      }
-
-      streamBuffersRef.current.set(message.id, message.text);
-      if (message.status === "done") {
-        completedResponseIdsRef.current.add(message.id);
-      }
-    }
-  }
-
   function applySessionSnapshot(snapshot: SessionSnapshot) {
     const nextMessages = snapshot.messages.map(sessionMessageToChatMessage);
     const nextActiveSession = snapshot.sessions.find((session) => session.id === snapshot.activeSessionId) ?? null;
@@ -329,8 +158,7 @@ export function useChatSessionController(input: UseChatSessionControllerInput) {
       setTrashLedger(null);
     }
 
-    streamBuffersRef.current.clear();
-    completedResponseIdsRef.current.clear();
+    clearAssistantMessageStream();
     restoreMessageBuffers(nextMessages);
     chatMessagesRef.current = nextMessages;
     setChatMessages(nextMessages);
@@ -446,8 +274,7 @@ export function useChatSessionController(input: UseChatSessionControllerInput) {
       input.send({ type: "cancel", id: activeId });
     }
     cancelAssistantSpeech();
-    streamBuffersRef.current.clear();
-    completedResponseIdsRef.current.clear();
+    clearAssistantMessageStream();
     input.resetTerminalState();
     setActiveId(null);
     setOpenActionMenuId(null);
@@ -599,8 +426,7 @@ export function useChatSessionController(input: UseChatSessionControllerInput) {
     ) {
       return;
     }
-    streamBuffersRef.current.clear();
-    completedResponseIdsRef.current.clear();
+    clearAssistantMessageStream();
     updateBranchContext(nextBranchContext);
     input.appendLog("branched to new session", "tool");
     input.showToast("Branched to new session");
@@ -691,9 +517,7 @@ export function useChatSessionController(input: UseChatSessionControllerInput) {
     if (sessionControlsPulseTimerRef.current !== null) {
       window.clearTimeout(sessionControlsPulseTimerRef.current);
     }
-    if (streamTypingTimerRef.current !== null) {
-      window.clearTimeout(streamTypingTimerRef.current);
-    }
+    cleanupAssistantMessageStream();
     cancelAssistantSpeech();
   }
 

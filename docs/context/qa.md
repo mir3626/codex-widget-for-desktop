@@ -89,6 +89,16 @@ npm run smoke:semantic-trace-corpus
 This verifies the reviewed semantic trace corpus still maps to the golden trace
 suite and keeps calibration seed metrics at the expected baseline.
 
+Run this after promoting reviewed live Browser Action evidence into the semantic feedback loop:
+
+```powershell
+npm run smoke:browser-action:semantic-live-corpus
+```
+
+This verifies that the live semantic corpus only references reviewed report rows
+and still covers read, target activation, history navigation, search form, and
+representative content intents.
+
 Run this after a release build when bundle resource wiring changes:
 
 ```powershell

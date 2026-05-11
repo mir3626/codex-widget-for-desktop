@@ -25,6 +25,8 @@ is defined here.
   decomposition target.
 - `testing-observability.md` defines test tiers, live evidence policy, timing,
   and debug bundle requirements.
+- `open-blockers.md` records external-contract or asset-quality blockers that
+  should not be silently treated as complete.
 - `deprecated-plans.md` lists completed handoffs that were tombstoned after their
   current architecture content was consolidated.
 

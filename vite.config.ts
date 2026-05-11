@@ -6,7 +6,16 @@ export default defineConfig({
   base: "./",
   build: {
     outDir: "dist-renderer",
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom"],
+          "vendor-markdown": ["react-markdown"],
+          "vendor-icons": ["lucide-react"]
+        }
+      }
+    }
   },
   server: {
     host: "127.0.0.1",

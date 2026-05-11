@@ -210,21 +210,26 @@
       "command": "npm run smoke:semantic-trace-corpus",
       "expectExitCode": 0,
       "expectStdoutContains": "semantic trace corpus smoke ok"
+    },
+    {
+      "id": "smoke-browser-action-semantic-live-corpus",
+      "command": "npm run smoke:browser-action:semantic-live-corpus",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser action semantic live corpus smoke ok"
     }
   ],
   "handoff": {
-    "currentSprintId": "iter-22-complete",
-    "lastActionSummary": "P0/P1 priority closure is complete. Browser Bridge now detects stale unpacked extension code with build/source-hash metadata and reloadRequired status, Browser Action emits diagnostics events with timing/debug evidence, clarification choices can show redacted bbox previews, screen snapshots project into shared prepared contexts, WidgetRuntime prompt submission is extracted into a hook, and the Semantic Interface has a deterministic semantic trace corpus plus smoke gate.",
+    "currentSprintId": "iter-23-complete",
+    "lastActionSummary": "Post-priority hardening is complete. Renderer chat session streaming/typewriter logic was extracted, reviewed live Browser Action reports now feed a semantic live corpus smoke, Browser Bridge popup can reload stale extension code, Browser Action diagnostics can be copied/downloaded, Vite chunk warning was removed through vendor chunking, smoke-all suppresses Node SQLite experimental warning noise, smoke temp cleanup schedules deferred retries, app-server client-tool BLOCKED status is explicit in code/docs, Vision ASR sidecar execution is implemented, and restricted-page recovery text is clearer.",
     "openIssues": [
-      "Reloading the installed unpacked Browser Bridge extension is still a manual browser operation after extension source changes, but daemon/widget status now reports reloadRequired when the installed extension hash is stale.",
-      "Live browser dogfood remains the source of truth for Browser Action semantic usefulness; the semantic trace corpus is a deterministic seed and should grow with reviewed real traces before statistical calibration.",
-      "Renderer decomposition can continue opportunistically around `useChatSessionController`, Vision controller state, and mode-menu composition; the P1 prompt submission extraction is complete.",
+      "Live browser dogfood remains the source of truth for Browser Action semantic usefulness; the semantic live corpus now has reviewed report rows but should keep growing with real traces before statistical calibration.",
+      "Renderer decomposition can continue opportunistically around Vision controller state and deeper mode-menu composition; the chat session stream/typewriter and prompt submission extractions are complete.",
       "Browser Action native desktop live executable browser chrome control is BLOCKED until a scoped Windows UI Automation or bounded native input helper is supplied and validated; current adapter reports diagnostics, exposes CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER, and smoke-covers the helper JSON contract with a mock executable.",
-      "Browser Action custom Codex app-server tool bridge is BLOCKED on a stable app-server custom tool/client-tool contract; current coverage uses daemon prompt/tool simulation, protocol events, approval, audit, and widget-context visibility.",
+      "Browser Action custom Codex app-server tool bridge is BLOCKED on a stable app-server custom tool/client-tool contract; current code records the blocked contract and uses daemon prompt/tool simulation as the safe fallback.",
       "Restricted browser pages remain subject to browser/extension/CDP security boundaries and should report unsupported state rather than bypassing protections.",
       "Semantic Memory remains advisory and cannot bypass freshness, safety, visibility, approval, or current view evidence.",
-      "Vision Context real local ASR production backend remains behind the transcription sidecar interface until dogfooding chooses the first installed model/runtime.",
-      "Mascot motion must be reworked with real authored pose/expression/state animation assets; generated static-pose sprites are not accepted."
+      "Vision Context local ASR now has executable sidecar support, but selecting/installing the first real ASR model/runtime remains dogfood/environment work.",
+      "Mascot motion code supports authored sprite-sheet playback; if product-owner dogfood still rejects the asset quality, the next work is new authored/generated pose sheets rather than transform-only proxy motion."
     ],
     "orchestratorContextBudget": "medium",
     "preferencesActive": [
@@ -233,11 +238,11 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-11T15:45:00.000+09:00"
+    "updatedAt": "2026-05-11T17:42:00.000+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-11T15:45:00.000+09:00"
+  "stateUpdatedAt": "2026-05-11T17:42:00.000+09:00"
 }

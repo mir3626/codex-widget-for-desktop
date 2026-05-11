@@ -884,6 +884,21 @@
   font-size: 11px;
 }
 
+.browser-action-summary-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
+}
+
+.browser-action-summary-actions button {
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+}
+
 .browser-action-summary pre {
   max-height: 160px;
   margin: 0;

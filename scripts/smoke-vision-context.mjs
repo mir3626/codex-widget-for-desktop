@@ -9,6 +9,7 @@ import {
 } from "../dist/daemon/vision-context/index.js";
 import {
   MockAsrEngine,
+  SidecarAsrEngine,
   applyLexiconCorrections,
   buildSessionLexicon,
   createMockVadSegments,
@@ -171,6 +172,47 @@ try {
   const correction = applyLexiconCorrections(transcript.text, lexicon);
   if (!correction.text.includes("react-router-dom")) {
     throw new Error(`Lexicon correction failed: ${JSON.stringify(correction)}`);
+  }
+  const sidecarScript = join(tempDir, "mock-asr-sidecar.mjs");
+  writeFileSync(sidecarScript, `
+process.stdin.setEncoding("utf8");
+let input = "";
+process.stdin.on("data", (chunk) => { input += chunk; });
+process.stdin.on("end", () => {
+  const request = JSON.parse(input);
+  process.stdout.write(JSON.stringify({
+    id: "sidecar-transcript-smoke",
+    createdAt: "2026-05-11T00:00:00.000Z",
+    language: request.language,
+    text: "sidecar transcript smoke",
+    confidence: 0.91,
+    segments: request.segments.map((segment, index) => ({
+      id: "sidecar-segment-" + index,
+      startMs: segment.startMs,
+      endMs: segment.endMs,
+      text: "sidecar transcript smoke",
+      confidence: 0.91
+    }))
+  }));
+});
+`);
+  const previousSidecarCommand = process.env.CODEX_WIDGET_ASR_SIDECAR_COMMAND;
+  process.env.CODEX_WIDGET_ASR_SIDECAR_COMMAND = `"${process.execPath}" "${sidecarScript}"`;
+  const sidecar = new SidecarAsrEngine();
+  if (!(await sidecar.isAvailable())) {
+    throw new Error("Sidecar ASR engine should be available when command env is configured.");
+  }
+  const sidecarTranscript = await sidecar.transcribe({
+    segments: createMockVadSegments([{ startMs: 0, endMs: 1000 }]),
+    language: "en"
+  });
+  if (sidecarTranscript.text !== "sidecar transcript smoke" || sidecarTranscript.confidence < 0.9) {
+    throw new Error(`Sidecar ASR transcript did not normalize expected output: ${JSON.stringify(sidecarTranscript)}`);
+  }
+  if (previousSidecarCommand === undefined) {
+    delete process.env.CODEX_WIDGET_ASR_SIDECAR_COMMAND;
+  } else {
+    process.env.CODEX_WIDGET_ASR_SIDECAR_COMMAND = previousSidecarCommand;
   }
   const clarification = decideClarification({
     utterance: "저거 삭제해",

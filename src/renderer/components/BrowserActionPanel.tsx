@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, Compass, Play, RefreshCw, ShieldCheck, Square } from "lucide-react";
+import { Ban, CheckCircle2, Compass, Copy, Download, Play, RefreshCw, ShieldCheck, Square } from "lucide-react";
 import type { BrowserActionMode, BrowserActionPolicyDecision } from "../../shared/protocol.js";
 import type { BrowserActionUiState } from "../types";
 
@@ -94,12 +94,39 @@ function Metric({ label, value }: { label: string; value: string | number }) {
 }
 
 function SummaryBlock({ title, value }: { title: string; value: unknown }) {
+  const json = JSON.stringify(value, null, 2);
   return (
     <details className="browser-action-summary">
       <summary>{title}</summary>
-      <pre>{JSON.stringify(value, null, 2).slice(0, 1800)}</pre>
+      <div className="browser-action-summary-actions">
+        <button type="button" aria-label={`Copy ${title}`} data-tooltip={`Copy ${title}`} onClick={() => copySummary(json)}>
+          <Copy size={12} />
+        </button>
+        <button type="button" aria-label={`Download ${title}`} data-tooltip={`Download ${title}`} onClick={() => downloadSummary(title, json)}>
+          <Download size={12} />
+        </button>
+      </div>
+      <pre>{json.slice(0, 1800)}</pre>
     </details>
   );
+}
+
+function copySummary(json: string) {
+  void navigator.clipboard?.writeText(json).catch(() => undefined);
+}
+
+function downloadSummary(title: string, json: string) {
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `browser-action-${slugify(title)}-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function slugify(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "summary";
 }
 
 function shortId(value: string): string {
@@ -124,7 +151,7 @@ function summarizeBridgePanel(state: BrowserActionUiState): { label: string; det
     return { label: "needs permission", detail: status.activeTab?.origin || "enable this site in the extension popup" };
   }
   if (status.mode === "restricted") {
-    return { label: "restricted", detail: status.lastError || "open a supported page" };
+    return { label: "restricted", detail: restrictedBridgeDetail(status.lastError) };
   }
   if (status.mode === "error") {
     return { label: "failed", detail: status.lastError || "check diagnostics" };
@@ -133,4 +160,9 @@ function summarizeBridgePanel(state: BrowserActionUiState): { label: string; det
     label: status.mode === "running" ? "running" : "connected",
     detail: status.activeTab?.title || status.activeTab?.url || "ready"
   };
+}
+
+function restrictedBridgeDetail(lastError?: string | null): string {
+  return lastError ||
+    "Browser security blocks this page; switch to a normal http/https tab or inspect adapter diagnostics.";
 }

@@ -338,6 +338,7 @@ function shouldShowBrowserActionPanel(mode: WidgetMode, browserAction: BrowserAc
   const bridgeMode = browserAction.bridgeStatus?.mode;
   return Boolean(
     browserAction.error ||
+    browserAction.diagnosticsSummary ||
     bridgeMode === "permission_needed" ||
     bridgeMode === "disconnected" ||
     bridgeMode === "restricted" ||

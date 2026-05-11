@@ -1543,3 +1543,16 @@ Completed the current P0/P1 follow-up set after architecture consolidation.
 - Added `docs/dogfood/semantic-trace-corpus.jsonl`, semantic golden-trace metric summarization, and `npm run smoke:semantic-trace-corpus`.
 
 Verification passed `npm run build:web`, `npm run smoke:all`, `git diff --check`, UTF-8/mojibake checks, project report refresh, and `npm run vibe:checkpoint`. The live dev runtime was restarted; renderer is listening on `127.0.0.1:5173`, daemon health is ok on `127.0.0.1:4128`, and the Tauri widget is running.
+
+## Latest Update: iter-23 Post-Priority Hardening
+
+Completed the requested follow-up order `4 -> 1 -> 2 -> 3 -> newly found improvements -> remaining items`.
+
+- Renderer decomposition: `useChatSessionController` now delegates assistant stream/typewriter state to `useAssistantMessageStream` and reuses `useDismissableOverlay` for action-menu/session-trash dismissal.
+- Live semantic feedback: added `docs/dogfood/browser-action-semantic-live-corpus.jsonl` plus `npm run smoke:browser-action:semantic-live-corpus`, referencing reviewed Browser Action live report rows without raw screenshots/page dumps.
+- Browser Bridge reload UX: popup now exposes `Reload bridge` when stale extension code is detected and calls `chrome.runtime.reload()`.
+- Debug export: Browser Action summary/diagnostics blocks can copy or download JSON from the renderer.
+- Verification-noise fixes: Vite renderer vendor chunking removes the >500KB JS chunk warning, `smoke:all` suppresses Node SQLite experimental warning noise, and smoke temp cleanup now schedules deferred retry after Windows `EPERM`.
+- Remaining feasible/BLOCKED items: app-server client-tool BLOCKED contract is encoded in `src/daemon/agent-tools/appServerClientTool.ts`; `docs/architecture/open-blockers.md` records external blockers; Vision ASR sidecar command execution is implemented behind `CODEX_WIDGET_ASR_SIDECAR_COMMAND`; restricted-page recovery text is clearer.
+
+Verification passed `npm run lint`, `npm run build:web`, `npm run smoke:browser-action:semantic-live-corpus`, `npm run smoke:vision-context`, `npm run smoke:extension`, `npm run smoke:architecture-foundations`, `npm run smoke:browser-action:renderer`, final `npm run smoke:all`, `git diff --check`, UTF-8/mojibake checks, project report refresh, and `npm run vibe:checkpoint`. The live dev runtime was restarted; renderer is listening on `127.0.0.1:5173`, daemon health is ok on `127.0.0.1:4128`, and the Tauri widget is running.
