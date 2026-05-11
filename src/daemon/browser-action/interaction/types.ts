@@ -50,6 +50,7 @@ export type IntentFrame = {
   actionFamily: BrowserAction["type"] | "multi_step" | "unknown";
   targetPhrase?: string;
   valuePhrase?: string;
+  ordinal?: number;
   constraints: string[];
   locale: "ko" | "en" | "unknown";
   riskHint: BrowserInteractionRiskClass;
@@ -65,6 +66,7 @@ export type ReferenceBindingScope =
   | "deictic"
   | "focused_element"
   | "spatial"
+  | "content_list_ordinal"
   | "content_list_representative";
 
 export type CandidateStep = {

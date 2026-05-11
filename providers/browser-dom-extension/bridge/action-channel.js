@@ -338,6 +338,14 @@ async function executeTabNavigationAction(tab, action) {
       await callChromeTabApi((done) => chrome.tabs.reload(tab.id, {}, () => done()));
     }
     const after = await readPostActionSnapshot(tab.id, action, before);
+    if (requiresChangedNavigationObservation(action, before) && !hasChangedNavigationObservation(before, after)) {
+      return {
+        ok: false,
+        error: "Browser tab navigation completed, but the changed page observation was not captured.",
+        after,
+        metadata: { tabNavigation: true, staleNavigationObservation: true }
+      };
+    }
     return { ok: true, after, metadata: { tabNavigation: true } };
   } catch (error) {
     const fallback = await safeReadSnapshotFromTab(tab.id);
@@ -409,26 +417,58 @@ async function readPostActionSnapshot(tabId, action, fallback) {
   }
 
   const fallbackUrl = fallback?.url ?? "";
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    if (attempt > 0) {
-      await new Promise((resolve) => setTimeout(resolve, attempt < 5 ? 250 : 500));
-    }
+  let latest = fallback ?? null;
+  for (let attempt = 0; attempt < 18; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, attempt < 4 ? 150 : attempt < 10 ? 250 : 500));
     const snapshot = await safeReadSnapshotFromTab(tabId);
     if (!snapshot) {
       continue;
     }
+    latest = snapshot;
     const urlChanged = fallbackUrl && normalizeUrlForSource(snapshot.url) !== normalizeUrlForSource(fallbackUrl);
+    const routeChanged = readRouteKey(snapshot) && readRouteKey(snapshot) !== readRouteKey(fallback);
+    const viewChanged = readViewRevision(snapshot) && readViewRevision(snapshot) !== readViewRevision(fallback);
+    if (requiresChangedNavigationObservation(action, fallback)) {
+      if (urlChanged || routeChanged || viewChanged) {
+        return snapshot;
+      }
+      continue;
+    }
     const waitedForClick = action?.type !== "click" || attempt >= 2;
     if (urlChanged || waitedForClick && (snapshot.readyState === "complete" || attempt >= 5)) {
       return snapshot;
     }
   }
 
-  return fallback ?? await safeReadSnapshotFromTab(tabId);
+  return latest ?? fallback ?? await safeReadSnapshotFromTab(tabId);
 }
 
 function mayChangePage(action) {
   return ["click", "navigate", "back", "forward", "reload"].includes(action?.type);
+}
+
+function requiresChangedNavigationObservation(action, before) {
+  if (action?.type === "navigate") {
+    return Boolean(action.url) && normalizeUrlForSource(action.url) !== normalizeUrlForSource(before?.url);
+  }
+  return ["back", "forward"].includes(action?.type);
+}
+
+function hasChangedNavigationObservation(before, after) {
+  if (!before || !after) {
+    return false;
+  }
+  return normalizeUrlForSource(before.url) !== normalizeUrlForSource(after.url) ||
+    Boolean(readRouteKey(before) && readRouteKey(after) && readRouteKey(before) !== readRouteKey(after)) ||
+    Boolean(readViewRevision(before) && readViewRevision(after) && readViewRevision(before) !== readViewRevision(after));
+}
+
+function readRouteKey(snapshot) {
+  return snapshot?.viewGraph?.identity?.routeKey || snapshot?.routeKey || "";
+}
+
+function readViewRevision(snapshot) {
+  return snapshot?.viewGraph?.identity?.viewRevision || snapshot?.viewRevision || snapshot?.mutationRevision || "";
 }
 
 async function postBrowserActionResultWithRetry(url, payload) {

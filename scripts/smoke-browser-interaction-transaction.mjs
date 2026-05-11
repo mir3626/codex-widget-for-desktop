@@ -77,6 +77,7 @@ async function verifyTransactionCore() {
   assert(candidates.length >= 2, "duplicate concept controls should produce multiple candidates");
   assert(candidates.every((candidate) => candidate.leaseId === lease.leaseId), "candidate ids should be lease-scoped");
   verifySearchIntentAndGate({ graph, lease });
+  verifyOrdinalContentIntentAndGate({ graph, lease });
 }
 
 function verifySearchIntentAndGate({ graph, lease }) {
@@ -99,6 +100,25 @@ function verifySearchIntentAndGate({ graph, lease }) {
   assertEqual(selected?.element?.id, "search-button", "search submit should select the button candidate");
   const brandedIntent = resolveBrowserActionIntent("검색창에 'codex widget browser action' 입력하고 Google 검색 버튼 눌러줘");
   assertEqual(brandedIntent.actions[1].target.text, "google 검색", "branded search submit label should be preserved");
+}
+
+function verifyOrdinalContentIntentAndGate({ graph, lease }) {
+  const intent = resolveBrowserActionIntent("4번글 눌러줘");
+  assertEqual(intent.actions.length, 1, "ordinal content intent should produce one click");
+  assertEqual(intent.actions[0].target.text, "4번째 글", "ordinal content intent should preserve the requested item number");
+  const candidates = generateCandidateSteps({
+    action: intent.actions[0],
+    graph,
+    target: intent.actions[0].target,
+    hint: intent.actions[0].target.text,
+    lease
+  });
+  const decision = decideCandidatePlanningGate({ action: intent.actions[0], candidates, locale: "ko", requireFreshLease: true });
+  const selected = candidates.find((candidate) => candidate.candidateId === decision.selectedCandidateId);
+  assertEqual(decision.decision, "proceed", "ordinal content target should proceed when the item exists");
+  assertEqual(selected?.element?.id, "post-4", "ordinal content target should select the fourth content item");
+  assert(selected?.label.includes("4번째 글"), "ordinal candidate label should be user-readable");
+  assert(!candidates.some((candidate) => candidate.element?.id === "vote-post-2"), "utility vote links must not count as content items");
 }
 
 async function verifyTransactionClarification() {
@@ -139,6 +159,14 @@ async function verifyTransactionVerification() {
   assertEqual(failed.status, "failed", "wrong click without expected effect should fail verification");
   const passed = verifyBrowserAction({ action, expected, before, after: changed, ok: true });
   assertEqual(passed.status, "passed", "route/query transition should satisfy click verification");
+  const staleBack = verifyBrowserAction({
+    action: { type: "back" },
+    expected: [{ type: "navigation_complete" }],
+    before,
+    after: unchanged,
+    ok: true
+  });
+  assertEqual(staleBack.status, "failed", "back with unchanged observation should fail verification");
   const typeAction = { type: "type", target: { kind: "element_id", id: "search-box" }, text: "hello", clearFirst: true, submit: false };
   const noSubmit = verifyBrowserAction({
     action: typeAction,
@@ -332,6 +360,82 @@ function createSnapshot(options = {}) {
         listOwner: "posts",
         contextText: "흥미로운 글 제목 작성자 조회수",
         domPathHash: "post-1",
+        mutationRevision
+      },
+      {
+        id: "post-2",
+        role: "link",
+        tagName: "a",
+        label: "두 번째 게시글 제목",
+        text: "두 번째 게시글 제목",
+        href: "https://example.test/post/2",
+        selector: "main a.post:nth-of-type(2)",
+        bbox: { x: 120, y: 176, w: 360, h: 28 },
+        visible: true,
+        enabled: true,
+        confidence: 0.94,
+        sourceOrder: 7,
+        nearestLandmark: "main",
+        listOwner: "posts",
+        contextText: "두 번째 게시글 제목 작성자 조회수",
+        domPathHash: "post-2",
+        mutationRevision
+      },
+      {
+        id: "vote-post-2",
+        role: "link",
+        tagName: "a",
+        label: "추천 97",
+        text: "추천 97",
+        href: "https://example.test/post/2",
+        selector: "main a.vote",
+        bbox: { x: 500, y: 176, w: 80, h: 28 },
+        visible: true,
+        enabled: true,
+        confidence: 0.92,
+        sourceOrder: 8,
+        nearestLandmark: "main",
+        listOwner: "posts",
+        contextText: "추천 97",
+        domPathHash: "vote-post-2",
+        mutationRevision
+      },
+      {
+        id: "post-3",
+        role: "link",
+        tagName: "a",
+        label: "세 번째 게시글 제목",
+        text: "세 번째 게시글 제목",
+        href: "https://example.test/post/3",
+        selector: "main a.post:nth-of-type(3)",
+        bbox: { x: 120, y: 212, w: 360, h: 28 },
+        visible: true,
+        enabled: true,
+        confidence: 0.94,
+        sourceOrder: 9,
+        nearestLandmark: "main",
+        listOwner: "posts",
+        contextText: "세 번째 게시글 제목 작성자 조회수",
+        domPathHash: "post-3",
+        mutationRevision
+      },
+      {
+        id: "post-4",
+        role: "link",
+        tagName: "a",
+        label: "네 번째 게시글 제목",
+        text: "네 번째 게시글 제목",
+        href: "https://example.test/post/4",
+        selector: "main a.post:nth-of-type(4)",
+        bbox: { x: 120, y: 248, w: 360, h: 28 },
+        visible: true,
+        enabled: true,
+        confidence: 0.94,
+        sourceOrder: 10,
+        nearestLandmark: "main",
+        listOwner: "posts",
+        contextText: "네 번째 게시글 제목 작성자 조회수",
+        domPathHash: "post-4",
         mutationRevision
       }
     ]

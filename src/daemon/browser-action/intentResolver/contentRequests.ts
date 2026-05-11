@@ -12,6 +12,10 @@ export function isContentOpenRequest(text: string): boolean {
 }
 
 export function readContentRequestTarget(text: string): string {
+  const ordinal = readContentOrdinal(text);
+  if (ordinal) {
+    return `${ordinal}번째 글`;
+  }
   if (/(재밌|재미|흥미|interesting|fun)/i.test(text)) {
     return "재밌어보이는 글";
   }
@@ -19,6 +23,31 @@ export function readContentRequestTarget(text: string): string {
     return "아무 글";
   }
   return "대표 글";
+}
+
+export function readContentOrdinal(text: string): number | undefined {
+  const compact = text.replace(/\s+/g, "");
+  const digitMatch = compact.match(/(\d{1,3})(?:번째|번|째)(?:글|게시글|게시물|포스트|포스팅|article|post|item)/i) ??
+    compact.match(/(?:글|게시글|게시물|포스트|포스팅|article|post|item)(\d{1,3})(?:번째|번|째)?/i);
+  const digit = Number(digitMatch?.[1]);
+  if (Number.isInteger(digit) && digit > 0 && digit <= 100) {
+    return digit;
+  }
+
+  const normalized = text.replace(/\s+/g, " ").trim();
+  const patterns: Array<[RegExp, number]> = [
+    [/(맨\s*(?:위|첫)|첫\s*(?:번째|째)?|1\s*(?:번째|번|째)).*(?:글|게시글|게시물|포스트|article|post|item)/i, 1],
+    [/(두\s*(?:번째|째)?|둘\s*(?:째)?|2\s*(?:번째|번|째)).*(?:글|게시글|게시물|포스트|article|post|item)/i, 2],
+    [/(세\s*(?:번째|째)?|셋\s*(?:째)?|3\s*(?:번째|번|째)).*(?:글|게시글|게시물|포스트|article|post|item)/i, 3],
+    [/(네\s*(?:번째|째)?|넷\s*(?:째)?|4\s*(?:번째|번|째)).*(?:글|게시글|게시물|포스트|article|post|item)/i, 4],
+    [/(다섯\s*(?:번째|째)?|5\s*(?:번째|번|째)).*(?:글|게시글|게시물|포스트|article|post|item)/i, 5],
+    [/(여섯\s*(?:번째|째)?|6\s*(?:번째|번|째)).*(?:글|게시글|게시물|포스트|article|post|item)/i, 6],
+    [/(일곱\s*(?:번째|째)?|7\s*(?:번째|번|째)).*(?:글|게시글|게시물|포스트|article|post|item)/i, 7],
+    [/(여덟\s*(?:번째|째)?|8\s*(?:번째|번|째)).*(?:글|게시글|게시물|포스트|article|post|item)/i, 8],
+    [/(아홉\s*(?:번째|째)?|9\s*(?:번째|번|째)).*(?:글|게시글|게시물|포스트|article|post|item)/i, 9],
+    [/(열\s*(?:번째|째)?|10\s*(?:번째|번|째)).*(?:글|게시글|게시물|포스트|article|post|item)/i, 10]
+  ];
+  return patterns.find(([pattern]) => pattern.test(normalized))?.[1];
 }
 
 function isDirectFilterOrNavigationClick(text: string): boolean {

@@ -75,7 +75,10 @@ function checkExpectedState(input: {
     }
     return { status: "passed", reason: "Expected element state was verified after the action." };
   }
-  if (input.expected.type === "navigation_complete" || input.expected.type === "network_idle" || input.expected.type === "no_error_toast") {
+  if (input.expected.type === "navigation_complete") {
+    return verifyNavigationCompleteEffect(input);
+  }
+  if (input.expected.type === "network_idle" || input.expected.type === "no_error_toast") {
     return verifyDefaultEffect(input);
   }
   if (input.expected.type === "custom") {
@@ -103,6 +106,21 @@ function verifyCustomEffect(input: {
       : { status: "failed", reason: "Click completed but the expected visible page effect was not proven." };
   }
   return verifyDefaultEffect(input);
+}
+
+function verifyNavigationCompleteEffect(input: {
+  action: BrowserAction;
+  before?: BrowserObservation;
+  after?: BrowserObservation;
+}): BrowserVerificationResult {
+  const result = verifyDefaultEffect(input);
+  if (result.status === "passed") {
+    return result;
+  }
+  if (input.action.type === "back" || input.action.type === "forward") {
+    return { status: "failed", reason: "Browser navigation command completed, but the observed page did not change." };
+  }
+  return result;
 }
 
 function verifyDefaultEffect(input: {

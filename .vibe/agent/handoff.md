@@ -4,6 +4,28 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Browser Action Deterministic Back And Ordinal Content
+
+Manual DB/log review on 2026-05-11 found two separate Browser Action failures:
+
+- `뒤로가기` sometimes acted in the browser but returned a stale widget answer because the Browser Bridge accepted the pre-navigation snapshot once `readyState=complete` was observed.
+- Repeating `4번글 눌러줘` was nondeterministic because the intent resolver collapsed the request to `대표 글`, candidate metadata allowed representative-content ties to proceed, and late target resolution could choose a different element than the selected transaction candidate.
+
+Implemented fixes:
+
+- Browser Bridge tab navigation actions now wait for changed URL/route/view-revision evidence for `navigate`/`back`/`forward`; unchanged back/forward observations return a failed execution instead of a stale success.
+- Browser Action verification now fails `back`/`forward` when the observed page does not change.
+- Content-open intent parsing preserves ordinal requests such as `4번글`, `첫번째 글`, and `맨 윗 글` as `N번째 글`.
+- Candidate generation has an ordinal content-list path that filters utility/count/category links, preserves content order, and binds the requested item number to a concrete candidate.
+- Execution now uses the transaction-selected candidate as the action target for non-exact element actions, so the resolver revalidates rather than silently choosing a different representative element.
+- Regression coverage was added for ordinal content intent/candidate selection, utility vote-link exclusion, and stale back verification.
+
+Verification passed `npm run lint`, `npm run build:web`, `npm run smoke`, `npm run smoke:browser-action`, `npm run smoke:browser-action:e2e-control`, `npm run smoke:browser-action:prompt-classification`, `npm run smoke:browser-action:fresh-context`, `npm run smoke:browser-interaction-transaction`, `npm run smoke:browser-action:transaction-verification`, `npm run smoke:browser-view-graph-v2`, `npm run smoke:browser-bridge`, `npm run smoke:extension`, and `npm run smoke:dom`.
+
+Runtime was restarted after daemon/extension-bridge changes. Renderer is listening on `127.0.0.1:5173` with PID `101396`, daemon is healthy on `127.0.0.1:4128` with PID `112748`, and widget PID is `117036`.
+
+Manual follow-up: reload the unpacked Browser Bridge extension before live browser retesting so Chrome/Edge uses the updated bridge `action-channel.js`.
+
 ## Latest Update: Browser Action Back Lease And Clarification UX
 
 Manual widget testing on 2026-05-11 showed `뒤로가기` succeeded only 1/4 times and ambiguous target clarification candidates were hard to distinguish.

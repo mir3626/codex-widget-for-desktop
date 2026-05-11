@@ -151,9 +151,16 @@ export async function executeBrowserAction(input: {
     input.results.set(result.id, result);
     return { session: cloneSession(input.session), result: cloneResult(result), audit: auditActionResult(input.session, result) };
   }
-  const targetResolution = shouldResolveTarget(input.action, input.targetHint)
+  const candidateBoundResolution = createCandidateBoundTargetResolution({
+    action: input.action,
+    target,
+    gateDecision: gate.decision,
+    selectedCandidate,
+    candidateSteps
+  });
+  const targetResolution = candidateBoundResolution ?? (shouldResolveTarget(input.action, input.targetHint)
     ? resolveTarget({ graph, observation, action: input.action, target, hint: input.targetHint, memoryReadSet })
-    : { alternatives: [], confidence: 1, reason: "This browser action does not require a page element target." };
+    : { alternatives: [], confidence: 1, reason: "This browser action does not require a page element target." });
   if (gate.decision === "clarify" && candidateSteps.length > 1 && !isExactElementBinding(target) && !hasStrongSemanticTargetSelection(targetResolution)) {
     targetResolution.primary = candidateSteps[0]?.element ?? targetResolution.primary;
     targetResolution.alternatives = candidateSteps.slice(1, 5).map((candidate) => candidate.element).filter((element): element is NonNullable<typeof element> => Boolean(element));
@@ -326,6 +333,31 @@ export async function executeBrowserAction(input: {
 
 function isExactElementBinding(target: ReturnType<typeof readActionTarget>): boolean {
   return target?.kind === "element_id" || target?.kind === "focused" || target?.kind === "bbox";
+}
+
+function createCandidateBoundTargetResolution(input: {
+  action: BrowserAction;
+  target: ReturnType<typeof readActionTarget>;
+  gateDecision: string;
+  selectedCandidate: ReturnType<typeof generateCandidateSteps>[number] | undefined;
+  candidateSteps: ReturnType<typeof generateCandidateSteps>;
+}): TargetResolution | undefined {
+  if (input.gateDecision !== "proceed" || isExactElementBinding(input.target) || !input.selectedCandidate?.element) {
+    return undefined;
+  }
+  if (!("target" in input.action)) {
+    return undefined;
+  }
+  return {
+    primary: input.selectedCandidate.element,
+    alternatives: input.candidateSteps
+      .filter((candidate) => candidate.candidateId !== input.selectedCandidate?.candidateId)
+      .map((candidate) => candidate.element)
+      .filter((element): element is NonNullable<typeof element> => Boolean(element))
+      .slice(0, 4),
+    confidence: input.selectedCandidate.confidence,
+    reason: `Using transaction-selected browser candidate ${input.selectedCandidate.candidateId} (${input.selectedCandidate.label}).`
+  };
 }
 
 function hasStrongSemanticTargetSelection(resolution: TargetResolution): boolean {

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readContentOrdinal } from "../intentResolver/contentRequests.js";
 import { isNonRepresentativeContentLabel } from "../targetResolver/semanticContentTarget.js";
 import { normalizeBrowserTargetText, tokenizeBrowserTargetText } from "../targetLexicon.js";
 import type {
@@ -25,6 +26,10 @@ export function generateCandidateSteps(input: {
     return [createSyntheticCandidate(input, "current_view", "이 작업은 특정 페이지 요소가 필요하지 않습니다.", 1)];
   }
   const hint = normalizeBrowserTargetText(input.hint || (input.target?.kind === "text" ? input.target.text : undefined) || "");
+  const ordinal = readContentOrdinal(input.hint || (input.target?.kind === "text" ? input.target.text : undefined) || "");
+  if (ordinal) {
+    return generateOrdinalContentCandidates(input, ordinal);
+  }
   const representativeContent = isRepresentativeContentRequest(hint, input.action);
   const candidates = input.graph.elements
     .filter((element) => element.visible)
@@ -94,6 +99,64 @@ function createSyntheticCandidate(input: {
     memoryEvidence: input.memoryEvidence,
     safetyHints: []
   };
+}
+
+function generateOrdinalContentCandidates(input: {
+  action: BrowserAction;
+  graph: ElementGraph;
+  lease?: BrowserViewContextLease;
+  stepIndex?: number;
+  expected?: BrowserExpectedState[];
+  memoryEvidence?: CandidateStep["memoryEvidence"];
+}, ordinal: number): CandidateStep[] {
+  const ordered = dedupeContentElements(input.graph.elements
+    .filter((element) => element.visible)
+    .filter(looksLikeContentElement)
+    .sort(compareContentElementOrder));
+  const selected = ordered[ordinal - 1];
+  const candidateElements = selected
+    ? [selected, ...ordered.filter((element) => element.id !== selected.id).slice(0, 4)]
+    : ordered.slice(0, 5);
+  const candidates: CandidateStep[] = candidateElements.map((element, index) => {
+    const label = readElementLabel(element) || element.id;
+    const selectedOrdinal = selected ? ordinal : index + 1;
+    const isSelected = Boolean(selected) && element.id === selected.id;
+    return {
+      candidateId: `browser-candidate-${randomUUID()}`,
+      leaseId: input.lease?.leaseId,
+      contextId: input.lease?.contextId,
+      viewRevision: input.lease?.viewRevision,
+      graphDigest: input.lease?.graphDigest,
+      stepIndex: input.stepIndex ?? 0,
+      action: input.action,
+      targetRef: element.id,
+      element,
+      referenceBindingScope: "content_list_ordinal" as const,
+      label: `${selectedOrdinal}번째 글: ${label}`,
+      localeLabel: `${selectedOrdinal}번째 글: ${buildLocaleLabel(element, label)}`,
+      role: element.role,
+      region: element.nearestLandmark,
+      expectedEffect: input.expected ?? expectedEffectsForAction(input.action),
+      riskClass: classifyBrowserActionRisk(input.action),
+      confidence: isSelected ? 0.94 : 0.52,
+      scoreBreakdown: {
+        ordinal_content: isSelected ? 0.74 : 0.24,
+        content_order: Math.max(0, 0.2 - index * 0.03)
+      },
+      alternatives: [],
+      reasonCodes: [
+        "ordinal_content",
+        isSelected ? "ordinal_match" : "ordinal_alternative",
+        index === 0 ? "top_candidate" : "alternative_candidate"
+      ],
+      memoryEvidence: input.memoryEvidence,
+      safetyHints: element.riskHints
+    };
+  });
+  return candidates.map((candidate, _index, candidates) => ({
+    ...candidate,
+    alternatives: candidates.filter((other) => other.candidateId !== candidate.candidateId).slice(0, 4).map((other) => other.candidateId)
+  }));
 }
 
 function scoreElementCandidate(input: {
@@ -257,9 +320,13 @@ function scoreRequestedRoleFit(action: BrowserAction, element: BrowserElement): 
 
 function looksLikeContentElement(element: BrowserElement): boolean {
   const role = `${element.role ?? ""} ${element.tagName ?? ""}`.toLowerCase();
+  const label = readElementLabel(element);
   const text = `${element.text ?? ""} ${element.contextText ?? ""}`.trim();
   const href = element.href ?? "";
   if (!Boolean(href || /link|article|row/.test(role)) || text.length < 8) {
+    return false;
+  }
+  if (isUtilityContentLabel(label)) {
     return false;
   }
   if (isNonRepresentativeContentLabel(text) || /(로그인|설정|검색|댓글|목록|전체글|개념글|글쓰기|삭제|수정|신고|추천인\s*기록|profile|login|setting|comment|list|write|delete|edit|report)/i.test(text)) {
@@ -269,6 +336,81 @@ function looksLikeContentElement(element: BrowserElement): boolean {
     return false;
   }
   return true;
+}
+
+function isUtilityContentLabel(label: string): boolean {
+  const normalized = normalizeBrowserTargetText(label);
+  if (!normalized) {
+    return false;
+  }
+  if (/^(?:추천|비추천|댓글|조회|스크랩|신고|공지|전체글|개념글|글쓰기|목록|검색|이전|다음|더보기|hot|best|new|prev|next|more)(?:\s*\d+)?$/i.test(normalized)) {
+    return true;
+  }
+  if (/^(?:유머|자유|질문|정보|핫딜|뉴스|이슈|스포츠|게임|정치|경제|연예|축구|해외축구|국내축구)$/i.test(normalized)) {
+    return true;
+  }
+  if (/^\[?\d+\]?$/.test(normalized)) {
+    return true;
+  }
+  return normalized.length <= 2;
+}
+
+function dedupeContentElements(elements: BrowserElement[]): BrowserElement[] {
+  const seen = new Set<string>();
+  const unique: BrowserElement[] = [];
+  for (const element of elements) {
+    const label = normalizeBrowserTargetText(readElementLabel(element));
+    const href = normalizeContentHref(element.href);
+    const key = href || `${label}:${Math.round(element.bbox?.y ?? element.sourceOrder ?? 0)}`;
+    if (!key || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    unique.push(element);
+  }
+  return unique;
+}
+
+function normalizeContentHref(href: string | undefined): string {
+  if (!href) {
+    return "";
+  }
+  try {
+    const url = new URL(href);
+    url.hash = "";
+    return url.href;
+  } catch {
+    return href.replace(/#.*$/, "");
+  }
+}
+
+function compareContentElementOrder(left: BrowserElement, right: BrowserElement): number {
+  const landmarkDelta = contentLandmarkRank(left) - contentLandmarkRank(right);
+  if (landmarkDelta !== 0) {
+    return landmarkDelta;
+  }
+  const leftY = left.bbox?.y ?? Number.POSITIVE_INFINITY;
+  const rightY = right.bbox?.y ?? Number.POSITIVE_INFINITY;
+  if (leftY !== rightY) {
+    return leftY - rightY;
+  }
+  const leftX = left.bbox?.x ?? Number.POSITIVE_INFINITY;
+  const rightX = right.bbox?.x ?? Number.POSITIVE_INFINITY;
+  if (leftX !== rightX) {
+    return leftX - rightX;
+  }
+  return (left.sourceOrder ?? 999999) - (right.sourceOrder ?? 999999);
+}
+
+function contentLandmarkRank(element: BrowserElement): number {
+  const landmark = normalizeBrowserTargetText(element.nearestLandmark ?? "");
+  if (/^(main|content|article|본문|게시글|게시물|목록)$/.test(landmark)) {
+    return 0;
+  }
+  if (/^(nav|navigation|menu|toolbar|header|footer|sidebar)$/.test(landmark)) {
+    return 2;
+  }
+  return 1;
 }
 
 function isRepresentativeContentRequest(hint: string, action: BrowserAction): boolean {

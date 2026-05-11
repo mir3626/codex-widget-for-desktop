@@ -1,4 +1,5 @@
 import type { BrowserAction } from "../types.js";
+import { readContentOrdinal } from "../intentResolver/contentRequests.js";
 import type { BrowserInteractionRiskClass, IntentFrame } from "./types.js";
 import { classifyBrowserActionRisk } from "./contextLease.js";
 
@@ -12,6 +13,7 @@ export function buildIntentFrameFromAction(input: {
     actionFamily: input.action.type,
     targetPhrase: input.targetPhrase,
     valuePhrase: input.action.type === "type" ? input.action.text : undefined,
+    ordinal: readContentOrdinal(input.targetPhrase ?? input.utterance),
     constraints: [],
     locale: detectLocale(input.utterance),
     riskHint: classifyBrowserActionRisk(input.action),
