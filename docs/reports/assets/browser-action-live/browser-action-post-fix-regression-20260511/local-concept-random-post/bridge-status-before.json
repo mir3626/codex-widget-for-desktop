@@ -1,0 +1,32 @@
+{
+  "extensionVersion": "0.1.0",
+  "daemonBaseUrl": "http://127.0.0.1:39386",
+  "connected": true,
+  "mode": "restricted",
+  "reason": "ensure:settings_saved",
+  "updatedAt": "2026-05-11T04:06:12.585Z",
+  "lastSeenAt": "2026-05-11T04:06:12.585Z",
+  "lastError": "This browser page does not allow extension page access.",
+  "nativeHost": "disabled",
+  "activeTab": {
+    "tabId": 58163616,
+    "windowId": 58163614,
+    "url": "chrome-extension://cgdikhgimikopgkldaaoonfnlcfjipge/popup.html",
+    "title": "Codex Widget Browser Bridge",
+    "origin": "null/*",
+    "permission": "restricted",
+    "detail": "This browser page does not allow extension page access."
+  },
+  "settings": {
+    "daemonBaseUrl": "http://127.0.0.1:39386",
+    "autoConnect": true,
+    "autoObserve": true,
+    "allowAllSites": false,
+    "observeBlocklist": [],
+    "allowSafeReadScroll": true,
+    "requireApprovalForClickType": false,
+    "useNativeHost": false,
+    "debugSnapshot": false,
+    "pollIntervalSeconds": 5
+  }
+}

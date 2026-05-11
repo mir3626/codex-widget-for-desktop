@@ -1,0 +1,15 @@
+{
+  "scenarioId": "local-back-single-step",
+  "requestId": "browser-action-live-local-back-single-step-1778472384415-3",
+  "status": "pass",
+  "failureClass": "",
+  "elapsedMs": 1176,
+  "finalUrl": "http://127.0.0.1:39387/view/notice",
+  "answer": "브라우저 동작을 완료했습니다.\n실행: back\n현재 페이지: 공지 (http://127.0.0.1:39387/view/notice)\n검증: Action changed the browser route or URL.",
+  "answerRedacted": false,
+  "answerLength": 118,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-post-fix-regression-20260511\\local-back-single-step\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-post-fix-regression-20260511\\local-back-single-step\\screenshot-after.png"
+  }
+}

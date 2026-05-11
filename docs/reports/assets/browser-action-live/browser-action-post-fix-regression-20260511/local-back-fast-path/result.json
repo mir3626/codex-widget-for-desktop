@@ -1,0 +1,15 @@
+{
+  "scenarioId": "local-back-fast-path",
+  "requestId": "browser-action-live-local-back-fast-path-1778472383427-2",
+  "status": "pass",
+  "failureClass": "",
+  "elapsedMs": 380,
+  "finalUrl": "http://127.0.0.1:39387/forum",
+  "answer": "브라우저 동작을 완료했습니다.\n실행: back\n현재 페이지: Browser Action Live Fixture (http://127.0.0.1:39387/forum)\n검증: Action changed the browser route or URL.",
+  "answerRedacted": false,
+  "answerLength": 137,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-post-fix-regression-20260511\\local-back-fast-path\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-post-fix-regression-20260511\\local-back-fast-path\\screenshot-after.png"
+  }
+}

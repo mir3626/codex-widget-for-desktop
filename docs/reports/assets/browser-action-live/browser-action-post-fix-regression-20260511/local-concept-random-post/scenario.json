@@ -1,0 +1,24 @@
+{
+  "id": "local-concept-random-post",
+  "mode": "isolated",
+  "url": "fixture:/forum",
+  "prompt": "개념글 눌러서 재밌어보이는 글 아무거나 보여줘",
+  "expect": {
+    "urlIncludes": [
+      "/view/interesting"
+    ],
+    "textIncludes": [
+      "재밌는 게시글"
+    ],
+    "forbidFinalUrlIncludes": [
+      "/view/notice",
+      "/view/survey"
+    ],
+    "forbidAnswer": [
+      "plan:",
+      "latest result",
+      "Browser Action을 실행했습니다."
+    ],
+    "maxMs": 30000
+  }
+}

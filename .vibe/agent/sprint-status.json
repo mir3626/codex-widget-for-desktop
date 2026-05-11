@@ -202,7 +202,7 @@
   ],
   "handoff": {
     "currentSprintId": "iter-20-complete",
-    "lastActionSummary": "Browser Action post-transaction hardening improved candidate clarity and forward-history reliability. View Graph v2 representative content excludes pinned/notice/admin rows, clarification candidates now render readable localized multi-line summaries with ordinal aliases, clarification resume accepts Korean/English ordinal words, and live-runner coverage now includes deterministic forward-history setup.",
+    "lastActionSummary": "Browser Action post-transaction hardening improved candidate clarity and history-action latency. View Graph v2 representative content excludes pinned/notice/admin rows, clarification candidates now render readable localized multi-line summaries with ordinal aliases, Browser Bridge no longer double-waits after tab-navigation actions, and live-runner coverage now proves back/forward history behavior.",
     "openIssues": [
       "Reload the installed unpacked Browser Bridge extension before live-site retesting so Chrome/Edge uses the latest service-worker and bridge scripts.",
       "Ranked-choice clarification card UX now has richer daemon text summaries, but renderer card layout/visual target highlighting can still be polished.",
@@ -221,11 +221,11 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-11T12:58:47.762+09:00"
+    "updatedAt": "2026-05-11T13:08:15.954+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-11T12:58:47.762+09:00"
+  "stateUpdatedAt": "2026-05-11T13:08:15.954+09:00"
 }

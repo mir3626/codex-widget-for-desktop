@@ -1,0 +1,15 @@
+{
+  "scenarioId": "local-current-page-read",
+  "requestId": "browser-action-live-local-current-page-read-1778472382694-1",
+  "status": "pass",
+  "failureClass": "",
+  "elapsedMs": 137,
+  "finalUrl": "http://127.0.0.1:39387/forum",
+  "answer": "현재 보고 있는 페이지는 **Browser Action Live Fixture**입니다.\nURL: http://127.0.0.1:39387/forum\n\n주요 내용:\n- 개념글 전체글 글쓰기 특이점 테스트 게시판 [공지] 처음 오신 분을 위한 안내운영자 [설문] 알리 할인상품 의견 요청운영자 연봉자랑하는 지피쨩작성자 오늘 1964 28 싱글벙글 브라우저 액션 테스트작성자 오늘 881 12\n\n보이는 주요 조작 요소: 개념글, 전체글, 글쓰기, [공지] 처음 오신 분을 위한 안내, [설문] 알리 할인상품 의견 요청",
+  "answerRedacted": false,
+  "answerLength": 287,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-post-fix-regression-20260511\\local-current-page-read\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-post-fix-regression-20260511\\local-current-page-read\\screenshot-after.png"
+  }
+}

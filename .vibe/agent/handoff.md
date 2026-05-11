@@ -4,6 +4,21 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Browser Action History Command Latency Fix
+
+Automated live regression after the previous candidate-clarity push found one remaining isolated failure: `local-back-fast-path` moved the target browser back to `/forum`, but the daemon prompt never completed before the 8s scenario timeout.
+
+Root cause: Browser Bridge history actions already waited for the changed page observation inside `executeTabNavigationAction()`, then the outer command-first result path called `readPostActionSnapshot()` a second time using the already-changed snapshot as the fallback. For `back`/`forward`, that second wait required another changed observation that would never occur, adding about 6s and occasionally timing out before the daemon received the result.
+
+Implemented fixes:
+
+- `providers/browser-dom-extension/bridge/action-channel.js` now reuses `result.after` immediately for tab-navigation actions that already performed post-navigation observation.
+- `scripts/browser-action-live-runner.mjs` now avoids classifying `"permission":"allowed"` artifacts as permission failures and records final URL/text/screenshot even when a scenario times out.
+- Headed isolated live evidence `browser-action-back-fast-regression-20260511` passed `local-back-fast-path` in 357ms.
+- Full headed isolated live evidence `browser-action-post-fix-regression-20260511` passed 8/8 scenarios; `back` was 381ms/1177ms and `forward` was 366ms.
+
+Verification passed `npm run dogfood:browser-action:live -- --scenario local-back-fast-path --run-id browser-action-back-fast-regression-20260511`, `npm run dogfood:browser-action:live -- --run-id browser-action-post-fix-regression-20260511`, `npm run smoke:extension`, `npm run smoke:browser-bridge`, and `npm run smoke:browser-action`.
+
 ## Latest Update: Browser Action Candidate Clarity And Forward Regression
 
 Follow-up hardening after manual Browser Action testing on 2026-05-11 addressed three live risks:

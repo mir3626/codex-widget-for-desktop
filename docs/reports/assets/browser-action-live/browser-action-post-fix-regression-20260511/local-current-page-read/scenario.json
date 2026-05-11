@@ -1,0 +1,16 @@
+{
+  "id": "local-current-page-read",
+  "mode": "isolated",
+  "url": "fixture:/forum",
+  "prompt": "지금 보고있는 페이지 설명해줘",
+  "expect": {
+    "textIncludes": [
+      "특이점 테스트 게시판"
+    ],
+    "forbidAnswer": [
+      "plan:",
+      "latest result"
+    ],
+    "maxMs": 20000
+  }
+}

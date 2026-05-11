@@ -306,6 +306,14 @@ async function runWidgetUiScenario(input) {
     status = "fail";
     failureClass = classifyFailure({ error, answer, events, bridgeStatus: scenarioBridgeStatus });
     answer = answer || readError(error);
+    if (input.targetPage) {
+      finalUrl = input.targetPage.url();
+      finalText = await input.targetPage.locator("body").innerText({ timeout: 2_000 }).catch(() => "");
+      afterScreenshot = path.join(scenarioDir, "screenshot-after.png");
+      await input.targetPage.screenshot({ path: afterScreenshot, fullPage: true }).catch(() => {
+        afterScreenshot = "";
+      });
+    }
   } finally {
     stopCollecting();
   }
@@ -453,6 +461,14 @@ async function runScenario(input) {
     status = "fail";
     failureClass = classifyFailure({ error, answer, events, bridgeStatus: scenarioBridgeStatus });
     answer = answer || readError(error);
+    if (input.page) {
+      finalUrl = input.page.url();
+      finalText = await input.page.locator("body").innerText({ timeout: 2_000 }).catch(() => "");
+      afterScreenshot = path.join(scenarioDir, "screenshot-after.png");
+      await input.page.screenshot({ path: afterScreenshot, fullPage: true }).catch(() => {
+        afterScreenshot = "";
+      });
+    }
   }
 
   const afterStatus = await readBridgeStatus(input.daemonUrl).catch((error) => ({ error: readError(error) }));
@@ -604,7 +620,7 @@ function assertScenario(input) {
 
 function classifyFailure(input) {
   const text = `${readError(input.error)} ${input.answer} ${JSON.stringify(input.events.slice(-5))}`;
-  if (input.bridgeStatus?.mode === "permission_needed" || /permission|Enable this site|site permission/i.test(text)) {
+  if (input.bridgeStatus?.mode === "permission_needed" || /needs_site_permission|missing_permission|Enable this site|site permission|required before/i.test(text)) {
     return "permission_missing";
   }
   if (input.bridgeStatus?.connected === false || /disconnected|health check|ECONNREFUSED|Failed to fetch/i.test(text)) {

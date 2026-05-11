@@ -85,7 +85,9 @@ export async function executePolledBrowserActionCommand(tab, settings, permissio
           metadata: { actualUrl: tab.url ?? before?.url, actualTitle: tab.title ?? before?.title, permission: permission.permission }
         }
       : await executeBrowserActionCommand(tab, command);
-    const after = await readPostActionSnapshot(tab.id, command.action, result.after);
+    const after = result.metadata?.tabNavigation && result.after
+      ? result.after
+      : await readPostActionSnapshot(tab.id, command.action, result.after);
     const afterTab = await safeReadTab(tab.id) ?? tab;
     await postBrowserActionResultWithRetry(resultUrl, {
       requestId: command.requestId,

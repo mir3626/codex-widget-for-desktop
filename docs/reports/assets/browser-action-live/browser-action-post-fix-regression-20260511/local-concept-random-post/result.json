@@ -1,0 +1,15 @@
+{
+  "scenarioId": "local-concept-random-post",
+  "requestId": "browser-action-live-local-concept-random-post-1778472372651-0",
+  "status": "pass",
+  "failureClass": "",
+  "elapsedMs": 8152,
+  "finalUrl": "http://127.0.0.1:39387/view/interesting?alt=2",
+  "answer": "현재 보고 있는 페이지는 **재밌는 게시글**입니다.\nURL: http://127.0.0.1:39387/view/interesting?alt=2\n\n주요 내용:\n- 재밌는 게시글 Browser Action live fixture opened the representative content item.\n\n보이는 주요 조작 요소: 목록",
+  "answerRedacted": false,
+  "answerLength": 184,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-post-fix-regression-20260511\\local-concept-random-post\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-post-fix-regression-20260511\\local-concept-random-post\\screenshot-after.png"
+  }
+}
