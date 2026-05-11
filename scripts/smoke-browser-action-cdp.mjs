@@ -1,11 +1,12 @@
 import { createServer } from "node:http";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { createServer as createNetServer } from "node:net";
 import { chromium } from "@playwright/test";
 import { buildElementGraph, cdpAdapter, resolveTarget } from "../dist/daemon/browser-action/index.js";
+import { removeSmokeDir } from "./smoke-isolation.mjs";
 
 const pageServer = createServer((_request, response) => {
   response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
@@ -86,7 +87,7 @@ try {
 } finally {
   await stopChrome(chrome);
   pageServer.close();
-  await rm(userDataDir, { recursive: true, force: true });
+  removeSmokeDir(userDataDir);
   delete process.env.CODEX_WIDGET_BROWSER_ACTION_CDP_URL;
 }
 

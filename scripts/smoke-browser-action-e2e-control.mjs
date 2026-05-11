@@ -300,6 +300,14 @@ function verifyPromptPlanner() {
   if (!koreanClick || koreanClick.steps[0].action.type !== "click" || koreanClick.steps[0].targetSummary !== "새 채팅") {
     throw new Error(`Korean click prompt did not extract the target phrase: ${JSON.stringify(koreanClick)}`);
   }
+  const feedbackOnly = planBrowserActionFromPrompt({ text: "뒤로가기 동작이 이상한데", mode: "browser" });
+  if (feedbackOnly) {
+    throw new Error(`Browser Action feedback should not execute as a history command: ${JSON.stringify(feedbackOnly)}`);
+  }
+  const recoveryBack = planBrowserActionFromPrompt({ text: "엉뚱한 글 클릭했네 뒤로가기", mode: "browser" });
+  if (!recoveryBack || recoveryBack.steps.length !== 1 || recoveryBack.steps[0].action.type !== "back") {
+    throw new Error(`Explicit recovery back prompt should resolve to a single back action: ${JSON.stringify(recoveryBack)}`);
+  }
 }
 
 function createSnapshot(state) {

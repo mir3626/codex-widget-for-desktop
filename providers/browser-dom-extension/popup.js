@@ -48,7 +48,7 @@ document.querySelector("#enable-site").addEventListener("click", () => {
   void enableCurrentSite();
 });
 
-fields.reloadExtension.addEventListener("click", () => {
+fields.reloadExtension?.addEventListener("click", () => {
   reloadExtension();
 });
 
@@ -68,7 +68,8 @@ async function refresh() {
     setStatus(response.error ?? "Unable to read Browser Bridge status.");
     return;
   }
-  render(response.status, response.settings);
+  const status = await readDaemonReportedStatus(response.status, response.settings);
+  render(status, response.settings);
 }
 
 async function saveSettings() {
@@ -78,7 +79,8 @@ async function saveSettings() {
     settings.allowAllSites = false;
   }
   const response = await sendMessage({ type: "bridge.saveSettings", settings });
-  render(response.status, response.settings);
+  const status = await readDaemonReportedStatus(response.status, response.settings);
+  render(status, response.settings);
   setStatus(response.ok
     ? permission.ok
       ? "Saved Browser Bridge settings."
@@ -88,14 +90,16 @@ async function saveSettings() {
 
 async function resetSettings() {
   const response = await sendMessage({ type: "bridge.resetSettings" });
-  render(response.status, response.settings);
+  const status = await readDaemonReportedStatus(response.status, response.settings);
+  render(status, response.settings);
   setStatus(response.ok ? "Default Browser Bridge settings restored." : response.error ?? "Reset failed.");
 }
 
 async function testConnection() {
   const response = await sendMessage({ type: "bridge.testConnection" });
-  render(response.status, response.settings);
-  setStatus(response.ok ? "Widget daemon connection is OK." : response.status?.lastError ?? response.error ?? "Connection failed.");
+  const status = await readDaemonReportedStatus(response.status, response.settings);
+  render(status, response.settings);
+  setStatus(response.ok ? "Widget daemon connection is OK." : status?.lastError ?? response.error ?? "Connection failed.");
 }
 
 async function enableCurrentSite() {
@@ -111,7 +115,8 @@ async function enableCurrentSite() {
     type: "bridge.refresh",
     reason: permission.ok ? "site_enabled" : "site_permission_denied"
   });
-  render(response.status, response.settings);
+  const status = await readDaemonReportedStatus(response.status, response.settings);
+  render(status, response.settings);
   setStatus(permission.ok ? "Current site enabled." : permission.error ?? "Site permission was not granted.");
 }
 
@@ -135,8 +140,45 @@ async function toggleCurrentSiteBlock() {
 
 async function debugCapture() {
   const response = await sendMessage({ type: "bridge.debugSnapshot" });
-  render(response.status, response.settings);
+  const status = await readDaemonReportedStatus(response.status, response.settings);
+  render(status, response.settings);
   setStatus(response.ok ? "Debug page capture sent." : response.error ?? "Debug capture failed.");
+}
+
+async function readDaemonReportedStatus(status = {}, settings = DEFAULT_SETTINGS) {
+  try {
+    const baseUrl = normalizeDaemonBaseUrl(settings?.daemonBaseUrl ?? status?.daemonBaseUrl ?? fields.daemonBaseUrl?.value);
+    const url = new URL(baseUrl);
+    url.pathname = "/browser-action/extension/status";
+    url.search = "";
+    url.hash = "";
+    const response = await fetch(url.toString(), { method: "GET" });
+    if (!response.ok) {
+      return status;
+    }
+    const payload = await response.json().catch(() => null);
+    if (!payload?.status || typeof payload.status !== "object") {
+      return status;
+    }
+    return mergeStatus(status, payload.status);
+  } catch {
+    return status;
+  }
+}
+
+function mergeStatus(target = {}, source = {}) {
+  return {
+    ...target,
+    ...source,
+    activeTab: {
+      ...(target.activeTab && typeof target.activeTab === "object" ? target.activeTab : {}),
+      ...(source.activeTab && typeof source.activeTab === "object" ? source.activeTab : {})
+    },
+    settings: {
+      ...(target.settings && typeof target.settings === "object" ? target.settings : {}),
+      ...(source.settings && typeof source.settings === "object" ? source.settings : {})
+    }
+  };
 }
 
 function render(status = {}, settings = DEFAULT_SETTINGS) {
@@ -148,7 +190,9 @@ function render(status = {}, settings = DEFAULT_SETTINGS) {
   fields.connection.textContent = state.connection;
   fields.tabState.textContent = state.tab;
   fields.buildState.textContent = summarizeBuildState(status);
-  fields.reloadExtension.hidden = status.reloadRequired !== true;
+  if (fields.reloadExtension) {
+    fields.reloadExtension.hidden = !isReloadRequired(status);
+  }
   fields.diagnostic.textContent = status.lastError ?? status.reason ?? "";
 
   fields.daemonBaseUrl.value = settings.daemonBaseUrl ?? DEFAULT_SETTINGS.daemonBaseUrl;
@@ -169,9 +213,20 @@ function render(status = {}, settings = DEFAULT_SETTINGS) {
 
 function summarizeBuildState(status) {
   const buildId = status.extensionBuildId || status.extensionVersion || "unknown";
-  return status.reloadRequired
+  return isReloadRequired(status)
     ? `Build: ${buildId} · reload required. Use Reload bridge after saving diagnostics.`
     : `Build: ${buildId}`;
+}
+
+function isReloadRequired(status) {
+  if (status?.reloadRequired === true) {
+    return true;
+  }
+  return Boolean(
+    status?.extensionSourceHash &&
+    status?.expectedExtensionSourceHash &&
+    status.extensionSourceHash !== status.expectedExtensionSourceHash
+  );
 }
 
 function reloadExtension() {

@@ -84,12 +84,11 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
     return true;
   }
   if (continued.pendingCommand) {
-    completePromptWithResult(input, {
+    return handlePromptExtensionCommand(input, {
       plan: continued.plan,
       results: continued.results,
-      runtimeSummary: "Prompt Browser Action stopped with an extension command timeout"
+      command: continued.pendingCommand
     });
-    return true;
   }
   completePromptWithResult(input, {
     plan: continued.plan,

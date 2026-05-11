@@ -66,3 +66,39 @@ Browser Action report rows as semantic feedback evidence. It references tracked
 report markdown, not raw screenshots or full page dumps.
 `npm run smoke:browser-action:semantic-live-corpus` verifies the referenced
 scenarios and intent coverage.
+
+`scripts/browser-action-live-runner.mjs` is the repeatable live Browser Action
+runner. It supports isolated, widget-UI, and real active-tab modes. The
+completion gate uses `npm run smoke:browser-action:live-harness` to verify the
+scenario parser and dry-run artifact path without launching a browser, while
+live dogfood remains opt-in through `npm run dogfood:browser-action:live`,
+`:widget-ui`, or `:real`.
+
+## Native Desktop Helper
+
+`npm run build:browser-native-desktop-helper` builds the Rust native UIA helper
+and copies it into `dist/browser-native-desktop-helper/`.
+
+`npm run smoke:browser-native-desktop-helper-native` verifies the built Rust
+helper contract without mutating the user's browser. It checks `status`,
+`observe`, safe `read`, sensitive-text blocking, and `evaluate` blocking.
+
+`npm run smoke:browser-native-desktop-helper` verifies the PowerShell fallback
+helper contract without mutating the user's browser. It checks `status`,
+`observe`, safe `read`, and sensitive-text blocking.
+
+`npm run smoke:browser-native-desktop-helper:signature` reports Authenticode
+signature state for the built native helper. In development it allows unsigned
+or unavailable signature state; release verification should set
+`CODEX_WIDGET_REQUIRE_SIGNED_HELPERS=1` after a code-signing certificate or CI
+signing service is available.
+
+`npm run sign:browser-native-desktop-helper` invokes `signtool.exe` when
+`CODEX_WIDGET_SIGN_HELPERS=1` and either
+`CODEX_WIDGET_SIGN_CERT_THUMBPRINT` or `CODEX_WIDGET_SIGN_CERT_PATH` is
+configured.
+
+`npm run smoke:browser-native-desktop-helper:live` launches an isolated
+Chrome/Edge profile, verifies that the helper observes a real browser window,
+and executes a bounded browser chrome `reload` action. This live smoke is
+included only in `npm run smoke:all -- --include-live`.

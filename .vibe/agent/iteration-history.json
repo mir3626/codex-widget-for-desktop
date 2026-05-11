@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-23",
+  "currentIteration": "iter-25",
   "iterations": [
     {
       "id": "iter-1",
@@ -806,6 +806,91 @@
       },
       "summary": "Iteration 23 hardened the remaining follow-up set. `useChatSessionController` now delegates assistant stream/typewriter state to `useAssistantMessageStream` and reuses the dismissable overlay hook. Reviewed live Browser Action report rows are recorded in `docs/dogfood/browser-action-semantic-live-corpus.jsonl` with a smoke gate. The Browser Bridge popup adds a reload button for stale extension builds. Browser Action diagnostics summaries can be copied or downloaded from the renderer. Vite renderer chunks are split into vendor chunks, smoke-all suppresses Node SQLite experimental warning noise, smoke temp cleanup schedules deferred retries, app-server client-tool BLOCKED status is encoded in code/docs, Vision ASR sidecar execution is implemented, and restricted-page recovery text is clearer.",
       "completedAt": "2026-05-11T17:42:00.000+09:00"
+    },
+    {
+      "id": "iter-24",
+      "label": "Browser Action Reliability Foundation",
+      "startedAt": "2026-05-11T21:59:00.000+09:00",
+      "goal": "Complete the Browser Action reliability foundation across runtime stabilization, verification v2, intent transaction hardening, live test harness, perception scheduling, semantic integration, semantic memory feedback, UX simplification, app-server/tool contract, and architecture cleanup.",
+      "plannedSprints": [
+        "iter-24-sprint-01-runtime-verification-and-intent-hardening",
+        "iter-24-sprint-02-live-harness-and-perception-scheduler",
+        "iter-24-sprint-03-semantic-memory-ux-tool-contract-and-boundaries"
+      ],
+      "completedSprints": [
+        "iter-24-sprint-01-runtime-verification-and-intent-hardening",
+        "iter-24-sprint-02-live-harness-and-perception-scheduler",
+        "iter-24-sprint-03-semantic-memory-ux-tool-contract-and-boundaries"
+      ],
+      "carryover": "Manual live Browser Action testing showed architecture-level reliability issues: inconsistent history navigation, verification false positives, feedback prompts misclassified as actions, representative content choosing navigation items, long numeric post ids treated as ordinals, slow prompt-to-action latency, and expensive manual debug loops.",
+      "openRisks": [
+        "Reload the unpacked Browser Bridge extension before manual live-site retesting so Chrome/Edge uses the updated popup/service-worker files.",
+        "Official app-server client-tool integration remains BLOCKED on a stable custom client-tool contract; the simulated daemon tool path and shared result schema are the supported runtime boundary.",
+        "Live Windows UI Automation/browser-chrome execution was blocked during iter-24 and is superseded by iter-25's bounded helper implementation; signed native hardening remains future work.",
+        "Semantic Memory weights remain intentionally conservative and advisory only; further live corpus expansion should tune ranking without overriding freshness, safety, visibility, approval, or current-view evidence."
+      ],
+      "milestoneProgress": {
+        "browser-action-reliability-foundation": 1,
+        "browser-action-runtime-stabilization": 1,
+        "browser-action-verification-v2": 1,
+        "browser-intent-transaction-hardening": 1,
+        "live-browser-action-test-harness": 1,
+        "browser-perception-scheduler": 1,
+        "semantic-interface-v2-integration": 1,
+        "semantic-memory-feedback-loop": 1,
+        "browser-action-ux-simplification": 1,
+        "app-server-agent-tool-contract": 1,
+        "architecture-cleanup-module-boundaries": 1
+      },
+      "summary": "Iteration 24 completed the Browser Action Reliability Foundation. Runtime/history stabilization, expected-effect verification, transaction intent hardening, live test harness coverage, Browser Perception background scheduling, Semantic Interface/Memory integration, user-facing Browser Action summaries, simulated agent-tool result contracts, and architecture source-size regression gates are implemented and covered by focused, aggregate, and isolated live dogfood verification. Completion evidence is recorded in docs/reports/browser-action-reliability-completion-audit-2026-05-11.md.",
+      "completedAt": "2026-05-11T22:45:00.000+09:00"
+    },
+    {
+      "id": "iter-25",
+      "label": "Browser Native Desktop Helper",
+      "startedAt": "2026-05-11T23:15:00.000+09:00",
+      "goal": "Implement a bounded Windows UI Automation helper for Browser Action native desktop fallback.",
+      "plannedSprints": [
+        "iter-25-sprint-01-bounded-windows-uia-helper"
+      ],
+      "completedSprints": [
+        "iter-25-sprint-01-bounded-windows-uia-helper"
+      ],
+      "carryover": "Browser Action had a mockable native helper contract but no bundled live Windows UI Automation helper. The user requested implementation.",
+      "openRisks": [
+        "The helper is implemented as bounded PowerShell because this machine has .NET runtimes but no .NET SDK; a signed Rust/.NET/native helper remains a future hardening track.",
+        "Native desktop fallback remains browser-window scoped and must not expand into arbitrary desktop automation without a new handoff and safety model."
+      ],
+      "milestoneProgress": {
+        "browser-native-desktop-helper": 1,
+        "browser-action-native-fallback": 0.82
+      },
+      "summary": "Iteration 25 implemented the bounded Windows UI Automation Browser Action helper. The helper lives under providers/browser-native-desktop-helper, implements the browser-native-desktop-helper.v1 stdin/stdout JSON contract, observes browser-window UIA controls, executes bounded read/click/type/check/select/scroll/navigate/back/forward/reload actions, blocks evaluate and sensitive text, is auto-discovered by the native desktop adapter when enabled, is registered as a Tauri resource, and is covered by mock, contract, aggregate, and launched-browser live smokes.",
+      "completedAt": "2026-05-11T23:15:00.000+09:00"
+    },
+    {
+      "id": "iter-26",
+      "label": "Browser Native Desktop Helper Hardening",
+      "startedAt": "2026-05-12T05:30:00.000+09:00",
+      "goal": "Add a production-oriented Rust native Windows UI Automation helper path with signing readiness while preserving the PowerShell fallback.",
+      "plannedSprints": [
+        "iter-26-sprint-01-rust-native-helper-and-signing-readiness"
+      ],
+      "completedSprints": [
+        "iter-26-sprint-01-rust-native-helper-and-signing-readiness"
+      ],
+      "carryover": "Iteration 25 implemented the bounded PowerShell helper. The user asked to proceed with the signed Rust/.NET/native helper track.",
+      "openRisks": [
+        "Actual Authenticode signing is BLOCKED until a code-signing certificate or CI signing service is provided.",
+        "Native desktop fallback remains browser-window scoped and must not expand into arbitrary desktop automation without a new handoff and safety model."
+      ],
+      "milestoneProgress": {
+        "browser-native-desktop-helper": 1,
+        "browser-native-desktop-helper-hardening": 0.9,
+        "browser-action-native-fallback": 0.9
+      },
+      "summary": "Iteration 26 added providers/browser-native-desktop-helper-rs, a Rust native UI Automation helper implementing the existing browser-native-desktop-helper.v1 contract for status, observe, read, bounded element actions, browser chrome navigation commands, evaluate rejection, and sensitive-text blocking. The build now emits dist/browser-native-desktop-helper/browser-native-desktop-helper.exe, Tauri resources include that dist directory, daemon discovery prefers explicit env override, then bundled Rust helper, then PowerShell fallback, and native/signature smokes cover the path. A signtool signing script is available, but production signing remains BLOCKED on a certificate or CI signing service.",
+      "completedAt": "2026-05-12T05:30:00.000+09:00"
     }
   ]
 }

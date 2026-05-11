@@ -1556,3 +1556,84 @@ Completed the requested follow-up order `4 -> 1 -> 2 -> 3 -> newly found improve
 - Remaining feasible/BLOCKED items: app-server client-tool BLOCKED contract is encoded in `src/daemon/agent-tools/appServerClientTool.ts`; `docs/architecture/open-blockers.md` records external blockers; Vision ASR sidecar command execution is implemented behind `CODEX_WIDGET_ASR_SIDECAR_COMMAND`; restricted-page recovery text is clearer.
 
 Verification passed `npm run lint`, `npm run build:web`, `npm run smoke:browser-action:semantic-live-corpus`, `npm run smoke:vision-context`, `npm run smoke:extension`, `npm run smoke:architecture-foundations`, `npm run smoke:browser-action:renderer`, final `npm run smoke:all`, `git diff --check`, UTF-8/mojibake checks, project report refresh, and `npm run vibe:checkpoint`. The live dev runtime was restarted; renderer is listening on `127.0.0.1:5173`, daemon health is ok on `127.0.0.1:4128`, and the Tauri widget is running.
+
+## Latest Update: iter-24 Browser Action Reliability Foundation Started
+
+Iteration `iter-24` was started with `docs/plans/browser-action-reliability-foundation-handoff.md` as the current handoff. The goal covers ten workstreams: runtime stabilization, verification v2, intent transaction hardening, live test harness, perception scheduler, Semantic Interface v2, Semantic Memory feedback, UX simplification, app-server/tool contract, and architecture boundary cleanup.
+
+Sprint 01 completed the first reliability slice:
+
+- Added the active handoff and iter-24 roadmap entries.
+- Browser Bridge popup/options default fixes and daemon-reported reload status are in the working tree from the current live-debug pass.
+- History navigation source mismatch and prompt-step retry handling now avoid double-running `back`/`forward`/`reload`.
+- Navigate verification now fails if the requested destination was not reached, instead of accepting arbitrary route/view changes.
+- Browser Action feedback-only prompts such as history behavior complaints no longer execute as browser commands.
+- Explicit recovery history commands are parsed before generic content-open click phrases.
+- Long numeric content references such as `1174404번글` are treated as content identifiers, not ordinal positions.
+- Representative content candidate generation now prefers main/unknown content landmarks and excludes navigation/sidebar/header/footer links when real content candidates exist.
+- Added `npm run smoke:browser-action:live-harness` to verify live-runner dry-run scenario/report artifacts and included it in `smoke:all`.
+
+Focused verification passed: `npm run build:daemon`, `npm run smoke:browser-action:transaction-verification`, `npm run smoke:browser-action:transaction-clarification`, `npm run smoke:browser-action:transaction-concurrency`, `node scripts/smoke-browser-interaction-transaction.mjs core`, `npm run smoke:browser-action:e2e-control`, `npm run smoke:browser-action`, `npm run smoke:browser-action:prompt-classification`, `npm run smoke:browser-perception`, `npm run smoke:browser-perception:extension-command`, `npm run smoke:browser-perception:stabilization`, `npm run smoke:semantic-interface`, `npm run smoke:semantic-memory`, `npm run smoke:extension`, `npm run smoke:architecture-foundations`, `npm run smoke:browser-action:live-harness`, and `npm run lint`.
+
+Final aggregate verification for the sprint also passed `npm run build:web`, `npm run smoke`, and `npm run smoke:all`. During the first aggregate run, `smoke-browser-action-cdp.mjs` exposed a Windows temp profile cleanup race (`Cookies-journal` EBUSY) after the CDP checks passed; the CDP smoke now reuses the shared deferred smoke temp cleanup helper.
+
+This was the sprint-01 status at the time; iter-24 is now completed by the later completion-audit entry below.
+
+## Latest Update: iter-24 Scheduler, Memory, Tool Contract, Boundary Progress
+
+Continued the active Browser Action Reliability Foundation.
+
+- Browser Perception Scheduler now queues bounded background `observe_now` commands from Browser Bridge heartbeat, HTTP poll, and WebSocket command-poll status when the active tab is connected and allowed but no fresh prepared context exists.
+- Background observe commands are deduped across queued, foreground-waiting, and extension-in-flight states. Foreground prompt/direct observe commands now outrank queued background work, and successful background observe results are ingested even when no waiter is attached.
+- Semantic Memory feedback now affects Browser Action candidate ranking as a bounded advisory signal. It can reorder equally supported current-view candidates but cannot bypass freshness, visibility, safety, approval, or current view evidence.
+- Browser Action simulated agent-tool integration now has a normalized `AgentToolResult` projection for result/error/approval-compatible future app-server tool adoption.
+- `smoke:architecture-foundations` now checks source-size budgets for key Browser Action, Browser Perception, renderer runtime, and extension bridge files to catch giant-file regressions.
+
+Focused verification passed `npm run build:daemon`, `npm run smoke:browser-perception`, `npm run smoke:browser-perception:extension-command`, `node scripts/smoke-browser-interaction-transaction.mjs core`, `npm run smoke:semantic-interface`, `npm run smoke:semantic-memory`, `npm run smoke:browser-action:transaction-clarification`, `npm run smoke:browser-action:transaction-verification`, `npm run smoke:browser-action:e2e-control`, `npm run smoke:browser-action:fresh-context`, `npm run smoke:browser-action:prompt-classification`, `npm run smoke:architecture-foundations`, and `npm run smoke:browser-action`.
+
+Aggregate verification also passed `npm run lint`, `npm run build:web`, `npm run smoke`, `npm run smoke:browser-action:live-harness`, `npm run smoke:browser-bridge`, final `npm run smoke:all`, `git diff --check`, mojibake scan for changed files, project report refresh, and `npm run vibe:checkpoint`.
+
+This was the mid-iteration status at the time; iter-24 is now completed by the later completion-audit entry below.
+
+## Latest Update: iter-24 Browser Action Reliability Foundation Complete
+
+Completed the active Browser Action Reliability Foundation goal across the ten requested workstreams.
+
+- Runtime stabilization, verification v2, intent transaction hardening, live test harness, Browser Perception scheduling, Semantic Interface v2 integration, Semantic Memory feedback, UX simplification, app-server/tool contract boundary, and architecture cleanup are mapped to concrete evidence in `docs/reports/browser-action-reliability-completion-audit-2026-05-11.md`.
+- Browser Perception schedules background `observe_now` commands from bridge heartbeat, HTTP poll, and WebSocket poll state; foreground prompt/direct observes outrank background work; successful no-waiter background observe results refresh prepared active-tab context.
+- Semantic Memory contributes bounded advisory candidate-ranking evidence and remains unable to override freshness, visibility, safety, approval, or current-view evidence.
+- Browser Action simulated tool results normalize into a shared `AgentToolResult` contract while official app-server client-tool integration stays explicitly BLOCKED on a stable external contract.
+- Architecture foundations smoke now enforces source-size budgets for key Browser Action, Browser Perception, renderer runtime, and extension bridge files.
+- Isolated live dogfood `iter24-scheduler-memory-isolated-20260511` passed 8/8 scenarios, with tracked semantic-live corpus rows added for representative content, prepared read, history navigation, and forward navigation.
+
+Verification for closure passed lint, build:web, smoke, smoke:all, Browser Action/Perception/Bridge/Extension/Semantic/App-server focused smokes, live harness smoke, semantic live corpus smoke, isolated live dogfood, git diff check, mojibake scan, project report refresh, and checkpoint. Reload the unpacked Browser Bridge extension once before manual live-site retesting so Chrome/Edge uses the updated popup/service-worker files.
+
+## Latest Update: iter-25 Browser Native Desktop Helper Complete
+
+Implemented the bounded Windows UI Automation helper requested after the Browser Action reliability foundation.
+
+- Added `providers/browser-native-desktop-helper/browser-native-desktop-helper.ps1`, implementing the existing `browser-native-desktop-helper.v1` stdin/stdout JSON contract for `status`, `observe`, and bounded `execute`.
+- The helper enumerates browser windows, observes UIA controls with role/label/selector/bbox metadata, executes browser-window scoped read/click/type/check/select/scroll/navigate/back/forward/reload actions, blocks `evaluate`, and rejects sensitive password/token/cookie/payment-like text.
+- `nativeDesktopAdapter` now auto-discovers the bundled helper when `CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP=1` and `CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER` is unset, while still honoring an explicit helper path.
+- Added `npm run smoke:browser-native-desktop-helper` and `npm run smoke:browser-native-desktop-helper:live`; the live smoke launches an isolated Chrome/Edge profile, verifies UIA observation, and executes bounded reload.
+- Registered the helper as a Tauri bundle resource and updated architecture/blocker docs. The former UIA-helper BLOCKED item is now reduced to a future signed Rust/.NET/native hardening track.
+
+Verification passed `npm run smoke:browser-native-desktop-helper`, `npm run smoke:browser-native-desktop-helper:live`, `npm run smoke:browser-action:native`, `npm run lint`, and `npm run smoke:all`. The live helper smoke may emit the standard Windows deferred temp cleanup warning after killing the isolated browser profile.
+
+## Latest Update: iter-26 Browser Native Desktop Helper Hardening Complete
+
+Implemented the Rust native helper hardening track requested after iter-25.
+
+- Added `providers/browser-native-desktop-helper-rs/`, a Rust Windows UI Automation helper implementing the existing `browser-native-desktop-helper.v1` stdin/stdout JSON contract.
+- The native helper supports `status`, `observe`, safe `read`, bounded click/type/select/check/scroll/navigation commands, rejects `evaluate`, and blocks/redacts password/token/cookie/payment-like text.
+- Added `npm run build:browser-native-desktop-helper`, which builds the Rust helper and copies it to `dist/browser-native-desktop-helper/browser-native-desktop-helper.exe`.
+- Added `npm run sign:browser-native-desktop-helper` for future `signtool.exe` signing when a certificate is configured, plus `npm run smoke:browser-native-desktop-helper:signature` to enforce signed helpers under `CODEX_WIDGET_REQUIRE_SIGNED_HELPERS=1`.
+- Updated daemon helper discovery to prefer explicit `CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER`, then bundled Rust helper, then PowerShell fallback.
+- Registered `../dist/browser-native-desktop-helper` as a Tauri resource and kept the PowerShell helper packaged as a development/debug fallback.
+- Wrote `docs/plans/browser-native-desktop-helper-hardening-handoff.md` and `docs/reports/browser-native-desktop-helper-hardening-audit-2026-05-12.md`.
+
+Verification passed `cargo check --manifest-path providers/browser-native-desktop-helper-rs/Cargo.toml`, `npm run build:browser-native-desktop-helper`, `npm run sign:browser-native-desktop-helper` (skipped because signing env is unset), `npm run smoke:browser-native-desktop-helper-native`, `npm run smoke:browser-native-desktop-helper:signature`, `npm run smoke:browser-native-desktop-helper`, `npm run smoke:browser-action:native`, `npm run lint`, `npm run build:web`, and `npm run smoke:all`.
+
+Remaining blocker: actual Authenticode signing requires a code-signing certificate or CI signing service. Once available, set `CODEX_WIDGET_SIGN_HELPERS=1` plus certificate env vars for signing and `CODEX_WIDGET_REQUIRE_SIGNED_HELPERS=1` for release enforcement.
+
+Runtime state: dev daemon and renderer were restarted after the helper/Tauri resource changes; daemon health is ok on `127.0.0.1:4128`, renderer responds on `127.0.0.1:5173`, widget PID is `101648`, and logs are under `dist/logs/dev-runtime-native-helper-hardening-20260512b.log`.

@@ -76,7 +76,7 @@ export async function executePolledBrowserActionCommand(tab, settings, permissio
     await postBrowserActionCommandAck(settings, tab, command);
     const permissionError = permission.permission === "allowed" ? "" : permission.detail ?? "Site permission is required before Browser Action execution.";
     const before = permissionError ? null : await safeReadSnapshotFromTab(tab.id);
-    const sourceMismatch = permissionError || detectSourceMismatch(command.expectedSource, tab, before);
+    const sourceMismatch = permissionError || detectSourceMismatch(command.expectedSource, tab, before, command.action);
     const result = sourceMismatch
       ? {
           ok: false,
@@ -498,7 +498,7 @@ async function postJsonWithRetry(url, payload) {
   throw lastError instanceof Error ? lastError : new Error("Browser Bridge result post failed.");
 }
 
-function detectSourceMismatch(expected, tab, before) {
+function detectSourceMismatch(expected, tab, before, action) {
   if (!expected) {
     return "";
   }
@@ -514,6 +514,9 @@ function detectSourceMismatch(expected, tab, before) {
   const actualUrl = tab.url || before?.url || "";
   const expectedRouteKey = expected.routeKey || "";
   const actualRouteKey = before?.viewGraph?.identity?.routeKey || "";
+  if (isHistoryNavigationAction(action)) {
+    return "";
+  }
   if (expectedRouteKey && actualRouteKey && expectedRouteKey === actualRouteKey) {
     return "";
   }
@@ -521,6 +524,10 @@ function detectSourceMismatch(expected, tab, before) {
     return `Active tab URL changed before Browser Action execution: expected ${expectedUrl}, got ${actualUrl}.`;
   }
   return "";
+}
+
+function isHistoryNavigationAction(action) {
+  return action?.type === "back" || action?.type === "forward" || action?.type === "reload";
 }
 
 function normalizeUrlForSource(value) {

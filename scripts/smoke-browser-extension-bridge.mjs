@@ -76,6 +76,12 @@ try {
   assertEqual(status.activeTab.permission, "allowed", "GET bridge permission");
   assertEqual(status.settings.allowAllSites, true, "GET bridge all-sites setting");
   assertEqual(status.settings.observeBlocklist[0], "https://blocked.example", "GET bridge observe blocklist");
+  await drainBackgroundObserve({
+    url: "https://example.test/browser-bridge",
+    title: "Browser Bridge Smoke",
+    tabId: 31,
+    windowId: 4
+  });
 
   await postHeartbeat({
     extensionVersion: "0.1.0",
@@ -152,6 +158,15 @@ try {
   }
   const pollPayload = await poll.json();
   assertEqual(pollPayload.ok, true, "poll ok");
+  assertEqual(pollPayload.command?.kind, "observe_now", "poll returns background observe command");
+  assertEqual(pollPayload.command?.reason, "background", "poll observe reason");
+  assertEqual(pollPayload.command?.expectedActiveTab?.url, "https://example.test/browser-bridge/poll", "poll observe targets active tab URL");
+  await postObserveResult(pollPayload.command.commandId, {
+    url: "https://example.test/browser-bridge/poll",
+    title: "Browser Bridge Poll",
+    tabId: 42,
+    windowId: 5
+  });
   const polledStatus = await readBridgeStatus();
   assertEqual(polledStatus.mode, "idle", "poll refreshes bridge mode");
   assertEqual(polledStatus.activeTab.url, "https://example.test/browser-bridge/poll", "poll refreshes active tab URL");
@@ -170,7 +185,15 @@ try {
     (event) => event.type === "browserBridge.command",
     "websocket bridge command poll"
   );
-  assertEqual(wsCommand.command, null, "websocket bridge command poll empty command");
+  assertEqual(wsCommand.command?.kind, "observe_now", "websocket bridge command poll returns background observe");
+  assertEqual(wsCommand.command?.reason, "background", "websocket bridge observe reason");
+  assertEqual(wsCommand.command?.expectedActiveTab?.url, "https://example.test/browser-bridge/ws-poll", "websocket bridge observe targets active tab URL");
+  await postObserveResult(wsCommand.command.commandId, {
+    url: "https://example.test/browser-bridge/ws-poll",
+    title: "Browser Bridge WebSocket Poll",
+    tabId: 43,
+    windowId: 5
+  });
   const wsPolledStatus = await readBridgeStatus();
   assertEqual(wsPolledStatus.activeTab.url, "https://example.test/browser-bridge/ws-poll", "ws poll refreshes active tab URL");
 
@@ -214,6 +237,60 @@ async function postDomSnapshot() {
   });
   if (!response.ok) {
     throw new Error(`Legacy DOM snapshot endpoint failed: ${response.status}`);
+  }
+}
+
+async function postObserveResult(commandId, options) {
+  const response = await fetch(`${baseUrl}/browser-action/extension/observe-result`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      commandId,
+      status: "succeeded",
+      snapshot: {
+        url: options.url,
+        title: options.title,
+        readyState: "complete",
+        text: options.title,
+        mutationRevision: "bridge-smoke",
+        mutationQuietMs: 900,
+        lastMutationAt: new Date(Date.now() - 900).toISOString(),
+        bridge: {
+          tabId: options.tabId,
+          windowId: options.windowId,
+          url: options.url,
+          title: options.title,
+          permission: "allowed",
+          reason: "smoke"
+        },
+        elements: []
+      },
+      mutationRevision: "bridge-smoke",
+      mutationQuietMs: 900,
+      readyState: "complete",
+      metadata: { reason: "background" }
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`Browser Bridge observe result failed: ${response.status}`);
+  }
+}
+
+async function drainBackgroundObserve(options) {
+  const pollUrl = new URL(`${baseUrl}/browser-action/extension/poll`);
+  pollUrl.searchParams.set("permission", "allowed");
+  pollUrl.searchParams.set("mode", "browser_bridge");
+  pollUrl.searchParams.set("tabId", String(options.tabId));
+  pollUrl.searchParams.set("windowId", String(options.windowId));
+  pollUrl.searchParams.set("url", options.url);
+  pollUrl.searchParams.set("title", options.title);
+  const response = await fetch(pollUrl);
+  if (!response.ok) {
+    throw new Error(`Browser Bridge drain poll failed: ${response.status}`);
+  }
+  const payload = await response.json();
+  if (payload.command?.kind === "observe_now") {
+    await postObserveResult(payload.command.commandId, options);
   }
 }
 

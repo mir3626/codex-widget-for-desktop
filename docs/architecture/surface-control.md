@@ -18,7 +18,7 @@ observe -> understand -> propose -> gate -> bind -> act -> verify -> remember
 - `screen`: Vision Context and screen capture
 - `terminal`: one-shot command and PTY session state
 - `workspace`: repository/project context
-- `desktop`: future bounded Windows UI Automation/native input helper
+- `desktop`: bounded Windows UI Automation/native input helper
 
 ## Current Foundation
 
@@ -28,6 +28,12 @@ contains projections for screen snapshots, Vision TaskCapsules, and Terminal
 state so those surfaces can enter the same prepared-context/semantic pipeline as
 Browser Action.
 
-Desktop control remains intentionally bounded: future helpers should target
-browser windows, permission prompts, file-picker boundaries, and restricted-page
-fallbacks before any broader desktop automation is considered.
+Desktop control remains intentionally bounded. The production-oriented helper is
+the Rust executable built from `providers/browser-native-desktop-helper-rs/` to
+`dist/browser-native-desktop-helper/browser-native-desktop-helper.exe`; the
+PowerShell helper at
+`providers/browser-native-desktop-helper/browser-native-desktop-helper.ps1`
+remains a development/debug fallback. Both implement the Browser Action native
+helper JSON contract for browser windows, permission prompts, file-picker
+boundaries, and restricted-page recovery paths. Broader arbitrary desktop
+automation remains out of scope.

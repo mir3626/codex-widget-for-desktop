@@ -16,9 +16,9 @@ const BASE_CAPABILITIES: BrowserActionCapability[] = ["tab_control", "hotkey"];
 const HELPER_CAPABILITIES: BrowserActionCapability[] = ["click", "type", "select", "scroll", "navigate", "screenshot", "tab_control", "hotkey"];
 const HELPER_BLOCKED = {
   item: "Windows UI Automation executable Browser Action fallback",
-  reason: "This repo has a bounded browser-window diagnostics path and a typed helper contract, but no configured signed Rust/.NET UI Automation helper or native input broker for live browser chrome, permission prompts, file picker boundaries, or restricted pages.",
-  attemptedPath: "Enumerate browser top-level windows with PowerShell Get-Process and expose them as normalized BrowserObservation window elements.",
-  requiredScopeExpansion: `Provide a dedicated Windows UI Automation helper process through ${NATIVE_DESKTOP_HELPER_ENV} with cancellation, target scoping to browser windows, sensitive-field redaction, and approval/audit integration.`
+  reason: "This repo now has a bounded Rust UI Automation helper and a PowerShell fallback helper, but production signing remains blocked until an Authenticode certificate or CI signing service is provided.",
+  attemptedPath: "Bundle a Rust native helper under dist/browser-native-desktop-helper and preserve the PowerShell helper as a development fallback.",
+  requiredScopeExpansion: `Provide an Authenticode code-signing certificate or CI signing secret, then enforce CODEX_WIDGET_REQUIRE_SIGNED_HELPERS=1 in release verification.`
 };
 
 export const nativeDesktopAdapter: BrowserActionAdapter = {
@@ -28,7 +28,7 @@ export const nativeDesktopAdapter: BrowserActionAdapter = {
   async isAvailable() {
     return process.platform === "win32" && process.env[ENABLE_ENV] === "1";
   },
-  async getStatus() {
+  async getStatus(input) {
     if (process.platform !== "win32") {
       return {
         id: "native-desktop",
@@ -59,7 +59,26 @@ export const nativeDesktopAdapter: BrowserActionAdapter = {
       };
     }
     const helper = getNativeDesktopHelperAvailability();
-    const windows = await listBrowserWindows().catch((error) => [{ processName: "diagnostic-error", id: 0, title: error instanceof Error ? error.message : "Window enumeration failed." }]);
+    const helperStatus =
+      helper.configured && helper.exists
+        ? await runNativeDesktopHelper({
+            schemaVersion: "browser-native-desktop-helper.v1",
+            requestId: "native-desktop-status",
+            command: "status",
+            timeoutMs: 5_000,
+            session: pickSession(input.session)
+          }).catch((error): import("./nativeDesktop/helperClient.js").NativeDesktopHelperResponse => ({
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+            metadata: { helperStatusError: true }
+          }))
+        : undefined;
+    const windows =
+      helperStatus?.ok && helperStatus.observation?.windows
+        ? helperStatus.observation.windows
+        : await listBrowserWindows().catch((error) => [
+            { processName: "diagnostic-error", id: 0, title: error instanceof Error ? error.message : "Window enumeration failed." }
+          ]);
     return {
       id: "native-desktop",
       label: "Windows native desktop browser boundary",
@@ -74,6 +93,13 @@ export const nativeDesktopAdapter: BrowserActionAdapter = {
         scope: "browser_windows_only",
         windows: windows.slice(0, 8),
         helper,
+        helperStatus: helperStatus
+          ? {
+              ok: helperStatus.ok,
+              error: helperStatus.error,
+              metadata: helperStatus.metadata
+            }
+          : undefined,
         blocked: HELPER_BLOCKED
       }
     };
@@ -203,10 +229,16 @@ function buildObservationFromHelper(session: BrowserActionSession, snapshot: Nat
         tagName: element.tagName ?? "native",
         label: element.label,
         text: element.text,
+        value: element.value,
+        placeholder: element.placeholder,
         selector: element.selector,
+        bbox: element.bbox,
         visible: element.visible ?? true,
         enabled: element.enabled ?? true,
         editable: element.editable ?? false,
+        checked: element.checked,
+        selected: element.selected,
+        inputType: element.inputType,
         confidence: element.confidence ?? 0.7,
         riskHints: normalizeRiskHints(element.riskHints)
       }))

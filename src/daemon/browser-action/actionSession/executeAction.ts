@@ -95,6 +95,7 @@ export async function executeBrowserAction(input: {
     hint: input.targetHint,
     lease: input.contextLease,
     expected: input.expected,
+    memoryReadSet,
     memoryEvidence: memoryReadSet ? {
       readSetId: memoryReadSet.id,
       edgeCount: memoryReadSet.edges.length,

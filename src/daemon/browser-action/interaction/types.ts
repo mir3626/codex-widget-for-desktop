@@ -72,6 +72,7 @@ export type ReferenceBindingScope =
   | "deictic"
   | "focused_element"
   | "spatial"
+  | "content_list_identifier"
   | "content_list_ordinal"
   | "content_list_representative";
 

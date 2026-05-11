@@ -15,6 +15,7 @@ import type {
   BrowserPerceptionObserveResult,
   BrowserPerceptionObserveResultPayload,
   BrowserPerceptionObserveStatus,
+  BrowserPerceptionScheduleResult,
   PreparedBrowserViewContext
 } from "./types.js";
 
@@ -30,6 +31,8 @@ export class BrowserPerceptionService {
   private store = new PreparedBrowserViewContextStore();
   private pendingCommands: BrowserPerceptionObserveCommand[] = [];
   private pending = new Map<string, PendingObserve>();
+  private backgroundScheduledAtBySource = new Map<string, number>();
+  private backgroundSourceByCommandId = new Map<string, { sourceKey: string; deadlineAt: number }>();
 
   ingestProviderSnapshot(input: {
     providers: ProviderRegistry;
@@ -58,6 +61,93 @@ export class BrowserPerceptionService {
 
   markDirty(reason: string): void {
     this.store.markDirty(reason);
+  }
+
+  scheduleBackgroundObserve(input: {
+    providers: ProviderRegistry;
+    bridgeStatus: BrowserExtensionBridgeStatus;
+    reason: string;
+    maxAgeMs?: number;
+    timeoutMs?: number;
+    settleQuietMs?: number;
+    cooldownMs?: number;
+  }): BrowserPerceptionScheduleResult {
+    const active = input.bridgeStatus.activeTab;
+    if (!input.bridgeStatus.connected || active?.permission !== "allowed" || !active.url) {
+      return {
+        scheduled: false,
+        reason: "bridge_not_observable",
+        diagnostics: {
+          connected: input.bridgeStatus.connected,
+          permission: active?.permission,
+          mode: input.bridgeStatus.mode
+        }
+      };
+    }
+
+    const request = normalizeObserveRequest({
+      requestId: `background-${randomUUID()}`,
+      reason: "background",
+      requiredFreshness: "stable",
+      maxAgeMs: input.maxAgeMs ?? 5_000,
+      settleQuietMs: input.settleQuietMs ?? 500,
+      timeoutMs: input.timeoutMs ?? 20_000,
+      actionRisk: "read",
+      allowSettlingForRead: true
+    });
+    const prepared = this.readUsablePreparedContext({ providers: input.providers, bridgeStatus: input.bridgeStatus, request });
+    if (prepared) {
+      return {
+        scheduled: false,
+        reason: "prepared_context_fresh",
+        diagnostics: {
+          contextId: prepared.contextId,
+          routeKey: prepared.routeKey,
+          viewRevision: prepared.viewRevision,
+          capturedAt: prepared.capturedAt
+        }
+      };
+    }
+
+    const sourceKey = readBridgeSourceKey(input.bridgeStatus);
+    if (sourceKey && this.hasPendingObserveForSource(sourceKey)) {
+      return {
+        scheduled: false,
+        reason: "observe_already_pending",
+        diagnostics: { sourceKey }
+      };
+    }
+
+    const now = Date.now();
+    const cooldownMs = input.cooldownMs ?? 1_500;
+    const lastScheduledAt = sourceKey ? this.backgroundScheduledAtBySource.get(sourceKey) : undefined;
+    if (sourceKey && lastScheduledAt && now - lastScheduledAt < cooldownMs) {
+      return {
+        scheduled: false,
+        reason: "background_observe_cooldown",
+        diagnostics: { sourceKey, cooldownMs, elapsedMs: now - lastScheduledAt }
+      };
+    }
+
+    const command = this.createObserveCommand({ request, bridgeStatus: input.bridgeStatus });
+    this.pendingCommands.push(command);
+    if (sourceKey) {
+      this.backgroundScheduledAtBySource.set(sourceKey, now);
+      this.backgroundSourceByCommandId.set(command.commandId, {
+        sourceKey,
+        deadlineAt: Date.parse(command.deadlineAt)
+      });
+    }
+    return {
+      scheduled: true,
+      command,
+      reason: input.reason,
+      diagnostics: {
+        sourceKey,
+        deadlineAt: command.deadlineAt,
+        settleQuietMs: command.settleQuietMs
+      }
+    };
   }
 
   async ensureFreshContext(input: {
@@ -109,11 +199,12 @@ export class BrowserPerceptionService {
   pollExtensionCommand(): BrowserPerceptionObserveCommand | undefined {
     const now = Date.now();
     while (true) {
-      const command = this.pendingCommands.shift();
+      const command = this.shiftNextPendingCommand();
       if (!command) {
         return undefined;
       }
       if (Date.parse(command.deadlineAt) <= now) {
+        this.cleanupBackgroundCommand(command.commandId);
         this.resolvePending(command.commandId, {
           status: "timeout",
           commandId: command.commandId,
@@ -132,6 +223,7 @@ export class BrowserPerceptionService {
       pending.ack = ack;
     }
     if (ack.status !== "accepted") {
+      this.cleanupBackgroundCommand(ack.commandId);
       this.resolvePending(ack.commandId, {
         status: mapAckStatusToObserveStatus(ack.status),
         commandId: ack.commandId,
@@ -154,6 +246,34 @@ export class BrowserPerceptionService {
   }): BrowserPerceptionObserveResult {
     const pending = this.pending.get(input.payload.commandId);
     if (!pending) {
+      if (input.payload.status === "succeeded" && input.payload.snapshot) {
+        const snapshot = input.providers.setDomSnapshot(input.payload.snapshot);
+        const context = this.ingestProviderSnapshot({
+          providers: input.providers,
+          bridgeStatus: input.bridgeStatus,
+          reason: readObserveResultReason(input.payload.metadata)
+        });
+        this.cleanupBackgroundCommand(input.payload.commandId);
+        const sourceKey = input.bridgeStatus ? readBridgeSourceKey(input.bridgeStatus) : undefined;
+        if (sourceKey) {
+          this.dropQueuedBackgroundCommandsForSource(sourceKey);
+        }
+        return {
+          status: context?.freshness === "settling" ? "settling_ready" : "ready",
+          context,
+          commandId: input.payload.commandId,
+          diagnostics: {
+            reason: "observe_result_without_waiter_ingested",
+            payloadStatus: input.payload.status,
+            url: snapshot.url,
+            title: snapshot.title,
+            mutationRevision: input.payload.mutationRevision,
+            mutationQuietMs: input.payload.mutationQuietMs,
+            readyState: input.payload.readyState
+          }
+        };
+      }
+      this.cleanupBackgroundCommand(input.payload.commandId);
       return {
         status: input.payload.status === "succeeded" ? "ready" : "error",
         commandId: input.payload.commandId,
@@ -174,6 +294,7 @@ export class BrowserPerceptionService {
         },
         userRecovery: input.payload.error
       };
+      this.cleanupBackgroundCommand(input.payload.commandId);
       this.resolvePending(input.payload.commandId, result);
       return result;
     }
@@ -199,11 +320,17 @@ export class BrowserPerceptionService {
         readyState: input.payload.readyState
       }
     };
+    this.cleanupBackgroundCommand(input.payload.commandId);
+    const sourceKey = input.bridgeStatus ? readBridgeSourceKey(input.bridgeStatus) : undefined;
+    if (sourceKey) {
+      this.dropQueuedBackgroundCommandsForSource(sourceKey);
+    }
     this.resolvePending(input.payload.commandId, result);
     return result;
   }
 
   cancelCommand(commandId: string, reason = "cancelled"): void {
+    this.cleanupBackgroundCommand(commandId);
     this.resolvePending(commandId, {
       status: "cancelled",
       commandId,
@@ -292,6 +419,7 @@ export class BrowserPerceptionService {
   }
 
   private resolvePending(commandId: string, result: BrowserPerceptionObserveResult): void {
+    this.cleanupBackgroundCommand(commandId);
     const pending = this.pending.get(commandId);
     if (!pending) {
       return;
@@ -299,6 +427,46 @@ export class BrowserPerceptionService {
     clearTimeout(pending.timer);
     this.pending.delete(commandId);
     pending.resolve(result);
+  }
+
+  private hasPendingObserveForSource(sourceKey: string): boolean {
+    const now = Date.now();
+    this.cleanupExpiredBackgroundCommands(now);
+    const matches = (command: BrowserPerceptionObserveCommand): boolean =>
+      readCommandSourceKey(command) === sourceKey && Date.parse(command.deadlineAt) > now;
+    return this.pendingCommands.some(matches) ||
+      Array.from(this.pending.values()).some((pending) => matches(pending.command)) ||
+      Array.from(this.backgroundSourceByCommandId.values()).some((entry) => entry.sourceKey === sourceKey && entry.deadlineAt > now);
+  }
+
+  private shiftNextPendingCommand(): BrowserPerceptionObserveCommand | undefined {
+    const foregroundIndex = this.pendingCommands.findIndex((command) => command.reason !== "background");
+    if (foregroundIndex >= 0) {
+      return this.pendingCommands.splice(foregroundIndex, 1)[0];
+    }
+    return this.pendingCommands.shift();
+  }
+
+  private cleanupBackgroundCommand(commandId: string): void {
+    this.backgroundSourceByCommandId.delete(commandId);
+  }
+
+  private cleanupExpiredBackgroundCommands(now = Date.now()): void {
+    for (const [commandId, entry] of this.backgroundSourceByCommandId) {
+      if (entry.deadlineAt <= now) {
+        this.backgroundSourceByCommandId.delete(commandId);
+      }
+    }
+  }
+
+  private dropQueuedBackgroundCommandsForSource(sourceKey: string): void {
+    this.pendingCommands = this.pendingCommands.filter((command) => {
+      if (command.reason !== "background" || readCommandSourceKey(command) !== sourceKey) {
+        return true;
+      }
+      this.cleanupBackgroundCommand(command.commandId);
+      return false;
+    });
   }
 }
 
@@ -349,4 +517,46 @@ function mapAckStatusToObserveStatus(status: BrowserPerceptionObserveAck["status
     return "blocked";
   }
   return "error";
+}
+
+function readBridgeSourceKey(status: BrowserExtensionBridgeStatus): string | undefined {
+  const active = status.activeTab;
+  if (!active?.url) {
+    return undefined;
+  }
+  return [
+    active.windowId ?? "",
+    active.tabId ?? "",
+    active.url,
+    active.title ?? "",
+    active.permission ?? ""
+  ].join("|");
+}
+
+function readCommandSourceKey(command: BrowserPerceptionObserveCommand): string | undefined {
+  const source = command.expectedActiveTab;
+  if (!source?.url) {
+    return undefined;
+  }
+  return [
+    source.windowId ?? "",
+    source.tabId ?? "",
+    source.url,
+    source.title ?? "",
+    source.permission ?? ""
+  ].join("|");
+}
+
+function readObserveResultReason(metadata: Record<string, unknown> | undefined): BrowserPerceptionObserveRequest["reason"] {
+  const value = metadata?.reason;
+  return value === "background" ||
+    value === "prompt" ||
+    value === "direct_action" ||
+    value === "before_step" ||
+    value === "after_step" ||
+    value === "retry" ||
+    value === "extension_poll" ||
+    value === "legacy_snapshot"
+    ? value
+    : "background";
 }

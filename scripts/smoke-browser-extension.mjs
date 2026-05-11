@@ -98,6 +98,7 @@ for (const marker of [
   "extensionSourceHash",
   "expectedSource",
   "detectSourceMismatch",
+  "isHistoryNavigationAction",
   "postBrowserActionResultWithRetry",
   "waitMs",
   "AbortController",
@@ -128,11 +129,25 @@ const popup = await readFile(path.join(extensionDir, "popup.html"), "utf8");
 if (!popup.includes("Browser Bridge") || !popup.includes("Reload bridge") || popup.includes("Send DOM snapshot")) {
   throw new Error("Extension popup should expose Browser Bridge settings, not default snapshot UX.");
 }
+if (!popup.includes('<script type="module" src="popup.js"></script>')) {
+  throw new Error("Extension popup script must load as an ES module.");
+}
+if (!popup.includes('id="daemon-base-url"') || !popup.includes('value="http://127.0.0.1:4128"')) {
+  throw new Error("Extension popup should expose a default daemon base URL before JavaScript renders.");
+}
+for (const checkedInput of ["auto-connect", "auto-observe", "allow-safe-read-scroll", "require-approval-click-type", "native-host"]) {
+  if (!new RegExp(`id="${checkedInput}"[^>]*checked`).test(popup)) {
+    throw new Error(`Extension popup default input should be checked: ${checkedInput}`);
+  }
+}
+if (!/id="reload-extension"[^>]*hidden/.test(popup)) {
+  throw new Error("Extension popup reload button should be hidden until daemon status reports stale extension code.");
+}
 const popupScript = [
   await readFile(popupPath, "utf8"),
   await readFile(path.join(extensionDir, "popup-utils.js"), "utf8")
 ].join("\n");
-for (const marker of ["chrome.permissions.request", "chrome.permissions.remove", "chrome.runtime.reload", "bridge.refresh", "readCurrentOrigin", "requestSitePermission", "requestAllSitesPermission", "observeBlocklist"]) {
+for (const marker of ["chrome.permissions.request", "chrome.permissions.remove", "chrome.runtime.reload", "bridge.refresh", "readCurrentOrigin", "requestSitePermission", "requestAllSitesPermission", "observeBlocklist", "/browser-action/extension/status", "expectedExtensionSourceHash"]) {
   if (!popupScript.includes(marker)) {
     throw new Error(`Extension popup is missing marker: ${marker}`);
   }

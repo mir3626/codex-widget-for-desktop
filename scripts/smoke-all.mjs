@@ -16,6 +16,9 @@ const steps = [
   ["Browser Action CDP adapter", process.execPath, ["scripts/smoke-browser-action-cdp.mjs"]],
   ["Browser Action evaluate gate", process.execPath, ["scripts/smoke-browser-action-evaluate.mjs"]],
   ["Browser Action native boundary", process.execPath, ["scripts/smoke-browser-action-native.mjs"]],
+  ["Browser native desktop helper", process.execPath, ["scripts/smoke-browser-native-desktop-helper.mjs"]],
+  ["Browser native desktop helper native", process.execPath, ["scripts/smoke-browser-native-desktop-helper-native.mjs"]],
+  ["Browser native desktop helper signature", process.execPath, ["scripts/smoke-browser-native-desktop-helper-signature.mjs"]],
   ["Screen provider", process.execPath, ["scripts/smoke-screen-provider.mjs"]],
   ["Terminal provider", process.execPath, ["scripts/smoke-terminal.mjs"]],
   ["Terminal session", process.execPath, ["scripts/smoke-terminal-session.mjs"]],
@@ -25,6 +28,7 @@ const steps = [
   ["Browser Bridge heartbeat/status", process.execPath, ["scripts/smoke-browser-extension-bridge.mjs"]],
   ["Semantic trace corpus", process.execPath, ["scripts/smoke-semantic-trace-corpus.mjs"]],
   ["Browser Action semantic live corpus", process.execPath, ["scripts/smoke-browser-action-semantic-live-corpus.mjs"]],
+  ["Browser Action live harness", process.execPath, ["scripts/smoke-browser-action-live-harness.mjs"]],
   ["Browser native host", process.execPath, ["scripts/smoke-browser-native-host.mjs"]],
   ["Browser store readiness", process.execPath, ["scripts/smoke-browser-store-readiness.mjs"]],
   ["OCR runtime packaging", process.execPath, ["scripts/smoke-ocr-runtime.mjs"]],
@@ -37,6 +41,7 @@ if (includeLive) {
   steps.push(["Screen capture helper OCR", process.execPath, ["scripts/smoke-screen-helper-ocr.mjs"]]);
   steps.push(["Screen capture helper live", process.execPath, ["scripts/smoke-screen-helper-live.mjs"]]);
   steps.push(["Screen capture request live", process.execPath, ["scripts/smoke-screen-capture-request.mjs"]]);
+  steps.push(["Browser native desktop helper live", process.execPath, ["scripts/smoke-browser-native-desktop-helper-live.mjs"]]);
 }
 
 for (const [label, command, args] of steps) {

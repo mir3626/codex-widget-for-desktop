@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { readContentOrdinal } from "../intentResolver/contentRequests.js";
+import type { MemoryReadSet, RedactedMemoryEdge } from "../../semantic-interface/types.js";
+import { readContentIdentifier, readContentOrdinal } from "../intentResolver/contentRequests.js";
 import { isNonRepresentativeContentLabel } from "../targetResolver/semanticContentTarget.js";
 import { normalizeBrowserTargetText, tokenizeBrowserTargetText } from "../targetLexicon.js";
 import type {
@@ -21,19 +22,27 @@ export function generateCandidateSteps(input: {
   stepIndex?: number;
   expected?: BrowserExpectedState[];
   memoryEvidence?: CandidateStep["memoryEvidence"];
+  memoryReadSet?: MemoryReadSet;
 }): CandidateStep[] {
   if (!requiresElementTarget(input.action)) {
     return [createSyntheticCandidate(input, "current_view", "이 작업은 특정 페이지 요소가 필요하지 않습니다.", 1)];
   }
-  const hint = normalizeBrowserTargetText(input.hint || (input.target?.kind === "text" ? input.target.text : undefined) || "");
-  const ordinal = readContentOrdinal(input.hint || (input.target?.kind === "text" ? input.target.text : undefined) || "");
+  const rawHint = input.hint || (input.target?.kind === "text" ? input.target.text : undefined) || "";
+  const hint = normalizeBrowserTargetText(rawHint);
+  const identifier = readContentIdentifier(rawHint);
+  if (identifier) {
+    return generateContentIdentifierCandidates(input, identifier);
+  }
+  const ordinal = readContentOrdinal(rawHint);
   if (ordinal) {
     return generateOrdinalContentCandidates(input, ordinal);
   }
   const representativeContent = isRepresentativeContentRequest(hint, input.action);
-  const candidates = input.graph.elements
+  const elementPool = representativeContent
+    ? preferPrimaryContentElements(input.graph.elements.filter((element) => element.visible).filter(looksLikeContentElement))
+    : input.graph.elements.filter((element) => element.visible);
+  const candidates = elementPool
     .filter((element) => element.visible)
-    .filter((element) => !representativeContent || looksLikeContentElement(element))
     .map((element) => scoreElementCandidate({ ...input, element, hint }))
     .filter((candidate) => candidate.confidence > 0)
     .sort((a, b) => b.confidence - a.confidence || (a.element?.sourceOrder ?? 999999) - (b.element?.sourceOrder ?? 999999));
@@ -78,6 +87,7 @@ function createSyntheticCandidate(input: {
   stepIndex?: number;
   expected?: BrowserExpectedState[];
   memoryEvidence?: CandidateStep["memoryEvidence"];
+  memoryReadSet?: MemoryReadSet;
 }, scope: ReferenceBindingScope, label: string, confidence: number): CandidateStep {
   return {
     candidateId: `browser-candidate-${randomUUID()}`,
@@ -108,10 +118,11 @@ function generateOrdinalContentCandidates(input: {
   stepIndex?: number;
   expected?: BrowserExpectedState[];
   memoryEvidence?: CandidateStep["memoryEvidence"];
+  memoryReadSet?: MemoryReadSet;
 }, ordinal: number): CandidateStep[] {
-  const ordered = dedupeContentElements(input.graph.elements
+  const ordered = dedupeContentElements(preferPrimaryContentElements(input.graph.elements
     .filter((element) => element.visible)
-    .filter(looksLikeContentElement)
+    .filter(looksLikeContentElement))
     .sort(compareContentElementOrder));
   const selected = ordered[ordinal - 1];
   const candidateElements = selected
@@ -121,6 +132,14 @@ function generateOrdinalContentCandidates(input: {
     const label = readElementLabel(element) || element.id;
     const selectedOrdinal = selected ? ordinal : index + 1;
     const isSelected = Boolean(selected) && element.id === selected.id;
+    const memoryScore = scoreMemoryForCandidate({
+      memoryReadSet: input.memoryReadSet,
+      action: input.action,
+      element,
+      label,
+      scoreBreakdown: {},
+      reasonCodes: []
+    });
     return {
       candidateId: `browser-candidate-${randomUUID()}`,
       leaseId: input.lease?.leaseId,
@@ -138,16 +157,18 @@ function generateOrdinalContentCandidates(input: {
       region: element.nearestLandmark,
       expectedEffect: input.expected ?? expectedEffectsForAction(input.action),
       riskClass: classifyBrowserActionRisk(input.action),
-      confidence: isSelected ? 0.94 : 0.52,
+      confidence: Math.max(0, Math.min(0.98, (isSelected ? 0.94 : 0.52) + memoryScore.scoreDelta)),
       scoreBreakdown: {
         ordinal_content: isSelected ? 0.74 : 0.24,
-        content_order: Math.max(0, 0.2 - index * 0.03)
+        content_order: Math.max(0, 0.2 - index * 0.03),
+        ...memoryScore.scoreBreakdown
       },
       alternatives: [],
       reasonCodes: [
         "ordinal_content",
         isSelected ? "ordinal_match" : "ordinal_alternative",
-        index === 0 ? "top_candidate" : "alternative_candidate"
+        index === 0 ? "top_candidate" : "alternative_candidate",
+        ...memoryScore.reasonCodes
       ],
       memoryEvidence: input.memoryEvidence,
       safetyHints: element.riskHints
@@ -159,6 +180,75 @@ function generateOrdinalContentCandidates(input: {
   }));
 }
 
+function generateContentIdentifierCandidates(input: {
+  action: BrowserAction;
+  graph: ElementGraph;
+  lease?: BrowserViewContextLease;
+  stepIndex?: number;
+  expected?: BrowserExpectedState[];
+  memoryEvidence?: CandidateStep["memoryEvidence"];
+  memoryReadSet?: MemoryReadSet;
+}, identifier: string): CandidateStep[] {
+  const scored = dedupeContentElements(input.graph.elements
+    .filter((element) => element.visible)
+    .filter(looksLikeContentElement))
+    .map((element) => ({ element, score: scoreContentIdentifierMatch(element, identifier) }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || compareContentElementOrder(a.element, b.element));
+  const candidates: CandidateStep[] = scored.slice(0, 5).map(({ element, score }, index) => {
+    const label = readElementLabel(element) || element.id;
+    const memoryScore = scoreMemoryForCandidate({
+      memoryReadSet: input.memoryReadSet,
+      action: input.action,
+      element,
+      label,
+      scoreBreakdown: {},
+      reasonCodes: []
+    });
+    return {
+      candidateId: `browser-candidate-${randomUUID()}`,
+      leaseId: input.lease?.leaseId,
+      contextId: input.lease?.contextId,
+      viewRevision: input.lease?.viewRevision,
+      graphDigest: input.lease?.graphDigest,
+      stepIndex: input.stepIndex ?? 0,
+      action: input.action,
+      targetRef: element.id,
+      element,
+      referenceBindingScope: "content_list_identifier" as const,
+      label: `${identifier}번 글: ${label}`,
+      localeLabel: `${identifier}번 글: ${buildLocaleLabel(element, label)}`,
+      role: element.role,
+      region: element.nearestLandmark,
+      expectedEffect: input.expected ?? expectedEffectsForAction(input.action),
+      riskClass: classifyBrowserActionRisk(input.action),
+      confidence: Math.max(0, Math.min(0.98, Math.min(0.96, 0.62 + score) + memoryScore.scoreDelta)),
+      scoreBreakdown: {
+        content_identifier: score,
+        content_order: Math.max(0, 0.08 - index * 0.02),
+        ...memoryScore.scoreBreakdown
+      },
+      alternatives: [],
+      reasonCodes: [
+        "content_identifier",
+        index === 0 ? "top_candidate" : "alternative_candidate",
+        ...memoryScore.reasonCodes
+      ],
+      memoryEvidence: input.memoryEvidence,
+      safetyHints: element.riskHints
+    };
+  });
+  return candidates.map((candidate, _index, candidates) => ({
+    ...candidate,
+    alternatives: candidates.filter((other) => other.candidateId !== candidate.candidateId).slice(0, 4).map((other) => other.candidateId)
+  }));
+}
+
+function preferPrimaryContentElements(elements: BrowserElement[]): BrowserElement[] {
+  const preferred = elements.filter((element) => contentLandmarkRank(element) < 2);
+  return preferred.length > 0 ? preferred : elements;
+}
+
 function scoreElementCandidate(input: {
   action: BrowserAction;
   element: BrowserElement;
@@ -167,6 +257,7 @@ function scoreElementCandidate(input: {
   stepIndex?: number;
   expected?: BrowserExpectedState[];
   memoryEvidence?: CandidateStep["memoryEvidence"];
+  memoryReadSet?: MemoryReadSet;
 }): CandidateStep {
   const label = readElementLabel(input.element);
   const normalizedLabel = normalizeBrowserTargetText(label);
@@ -239,6 +330,15 @@ function scoreElementCandidate(input: {
     score -= 0.08;
     reasonCodes.push("risk_hint_present");
   }
+  const memoryScore = scoreMemoryForCandidate({
+    memoryReadSet: input.memoryReadSet,
+    action: input.action,
+    element: input.element,
+    label,
+    scoreBreakdown,
+    reasonCodes
+  });
+  score += memoryScore.scoreDelta;
 
   const confidence = Math.max(0, Math.min(0.98, score + Math.min(0.12, input.element.confidence * 0.12)));
   return {
@@ -265,6 +365,94 @@ function scoreElementCandidate(input: {
     memoryEvidence: input.memoryEvidence,
     safetyHints: input.element.riskHints
   };
+}
+
+function scoreMemoryForCandidate(input: {
+  memoryReadSet?: MemoryReadSet;
+  action: BrowserAction;
+  element: BrowserElement;
+  label: string;
+  scoreBreakdown: Record<string, number>;
+  reasonCodes: string[];
+}): { scoreDelta: number; scoreBreakdown: Record<string, number>; reasonCodes: string[] } {
+  if (!input.memoryReadSet?.edges.length) {
+    return { scoreDelta: 0, scoreBreakdown: {}, reasonCodes: [] };
+  }
+  const scoreBreakdown = input.scoreBreakdown;
+  const reasonCodes = input.reasonCodes;
+  let positive = 0;
+  let penalty = 0;
+  for (const edge of input.memoryReadSet.edges) {
+    const strength = Math.min(1, Math.abs(edge.weightBp) / 10_000);
+    if (edge.weightBp === 0 || strength <= 0) {
+      continue;
+    }
+    const matches = memoryEdgeMatchesCandidate(edge, input.action, input.element, input.label);
+    if (!matches) {
+      continue;
+    }
+    if (edge.relation === "avoid_target" || edge.weightBp < 0) {
+      penalty = Math.max(penalty, strength * 0.12);
+      reasonCodes.push("semantic_memory_avoid_target");
+      continue;
+    }
+    const weighted = strength * readMemoryRelationWeight(edge.relation);
+    positive = Math.max(positive, weighted);
+    reasonCodes.push(`semantic_memory_${edge.relation}`);
+  }
+  const scoreDelta = Math.max(-0.16, Math.min(0.09, positive - penalty));
+  if (scoreDelta > 0) {
+    scoreBreakdown.semantic_memory = Number(scoreDelta.toFixed(4));
+  } else if (scoreDelta < 0) {
+    scoreBreakdown.semantic_memory_penalty = Number(scoreDelta.toFixed(4));
+  }
+  return {
+    scoreDelta,
+    scoreBreakdown,
+    reasonCodes: [...new Set(reasonCodes)]
+  };
+}
+
+function memoryEdgeMatchesCandidate(edge: RedactedMemoryEdge, action: BrowserAction, element: BrowserElement, label: string): boolean {
+  const toKey = normalizeBrowserTargetText(edge.toKey);
+  if (!toKey) {
+    return false;
+  }
+  if (edge.relation === "preferred_role") {
+    return normalizeBrowserTargetText(`${element.role ?? ""} ${element.tagName ?? ""} ${element.inputType ?? ""}`).includes(toKey);
+  }
+  if (edge.relation === "preferred_region") {
+    return normalizeBrowserTargetText(element.nearestLandmark).includes(toKey);
+  }
+  if (edge.relation === "preferred_affordance" || edge.relation === "usual_action") {
+    return normalizeBrowserTargetText(action.type).includes(toKey) || toKey.includes(normalizeBrowserTargetText(action.type));
+  }
+  const haystack = normalizeBrowserTargetText([
+    label,
+    element.label,
+    element.ariaLabel,
+    element.text,
+    element.contextText,
+    element.title,
+    element.href
+  ].filter(Boolean).join(" "));
+  return Boolean(haystack && (haystack.includes(toKey) || toKey.includes(normalizeBrowserTargetText(label))));
+}
+
+function readMemoryRelationWeight(relation: RedactedMemoryEdge["relation"]): number {
+  if (relation === "phrase_alias") {
+    return 0.09;
+  }
+  if (relation === "preferred_role" || relation === "preferred_region") {
+    return 0.045;
+  }
+  if (relation === "preferred_affordance" || relation === "usual_action") {
+    return 0.025;
+  }
+  if (relation === "workflow_step") {
+    return 0.015;
+  }
+  return 0;
 }
 
 function requiresElementTarget(action: BrowserAction): boolean {
@@ -418,6 +606,36 @@ function isRepresentativeContentRequest(hint: string, action: BrowserAction): bo
     return false;
   }
   return /(아무\s*글|랜덤|대표|재밌|흥미|게시글|게시물|포스트|article|post|interesting|random|any\s+(?:post|article|item))/i.test(hint);
+}
+
+function scoreContentIdentifierMatch(element: BrowserElement, identifier: string): number {
+  const haystacks = [
+    element.href,
+    element.label,
+    element.text,
+    element.contextText,
+    element.value,
+    element.title
+  ].filter(Boolean).map((value) => String(value));
+  let score = 0;
+  for (const value of haystacks) {
+    if (value.includes(identifier)) {
+      score = Math.max(score, value === identifier ? 0.34 : 0.28);
+    }
+    try {
+      const url = new URL(value);
+      const searchValues = Array.from(url.searchParams.values());
+      if (searchValues.includes(identifier)) {
+        score = Math.max(score, 0.34);
+      }
+      if (url.pathname.split(/[/?#&=._-]+/).includes(identifier)) {
+        score = Math.max(score, 0.3);
+      }
+    } catch {
+      // Non-URL label/text values are handled by the plain substring check.
+    }
+  }
+  return score;
 }
 
 function buildLocaleLabel(element: BrowserElement, label: string): string {

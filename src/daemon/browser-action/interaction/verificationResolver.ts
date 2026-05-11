@@ -134,6 +134,9 @@ function verifyDefaultEffect(input: {
   if (!input.after) {
     return { status: "unknown", reason: "No after observation was available." };
   }
+  if (input.action.type === "navigate") {
+    return verifyRequestedNavigationDestination(input.action.url, input.after.url);
+  }
   if (!input.before) {
     return { status: "passed", reason: "Browser adapter completed the action and returned an observation." };
   }
@@ -161,7 +164,44 @@ function verifyDefaultEffect(input: {
       ? { status: "passed", reason: "Screenshot evidence is available after the action." }
       : { status: "unknown", reason: "Screenshot action completed but no screenshot evidence was attached." };
   }
+  if (input.action.type === "back" || input.action.type === "forward") {
+    return { status: "failed", reason: "Browser navigation command completed, but the observed page did not change." };
+  }
   return { status: "unknown", reason: "Browser adapter completed, but the expected page effect was not proven." };
+}
+
+function verifyRequestedNavigationDestination(requestedUrl: string, actualUrl: string | undefined): BrowserVerificationResult {
+  if (!actualUrl) {
+    return { status: "failed", reason: "Navigation command completed but no destination URL was observed." };
+  }
+  if (navigationDestinationMatches(requestedUrl, actualUrl)) {
+    return { status: "passed", reason: "After observation URL matches the requested navigation." };
+  }
+  return { status: "failed", reason: "Navigation command completed but URL did not match the requested destination." };
+}
+
+function navigationDestinationMatches(requestedUrl: string, actualUrl: string): boolean {
+  try {
+    const requested = new URL(requestedUrl);
+    const actual = new URL(actualUrl);
+    requested.hash = "";
+    actual.hash = "";
+    if (requested.href === actual.href) {
+      return true;
+    }
+    if (requested.search) {
+      return requested.origin === actual.origin &&
+        requested.pathname === actual.pathname &&
+        requested.search === actual.search;
+    }
+    return requested.origin === actual.origin && normalizePathname(requested.pathname) === normalizePathname(actual.pathname);
+  } catch {
+    return actualUrl.includes(requestedUrl);
+  }
+}
+
+function normalizePathname(value: string): string {
+  return value.replace(/\/+$/, "") || "/";
 }
 
 function readRouteKey(observation: BrowserObservation | undefined): string | undefined {

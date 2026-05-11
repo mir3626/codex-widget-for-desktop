@@ -12,6 +12,10 @@ export function isContentOpenRequest(text: string): boolean {
 }
 
 export function readContentRequestTarget(text: string): string {
+  const identifier = readContentIdentifier(text);
+  if (identifier) {
+    return `${identifier}번 글`;
+  }
   const ordinal = readContentOrdinal(text);
   if (ordinal) {
     return `${ordinal}번째 글`;
@@ -23,6 +27,13 @@ export function readContentRequestTarget(text: string): string {
     return "아무 글";
   }
   return "대표 글";
+}
+
+export function readContentIdentifier(text: string): string | undefined {
+  const compact = text.replace(/\s+/g, "");
+  const match = compact.match(/(\d{4,})(?:번)?(?:글|게시글|게시물|포스트|포스팅|article|post|item)/i) ??
+    compact.match(/(?:글|게시글|게시물|포스트|포스팅|article|post|item)(\d{4,})(?:번)?/i);
+  return match?.[1];
 }
 
 export function readContentOrdinal(text: string): number | undefined {

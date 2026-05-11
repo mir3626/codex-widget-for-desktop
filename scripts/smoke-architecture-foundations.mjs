@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   createCapabilityDebugBundle,
   SURFACE_CONTROL_STAGES,
@@ -13,6 +14,7 @@ import {
 import { createSafetyDecision, decideTerminalCommandSafety } from "../dist/daemon/safety/index.js";
 import {
   browserActionAppServerClientToolContract,
+  createBrowserActionToolResult,
   createBrowserActionPromptToolInvocation
 } from "../dist/daemon/agent-tools/index.js";
 import { preparedContextToSemanticSnapshot } from "../dist/daemon/semantic-interface/adapters/index.js";
@@ -137,6 +139,40 @@ const toolInvocation = createBrowserActionPromptToolInvocation({
 });
 assert.equal(toolInvocation.capability, "browser_action");
 assert.equal(toolInvocation.runtime, "simulated_daemon");
+const toolResult = createBrowserActionToolResult({
+  invocationId: "request-1",
+  planStatus: "completed",
+  result: {
+    id: "result-1",
+    actionSessionId: "session-1",
+    action: { type: "click", target: { kind: "text", text: "Search" } },
+    startedAt: new Date(0).toISOString(),
+    completedAt: new Date(0).toISOString(),
+    status: "succeeded",
+    target: {
+      id: "search-button",
+      role: "button",
+      tagName: "button",
+      label: "Search",
+      text: "Search",
+      visible: true,
+      enabled: true,
+      confidence: 0.95,
+      sourceOrder: 1,
+      riskHints: []
+    },
+    safety: {
+      decision: "allow",
+      risk: "low",
+      reason: "safe",
+      actionLabel: "click Search",
+      destructive: false
+    },
+    verification: { status: "passed", reason: "clicked" }
+  }
+});
+assert.equal(toolResult.status, "succeeded");
+assert.equal(toolResult.output?.verificationStatus, "passed");
 assert.equal(browserActionAppServerClientToolContract.status, "blocked");
 assert.equal(browserActionAppServerClientToolContract.safeFallbackRuntime, "simulated_daemon");
 
@@ -152,5 +188,20 @@ const bundle = createCapabilityDebugBundle({
 assert.equal(bundle.schemaVersion, "capability-debug-bundle.v1");
 assert.equal(bundle.request.utterancePreview?.includes("test@example.com"), false);
 assert.equal(bundle.request.utterancePreview?.includes("sk_1234567890123456"), false);
+
+const sourceSizeBudgets = [
+  ["src/daemon/browser-action/interaction/candidateStep.ts", 800],
+  ["src/daemon/browser-perception/service.ts", 700],
+  ["src/daemon/server/ws/messageRouter.ts", 120],
+  ["src/renderer/WidgetRuntime.tsx", 750],
+  ["src/renderer/WidgetRuntimeView.tsx", 650],
+  ["providers/browser-dom-extension/service-worker.js", 750],
+  ["providers/browser-dom-extension/bridge/action-channel.js", 700],
+  ["providers/browser-dom-extension/bridge/tab-state.js", 350]
+];
+for (const [file, maxLines] of sourceSizeBudgets) {
+  const lineCount = readFileSync(file, "utf8").split(/\r?\n/).length;
+  assert.ok(lineCount <= maxLines, `${file} exceeded architecture source-size budget ${lineCount}/${maxLines}`);
+}
 
 console.log("architecture foundations smoke ok");

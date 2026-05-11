@@ -14,24 +14,40 @@ This file records items that should not be silently downgraded to complete.
 
 ## Windows UI Automation Browser Helper
 
-- Status: `BLOCKED` for live executable browser chrome/restricted-page control.
-- Current path: Browser Action has a mockable native helper JSON contract and
-  browser-window diagnostics.
-- Evidence: `CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER` can point to a
-  helper executable, and `npm run smoke:browser-action:native` covers the mock
-  helper contract.
-- Required scope expansion: signed Rust/.NET/native helper scoped to browser
-  windows, permission prompts, file picker boundaries, cancellation, sensitive
-  redaction, and daemon approval/audit integration.
+- Status: bounded Rust native UI Automation helper implemented, with
+  PowerShell fallback preserved for development/debug migration. Production
+  Authenticode signing remains externally blocked on a certificate or CI signing
+  service.
+- Current path: `providers/browser-native-desktop-helper-rs/` builds
+  `dist/browser-native-desktop-helper/browser-native-desktop-helper.exe`; the
+  executable implements the existing `browser-native-desktop-helper.v1` JSON
+  contract for browser-window-scoped `status`, `observe`, and bounded
+  `execute` commands. The fallback script remains at
+  `providers/browser-native-desktop-helper/browser-native-desktop-helper.ps1`.
+- Evidence: `CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP=1` enables the native
+  adapter, the daemon auto-discovers the bundled Rust helper before the
+  PowerShell fallback when
+  `CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER` is unset, and
+  `npm run build:browser-native-desktop-helper`,
+  `npm run smoke:browser-action:native`,
+  `npm run smoke:browser-native-desktop-helper-native`,
+  `npm run smoke:browser-native-desktop-helper`, and
+  `npm run smoke:browser-native-desktop-helper:signature` cover mock, native,
+  fallback contract, and signing-readiness paths.
+- Remaining scope expansion: provide an Authenticode code-signing certificate
+  or CI signing secret and enforce
+  `CODEX_WIDGET_REQUIRE_SIGNED_HELPERS=1` in release verification. The helper
+  stays bounded to browser windows and blocks `evaluate` and sensitive text.
 
 ## Restricted Browser Pages
 
 - Status: intentional security boundary, not a bypass target.
 - Current path: extension/CDP/native adapters report restricted or unsupported
-  state and expose recovery text.
-- Required scope expansion: only a bounded native helper may improve recovery
-  for browser chrome or permission prompts; extension security restrictions must
-  not be bypassed.
+  state and expose recovery text. The bounded Windows UIA helper may assist with
+  browser chrome, permission prompts, and file picker boundaries when enabled.
+- Required scope expansion: extension security restrictions must not be
+  bypassed; any deeper recovery must stay inside the bounded native helper
+  approval/audit path.
 
 ## Vision Context Real Local ASR
 

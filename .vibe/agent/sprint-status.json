@@ -216,20 +216,40 @@
       "command": "npm run smoke:browser-action:semantic-live-corpus",
       "expectExitCode": 0,
       "expectStdoutContains": "browser action semantic live corpus smoke ok"
+    },
+    {
+      "id": "smoke-browser-action-live-harness",
+      "command": "npm run smoke:browser-action:live-harness",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser action live harness smoke ok"
+    },
+    {
+      "id": "build-browser-native-desktop-helper",
+      "command": "npm run build:browser-native-desktop-helper",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser native desktop helper built"
+    },
+    {
+      "id": "smoke-browser-native-desktop-helper-native",
+      "command": "npm run smoke:browser-native-desktop-helper-native",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser native desktop helper native smoke ok"
+    },
+    {
+      "id": "smoke-browser-native-desktop-helper-signature",
+      "command": "npm run smoke:browser-native-desktop-helper:signature",
+      "expectExitCode": 0,
+      "expectStdoutContains": "browser native desktop helper"
     }
   ],
   "handoff": {
-    "currentSprintId": "iter-23-complete",
-    "lastActionSummary": "Post-priority hardening is complete. Renderer chat session streaming/typewriter logic was extracted, reviewed live Browser Action reports now feed a semantic live corpus smoke, Browser Bridge popup can reload stale extension code, Browser Action diagnostics can be copied/downloaded, Vite chunk warning was removed through vendor chunking, smoke-all suppresses Node SQLite experimental warning noise, smoke temp cleanup schedules deferred retries, app-server client-tool BLOCKED status is explicit in code/docs, Vision ASR sidecar execution is implemented, and restricted-page recovery text is clearer.",
+    "currentSprintId": "iter-26-complete",
+    "lastActionSummary": "Implemented the Rust native Browser Action desktop helper hardening track. Added providers/browser-native-desktop-helper-rs, build/sign/signature scripts, native helper smokes, daemon discovery priority env -> bundled Rust exe -> PowerShell fallback, and Tauri resource registration for dist/browser-native-desktop-helper. Authenticode signing remains BLOCKED on a certificate or CI signing service.",
     "openIssues": [
-      "Live browser dogfood remains the source of truth for Browser Action semantic usefulness; the semantic live corpus now has reviewed report rows but should keep growing with real traces before statistical calibration.",
-      "Renderer decomposition can continue opportunistically around Vision controller state and deeper mode-menu composition; the chat session stream/typewriter and prompt submission extractions are complete.",
-      "Browser Action native desktop live executable browser chrome control is BLOCKED until a scoped Windows UI Automation or bounded native input helper is supplied and validated; current adapter reports diagnostics, exposes CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER, and smoke-covers the helper JSON contract with a mock executable.",
-      "Browser Action custom Codex app-server tool bridge is BLOCKED on a stable app-server custom tool/client-tool contract; current code records the blocked contract and uses daemon prompt/tool simulation as the safe fallback.",
-      "Restricted browser pages remain subject to browser/extension/CDP security boundaries and should report unsupported state rather than bypassing protections.",
-      "Semantic Memory remains advisory and cannot bypass freshness, safety, visibility, approval, or current view evidence.",
-      "Vision Context local ASR now has executable sidecar support, but selecting/installing the first real ASR model/runtime remains dogfood/environment work.",
-      "Mascot motion code supports authored sprite-sheet playback; if product-owner dogfood still rejects the asset quality, the next work is new authored/generated pose sheets rather than transform-only proxy motion."
+      "Reload the unpacked Browser Bridge extension before manual live-site retesting so Chrome/Edge uses the updated popup/service-worker files.",
+      "Browser Action app-server client tool remains BLOCKED on an official custom client-tool contract; daemon simulated runtime stays the safe fallback.",
+      "Semantic Memory is advisory only and cannot bypass freshness, safety, visibility, approval, or current view evidence.",
+      "Authenticode production signing for the Rust helper remains BLOCKED until a code-signing certificate or CI signing service is provided."
     ],
     "orchestratorContextBudget": "medium",
     "preferencesActive": [
@@ -238,11 +258,11 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-11T17:42:00.000+09:00"
+    "updatedAt": "2026-05-12T05:30:00.000+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-11T17:42:00.000+09:00"
+  "stateUpdatedAt": "2026-05-12T05:30:00.000+09:00"
 }

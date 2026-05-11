@@ -43,7 +43,9 @@
       "../dist/node-runtime",
       "../dist/ocr-runtime",
       "../dist/pty-runtime",
+      "../dist/browser-native-desktop-helper",
       "../providers/screen-capture-helper",
+      "../providers/browser-native-desktop-helper",
       "../providers/browser-dom-extension",
       "../providers/browser-native-host"
     ]

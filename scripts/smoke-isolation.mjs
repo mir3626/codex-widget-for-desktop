@@ -44,7 +44,7 @@ export function createSmokeAppDataEnv(baseEnv = process.env, prefix = "codex-wid
   };
 }
 
-function removeSmokeDir(dir) {
+export function removeSmokeDir(dir) {
   try {
     rmSync(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 150 });
   } catch (error) {

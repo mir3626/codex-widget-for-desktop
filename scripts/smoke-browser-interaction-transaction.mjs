@@ -15,6 +15,7 @@ import {
   renderSemanticTargetClarificationResponse,
   selectSemanticClarificationCandidate
 } from "../dist/daemon/server/browser-action/clarification.js";
+import { preparePromptStepRetryAfterSourceRefresh } from "../dist/daemon/server/browser-action/promptPlanState.js";
 
 const mode = process.argv[2] ?? "core";
 
@@ -79,6 +80,9 @@ async function verifyTransactionCore() {
   assert(candidates.every((candidate) => candidate.leaseId === lease.leaseId), "candidate ids should be lease-scoped");
   verifySearchIntentAndGate({ graph, lease });
   verifyOrdinalContentIntentAndGate({ graph, lease });
+  verifyContentIdentifierIntentAndGate({ graph, lease });
+  verifyRepresentativeContentAvoidsNavigation({ graph, lease });
+  verifySemanticMemoryAdvisoryRanking({ graph, lease });
 }
 
 function verifySearchIntentAndGate({ graph, lease }) {
@@ -120,6 +124,77 @@ function verifyOrdinalContentIntentAndGate({ graph, lease }) {
   assertEqual(selected?.element?.id, "post-4", "ordinal content target should select the fourth content item");
   assert(selected?.label.includes("4번째 글"), "ordinal candidate label should be user-readable");
   assert(!candidates.some((candidate) => candidate.element?.id === "vote-post-2"), "utility vote links must not count as content items");
+}
+
+function verifyContentIdentifierIntentAndGate({ graph, lease }) {
+  const intent = resolveBrowserActionIntent("1174404번글 눌러줘");
+  assertEqual(intent.actions.length, 1, "content id intent should produce one click");
+  assertEqual(intent.actions[0].target.text, "1174404번 글", "long content number should be treated as an identifier, not ordinal");
+  const candidates = generateCandidateSteps({
+    action: intent.actions[0],
+    graph,
+    target: intent.actions[0].target,
+    hint: intent.actions[0].target.text,
+    lease
+  });
+  const decision = decideCandidatePlanningGate({ action: intent.actions[0], candidates, locale: "ko", requireFreshLease: true });
+  const selected = candidates.find((candidate) => candidate.candidateId === decision.selectedCandidateId);
+  assertEqual(decision.decision, "proceed", "content id target should proceed when the matching link exists");
+  assertEqual(selected?.element?.id, "post-1174404", "content id target should select the matching href/text candidate");
+}
+
+function verifyRepresentativeContentAvoidsNavigation({ graph, lease }) {
+  const intent = resolveBrowserActionIntent("재밌어보이는 글 아무거나 눌러줘");
+  assertEqual(intent.actions.length, 1, "representative content intent should produce one click");
+  const candidates = generateCandidateSteps({
+    action: intent.actions[0],
+    graph,
+    target: intent.actions[0].target,
+    hint: intent.actions[0].target.text,
+    lease
+  });
+  const decision = decideCandidatePlanningGate({ action: intent.actions[0], candidates, locale: "ko", requireFreshLease: true });
+  const selected = candidates.find((candidate) => candidate.candidateId === decision.selectedCandidateId);
+  assertEqual(decision.decision, "proceed", "representative content target should proceed with content-list candidates");
+  assertEqual(selected?.element?.id, "post-1", "representative content should prefer page content over navigation links");
+  assert(!candidates.some((candidate) => candidate.element?.id === "nav-story"), "navigation links must not be representative content candidates when page content exists");
+}
+
+function verifySemanticMemoryAdvisoryRanking({ graph, lease }) {
+  const intent = resolveBrowserActionIntent("재밌어보이는 글 아무거나 눌러줘");
+  const action = intent.actions[0];
+  const baseline = generateCandidateSteps({
+    action,
+    graph,
+    target: action.target,
+    hint: action.target.text,
+    lease
+  });
+  const baselineDecision = decideCandidatePlanningGate({ action, candidates: baseline, locale: "ko", requireFreshLease: true });
+  const baselineSelected = baseline.find((candidate) => candidate.candidateId === baselineDecision.selectedCandidateId);
+  assertEqual(baselineSelected?.element?.id, "post-1", "baseline representative content should follow current view evidence order");
+  const memoryReadSet = createMemoryReadSet({
+    phrase: "재밌어보이는 글 아무거나",
+    toKey: "두 번째 게시글 제목"
+  });
+  const memoryCandidates = generateCandidateSteps({
+    action,
+    graph,
+    target: action.target,
+    hint: action.target.text,
+    lease,
+    memoryReadSet,
+    memoryEvidence: {
+      readSetId: memoryReadSet.id,
+      edgeCount: memoryReadSet.edges.length,
+      exclusionCount: memoryReadSet.exclusions.length
+    }
+  });
+  const memoryDecision = decideCandidatePlanningGate({ action, candidates: memoryCandidates, locale: "ko", requireFreshLease: true });
+  const memorySelected = memoryCandidates.find((candidate) => candidate.candidateId === memoryDecision.selectedCandidateId);
+  assertEqual(memorySelected?.element?.id, "post-2", "semantic memory may advisably reorder equally supported current-view candidates");
+  assert(memorySelected?.reasonCodes.includes("semantic_memory_phrase_alias"), "memory-selected candidate should record memory reason code");
+  assert(memorySelected?.scoreBreakdown.semantic_memory > 0, "memory-selected candidate should expose bounded memory score contribution");
 }
 
 async function verifyTransactionClarification() {
@@ -170,6 +245,20 @@ async function verifyTransactionVerification() {
   assertEqual(failed.status, "failed", "wrong click without expected effect should fail verification");
   const passed = verifyBrowserAction({ action, expected, before, after: changed, ok: true });
   assertEqual(passed.status, "passed", "route/query transition should satisfy click verification");
+  const wrongNavigate = verifyBrowserAction({
+    action: { type: "navigate", url: "https://www.google.com/search?q=codex%20widget" },
+    before,
+    after: changed,
+    ok: true
+  });
+  assertEqual(wrongNavigate.status, "failed", "navigate must fail when the requested destination is not reached");
+  const rightNavigate = verifyBrowserAction({
+    action: { type: "navigate", url: "https://www.google.com/search?q=codex%20widget" },
+    before,
+    after: buildBrowserObservation({ snapshot: createSnapshot({ url: "https://www.google.com/search?q=codex%20widget" }) }),
+    ok: true
+  });
+  assertEqual(rightNavigate.status, "passed", "navigate should pass when the requested destination is reached");
   const staleBack = verifyBrowserAction({
     action: { type: "back" },
     expected: [{ type: "navigation_complete" }],
@@ -178,6 +267,49 @@ async function verifyTransactionVerification() {
     ok: true
   });
   assertEqual(staleBack.status, "failed", "back with unchanged observation should fail verification");
+  const historyRetryPlan = {
+    id: "history-retry-plan",
+    actionSessionId: "history-action-session",
+    createdAt: new Date().toISOString(),
+    goal: "뒤로가기",
+    status: "paused",
+    confidence: 1,
+    steps: [{
+      id: "step-1",
+      action: { type: "back" },
+      status: "awaiting_extension",
+      attempts: 1,
+      resultId: "history-result"
+    }]
+  };
+  const historyMismatchResult = {
+    id: "history-result",
+    actionSessionId: "history-action-session",
+    action: { type: "back" },
+    startedAt: new Date().toISOString(),
+    completedAt: new Date().toISOString(),
+    status: "failed",
+    before,
+    after: changed,
+    error: "Active tab URL changed before Browser Action execution: expected https://example.test/list, got https://example.test/other.",
+    verification: {
+      status: "failed",
+      reason: "Active tab URL changed before Browser Action execution: expected https://example.test/list, got https://example.test/other."
+    },
+    safety: {
+      decision: "allow",
+      risk: "low",
+      reason: "test",
+      actionLabel: "back",
+      targetSummary: "(none)",
+      destructive: false
+    }
+  };
+  assertEqual(
+    preparePromptStepRetryAfterSourceRefresh(historyRetryPlan, historyMismatchResult),
+    false,
+    "history navigation must not be retried after source refresh mismatch"
+  );
   const typeAction = { type: "type", target: { kind: "element_id", id: "search-box" }, text: "hello", clearFirst: true, submit: false };
   const noSubmit = verifyBrowserAction({
     action: typeAction,
@@ -251,6 +383,41 @@ function createBridgeStatus(url) {
   };
 }
 
+function createMemoryReadSet({ phrase, toKey }) {
+  return {
+    id: "mem-read-smoke",
+    schemaVersion: "semantic-memory.v1",
+    storeVersion: "semantic-memory-store.v1",
+    decayEpoch: "smoke",
+    scope: {
+      surface: "browser_page",
+      origin: "https://example.test",
+      viewPattern: "/list"
+    },
+    queryHash: "memory-query-smoke",
+    resultHash: "memory-result-smoke",
+    edges: [{
+      id: "edge-memory-preferred-post",
+      fromKey: phrase.normalize("NFKC").toLowerCase(),
+      toKey: toKey.normalize("NFKC").toLowerCase(),
+      relation: "phrase_alias",
+      weightBp: 9000,
+      evidenceCount: 3,
+      positiveCount: 3,
+      negativeCount: 0,
+      scope: {
+        surface: "browser_page",
+        origin: "https://example.test",
+        viewPattern: "/list"
+      },
+      source: "clarification",
+      safetyClass: "safe_action",
+      lastUsedAt: new Date().toISOString()
+    }],
+    exclusions: []
+  };
+}
+
 function createSnapshot(options = {}) {
   const url = options.url ?? "https://example.test/list";
   const mutationRevision = options.mutationRevision ?? "1";
@@ -304,6 +471,24 @@ function createSnapshot(options = {}) {
         mutationRevision
       },
       {
+        id: "nav-story",
+        role: "link",
+        tagName: "a",
+        label: "재밌는 사이트 안내글",
+        text: "재밌는 사이트 안내글",
+        href: "https://example.test/navigation/story",
+        selector: "nav a.story",
+        bbox: { x: 20, y: 124, w: 180, h: 28 },
+        visible: true,
+        enabled: true,
+        confidence: 0.94,
+        sourceOrder: 3,
+        nearestLandmark: "navigation",
+        contextText: "재밌는 사이트 안내글",
+        domPathHash: "nav-story",
+        mutationRevision
+      },
+      {
         id: "search-box",
         role: "searchbox",
         tagName: "input",
@@ -316,7 +501,7 @@ function createSnapshot(options = {}) {
         enabled: true,
         editable: true,
         confidence: 0.94,
-        sourceOrder: 3,
+        sourceOrder: 4,
         nearestLandmark: "toolbar",
         domPathHash: "search-box",
         mutationRevision
@@ -332,7 +517,7 @@ function createSnapshot(options = {}) {
         visible: true,
         enabled: true,
         confidence: 0.95,
-        sourceOrder: 4,
+        sourceOrder: 5,
         nearestLandmark: "toolbar",
         domPathHash: "search-button",
         mutationRevision
@@ -349,7 +534,7 @@ function createSnapshot(options = {}) {
         visible: true,
         enabled: true,
         confidence: 0.92,
-        sourceOrder: 5,
+        sourceOrder: 6,
         nearestLandmark: "toolbar",
         domPathHash: "search-help",
         mutationRevision
@@ -366,7 +551,7 @@ function createSnapshot(options = {}) {
         visible: true,
         enabled: true,
         confidence: 0.94,
-        sourceOrder: 6,
+        sourceOrder: 7,
         nearestLandmark: "main",
         listOwner: "posts",
         contextText: "흥미로운 글 제목 작성자 조회수",
@@ -385,7 +570,7 @@ function createSnapshot(options = {}) {
         visible: true,
         enabled: true,
         confidence: 0.94,
-        sourceOrder: 7,
+        sourceOrder: 8,
         nearestLandmark: "main",
         listOwner: "posts",
         contextText: "두 번째 게시글 제목 작성자 조회수",
@@ -404,7 +589,7 @@ function createSnapshot(options = {}) {
         visible: true,
         enabled: true,
         confidence: 0.92,
-        sourceOrder: 8,
+        sourceOrder: 9,
         nearestLandmark: "main",
         listOwner: "posts",
         contextText: "추천 97",
@@ -423,7 +608,7 @@ function createSnapshot(options = {}) {
         visible: true,
         enabled: true,
         confidence: 0.94,
-        sourceOrder: 9,
+        sourceOrder: 10,
         nearestLandmark: "main",
         listOwner: "posts",
         contextText: "세 번째 게시글 제목 작성자 조회수",
@@ -442,11 +627,30 @@ function createSnapshot(options = {}) {
         visible: true,
         enabled: true,
         confidence: 0.94,
-        sourceOrder: 10,
+        sourceOrder: 11,
         nearestLandmark: "main",
         listOwner: "posts",
         contextText: "네 번째 게시글 제목 작성자 조회수",
         domPathHash: "post-4",
+        mutationRevision
+      },
+      {
+        id: "post-1174404",
+        role: "link",
+        tagName: "a",
+        label: "코덱스 목표를 위한 팁",
+        text: "코덱스 목표를 위한 팁",
+        href: "https://example.test/board/view/?id=demo&no=1174404",
+        selector: "main a.post[data-no='1174404']",
+        bbox: { x: 120, y: 284, w: 360, h: 28 },
+        visible: true,
+        enabled: true,
+        confidence: 0.94,
+        sourceOrder: 12,
+        nearestLandmark: "main",
+        listOwner: "posts",
+        contextText: "1174404 코덱스 목표를 위한 팁 작성자 조회수",
+        domPathHash: "post-1174404",
         mutationRevision
       }
     ]

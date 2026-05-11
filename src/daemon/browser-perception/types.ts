@@ -92,6 +92,13 @@ export type BrowserPerceptionObserveResult = {
   userRecovery?: string;
 };
 
+export type BrowserPerceptionScheduleResult = {
+  scheduled: boolean;
+  command?: BrowserPerceptionObserveCommand;
+  reason: string;
+  diagnostics: Record<string, unknown>;
+};
+
 export type BrowserPerceptionObserveCommand = {
   kind: "observe_now";
   commandId: string;

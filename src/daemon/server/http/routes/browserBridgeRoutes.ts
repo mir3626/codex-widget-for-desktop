@@ -31,6 +31,7 @@ export async function handleBrowserBridgeRoute(
       if (browserBridgeActiveTabChanged(previous, status)) {
         browserPerception.markDirty(`bridge_active_tab_changed:${status.reason ?? "heartbeat"}`);
       }
+      scheduleBackgroundPerceptionObserve({ browserPerception, providers, clients, status, reason: status.reason ?? "heartbeat" });
       broadcast(clients, { type: "browserExtensionBridge.status", status });
       writeJsonResponse(response, 200, { ok: true, status });
     } catch (error) {
@@ -53,6 +54,7 @@ export async function handleBrowserBridgeRoute(
     if (browserBridgeActiveTabChanged(previous, status)) {
       browserPerception.markDirty(`bridge_active_tab_changed:${status.reason ?? "poll"}`);
     }
+    scheduleBackgroundPerceptionObserve({ browserPerception, providers, clients, status, reason: status.reason ?? "poll" });
     broadcast(clients, { type: "browserExtensionBridge.status", status });
     const command = await pollBrowserBridgeCommand({
       browserPerception,
@@ -177,6 +179,35 @@ export async function handleBrowserBridgeRoute(
   }
 
   return false;
+}
+
+function scheduleBackgroundPerceptionObserve(input: {
+  browserPerception: HttpRouteContext["browserPerception"];
+  providers: HttpRouteContext["providers"];
+  clients: HttpRouteContext["clients"];
+  status: BrowserExtensionBridgeStatus;
+  reason: string;
+}): void {
+  const scheduled = input.browserPerception.scheduleBackgroundObserve({
+    providers: input.providers,
+    bridgeStatus: input.status,
+    reason: input.reason
+  });
+  if (!scheduled.scheduled || !scheduled.command) {
+    return;
+  }
+  broadcast(input.clients, {
+    type: "browserAction.progress",
+    actionSessionId: scheduled.command.commandId,
+    status: "browser_perception_waiting",
+    detail: {
+      status: "observe_queued",
+      commandId: scheduled.command.commandId,
+      reason: "background_scheduler",
+      schedulerReason: scheduled.reason,
+      diagnostics: scheduled.diagnostics
+    }
+  });
 }
 
 export function browserBridgeActiveTabChanged(

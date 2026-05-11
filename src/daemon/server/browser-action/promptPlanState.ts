@@ -46,9 +46,16 @@ export function preparePromptStepRetryAfterSourceRefresh(plan: BrowserActionPlan
 }
 
 function isSourceRefreshRetryable(result: BrowserActionResult): boolean {
+  if (isHistoryNavigationAction(result)) {
+    return false;
+  }
   if (result.status !== "failed" || !result.after) {
     return false;
   }
   const reason = `${result.error ?? ""} ${result.verification?.reason ?? ""}`;
   return /Active tab URL changed before Browser Action execution|Active tab mismatch|Active window mismatch/i.test(reason);
+}
+
+function isHistoryNavigationAction(result: BrowserActionResult): boolean {
+  return result.action.type === "back" || result.action.type === "forward" || result.action.type === "reload";
 }

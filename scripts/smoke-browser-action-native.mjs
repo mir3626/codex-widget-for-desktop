@@ -42,6 +42,7 @@ if (process.platform !== "win32") {
 }
 
 await assertNativeHelperContract();
+await assertBundledNativeHelperDiscovery();
 
 console.log(`browser action native smoke ok: ${status.state}`);
 
@@ -125,5 +126,43 @@ process.stdin.on("end", () => {
       process.env.CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER = previousHelper;
     }
     rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
+async function assertBundledNativeHelperDiscovery() {
+  if (process.platform !== "win32") {
+    return;
+  }
+  const previousEnabled = process.env.CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP;
+  const previousHelper = process.env.CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER;
+  try {
+    process.env.CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP = "1";
+    delete process.env.CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER;
+    const helperStatus = await nativeDesktopAdapter.getStatus({ session });
+    assertEqual(helperStatus.state, "ready", "bundled native helper status");
+    if (!["native", "powershell"].includes(helperStatus.diagnostics?.helper?.source) || helperStatus.diagnostics?.helper?.exists !== true) {
+      throw new Error(`Bundled native helper should be auto-discovered: ${JSON.stringify(helperStatus)}`);
+    }
+    const observation = await nativeDesktopAdapter.observe({ session });
+    if (!observation.title || !Array.isArray(observation.elements)) {
+      throw new Error(`Bundled native helper should observe normalized browser boundary: ${JSON.stringify(observation)}`);
+    }
+    const read = await nativeDesktopAdapter.execute({
+      session,
+      observation,
+      action: { type: "read", reason: "bundled helper smoke" }
+    });
+    assertEqual(read.ok, true, "bundled native helper read action");
+  } finally {
+    if (previousEnabled === undefined) {
+      delete process.env.CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP;
+    } else {
+      process.env.CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP = previousEnabled;
+    }
+    if (previousHelper === undefined) {
+      delete process.env.CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER;
+    } else {
+      process.env.CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER = previousHelper;
+    }
   }
 }

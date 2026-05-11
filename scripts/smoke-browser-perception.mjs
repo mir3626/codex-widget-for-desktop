@@ -98,6 +98,7 @@ async function verifyCorePerception() {
   });
   const permission = await permissionWait;
   assertEqual(permission.status, "permission_required", "permission ack maps to recovery status");
+  await verifyBackgroundScheduler();
 }
 
 async function verifyStabilization() {
@@ -147,6 +148,83 @@ async function verifyStabilization() {
   assertEqual(result.status, "ready", "side-effect waits for stable observe");
   assert(result.context?.routeKey, "SPA transition should retain route identity");
   assertEqual(result.context?.mutationRevision, "view-2", "mutation revision updates after SPA transition");
+}
+
+async function verifyBackgroundScheduler() {
+  const service = new BrowserPerceptionService();
+  const providers = new ProviderRegistry();
+  const bridgeStatus = createBridgeStatus("https://example.test/background");
+  const scheduled = service.scheduleBackgroundObserve({
+    providers,
+    bridgeStatus,
+    reason: "smoke_background_dirty",
+    timeoutMs: 2_000
+  });
+  assertEqual(scheduled.scheduled, true, "background scheduler should queue observe when no prepared context exists");
+  const duplicate = service.scheduleBackgroundObserve({
+    providers,
+    bridgeStatus,
+    reason: "smoke_background_duplicate",
+    timeoutMs: 2_000
+  });
+  assertEqual(duplicate.scheduled, false, "background scheduler should dedupe pending observe for the same active tab");
+  const command = service.pollExtensionCommand();
+  assertEqual(command?.kind, "observe_now", "background scheduler command kind");
+  assertEqual(command?.reason, "background", "background scheduler command reason");
+  const inFlightDuplicate = service.scheduleBackgroundObserve({
+    providers,
+    bridgeStatus,
+    reason: "smoke_background_in_flight_duplicate",
+    timeoutMs: 2_000,
+    cooldownMs: 0
+  });
+  assertEqual(inFlightDuplicate.scheduled, false, "background scheduler should dedupe in-flight observe after extension poll");
+  const result = service.completeObserveResult({
+    providers,
+    bridgeStatus,
+    payload: {
+      commandId: command.commandId,
+      status: "succeeded",
+      snapshot: createSnapshot({ url: "https://example.test/background", mutationQuietMs: 950 }),
+      mutationRevision: "background-1",
+      mutationQuietMs: 950,
+      readyState: "complete",
+      metadata: { reason: "background" }
+    }
+  });
+  assertEqual(result.status, "ready", "background observe result should ingest even without a waiter");
+  assertEqual(service.getActiveContext()?.snapshot.url, "https://example.test/background", "background observe should refresh active context");
+  const freshSkip = service.scheduleBackgroundObserve({
+    providers,
+    bridgeStatus,
+    reason: "smoke_background_fresh",
+    timeoutMs: 2_000
+  });
+  assertEqual(freshSkip.scheduled, false, "background scheduler should skip fresh prepared context");
+
+  const priorityService = new BrowserPerceptionService();
+  const priorityProviders = new ProviderRegistry();
+  priorityService.scheduleBackgroundObserve({
+    providers: priorityProviders,
+    bridgeStatus,
+    reason: "smoke_background_priority",
+    timeoutMs: 2_000
+  });
+  const foregroundWait = priorityService.ensureFreshContext({
+    providers: priorityProviders,
+    bridgeStatus,
+    request: {
+      requestId: "foreground-prompt",
+      reason: "prompt",
+      requiredFreshness: "stable",
+      timeoutMs: 2_000
+    }
+  });
+  const foregroundCommand = priorityService.pollExtensionCommand();
+  assertEqual(foregroundCommand?.requestId, "foreground-prompt", "foreground prompt observe should outrank queued background observe");
+  priorityService.cancelCommand(foregroundCommand.commandId, "smoke_cancel");
+  const foregroundResult = await foregroundWait;
+  assertEqual(foregroundResult.status, "cancelled", "foreground priority wait should receive cancellation");
 }
 
 function createBridgeStatus(url, options = {}) {

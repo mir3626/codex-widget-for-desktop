@@ -29,6 +29,9 @@ export function resolveBrowserActionIntent(text: string): BrowserActionIntent {
   if (!utterance || isInformationalBrowserActionQuestion(utterance)) {
     return createIntent({ utterance, actionType: "unknown", actions: [], confidence: 0, reason: "No executable Browser Action intent." });
   }
+  if (isBrowserActionFeedbackOnly(utterance)) {
+    return createIntent({ utterance, actionType: "unknown", actions: [], confidence: 0, reason: "Browser Action feedback was not treated as an executable browser command." });
+  }
 
   const targetPhrase = extractTargetPhrase(utterance);
   const navigationTargetPhrase = extractNavigationTargetPhrase(utterance);
@@ -36,13 +39,18 @@ export function resolveBrowserActionIntent(text: string): BrowserActionIntent {
   const requestedNavigationUrl = isNavigationRequest(utterance)
     ? extractUrl(utterance) ?? resolveKnownWebsiteUrl(navigationTargetPhrase ?? utterance)
     : undefined;
+  const historyCommand = readHistoryCommand(utterance);
   const actions: BrowserAction[] = [];
   let actionType: BrowserActionIntent["actionType"] = "unknown";
   let targetRole: string | undefined;
   let value: string | undefined = typedText;
   let reason = "Resolved Browser Action intent from deterministic command rules.";
 
-  if (isClickThenContentRequest(utterance, targetPhrase)) {
+  if (historyCommand) {
+    actionType = historyCommand;
+    actions.push({ type: historyCommand });
+    reason = "Resolved explicit browser history command before generic content-click parsing.";
+  } else if (isClickThenContentRequest(utterance, targetPhrase)) {
     actionType = "click";
     targetRole = "link";
     actions.push({ type: "click", target: { kind: "text", text: targetPhrase ?? stripBrowserActionSuffix(utterance) ?? utterance.slice(0, 80) } });
@@ -58,15 +66,6 @@ export function resolveBrowserActionIntent(text: string): BrowserActionIntent {
     targetRole = "link";
     actions.push({ type: "click", target: { kind: "text", role: "link", text: readContentRequestTarget(utterance) } });
     reason = "Resolved Browser Action intent to open a representative content item.";
-  } else if (/뒤로|go\s*back|\bback\b/i.test(utterance)) {
-    actionType = "back";
-    actions.push({ type: "back" });
-  } else if (/앞으로|\bforward\b/i.test(utterance)) {
-    actionType = "forward";
-    actions.push({ type: "forward" });
-  } else if (/새로고침|reload|refresh/i.test(utterance)) {
-    actionType = "reload";
-    actions.push({ type: "reload" });
   } else if (/스크롤|scroll/i.test(utterance)) {
     actionType = "scroll";
     actions.push({ type: "scroll", direction: /위로|up/i.test(utterance) ? "up" : "down", amount: readScrollAmount(utterance) });
@@ -137,6 +136,27 @@ export function resolveBrowserActionIntent(text: string): BrowserActionIntent {
 
 function isNavigationRequest(text: string): boolean {
   return /열어|이동|접속|켜|navigate|open|go\s*to/i.test(text);
+}
+
+function readHistoryCommand(text: string): "back" | "forward" | "reload" | undefined {
+  if (/뒤로|go\s*back|\bback\b/i.test(text)) {
+    return "back";
+  }
+  if (/앞으로|\bforward\b/i.test(text)) {
+    return "forward";
+  }
+  if (/새로고침|reload|refresh/i.test(text)) {
+    return "reload";
+  }
+  return undefined;
+}
+
+function isBrowserActionFeedbackOnly(text: string): boolean {
+  const normalized = text.trim().replace(/\s+/g, " ");
+  const referencesBrowserAction = /브라우저|browser|액션|action|뒤로가기|앞으로가기|back|forward/i.test(normalized);
+  const describesProblem = /동작|작동|기능|응답|속도|버그|문제|이상|느려|느림|실패|안\s*(?:돼|되)|꼬이|불안정/i.test(normalized);
+  const requestsExecution = /해줘|실행|눌러|누르|클릭|열어|이동|접속|켜|가줘|돌아가|go\s*back|go\s*forward|reload|refresh/i.test(normalized);
+  return referencesBrowserAction && describesProblem && !requestsExecution;
 }
 
 function isExecutableBrowserCommand(text: string): boolean {

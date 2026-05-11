@@ -27,6 +27,25 @@ export async function handleBrowserBridgeMessage(message: unknown, context: Mess
   if (browserBridgeActiveTabChanged(previous, status)) {
     context.browserPerception.markDirty(`bridge_active_tab_changed:${status.reason ?? "ws_poll"}`);
   }
+  const scheduled = context.browserPerception.scheduleBackgroundObserve({
+    providers: context.providers,
+    bridgeStatus: status,
+    reason: status.reason ?? "ws_poll"
+  });
+  if (scheduled.scheduled && scheduled.command) {
+    broadcast(context.clients, {
+      type: "browserAction.progress",
+      actionSessionId: scheduled.command.commandId,
+      status: "browser_perception_waiting",
+      detail: {
+        status: "observe_queued",
+        commandId: scheduled.command.commandId,
+        reason: "background_scheduler",
+        schedulerReason: scheduled.reason,
+        diagnostics: scheduled.diagnostics
+      }
+    });
+  }
   broadcast(context.clients, { type: "browserExtensionBridge.status", status });
 
   const command = await pollBrowserBridgeCommand({

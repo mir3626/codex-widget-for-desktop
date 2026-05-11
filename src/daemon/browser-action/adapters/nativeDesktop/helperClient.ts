@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { extname } from "node:path";
+import { extname, resolve } from "node:path";
 import type { BrowserAction, BrowserActionSession, BrowserElement } from "../../types.js";
 
 export const NATIVE_DESKTOP_HELPER_ENV = "CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER";
@@ -22,10 +22,16 @@ export type NativeDesktopHelperSnapshot = {
     tagName?: string;
     label?: string;
     text?: string;
+    value?: string;
+    placeholder?: string;
     selector?: string;
+    bbox?: { x: number; y: number; w: number; h: number };
     visible?: boolean;
     enabled?: boolean;
     editable?: boolean;
+    checked?: boolean;
+    selected?: boolean;
+    inputType?: string;
     confidence?: number;
     riskHints?: string[];
   }>;
@@ -62,22 +68,37 @@ export type NativeDesktopHelperAvailability = {
   path?: string;
   exists: boolean;
   detail: string;
+  source?: "env" | "native" | "powershell";
+  implementation?: "native" | "powershell" | "node" | "cmd" | "unknown";
 };
 
 export function getNativeDesktopHelperAvailability(): NativeDesktopHelperAvailability {
-  const helperPath = process.env[NATIVE_DESKTOP_HELPER_ENV]?.trim();
-  if (!helperPath) {
+  const resolved = resolveNativeDesktopHelperPath();
+  if (!resolved.path) {
     return {
       configured: false,
       exists: false,
       detail: `Set ${NATIVE_DESKTOP_HELPER_ENV} to a signed/bounded helper executable or script to enable executable native desktop Browser Action fallback.`
     };
   }
+  const exists = existsSync(resolved.path);
   return {
     configured: true,
-    path: helperPath,
-    exists: existsSync(helperPath),
-    detail: existsSync(helperPath) ? "Native desktop helper path is configured." : "Native desktop helper path is configured but does not exist."
+    path: resolved.path,
+    exists,
+    source: resolved.source,
+    implementation: resolved.implementation,
+    detail: exists
+      ? resolved.source === "env"
+        ? `Native desktop helper path is configured (${resolved.implementation ?? "unknown"}).`
+        : resolved.source === "native"
+          ? "Bundled native desktop Rust helper was found."
+          : "Bundled PowerShell native desktop helper fallback was found."
+      : resolved.source === "env"
+        ? "Native desktop helper path is configured but does not exist."
+        : resolved.source === "native"
+          ? "Bundled native desktop Rust helper was not found."
+          : "Bundled PowerShell native desktop helper fallback was not found."
   };
 }
 
@@ -186,4 +207,44 @@ function buildHelperCommand(helperPath: string): { command: string; args: string
     return { command: "cmd.exe", args: ["/c", helperPath] };
   }
   return { command: helperPath, args: [] };
+}
+
+function resolveNativeDesktopHelperPath(): { path?: string; source?: "env" | "native" | "powershell"; implementation?: NativeDesktopHelperAvailability["implementation"] } {
+  const configured = process.env[NATIVE_DESKTOP_HELPER_ENV]?.trim();
+  if (configured) {
+    return { path: configured, source: "env", implementation: inferHelperImplementation(configured) };
+  }
+  const candidates: Array<{ path: string; source: "native" | "powershell"; implementation: NativeDesktopHelperAvailability["implementation"] }> = [
+    {
+      path: resolve(process.cwd(), "dist", "browser-native-desktop-helper", "browser-native-desktop-helper.exe"),
+      source: "native",
+      implementation: "native"
+    },
+    {
+      path: resolve(process.cwd(), "_up_", "dist", "browser-native-desktop-helper", "browser-native-desktop-helper.exe"),
+      source: "native",
+      implementation: "native"
+    },
+    {
+      path: resolve(process.cwd(), "providers", "browser-native-desktop-helper", "browser-native-desktop-helper.ps1"),
+      source: "powershell",
+      implementation: "powershell"
+    },
+    {
+      path: resolve(process.cwd(), "_up_", "providers", "browser-native-desktop-helper", "browser-native-desktop-helper.ps1"),
+      source: "powershell",
+      implementation: "powershell"
+    }
+  ];
+  const found = candidates.find((candidate) => existsSync(candidate.path));
+  return found ?? {};
+}
+
+function inferHelperImplementation(helperPath: string): NativeDesktopHelperAvailability["implementation"] {
+  const extension = extname(helperPath).toLowerCase();
+  if (extension === ".ps1") return "powershell";
+  if (extension === ".js" || extension === ".mjs" || extension === ".cjs") return "node";
+  if (extension === ".cmd" || extension === ".bat") return "cmd";
+  if (extension === ".exe") return "native";
+  return "unknown";
 }

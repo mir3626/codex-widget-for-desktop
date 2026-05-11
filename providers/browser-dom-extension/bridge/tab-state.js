@@ -104,9 +104,27 @@ export async function postHeartbeat(baseUrl, status) {
     if (!response.ok) {
       throw new Error(`Browser Bridge heartbeat failed (${response.status}).`);
     }
+    const payload = await response.json().catch(() => null);
+    if (payload?.status && typeof payload.status === "object") {
+      mergeStatus(status, payload.status);
+    }
+    return status;
   } catch (error) {
     console.debug("[Codex Widget] Browser Bridge heartbeat failed.", error);
+    return status;
   }
+}
+
+function mergeStatus(target, source) {
+  const activeTab = {
+    ...(target.activeTab && typeof target.activeTab === "object" ? target.activeTab : {}),
+    ...(source.activeTab && typeof source.activeTab === "object" ? source.activeTab : {})
+  };
+  const settings = {
+    ...(target.settings && typeof target.settings === "object" ? target.settings : {}),
+    ...(source.settings && typeof source.settings === "object" ? source.settings : {})
+  };
+  Object.assign(target, source, { activeTab, settings });
 }
 
 export async function readTabPermission(tab, settings) {

@@ -406,7 +406,7 @@ Dependencies: Sprint 01 registry/status, Windows runtime constraints.
 
 Expected scope: Windows-oriented native desktop adapter contract, availability diagnostics, browser-window scoped safety boundary, cancel/error behavior, helper/native-input or UI Automation path if practical, and tests for supported or unavailable behavior. Do not generalize into full arbitrary desktop computer-use.
 
-Status: complete with BLOCKED boundary. The native desktop adapter now provides Windows browser-window availability diagnostics and unsupported-action errors; executable browser chrome control is blocked on a scoped UI Automation/native input helper.
+Status: complete with bounded helper path. The native desktop adapter provides Windows browser-window availability diagnostics and can route executable fallback actions through the bundled PowerShell UI Automation helper when native desktop Browser Action is enabled. A signed Rust/.NET/native helper remains a future hardening track.
 
 ### iter-10-sprint-04-agent-protocol-smokes-and-dogfood-evidence
 
@@ -1019,3 +1019,85 @@ Status: complete. The Browser Bridge popup now exposes `Reload bridge` when stal
 Goal: close the new verification-noise findings and record remaining true blockers precisely.
 
 Status: complete. Vite vendor chunking removes the renderer chunk-size warning, `smoke:all` suppresses Node SQLite experimental warning noise, smoke temp cleanup schedules deferred retries after EPERM, app-server client-tool BLOCKED status is encoded in `src/daemon/agent-tools/appServerClientTool.ts`, `docs/architecture/open-blockers.md` records remaining external blockers, Vision ASR sidecar execution is implemented behind `CODEX_WIDGET_ASR_SIDECAR_COMMAND`, and restricted-page recovery text is clearer.
+
+## Iteration iter-24: Browser Action Reliability Foundation
+
+Status: complete.
+
+Carryover: Iteration 23 closed the prior hardening set, but live Browser Action dogfood still showed architecture-level reliability gaps: inconsistent history navigation, verification false positives, prompt feedback misclassified as executable actions, non-representative content selection, numeric-reference ambiguity, slow prompt-to-action latency, and too much manual live-test diagnosis. `docs/plans/browser-action-reliability-foundation-handoff.md` was the authority for this completed iteration.
+
+### iter-24-sprint-01-runtime-verification-and-intent-hardening
+
+Goal: address the highest-impact live regressions before expanding the broader reliability foundation.
+
+Expected scope: extension default/stale reload visibility, history-navigation retry/source-mismatch behavior, navigate verification false positives, Browser Action feedback prompt abstention, history-command precedence over generic content-open prompts, numeric content identifier groundwork, and focused regression smokes.
+
+Status: complete. Runtime/default-state, history navigation, verification, intent parsing, representative content, numeric content-id, live-harness dry-run, and focused regression smoke coverage are implemented.
+
+### iter-24-sprint-02-live-harness-and-perception-scheduler
+
+Goal: reduce manual Browser Action dogfood friction and start moving current-page understanding ahead of user prompts.
+
+Expected scope: live widget/browser test harness improvements, prompt/action timing capture, active-tab dirty/freshness diagnostics, prepared context scheduling improvements, and artifacts that classify perception/intent/candidate/adapter/verification failures.
+
+Status: complete. Live harness dry-run and isolated live dogfood coverage are in place, and Browser Perception now has background active-tab observe scheduling from heartbeat/poll/WebSocket status, foreground observe priority, in-flight background dedupe, no-waiter result ingestion, and bridge smoke coverage proving the scheduler contract.
+
+### iter-24-sprint-03-semantic-memory-ux-tool-contract-and-boundaries
+
+Goal: complete the remaining foundation workstreams after runtime reliability is stable enough to measure.
+
+Expected scope: Semantic Interface v2 evidence integration, Semantic Memory advisory feedback loop, Browser Action UX simplification, app-server/simulated tool contract hardening, module-boundary cleanup, architecture docs, dogfood reports, and completion audit.
+
+Status: complete. Semantic Memory now contributes bounded advisory candidate-ranking evidence, Browser Action tool results normalize into the shared agent-tool result contract, raw internal receipts are replaced by user-facing Browser Action summaries, official app-server client-tool integration remains explicitly BLOCKED on a stable external contract, and architecture source-size regression checks are covered by `smoke:architecture-foundations`. Completion evidence is recorded in `docs/reports/browser-action-reliability-completion-audit-2026-05-11.md`.
+
+## Iteration iter-25: Browser Native Desktop Helper
+
+Status: complete.
+
+Carryover: Browser Action already had a native-desktop adapter and mockable JSON
+helper contract, but live Windows UI Automation browser fallback was still a
+BLOCKED item. The user requested implementation of the Windows UIA helper.
+
+### iter-25-sprint-01-bounded-windows-uia-helper
+
+Goal: implement the maximum practical bounded Windows UI Automation helper
+without turning Browser Action into arbitrary desktop automation.
+
+Status: complete. Added
+`providers/browser-native-desktop-helper/browser-native-desktop-helper.ps1`,
+which implements the existing `browser-native-desktop-helper.v1` JSON contract
+for browser-window-scoped `status`, `observe`, and bounded `execute`. The daemon
+native adapter now auto-discovers the bundled helper when native desktop Browser
+Action is enabled, maps helper UIA bbox/value metadata into normalized
+observations, and keeps `evaluate` plus sensitive text blocked. Added helper
+contract and live launched-browser smokes, Tauri resource registration, and
+architecture docs. A signed Rust/.NET/native helper remains a future hardening
+track, not the current adapter blocker.
+
+## Iteration iter-26: Browser Native Desktop Helper Hardening
+
+Status: complete with signing BLOCKED.
+
+Carryover: Iteration 25 supplied a working bounded PowerShell UI Automation
+helper, but the production direction called for a native Rust/.NET/helper track
+with signing readiness.
+
+### iter-26-sprint-01-rust-native-helper-and-signing-readiness
+
+Goal: add a Rust native helper, make it the daemon's preferred bundled helper,
+preserve PowerShell fallback compatibility, and add signing-readiness gates.
+
+Status: complete. Added
+`providers/browser-native-desktop-helper-rs/`, which builds a bounded Rust UIA
+helper implementing `browser-native-desktop-helper.v1` for `status`, `observe`,
+`read`, browser chrome navigation commands, bounded element actions,
+secret-text blocking, and `evaluate` rejection. `npm run
+build:browser-native-desktop-helper` copies the release executable to
+`dist/browser-native-desktop-helper/browser-native-desktop-helper.exe`, Tauri
+resources include the native helper dist directory, and daemon discovery now
+prefers explicit env override, then bundled Rust helper, then PowerShell
+fallback. Added native and signature smokes. Actual Authenticode signing remains
+BLOCKED because no local code-signing certificate or CI signing service is
+available; `npm run sign:browser-native-desktop-helper` can run `signtool.exe`
+when a certificate is configured, and release verification can enforce signing
+by setting `CODEX_WIDGET_REQUIRE_SIGNED_HELPERS=1`.
