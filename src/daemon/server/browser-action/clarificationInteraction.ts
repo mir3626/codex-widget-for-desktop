@@ -13,7 +13,7 @@ export function buildSemanticTargetClarificationInteraction(
     error,
     "Browser Action 대상이 애매합니다. 실행할 대상을 선택하면 같은 요청을 이어서 수행합니다.",
     "",
-    ...pending.candidates.map((candidate, index) => formatSemanticTargetClarificationCandidate(candidate, index + 1, "ko"))
+    pending.candidates.map((candidate, index) => formatSemanticTargetClarificationCandidate(candidate, index + 1, "ko")).join("\n\n")
   ].filter(Boolean).join("\n");
   return {
     id: pending.id,
@@ -34,10 +34,10 @@ export function renderSemanticTargetClarificationResponse(pending: PendingSemant
   const korean = /[가-힣]/.test(promptText);
   const candidates = pending.candidates
     .map((candidate, index) => formatSemanticTargetClarificationCandidate(candidate, index + 1, korean ? "ko" : "en"))
-    .join("\n");
+    .join("\n\n");
   return korean
-    ? `Browser Action 대상이 애매해서 바로 실행하지 않았습니다.\n\n${candidates}\n\n번호, 표시된 이름, 영역/위치 표현 중 하나를 입력하면 이어서 실행합니다.`
-    : `Browser Action needs a target clarification before it acts.\n\n${candidates}\n\nChoose a number, visible label, region, or position to continue.`;
+    ? `Browser Action 대상이 애매해서 바로 실행하지 않았습니다.\n\n${candidates}\n\n번호, "첫번째/두번째" 같은 순서, 표시된 이름, 영역/위치 표현 중 하나를 입력하면 이어서 실행합니다.`
+    : `Browser Action needs a target clarification before it acts.\n\n${candidates}\n\nChoose a number, ordinal, visible label, region, or position to continue.`;
 }
 
 export function formatSemanticTargetClarificationCandidate(
@@ -46,7 +46,7 @@ export function formatSemanticTargetClarificationCandidate(
   locale: "ko" | "en" = "ko"
 ): string {
   const label = readCandidateLabel(element);
-  const role = element.role || element.tagName || "element";
+  const role = describeRole(element, locale);
   const prefix = index === undefined ? "" : `${index}. `;
   const parts = [
     summarizeRegion(element, locale),
@@ -57,9 +57,35 @@ export function formatSemanticTargetClarificationCandidate(
   ].filter(Boolean);
   const fallback = summarizeBrowserElement(element);
   const title = label
-    ? `${role} "${label}"`
+    ? `${role}: "${label}"`
     : fallback;
-  return `${prefix}${title}${parts.length ? ` · ${parts.join(" · ")}` : ""}`;
+  const alias = index === undefined ? undefined : summarizeSelectionAlias(index, locale);
+  const headline = `${prefix}${title}`;
+  const details = parts.length ? `\n   ${parts.join(locale === "ko" ? "\n   " : "\n   ")}` : "";
+  return `${headline}${alias ? `\n   ${alias}` : ""}${details}`;
+}
+
+function describeRole(element: BrowserElement, locale: "ko" | "en"): string {
+  const role = (element.role || element.tagName || "element").toLowerCase();
+  if (locale !== "ko") {
+    return role;
+  }
+  if (role === "link" || element.href) return "링크";
+  if (role === "button") return "버튼";
+  if (role === "searchbox") return "검색창";
+  if (role === "textbox") return "입력칸";
+  if (role === "checkbox") return "체크박스";
+  if (role === "combobox" || role === "select") return "선택상자";
+  if (role === "tab") return "탭";
+  return role;
+}
+
+function summarizeSelectionAlias(index: number, locale: "ko" | "en"): string {
+  if (locale !== "ko") {
+    return `choice: ${index}`;
+  }
+  const ordinal = ["첫번째", "두번째", "세번째", "네번째", "다섯번째"][index - 1];
+  return `선택어: ${index} 또는 ${ordinal ?? `${index}번째`}`;
 }
 
 function readCandidateLabel(element: BrowserElement): string {

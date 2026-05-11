@@ -1,0 +1,21 @@
+{
+  "runId": "browser-action-forward-regression-20260511",
+  "mode": "isolated",
+  "daemonUrl": "http://127.0.0.1:65381",
+  "outputDir": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\browser-action-live\\browser-action-forward-regression-20260511",
+  "reportPath": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\browser-action-live-report-browser-action-forward-regression-20260511.md",
+  "startedAt": "2026-05-11T03:56:35.443Z",
+  "results": [
+    {
+      "id": "local-forward-single-step",
+      "mode": "isolated",
+      "prompt": "앞으로가기",
+      "status": "pass",
+      "failureClass": "",
+      "elapsedMs": 6616,
+      "finalUrl": "http://127.0.0.1:65382/view/interesting",
+      "answerPreview": "브라우저 동작을 완료했습니다.\n실행: forward\n현재 페이지: 재밌는 게시글 (http://127.0.0.1:65382/view/interesting)\n검증: Action changed the browser route or URL.",
+      "artifactDir": "docs/reports/assets/browser-action-live/browser-action-forward-regression-20260511/local-forward-single-step"
+    }
+  ]
+}

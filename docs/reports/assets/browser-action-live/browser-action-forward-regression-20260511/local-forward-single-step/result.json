@@ -1,0 +1,15 @@
+{
+  "scenarioId": "local-forward-single-step",
+  "requestId": "browser-action-live-local-forward-single-step-1778471787879-0",
+  "status": "pass",
+  "failureClass": "",
+  "elapsedMs": 6615,
+  "finalUrl": "http://127.0.0.1:65382/view/interesting",
+  "answer": "브라우저 동작을 완료했습니다.\n실행: forward\n현재 페이지: 재밌는 게시글 (http://127.0.0.1:65382/view/interesting)\n검증: Action changed the browser route or URL.",
+  "answerRedacted": false,
+  "answerLength": 131,
+  "screenshots": {
+    "before": "docs\\reports\\assets\\browser-action-live\\browser-action-forward-regression-20260511\\local-forward-single-step\\screenshot-before.png",
+    "after": "docs\\reports\\assets\\browser-action-live\\browser-action-forward-regression-20260511\\local-forward-single-step\\screenshot-after.png"
+  }
+}

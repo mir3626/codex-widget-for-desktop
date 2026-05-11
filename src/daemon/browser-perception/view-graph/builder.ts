@@ -7,7 +7,7 @@ import type {
   BrowserViewGraph,
   BrowserViewNode
 } from "../../browser-action/types.js";
-import { classifyBrowserViewElement, isLikelyContentElement } from "./classification.js";
+import { classifyBrowserViewElement, isLikelyContentElement, isPinnedOrAnnouncementText } from "./classification.js";
 import { compactViewText, hashViewGraphParts, tokenizeViewText } from "./digest.js";
 import { buildBrowserViewIdentityV2, classifyFreshness } from "./identity.js";
 import type { BrowserViewGraphV2Input } from "./types.js";
@@ -341,17 +341,13 @@ function buildAffordanceIndex(nodes: BrowserViewNode[]): BrowserAffordanceIndex 
 function representativeContentScore(node: BrowserViewNode, element?: BrowserViewGraphV2Input["elements"][number]): number {
   let score = 0;
   const labelLength = (node.label ?? "").length;
-  if (isPinnedOrAnnouncementText(`${node.label ?? ""} ${node.text ?? ""} ${element?.contextText ?? ""}`)) score -= 0.95;
+  if (isPinnedOrAnnouncementText(`${node.label ?? ""} ${node.text ?? ""} ${element?.contextText ?? ""}`)) return 0;
   if (node.href) score += 0.2;
   if (labelLength >= 8 && labelLength <= 120) score += 0.18;
   if ((node.bbox?.y ?? 10_000) >= 0) score += 0.14;
   if ((node.regionRole ?? "") === "list" || (node.regionRole ?? "") === "main") score += 0.12;
   if (node.actionHint === "navigate") score += 0.08;
   return score + (node.confidence ?? 0.5);
-}
-
-function isPinnedOrAnnouncementText(text: string): boolean {
-  return /(^|[\s\[\]()/|:：-])(?:공지|고정|알림|필독|설문|이벤트|광고|운영|관리자|가이드|규칙|문의|안내|정책|notice|announcement|pinned|sticky|survey|poll|event|promo|ad|admin|moderator|guide|rule|policy)(?:$|[\s\[\]()/|:：-])/i.test(text);
 }
 
 function pushIndex(index: Record<string, string[]>, key: string, nodeId: string): void {

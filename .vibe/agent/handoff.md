@@ -4,6 +4,16 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Browser Action Candidate Clarity And Forward Regression
+
+Follow-up hardening after manual Browser Action testing on 2026-05-11 addressed three live risks:
+
+- View Graph v2 content-list selection now excludes pinned/notice/announcement/admin-style rows from representative content candidates instead of merely downranking them. This prevents vague requests such as "interesting post" from repeatedly opening a fixed notice row when normal article rows exist.
+- Browser Action clarification output now renders candidates as readable multi-line summaries with localized role names and explicit selection aliases such as `1` or `첫번째`. Clarification resume accepts Korean/English ordinal words including `첫번째`, `두번째`, `first`, and `second`.
+- The live Browser Action runner can now set up browser history with `setupHistoryBack`, enabling deterministic forward-history testing. Added `local-forward-single-step`; headed live dogfood `browser-action-forward-regression-20260511` passed in 6616ms. Headless extension execution remains unavailable because the Manifest V3 service worker is not started in that path.
+
+Verification passed `npm run build:daemon`, syntax checks for the changed smoke/runner scripts, `npm run smoke:browser-action:transaction-clarification`, `npm run smoke:browser-view-graph-v2`, JSONL scenario parsing, and headed `npm run dogfood:browser-action:live -- --scenario local-forward-single-step --run-id browser-action-forward-regression-20260511`.
+
 ## Latest Update: Browser Action Deterministic Back And Ordinal Content
 
 Manual DB/log review on 2026-05-11 found two separate Browser Action failures:

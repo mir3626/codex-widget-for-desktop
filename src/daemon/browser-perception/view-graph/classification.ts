@@ -73,7 +73,11 @@ export function isLikelyContentElement(element: BrowserElement): boolean {
     return false;
   }
   const label = compactViewText(element.label || element.text || element.ariaLabel || element.title || "");
+  const context = compactViewText([label, element.contextText, element.nearestHeading].filter(Boolean).join(" "));
   if (label.length < 4 || isLikelyUtilityElement(element)) {
+    return false;
+  }
+  if (isPinnedOrAnnouncementText(context)) {
     return false;
   }
   const href = element.href ?? "";
@@ -81,6 +85,10 @@ export function isLikelyContentElement(element: BrowserElement): boolean {
     return true;
   }
   return /(article|post|item|row|card|story|content|게시글|게시물|글|본문)/i.test(`${element.role} ${element.tagName} ${element.selector ?? ""} ${element.nearestHeading ?? ""}`);
+}
+
+export function isPinnedOrAnnouncementText(text: string): boolean {
+  return /(^|[\s\[\]()/|:：-])(?:공지|고정|알림|필독|설문|이벤트|광고|운영|관리자|가이드|규칙|문의|안내|정책|notice|announcement|pinned|sticky|survey|poll|event|promo|ad|admin|moderator|guide|rule|policy)(?:$|[\s\[\]()/|:：-])/i.test(text);
 }
 
 function inferNodeKind(element: BrowserElement, actionHint: BrowserViewActionHint, riskHints: BrowserViewRiskHint[], text: string): BrowserViewNodeKind {

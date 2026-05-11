@@ -1,0 +1,32 @@
+{
+  "extensionVersion": "0.1.0",
+  "daemonBaseUrl": "http://127.0.0.1:65381",
+  "connected": true,
+  "mode": "idle",
+  "reason": "after_command",
+  "updatedAt": "2026-05-11T03:56:35.156Z",
+  "lastSeenAt": "2026-05-11T03:56:35.156Z",
+  "lastObservationAt": "2026-05-11T03:56:33.795Z",
+  "lastError": null,
+  "nativeHost": "disabled",
+  "activeTab": {
+    "tabId": 1292409021,
+    "windowId": 1292409020,
+    "url": "http://127.0.0.1:65382/view/interesting",
+    "title": "재밌는 게시글",
+    "origin": "http://127.0.0.1:65382/*",
+    "permission": "allowed"
+  },
+  "settings": {
+    "daemonBaseUrl": "http://127.0.0.1:65381",
+    "autoConnect": true,
+    "autoObserve": true,
+    "allowAllSites": false,
+    "observeBlocklist": [],
+    "allowSafeReadScroll": true,
+    "requireApprovalForClickType": false,
+    "useNativeHost": false,
+    "debugSnapshot": false,
+    "pollIntervalSeconds": 5
+  }
+}

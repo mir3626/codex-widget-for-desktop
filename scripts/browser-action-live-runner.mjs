@@ -246,6 +246,10 @@ async function runWidgetUiScenario(input) {
         targetUrl = resolveScenarioUrl(setupUrl, input.fixture);
         await input.targetPage.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 20_000 });
       }
+      if (input.scenario.setupHistoryBack) {
+        await input.targetPage.goBack({ waitUntil: "domcontentloaded", timeout: 20_000 });
+        targetUrl = input.targetPage.url();
+      }
       await input.targetPage.bringToFront();
       await input.targetPage.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => undefined);
       scenarioBridgeStatus = await waitForBridgeActiveTab(input.daemonUrl, targetUrl, 12_000);
@@ -367,6 +371,10 @@ async function runScenario(input) {
       for (const setupUrl of setupUrls) {
         targetUrl = resolveScenarioUrl(setupUrl, input.fixture);
         await input.page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 20_000 });
+      }
+      if (input.scenario.setupHistoryBack) {
+        await input.page.goBack({ waitUntil: "domcontentloaded", timeout: 20_000 });
+        targetUrl = input.page.url();
       }
       await input.page.bringToFront();
       await input.page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => undefined);

@@ -52,7 +52,8 @@ export {
   buildSemanticTargetClarificationInteraction,
   createSemanticTargetClarification,
   formatSemanticTargetClarificationCandidate,
-  renderSemanticTargetClarificationResponse
+  renderSemanticTargetClarificationResponse,
+  selectSemanticClarificationCandidate
 };
 
 export async function respondToSemanticTargetClarification(input: {

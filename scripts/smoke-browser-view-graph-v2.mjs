@@ -23,6 +23,8 @@ function verifyViewGraphV2Shape() {
   assert((graph.regions ?? []).some((region) => region.role === "toolbar"), "toolbar/filter region should exist");
   assert((graph.forms ?? []).some((form) => form.fieldNodeIds.length > 0), "form summary should exist");
   assert((graph.contentLists ?? []).some((list) => list.itemNodeIds.length >= 2), "content list should exist");
+  assert(!(graph.affordanceIndex?.contentCandidates ?? []).some((id) => graph.nodes.find((node) => node.id === id)?.label?.includes("공지")), "notice/pinned rows should not become content candidates");
+  assert(!(graph.contentLists ?? []).some((list) => list.representativeNodeIds.some((id) => graph.nodes.find((node) => node.id === id)?.label?.includes("공지"))), "notice/pinned rows should not become representative content");
   assert((graph.affordanceIndex?.byActionHint.filter ?? []).some((id) => graph.nodes.find((node) => node.id === id)?.label === "개념글"), "filter affordance should index concept button");
   assert((graph.affordanceIndex?.contentCandidates ?? []).length >= 2, "content candidates should be indexed");
   assert((graph.redaction?.redactedFieldCount ?? 0) >= 1, "credential/payment redaction summary should exist");
@@ -109,6 +111,26 @@ function createSnapshot(options = {}) {
         nearestLandmark: "aside"
       },
       {
+        id: "notice-post",
+        role: "link",
+        tagName: "a",
+        label: "[공지] 운영 안내",
+        text: "[공지] 운영 안내",
+        href: "https://example.test/board/view?id=topic&no=100001",
+        selector: "main .post.notice a",
+        bbox: { x: 260, y: 150, w: 480, h: 28 },
+        visible: true,
+        enabled: true,
+        editable: false,
+        confidence: 0.96,
+        riskHints: [],
+        sourceOrder: 3 + sourceShift,
+        domPathHash: "path-notice-post",
+        nearestLandmark: "main",
+        listOwner: "list-main-posts",
+        contextText: "공지 운영 안내 관리자"
+      },
+      {
         id: "post-1",
         role: "link",
         tagName: "a",
@@ -122,7 +144,7 @@ function createSnapshot(options = {}) {
         editable: false,
         confidence: 0.92,
         riskHints: [],
-        sourceOrder: 3 + sourceShift,
+        sourceOrder: 4 + sourceShift,
         domPathHash: "path-post-1",
         nearestLandmark: "main",
         listOwner: "list-main-posts"
@@ -141,7 +163,7 @@ function createSnapshot(options = {}) {
         editable: false,
         confidence: 0.92,
         riskHints: [],
-        sourceOrder: 4 + sourceShift,
+        sourceOrder: 5 + sourceShift,
         domPathHash: "path-post-2",
         nearestLandmark: "main",
         listOwner: "list-main-posts"
@@ -160,7 +182,7 @@ function createSnapshot(options = {}) {
         editable: true,
         confidence: 0.95,
         riskHints: [],
-        sourceOrder: 5 + sourceShift,
+        sourceOrder: 6 + sourceShift,
         domPathHash: "path-search-field",
         nearestLandmark: "form",
         formOwner: "form-search"
@@ -178,7 +200,7 @@ function createSnapshot(options = {}) {
         editable: true,
         confidence: 0.95,
         riskHints: ["password", "auth"],
-        sourceOrder: 6 + sourceShift,
+        sourceOrder: 7 + sourceShift,
         domPathHash: "path-password",
         nearestLandmark: "form",
         formOwner: "form-login"

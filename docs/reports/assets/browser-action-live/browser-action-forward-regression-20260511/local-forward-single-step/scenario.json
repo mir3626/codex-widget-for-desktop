@@ -1,0 +1,26 @@
+{
+  "id": "local-forward-single-step",
+  "mode": "isolated",
+  "setupUrls": [
+    "fixture:/forum",
+    "fixture:/view/notice",
+    "fixture:/view/interesting"
+  ],
+  "setupHistoryBack": true,
+  "prompt": "앞으로가기",
+  "expect": {
+    "urlIncludes": [
+      "/view/interesting"
+    ],
+    "forbidFinalUrlIncludes": [
+      "/forum",
+      "/view/notice"
+    ],
+    "forbidAnswer": [
+      "plan:",
+      "latest result",
+      "Browser Action을 실행했습니다."
+    ],
+    "maxMs": 8000
+  }
+}

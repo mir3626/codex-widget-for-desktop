@@ -12,7 +12,8 @@ import {
   verifyBrowserAction
 } from "../dist/daemon/browser-action/index.js";
 import {
-  renderSemanticTargetClarificationResponse
+  renderSemanticTargetClarificationResponse,
+  selectSemanticClarificationCandidate
 } from "../dist/daemon/server/browser-action/clarification.js";
 
 const mode = process.argv[2] ?? "core";
@@ -146,7 +147,17 @@ async function verifyTransactionClarification() {
   }, "개념글 눌러줘");
   assert(response.includes("영역:"), "clarification response should include candidate region hints");
   assert(response.includes("위치:"), "clarification response should include candidate position hints");
-  assert(response.includes("번호, 표시된 이름"), "clarification response should explain usable choice inputs");
+  assert(response.includes("선택어: 1 또는 첫번째"), "clarification response should include readable ordinal aliases");
+  assert(response.includes("번호, \"첫번째/두번째\""), "clarification response should explain ordinal choice inputs");
+  const selectedByOrdinal = selectSemanticClarificationCandidate({
+    id: "clarification-smoke",
+    sessionId: "session-clarification",
+    actionSessionId: "action-session-clarification",
+    action,
+    utterance: "개념글 눌러줘",
+    candidates: decision.clarificationOptions.map((candidate) => candidate.element).filter(Boolean)
+  }, "두번째");
+  assertEqual(selectedByOrdinal?.id, decision.clarificationOptions[1]?.element?.id, "Korean ordinal clarification choice should select the requested candidate");
 }
 
 async function verifyTransactionVerification() {

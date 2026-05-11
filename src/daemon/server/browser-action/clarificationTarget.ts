@@ -14,7 +14,7 @@ export function selectSemanticClarificationCandidate(
   if (!normalized) {
     return pending.candidates[0];
   }
-  const index = Number(normalized.replace(/[^\d]/g, ""));
+  const index = readChoiceIndex(normalized);
   if (Number.isInteger(index) && index >= 1 && index <= pending.candidates.length) {
     return pending.candidates[index - 1];
   }
@@ -28,6 +28,22 @@ export function selectSemanticClarificationCandidate(
     return direct;
   }
   return selectByPositionHint(pending.candidates, lower);
+}
+
+function readChoiceIndex(value: string): number {
+  const numeric = value.match(/\d+/)?.[0];
+  if (numeric) {
+    return Number(numeric);
+  }
+  const compact = value.replace(/\s+/g, "").toLowerCase();
+  const ordinalPairs: Array<[RegExp, number]> = [
+    [/(?:첫|첫번|첫번째|첫째|1st|first)/i, 1],
+    [/(?:두번|두번째|둘째|2nd|second)/i, 2],
+    [/(?:세번|세번째|셋째|3rd|third)/i, 3],
+    [/(?:네번|네번째|넷째|4th|fourth)/i, 4],
+    [/(?:다섯|다섯번째|5th|fifth)/i, 5]
+  ];
+  return ordinalPairs.find(([pattern]) => pattern.test(compact))?.[1] ?? Number.NaN;
 }
 
 export function retargetBrowserAction(action: BrowserAction, selected: BrowserElement): BrowserAction {
