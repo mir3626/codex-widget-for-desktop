@@ -4,6 +4,19 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Browser Action Native Helper Contract
+
+Continued the Browser Action 1-8 workstream closure after the history-latency push. The remaining feasible non-manual development item was the Windows native desktop fallback boundary: the adapter previously exposed browser-window diagnostics and a precise UI Automation `BLOCKED` record, but had no executable helper contract to attach a future scoped helper.
+
+Implemented:
+
+- `src/daemon/browser-action/adapters/nativeDesktop/helperClient.ts` defines `CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER`, a typed JSON helper protocol for native fallback `status`/`observe`/`execute` requests, helper path diagnostics, script/executable dispatch, timeout handling, invalid JSON handling, and normalized metadata.
+- `nativeDesktopAdapter` now reports helper availability in adapter diagnostics, uses a configured helper for observe/execute when present, converts helper snapshots into `BrowserObservation`, and still returns a clear `BLOCKED` error when no helper is configured.
+- `npm run smoke:browser-action:native` now creates a mock helper executable and proves the configured-helper observe/execute path without requiring live Windows UI Automation testing.
+- Browser Action handoff docs now distinguish the implemented helper contract from the still-blocked live signed UIA/native-input helper.
+
+Verification passed `npm run build:daemon`, `node --check scripts/smoke-browser-action-native.mjs`, and `npm run smoke:browser-action:native`.
+
 ## Latest Update: Browser Action History Command Latency Fix
 
 Automated live regression after the previous candidate-clarity push found one remaining isolated failure: `local-back-fast-path` moved the target browser back to `/forum`, but the daemon prompt never completed before the 8s scenario timeout.

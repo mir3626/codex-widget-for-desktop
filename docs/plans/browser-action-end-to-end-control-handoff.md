@@ -1,6 +1,6 @@
 # Browser Action End-to-End Control Handoff
 
-Status: implemented through `iter-12`; Windows executable UI Automation helper remains precisely `BLOCKED`
+Status: implemented through `iter-12`; native desktop helper contract is implemented, while live Windows executable UI Automation helper validation remains precisely `BLOCKED`
 Target repo: `C:\Users\Tony\Workspace\codex-widget-for-desktop`
 Primary dependency: `docs/plans/browser-action-interface-handoff.md`
 Current baseline: Iteration `iter-10` completed the production Browser Action interface module, including extension typed actions, Playwright and CDP adapters, native desktop diagnostics boundary, `full_control_dev` evaluate gating, smokes, and first real dogfood evidence.
@@ -99,7 +99,7 @@ Completed in `iter-12`:
 
 Precisely blocked after `iter-11`:
 
-- Windows executable UI Automation/browser-chrome control is blocked on a scoped helper process. The attempted path is bounded browser-window enumeration through PowerShell `Get-Process`; required scope expansion is a signed Rust/.NET/PowerShell UIA/native input helper with cancellation, browser-window scoping, sensitive-field redaction, approval, and audit integration.
+- Windows executable UI Automation/browser-chrome control is blocked on supplying and validating a scoped helper process. The attempted path is bounded browser-window enumeration through PowerShell `Get-Process`; the implemented daemon boundary now supports `CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER` for a typed JSON helper contract, timeout/error normalization, and mock-covered execute evidence. Required external scope remains a signed Rust/.NET/PowerShell UIA/native input helper with cancellation, browser-window scoping, sensitive-field redaction, approval, and audit integration.
 - First-class Codex app-server custom Browser Action tools remain blocked on a stable app-server custom-tool/client-tool contract. The implemented fallback is daemon-owned prompt/tool simulation with visible protocol events, approval, action result, Activity audit, and chat response.
 
 ## 3. Non-Negotiable Rules
@@ -342,6 +342,7 @@ Required capabilities:
 - report unsupported state clearly
 - stop/cancel in-flight actions
 - audit without storing screenshots or sensitive text by default
+- route typed helper requests through a deterministic JSON contract when `CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER` is configured
 
 Acceptance:
 
@@ -349,10 +350,11 @@ Acceptance:
 - Unit/smoke coverage proves:
   - unavailable path
   - browser window enumeration
+  - configured helper observe/execute contract
   - cancellation
   - safety block/confirm decisions
   - no arbitrary desktop action outside Browser Action scope
-- If implementation requires Rust/.NET/PowerShell helper scope expansion, record `BLOCKED` with attempted path and required helper design.
+- If live executable control requires Rust/.NET/PowerShell helper scope expansion beyond the typed contract, record `BLOCKED` with attempted path and required helper design.
 
 ## 11. Workstream 8: Real Dogfood Matrix
 
@@ -492,7 +494,7 @@ Workstream status:
 4. Managed Browser and CDP Operating Model: Playwright controlled-browser and CDP remote-debugging adapters remain functional through existing smokes; renderer adapter status now exposes unavailable reasons.
 5. Multi-Step Plan Execution: implemented `executePlan` with step statuses, safety/policy decisions, approval/extension pauses, direct-adapter execution, result ids, reobserve/verify events, failure, and cancellation boundaries.
 6. Browser Safety Permission Policy: implemented browser-specific policies under daemon app settings with allow/ask/deny by action family, origin, risk, mode, expiry, revocation, and secret redaction helpers.
-7. Windows UI Automation Helper: bounded diagnostics implemented; executable browser chrome/restricted-page fallback is `BLOCKED` with attempted path and required helper scope recorded in native adapter diagnostics and smoke coverage.
+7. Windows UI Automation Helper: bounded diagnostics plus the native helper JSON contract are implemented; executable live browser chrome/restricted-page fallback is `BLOCKED` until a scoped helper executable is supplied and validated, with attempted path and required helper scope recorded in native adapter diagnostics and smoke coverage.
 8. Real Dogfood Matrix: implemented `npm run dogfood:browser-action:e2e`, producing prompt-driven, extension-channel, risky-deny, non-submit-fill, real Playwright navigation, CDP-unavailable, native-boundary, and restricted-page evidence.
 
 Post-`iter-15` required expansion:
