@@ -4,6 +4,18 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Browser Action Back Lease And Clarification UX
+
+Manual widget testing on 2026-05-11 showed `뒤로가기` succeeded only 1/4 times and ambiguous target clarification candidates were hard to distinguish.
+
+- Root cause for `뒤로가기`: the prompt was correctly classified as `back`, but `executeAction` treated `settling_ready` active-tab leases as invalid for all non-read side effects. Targetless browser-history actions do not need element grounding, so they now use `isBrowserViewContextLeaseUsableForAction()` and can proceed from a non-stale active-tab lease even while page understanding is settling.
+- Stale/expired lease failures are no longer reported as generic target clarification. They fail with a freshness-specific message so the chat answer does not say the target was ambiguous when the real issue is page-understanding freshness.
+- Target clarification responses now render richer candidate lines with role, visible label, region/landmark, approximate screen position, link path, nearby text, and element confidence. Users can answer with a number, visible label, region, or position hint.
+- Clarification candidate matching now accepts the enriched summary and simple position/region hints such as `상단`, `본문`, `왼쪽`, or `nav`.
+- Focused regression coverage was added for targetless `back` from a settling active-tab lease and enriched clarification candidate output.
+
+Verification passed `npm run build:daemon`, `npm run smoke:browser-action`, `npm run smoke:browser-action:transaction-clarification`, `npm run smoke:browser-interaction-transaction`, `npm run lint`, `npm run smoke:browser-action:prompt-classification`, `npm run smoke:browser-action:fresh-context`, `npm run smoke:semantic-interface`, UTF-8/mojibake scan for touched files, and `npm run build:web`.
+
 ## Latest Update: Browser Action Search Clarification Continuation
 
 Public-site widget-UI dogfood is now green for the DCInside, FMKorea, Naver, and Google Browser Action matrix.

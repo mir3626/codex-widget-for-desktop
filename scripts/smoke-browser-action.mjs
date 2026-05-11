@@ -5,6 +5,7 @@ import {
   BrowserActionSessionManager,
   buildBrowserObservation,
   buildElementGraph,
+  createBrowserViewContextLease,
   createAlwaysAllowBrowserActionPolicyInput,
   decideBrowserActionSafety,
   matchBrowserActionPolicy,
@@ -384,6 +385,25 @@ async function verifyTargetlessActionsIgnoreFallbackTargets() {
   if (!reload.command || reload.result.status === "needs_clarification") {
     throw new Error(`Targetless reload should queue without fallback-target clarification: ${JSON.stringify(reload.result)}`);
   }
+
+  const observation = buildBrowserObservation({ snapshot });
+  const settlingLease = createBrowserViewContextLease({
+    context: createPreparedContext(snapshot, observation, {
+      freshness: "fresh",
+      stability: "mutating"
+    }),
+    leaseReason: "prompt",
+    requiredRiskClass: "safe_side_effect"
+  });
+  const back = await manager.execute({
+    actionSessionId: session.id,
+    snapshot,
+    contextLease: settlingLease,
+    action: { type: "back" }
+  });
+  if (!back.command || back.result.status === "needs_clarification" || back.result.status === "failed") {
+    throw new Error(`Targetless back should queue from a settling active-tab lease: ${JSON.stringify(back.result)}`);
+  }
 }
 
 async function verifyExtensionCommandTimeoutCancellation(snapshot) {
@@ -653,6 +673,45 @@ function createSnapshot(state) {
         riskHints: []
       }
     ]
+  };
+}
+
+function createPreparedContext(snapshot, observation, overrides = {}) {
+  const now = new Date();
+  const routeKey = observation.viewGraph?.identity?.routeKey ?? "route-key";
+  const viewRevision = observation.viewGraph?.identity?.viewRevision ?? "view-revision";
+  const graphDigest = observation.viewGraph?.identity?.structureDigest ?? "graph-digest";
+  return {
+    contextId: "browser-action-smoke-context",
+    schemaVersion: "browser-perception-context.v1",
+    adapterId: "extension",
+    tabKey: "smoke-window:smoke-tab",
+    source: {
+      tabId: "smoke-tab",
+      windowId: "smoke-window",
+      url: snapshot.url,
+      title: snapshot.title,
+      origin: "https://example.test",
+      permission: "allowed"
+    },
+    snapshot,
+    observation,
+    viewGraph: observation.viewGraph,
+    freshness: overrides.freshness ?? "fresh",
+    stability: overrides.stability ?? "stable",
+    viewRevision,
+    mutationRevision: "smoke-mutation",
+    routeKey,
+    graphDigest,
+    capturedAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    expiresAt: new Date(now.getTime() + 10_000).toISOString(),
+    lastObservedReason: "prompt",
+    diagnostics: {},
+    redaction: {
+      mode: "metadata_only",
+      persistedFields: ["url", "title", "viewGraph.identity"]
+    }
   };
 }
 

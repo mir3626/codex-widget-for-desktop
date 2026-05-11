@@ -13,7 +13,7 @@ import {
   buildIntentFrameFromAction,
   decideCandidatePlanningGate,
   generateCandidateSteps,
-  isBrowserViewContextLeaseFresh,
+  isBrowserViewContextLeaseUsableForAction,
   publishBrowserInteractionFeedback,
   summarizeBrowserViewContextLease
 } from "../interaction/index.js";
@@ -108,7 +108,7 @@ export async function executeBrowserAction(input: {
     requireFreshLease: Boolean(input.contextLease)
   });
   const selectedCandidate = candidateSteps.find((candidate) => candidate.candidateId === gate.selectedCandidateId) ?? candidateSteps[0];
-  if (input.contextLease && !isBrowserViewContextLeaseFresh(input.contextLease) && selectedCandidate?.riskClass !== "read") {
+  if (input.contextLease && !isBrowserViewContextLeaseUsableForAction(input.contextLease, input.action) && selectedCandidate?.riskClass !== "read") {
     const reason = input.transaction?.locale === "ko"
       ? "페이지 이해가 최신 상태가 아니어서 실행 전에 다시 읽어야 합니다."
       : "The browser view lease is stale and must be refreshed before execution.";
@@ -143,7 +143,8 @@ export async function executeBrowserAction(input: {
         }
       }
     });
-    result.status = "needs_clarification";
+    result.safety.decision = "block";
+    result.status = "failed";
     result.completedAt = new Date().toISOString();
     result.error = reason;
     result.verification = { status: "failed", reason };

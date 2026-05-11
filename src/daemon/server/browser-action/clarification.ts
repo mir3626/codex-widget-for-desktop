@@ -35,6 +35,7 @@ import { recordRuntimeActivity } from "../runtimeActivity.js";
 import { recordSemanticClarificationFeedback } from "./clarificationFeedback.js";
 import {
   buildSemanticTargetClarificationInteraction,
+  formatSemanticTargetClarificationCandidate,
   renderSemanticTargetClarificationResponse
 } from "./clarificationInteraction.js";
 import {
@@ -50,6 +51,7 @@ export type { PendingSemanticClarification } from "./clarificationTypes.js";
 export {
   buildSemanticTargetClarificationInteraction,
   createSemanticTargetClarification,
+  formatSemanticTargetClarificationCandidate,
   renderSemanticTargetClarificationResponse
 };
 

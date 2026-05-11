@@ -1,6 +1,5 @@
 import {
   summarizeBrowserActionResult,
-  summarizeBrowserElement,
   type BrowserActionApproval,
   type BrowserActionPlan,
   type BrowserActionResult,
@@ -11,6 +10,7 @@ import { broadcast } from "../events.js";
 import {
   buildSemanticTargetClarificationInteraction,
   createSemanticTargetClarification,
+  formatSemanticTargetClarificationCandidate,
   renderSemanticTargetClarificationResponse
 } from "./clarification.js";
 import { buildBrowserActionApprovalBody, summarizePromptPlanTarget } from "./helpers.js";
@@ -101,7 +101,7 @@ export function requestPromptTargetClarification(input: BrowserActionPromptInput
   recordRuntimeActivity(input.storage, input.sessionId, "info", "semantic-memory", "Browser Action target clarification requested", {
     interactionId: clarification.id,
     actionSessionId: clarification.actionSessionId,
-    candidates: clarification.candidates.map((candidate) => summarizeBrowserElement(candidate))
+    candidates: clarification.candidates.map((candidate, index) => formatSemanticTargetClarificationCandidate(candidate, index + 1, "ko"))
   });
   return true;
 }

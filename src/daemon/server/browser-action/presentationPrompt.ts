@@ -174,6 +174,9 @@ function localizeFailureReason(reason: string | undefined, korean: boolean): str
   if (/Active tab URL changed before Browser Action execution/i.test(reason)) {
     return "실행 직전 활성 탭 또는 페이지 주소가 바뀌어서 중단했습니다. 현재 탭을 다시 확인한 뒤 요청을 다시 보내세요.";
   }
+  if (/browser view lease is stale|page understanding is not fresh|페이지 이해가 최신 상태가 아니/i.test(reason)) {
+    return "현재 페이지 이해가 최신 상태가 아니어서 실행을 중단했습니다. 페이지를 다시 읽은 뒤 이어서 실행해 주세요.";
+  }
   if (/specific browser element|resolve the browser target|not resolved confidently/i.test(reason)) {
     return "현재 화면에서 실행 대상을 충분히 확정하지 못했습니다. 대상의 정확한 텍스트나 위치를 함께 알려주세요.";
   }

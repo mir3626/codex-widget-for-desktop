@@ -11,6 +11,9 @@ import {
   resolveBrowserActionIntent,
   verifyBrowserAction
 } from "../dist/daemon/browser-action/index.js";
+import {
+  renderSemanticTargetClarificationResponse
+} from "../dist/daemon/server/browser-action/clarification.js";
 
 const mode = process.argv[2] ?? "core";
 
@@ -113,6 +116,17 @@ async function verifyTransactionClarification() {
   assertEqual(decision.decision, "clarify", "ambiguous duplicate candidates should clarify");
   assert(decision.clarificationOptions.length >= 2, "clarification should include concrete options");
   assert(decision.userFacingMessage.includes("대상이 애매"), "Korean clarification message should be concrete");
+  const response = renderSemanticTargetClarificationResponse({
+    id: "clarification-smoke",
+    sessionId: "session-clarification",
+    actionSessionId: "action-session-clarification",
+    action,
+    utterance: "개념글 눌러줘",
+    candidates: decision.clarificationOptions.map((candidate) => candidate.element).filter(Boolean)
+  }, "개념글 눌러줘");
+  assert(response.includes("영역:"), "clarification response should include candidate region hints");
+  assert(response.includes("위치:"), "clarification response should include candidate position hints");
+  assert(response.includes("번호, 표시된 이름"), "clarification response should explain usable choice inputs");
 }
 
 async function verifyTransactionVerification() {

@@ -66,6 +66,23 @@ export function isBrowserViewContextLeaseFresh(lease: BrowserViewContextLease, n
   return true;
 }
 
+export function isBrowserViewContextLeaseUsableForAction(lease: BrowserViewContextLease, action: BrowserAction, now = Date.now()): boolean {
+  if (Date.parse(lease.expiresAt) <= now) {
+    return false;
+  }
+  if (lease.freshness === "stale" || lease.freshness === "blocked" || lease.freshness === "unavailable") {
+    return false;
+  }
+  if (isTargetlessBrowserNavigationAction(action)) {
+    return true;
+  }
+  return isBrowserViewContextLeaseFresh(lease, now);
+}
+
+export function isTargetlessBrowserNavigationAction(action: BrowserAction): boolean {
+  return action.type === "navigate" || action.type === "back" || action.type === "forward" || action.type === "reload";
+}
+
 export function isBrowserViewContextLeaseCompatible(input: {
   lease?: BrowserViewContextLease;
   observation?: BrowserObservation;

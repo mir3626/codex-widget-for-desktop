@@ -202,10 +202,10 @@
   ],
   "handoff": {
     "currentSprintId": "iter-20-complete",
-    "lastActionSummary": "Iteration 20 completed Browser Interaction Transaction: request-scoped transactions, fresh Browser Perception leases, finite View Graph candidates, deterministic planning gates, clarification resume with fresh lease, late resolver grounding, expected-effect verification, per-active-tab concurrency cancellation, Semantic Memory advisory feedback, focused smokes, and Browser Action dogfood evidence.",
+    "lastActionSummary": "Browser Action manual-test follow-up fixed targetless browser-history lease handling and clarification UX. `back`/`forward`/`reload`/`navigate` can proceed from a non-stale settling active-tab lease, stale lease failures no longer masquerade as target ambiguity, and clarification candidates now include role, visible label, region, position, link, nearby text, and confidence hints.",
     "openIssues": [
       "Reload the installed unpacked Browser Bridge extension before live-site retesting so Chrome/Edge uses the latest service-worker and bridge scripts.",
-      "Ranked-choice clarification card UX can still be polished; the daemon transaction model already emits concrete candidate choices and transaction metadata.",
+      "Ranked-choice clarification card UX now has richer daemon text summaries, but renderer card layout/visual target highlighting can still be polished.",
       "Browser Action native desktop executable browser chrome control is BLOCKED on a scoped Windows UI Automation or bounded native input helper; current adapter reports diagnostics and unsupported-action errors.",
       "Browser Action custom Codex app-server tool bridge is BLOCKED on a stable app-server custom tool/client-tool contract; current coverage uses daemon prompt/tool simulation, protocol events, approval, audit, and widget-context visibility.",
       "Restricted browser pages remain subject to browser/extension/CDP security boundaries and should report unsupported state rather than bypassing protections.",
@@ -221,11 +221,11 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-10T22:41:00.000+09:00"
+    "updatedAt": "2026-05-11T09:16:04.707+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-10T22:41:00.000+09:00"
+  "stateUpdatedAt": "2026-05-11T09:16:04.707+09:00"
 }
