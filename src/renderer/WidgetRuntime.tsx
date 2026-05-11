@@ -20,8 +20,6 @@ import {
   VISION_AGENT_STREAM_FRAME_INTERVAL_MS
 } from "./config";
 import type { LogLine } from "./types";
-import { formatNativeDaemonStatus } from "./utils/format";
-
 import { readInitialWidgetMode } from "./utils/storage";
 import { useDismissableOverlay } from "./hooks/useDismissableOverlay";
 import { useModelSelectionController } from "./hooks/useModelSelectionController";
@@ -35,6 +33,7 @@ import { useVisionController } from "./hooks/useVisionController";
 import { useChatSessionController } from "./hooks/useChatSessionController";
 import { useWidgetShellController } from "./hooks/useWidgetShellController";
 import { useVoicePromptController } from "./hooks/useVoicePromptController";
+import { useWidgetRuntimeDerivedState } from "./hooks/useWidgetRuntimeDerivedState";
 import { handleWidgetServerEvent } from "./runtime/serverEvents";
 import { WidgetRuntimeView } from "./WidgetRuntimeView";
 
@@ -467,29 +466,32 @@ export function WidgetRuntime() {
     });
   }
 
-  const providerStatusByMode = useMemo(
-    () => new Map(providerStatuses.map((provider) => [provider.mode, provider])),
-    [providerStatuses]
-  );
-  const activeProviderStatus = providerStatusByMode.get(mode);
-  const terminalProviderStatus = providerStatusByMode.get("terminal");
-  const visibleActivities = ledger?.activities.slice(0, 1) ?? [];
-  const providerSnapshots = ledger?.providerSnapshots ?? [];
-  const activityBadgeCount = ledger ? ledger.activities.length + ledger.artifacts.length + providerSnapshots.length : 0;
-  const statusTone = connected ? (auth.authenticated ? "online" : "warning") : "offline";
-  const displayStatus = connected ? status : formatNativeDaemonStatus(nativeDaemonStatus, status);
-  const authLabel = auth.authenticated ? "Sign out" : "Sign in";
-  const liveLabel = auth.authenticated
-    ? auth.modelLabel && auth.modelLabel !== "codex"
-      ? auth.modelLabel
-      : ""
-    : auth.reason ?? "Not signed in";
-  const opacityLabel = `${Math.round(opacity * 100)}%`;
-  const authButtonTitle = auth.authenticated
-    ? "Sign out"
-    : auth.signInAvailable
-      ? "Sign in"
-      : auth.reason ?? "Sign in is not configured";
+  const {
+    activeProviderStatus,
+    activityBadgeCount,
+    authButtonTitle,
+    authLabel,
+    displayStatus,
+    fallbackLines,
+    liveLabel,
+    opacityLabel,
+    providerSnapshots,
+    providerStatusByMode,
+    statusTone,
+    terminalProviderStatus,
+    visibleActivities
+  } = useWidgetRuntimeDerivedState({
+    auth,
+    connected,
+    ledger,
+    logLines,
+    mode,
+    nativeDaemonStatus,
+    providerStatuses,
+    runtimeStatus,
+    status,
+    opacity
+  });
 
   return (
     <WidgetRuntimeView
@@ -526,7 +528,7 @@ export function WidgetRuntime() {
       deleteSession={deleteSession}
       displayStatus={displayStatus}
       executionPermissions={executionPermissions}
-      fallbackLines={logLines}
+      fallbackLines={fallbackLines}
       finishPromptResize={finishPromptResize}
       finishResize={finishResize}
       finishScreenCropPick={finishScreenCropPick}

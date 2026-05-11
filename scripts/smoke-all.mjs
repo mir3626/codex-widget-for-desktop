@@ -10,6 +10,7 @@ const steps = [
   ["daemon reconnect replay", process.execPath, ["scripts/smoke-daemon-reconnect.mjs"]],
   ["Codex app-server bridge", process.execPath, ["scripts/smoke-codex-app-server.mjs"]],
   ["DOM provider", process.execPath, ["scripts/smoke-dom-provider.mjs"]],
+  ["Architecture foundations", process.execPath, ["scripts/smoke-architecture-foundations.mjs"]],
   ["Browser Action", process.execPath, ["scripts/smoke-browser-action.mjs"]],
   ["Browser Action Playwright adapter", process.execPath, ["scripts/smoke-browser-action-playwright.mjs"]],
   ["Browser Action CDP adapter", process.execPath, ["scripts/smoke-browser-action-cdp.mjs"]],

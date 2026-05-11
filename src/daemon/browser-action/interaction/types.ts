@@ -1,5 +1,10 @@
 import type { PreparedBrowserViewContext } from "../../browser-perception/types.js";
 import type {
+  CapabilityTimingEvent,
+  CapabilityTransactionSnapshot
+} from "../../capability-transaction/types.js";
+import type { PreparedContextLease } from "../../prepared-context/types.js";
+import type {
   BrowserAction,
   BrowserActionMode,
   BrowserActionSource,
@@ -44,6 +49,7 @@ export type BrowserViewContextLease = {
   requiredRiskClass: BrowserInteractionRiskClass;
   diagnostics: Record<string, unknown>;
   context: PreparedBrowserViewContext;
+  preparedContextLease?: PreparedContextLease;
 };
 
 export type IntentFrame = {
@@ -157,12 +163,14 @@ export type BrowserInteractionTransaction = {
   mode: BrowserActionMode;
   phase: BrowserInteractionPhase;
   browserSource?: Partial<BrowserActionSource>;
+  capability: CapabilityTransactionSnapshot;
   activeLease?: BrowserViewContextLease;
   intentFrame?: IntentFrame;
   candidateSteps: CandidateStep[];
   selectedCandidateIds: string[];
   stepCursor: number;
   events: BrowserInteractionEvent[];
+  timings: CapabilityTimingEvent[];
   memoryReadSetId?: string;
   auditSummary: Record<string, unknown>;
   finalOutcome?: "completed" | "failed" | "cancelled" | "blocked";

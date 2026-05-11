@@ -1,4 +1,4 @@
-import { createRequire } from "node:module";
+import { createRequire as createNodeRequire } from "node:module";
 import type { DatabaseSync as NodeDatabaseSync } from "node:sqlite";
 
 export const MEMORY_SCHEMA_VERSION = "semantic-memory.v1";
@@ -63,6 +63,6 @@ CREATE INDEX IF NOT EXISTS idx_semantic_feedback_source_created ON semantic_feed
 }
 
 export function loadDatabaseSync(): new (path: string) => NodeDatabaseSync {
-  const require = createRequire(import.meta.url);
+  const require = createNodeRequire(import.meta.url);
   return (require("node:sqlite") as { DatabaseSync: new (path: string) => NodeDatabaseSync }).DatabaseSync;
 }

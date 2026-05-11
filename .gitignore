@@ -40,3 +40,8 @@ scripts/tmp-*.mjs
 
 # sidecar advisory artifacts (non-durable runtime output)
 .vibe/sidecars/
+
+# live Browser Action dogfood artifacts are noisy by default.
+# Promote curated evidence to docs/reports/*evidence*.md explicitly.
+docs/reports/assets/browser-action-live/
+docs/reports/browser-action-live-report-*.md

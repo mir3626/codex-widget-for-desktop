@@ -4,6 +4,7 @@ import type { AgentRequest } from "../agent.js";
 import { resolveCodexExecutionContext, terminateProcessTree } from "../codexRuntime.js";
 import { maybeRunTerminalSessionProvider } from "./terminalSessionProvider.js";
 import type { ToolEmitter } from "../../shared/protocol.js";
+import { decideTerminalCommandSafety } from "../safety/index.js";
 
 type TerminalCommand = {
   command: string;
@@ -33,7 +34,8 @@ export async function maybeRunTerminalProvider(
 
   emit({ type: "session.state", state: "tooling", id: request.id });
 
-  if (isDangerousTerminalCommand(parsed.command) && process.env.CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE !== "1") {
+  const safety = decideTerminalCommandSafety(parsed.command);
+  if (safety.decision === "block" && process.env.CODEX_WIDGET_TERMINAL_ALLOW_DESTRUCTIVE !== "1") {
     const response = [
       "Terminal command was blocked before execution.",
       "",
@@ -201,22 +203,6 @@ function renderTerminalResponse(input: {
         ].join("\n")
       : "No output."
   ].join("\n");
-}
-
-function isDangerousTerminalCommand(command: string): boolean {
-  const normalized = command.toLowerCase();
-  return [
-    /\brm\s+-rf\b/,
-    /\bremove-item\b[\s\S]*\b-recurse\b/,
-    /\bdel(?:ete)?\b[\s\S]*\s\/s\b/,
-    /\brmdir\b[\s\S]*\s\/s\b/,
-    /\bformat\b/,
-    /\bshutdown\b/,
-    /\brestart-computer\b/,
-    /\bstop-computer\b/,
-    /\breg\s+delete\b/,
-    /\bdiskpart\b/
-  ].some((pattern) => pattern.test(normalized));
 }
 
 function normalizePositiveNumber(value: unknown, fallback: number): number {

@@ -198,13 +198,21 @@
       "command": "npm run smoke:browser-action:transaction-concurrency",
       "expectExitCode": 0,
       "expectStdoutContains": "browser action transaction concurrency smoke ok"
+    },
+    {
+      "id": "smoke-architecture-foundations",
+      "command": "npm run smoke:architecture-foundations",
+      "expectExitCode": 0,
+      "expectStdoutContains": "architecture foundations smoke ok"
     }
   ],
   "handoff": {
-    "currentSprintId": "iter-20-complete",
-    "lastActionSummary": "Browser Action post-transaction hardening improved candidate clarity, history-action latency, native fallback readiness, and clarification UX. View Graph v2 representative content excludes pinned/notice/admin rows, clarification candidates now render readable localized multi-line summaries plus selectable renderer choice cards, Browser Bridge no longer double-waits after tab-navigation actions, live-runner coverage proves back/forward history behavior, and native desktop now has a mock-covered typed helper contract for future UI Automation/native-input execution.",
+    "currentSprintId": "iter-21-complete",
+    "lastActionSummary": "Architecture foundation consolidation is complete. Current architecture is now sharded under docs/architecture, completed Browser/Semantic handoffs were tombstoned under docs/plans/deprecated, shared daemon foundations were added for capability transactions, prepared context, safety, agent-tool runtime, semantic evidence, and surface-control stages. Browser Action records shared timing/debug/safety/tool metadata, Browser/Vision/Terminal can project into prepared contexts, Semantic Interface can consume shared prepared contexts, Terminal destructive gating uses the shared safety kernel, WidgetRuntime derived display state was extracted, and noisy Browser Action live artifacts are ignored by default.",
     "openIssues": [
       "Reload the installed unpacked Browser Bridge extension before live-site retesting so Chrome/Edge uses the latest service-worker and bridge scripts.",
+      "Vision, Terminal, and future Desktop control should migrate incrementally onto the new shared capability transaction, prepared-context, safety, and debug/timing foundations.",
+      "Renderer decomposition is improved but not complete; WidgetRuntime/useChatSessionController remain larger composition surfaces for future refactor passes.",
       "Ranked-choice clarification now has structured renderer choice cards; future polish can add visual page target highlighting when Browser Perception/extension can safely expose redacted bounding-box overlays.",
       "Browser Action native desktop live executable browser chrome control is BLOCKED until a scoped Windows UI Automation or bounded native input helper is supplied and validated; current adapter reports diagnostics, exposes CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER, and smoke-covers the helper JSON contract with a mock executable.",
       "Browser Action custom Codex app-server tool bridge is BLOCKED on a stable app-server custom tool/client-tool contract; current coverage uses daemon prompt/tool simulation, protocol events, approval, audit, and widget-context visibility.",
@@ -221,11 +229,11 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-11T13:28:04.697+09:00"
+    "updatedAt": "2026-05-11T14:17:09.886+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-11T13:28:04.697+09:00"
+  "stateUpdatedAt": "2026-05-11T14:17:09.886+09:00"
 }

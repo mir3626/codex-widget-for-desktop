@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { createCapabilityTimingRecorder } from "../../capability-transaction/index.js";
 import type {
   BrowserInteractionEvent,
   BrowserInteractionPhase,
@@ -24,8 +25,11 @@ export class BrowserInteractionTransactionManager {
     mode: BrowserActionMode;
     browserSource?: Partial<BrowserActionSource>;
   }): BrowserInteractionTransaction {
+    const startedAt = Date.now();
+    const timing = createCapabilityTimingRecorder(startedAt);
+    const transactionId = `browser-transaction-${randomUUID()}`;
     const transaction: BrowserInteractionTransaction = {
-      transactionId: `browser-transaction-${randomUUID()}`,
+      transactionId,
       requestId: input.requestId,
       actionSessionId: input.actionSessionId,
       sessionId: input.sessionId,
@@ -35,10 +39,21 @@ export class BrowserInteractionTransactionManager {
       mode: input.mode,
       phase: "perceiving",
       browserSource: input.browserSource,
+      capability: {
+        capability: "browser_action",
+        transactionId,
+        requestId: input.requestId,
+        sessionId: input.sessionId,
+        source: input.source,
+        phase: "perceiving",
+        createdAt: new Date(startedAt).toISOString(),
+        updatedAt: new Date(startedAt).toISOString()
+      },
       candidateSteps: [],
       selectedCandidateIds: [],
       stepCursor: 0,
       events: [],
+      timings: [timing.mark("transaction_started", "perceiving")],
       auditSummary: {}
     };
     transaction.events.push(createInteractionEvent("perceiving", "Browser Interaction transaction started"));
@@ -58,6 +73,12 @@ export class BrowserInteractionTransactionManager {
     }
     transaction.activeLease = lease;
     transaction.phase = "framing_intent";
+    transaction.capability.phase = "framing_intent";
+    transaction.capability.updatedAt = new Date().toISOString();
+    transaction.timings.push(markTransactionTiming(transaction, "context_lease_attached", "framing_intent", {
+      leaseId: lease.leaseId,
+      contextId: lease.contextId
+    }));
     transaction.events.push(createInteractionEvent("framing_intent", "Fresh browser view lease attached", {
       leaseId: lease.leaseId,
       contextId: lease.contextId,
@@ -88,6 +109,12 @@ export class BrowserInteractionTransactionManager {
     }
     transaction.intentFrame = intentFrame;
     transaction.phase = "generating_candidates";
+    transaction.capability.phase = "generating_candidates";
+    transaction.capability.updatedAt = new Date().toISOString();
+    transaction.timings.push(markTransactionTiming(transaction, "intent_recorded", "generating_candidates", {
+      actionFamily: intentFrame.actionFamily,
+      confidence: intentFrame.confidence
+    }));
     transaction.events.push(createInteractionEvent("generating_candidates", "Intent frame recorded", intentFrame));
     return cloneTransaction(transaction);
   }
@@ -98,6 +125,9 @@ export class BrowserInteractionTransactionManager {
       return undefined;
     }
     transaction.candidateSteps = candidates;
+    transaction.timings.push(markTransactionTiming(transaction, "candidates_generated", "generating_candidates", {
+      candidateCount: candidates.length
+    }));
     transaction.events.push(createInteractionEvent("generating_candidates", "Browser action candidates generated", {
       candidateCount: candidates.length,
       topCandidateId: candidates[0]?.candidateId
@@ -111,6 +141,7 @@ export class BrowserInteractionTransactionManager {
       return transaction ? cloneTransaction(transaction) : undefined;
     }
     transaction.selectedCandidateIds.push(candidateId);
+    transaction.timings.push(markTransactionTiming(transaction, "candidate_selected", "executing", { candidateId }));
     transaction.events.push(createInteractionEvent("executing", "Browser action candidate selected", { candidateId }));
     return cloneTransaction(transaction);
   }
@@ -121,6 +152,9 @@ export class BrowserInteractionTransactionManager {
       return undefined;
     }
     transaction.phase = phase;
+    transaction.capability.phase = phase;
+    transaction.capability.updatedAt = new Date().toISOString();
+    transaction.timings.push(markTransactionTiming(transaction, `phase_${phase}`, phase, detail && typeof detail === "object" && !Array.isArray(detail) ? detail as Record<string, unknown> : undefined));
     transaction.events.push(createInteractionEvent(phase, summary, detail));
     if (phase === "completed" || phase === "failed" || phase === "cancelled") {
       transaction.finalOutcome = phase === "completed" ? "completed" : phase === "cancelled" ? "cancelled" : "failed";
@@ -159,4 +193,15 @@ function readTransactionTabKey(lease: BrowserViewContextLease): string | undefin
 
 function cloneTransaction(transaction: BrowserInteractionTransaction): BrowserInteractionTransaction {
   return JSON.parse(JSON.stringify(transaction)) as BrowserInteractionTransaction;
+}
+
+function markTransactionTiming(
+  transaction: BrowserInteractionTransaction,
+  name: string,
+  phase: BrowserInteractionPhase,
+  detail?: Record<string, unknown>
+) {
+  const first = transaction.timings[0];
+  const startedAt = first ? Date.parse(first.at) - first.elapsedMs : Date.now();
+  return createCapabilityTimingRecorder(startedAt).mark(name, phase, detail);
 }

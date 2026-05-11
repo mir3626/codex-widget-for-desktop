@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ScreenCrop } from "../../shared/protocol.js";
 import { resolveBundledOcrCommand } from "./screenCaptureOcr.js";
+export { resolveBundledOcrCommand } from "./screenCaptureOcr.js";
 
 export type ScreenCaptureResult = {
   output: string;

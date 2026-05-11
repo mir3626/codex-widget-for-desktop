@@ -690,6 +690,43 @@
       },
       "summary": "Iteration 20 completed the Browser Interaction Transaction pipeline. Browser Action prompt/direct/clarification paths now coordinate request-scoped transactions, fresh Browser Perception leases, finite View Graph candidates, deterministic planning gates, late resolver grounding, expected-effect verification, per-active-tab concurrency cancellation, and redacted advisory Semantic Memory feedback. New transaction smokes and refreshed Browser Action dogfood evidence cover the core interface behavior without site-specific rules.",
       "completedAt": "2026-05-10T22:41:00.000+09:00"
+    },
+    {
+      "id": "iter-21",
+      "label": "Architecture Foundation Consolidation",
+      "startedAt": "2026-05-11T14:23:00.000+09:00",
+      "goal": "Consolidate current architecture into sharded docs, tombstone completed handoffs, and extract shared capability transaction, prepared context, safety, agent-tool, semantic evidence, debug/timing, renderer-boundary, and live artifact policy foundations.",
+      "plannedSprints": [
+        "iter-21-sprint-01-current-architecture-shards-and-tombstones",
+        "iter-21-sprint-02-shared-foundation-modules",
+        "iter-21-sprint-03-renderer-boundary-and-test-policy"
+      ],
+      "completedSprints": [
+        "iter-21-sprint-01-current-architecture-shards-and-tombstones",
+        "iter-21-sprint-02-shared-foundation-modules",
+        "iter-21-sprint-03-renderer-boundary-and-test-policy"
+      ],
+      "carryover": "Feature handoffs had become the de facto architecture map. Iter-21 promotes the stable Browser/Vision/Semantic patterns into durable architecture shards and shared daemon foundations.",
+      "openRisks": [
+        "The renderer still has large composition files; WidgetRuntime derived state was extracted, but deeper hook/component decomposition remains an ongoing refactor lane.",
+        "Shared capability foundations are now available and Browser Action uses them for timing, debug, prepared context, safety, and tool metadata; Vision/Terminal/Desktop should migrate incrementally.",
+        "Completed handoffs were tombstoned under docs/plans/deprecated and should not be used as active architecture authority."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.985,
+        "durable-codex-runtime": 0.97,
+        "real-tool-providers": 1,
+        "resident-desktop-readiness": 0.965,
+        "durable-product-state": 0.99,
+        "semantic-interface": 1,
+        "semantic-memory": 1,
+        "browser-view-graph-v2": 1,
+        "browser-perception-interface": 1,
+        "browser-interaction-transaction": 1,
+        "architecture-foundation": 1
+      },
+      "summary": "Iteration 21 completed architecture consolidation. Added docs/architecture shards, moved completed Browser/Semantic handoffs to docs/plans/deprecated, added shared daemon capability-transaction, prepared-context, safety, agent-tools, and surface-control modules, projected Browser Perception, Vision TaskCapsule, and Terminal state into shared prepared contexts, projected prepared context into Semantic Interface, embedded shared safety metadata in Browser Action decisions, moved Terminal destructive command gating onto the shared safety kernel, logged Browser Action timing/debug bundle evidence, extracted WidgetRuntime derived state, ignored noisy live artifacts, and added smoke:architecture-foundations.",
+      "completedAt": "2026-05-11T14:23:00.000+09:00"
     }
   ]
 }

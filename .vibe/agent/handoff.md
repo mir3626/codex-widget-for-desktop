@@ -1509,3 +1509,24 @@ Iteration `iter-15` is active. It follows `docs/plans/semantic-interface-handoff
 - `iter-15-sprint-04-low-risk-browser-live-gate-and-completion`
 
 Current sprint: `iter-15-sprint-01-type-surface-golden-traces`. Browser Action live behavior must remain unchanged during Sprint 01; the first implementation is type surface, deterministic ranker/replay, transition grammar, operating profiles, redacted traces, Browser Action adapter conversion, and golden trace smoke coverage.
+
+## Latest Update: Architecture Foundation Consolidation
+
+Completed Iteration `iter-21` for architecture/process consolidation.
+
+- Added sharded current architecture docs under `docs/architecture/`, covering runtime boundaries, capability transactions, prepared context, safety policy, agent tool runtime, renderer boundary, semantic interface, and testing/observability.
+- Moved completed Browser Action/Semantic handoff files into `docs/plans/deprecated/` and added `docs/plans/README.md` so old handoffs are tombstoned rather than treated as active architecture authority.
+- Added shared daemon foundations:
+  - `src/daemon/capability-transaction/`
+  - `src/daemon/prepared-context/`
+  - `src/daemon/safety/`
+  - `src/daemon/agent-tools/`
+- Browser Action now records shared capability transaction snapshots/timings, shared prepared-context lease metadata, shared safety-decision metadata, simulated agent-tool invocation metadata, and redacted debug bundles for non-completed prompt transactions.
+- Semantic Interface gained a generic `preparedContextToSemanticSnapshot()` adapter so prepared contexts can become source-agnostic semantic evidence.
+- Vision TaskCapsules and Terminal state gained shared prepared-context adapters, and Terminal destructive command gating now uses the shared safety kernel.
+- Added `docs/architecture/surface-control.md` plus a shared surface-control stage model for Browser, Vision, Terminal, Workspace, and bounded Desktop automation.
+- Renderer decomposition continued with `useWidgetRuntimeDerivedState`, moving derived runtime display state out of `WidgetRuntime.tsx`.
+- Live Browser Action report artifacts are ignored by default; curated evidence should still be promoted to tracked reports explicitly.
+- Added `npm run smoke:architecture-foundations` and included it in `smoke:all`.
+
+Verification passed `npm run lint`, `npm run smoke:architecture-foundations`, `npm run smoke:terminal`, `npm run smoke:browser-action`, `npm run smoke:browser-interaction-transaction`, `npm run smoke:browser-perception`, `npm run smoke:browser-action:e2e-control`, `npm run smoke:browser-action:renderer`, and final `npm run smoke:all`.

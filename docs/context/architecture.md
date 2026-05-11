@@ -1,5 +1,9 @@
 # Architecture Context
 
+> Current detailed architecture is now sharded under `docs/architecture/`.
+> This context file remains a compact harness/project-memory summary and should
+> not be used as the only architecture source for new work.
+
 ## Runtime Layout
 
 ```text
@@ -17,7 +21,8 @@ React renderer
   - renders daemon-owned session snapshots and internal session tabs
   - keeps localStorage only for UI preferences and temporary fallbacks; renderer should remain UI/interaction focused
   - frontend structure is split by responsibility:
-    - App.tsx: runtime state orchestration, daemon protocol effects, native shell integration handlers
+    - App.tsx: renderer bootstrap
+    - WidgetRuntime.tsx / WidgetRuntimeView.tsx: current runtime composition layer being progressively decomposed
     - components/: titlebar/system strip, session tabs/trash, mode tabs, settings, conversation, composer, activity, terminal, Vision menu, artifacts, markdown renderers, and interaction cards
     - hooks/: shared UI behavior such as viewport-aware floating-surface placement
     - utils/: chat/message shaping, storage preference IO, terminal formatting, speech helpers, Vision capture helpers, and generic formatting

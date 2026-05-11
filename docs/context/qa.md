@@ -72,6 +72,14 @@ npm run dogfood:browser-action:live:widget-ui
 
 This launches a separate target Chromium profile with the unpacked Browser Bridge extension plus a separate browser-hosted widget UI, then submits prompts and approval responses through the real chat controls.
 
+Run this after capability transaction, prepared context, shared safety, or agent-tool boundary changes:
+
+```powershell
+npm run smoke:architecture-foundations
+```
+
+This verifies the shared transaction timing/debug bundle, prepared-context identity, safety decision, and simulated Browser Action tool boundary.
+
 Run this after a release build when bundle resource wiring changes:
 
 ```powershell

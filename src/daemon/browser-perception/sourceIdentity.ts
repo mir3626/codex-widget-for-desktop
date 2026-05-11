@@ -34,15 +34,19 @@ export function buildPreparedBrowserViewContext(input: {
   ]);
   const freshness = readPerceptionFreshness(input.observation);
   const stability = readPerceptionStability(input.observation);
+  const contextId = hashParts([
+    source.windowId,
+    source.tabId,
+    source.url,
+    graph?.identity?.routeKey,
+    graph?.identity?.viewRevision,
+    input.snapshot.capturedAt
+  ]);
+  const capturedAt = input.snapshot.capturedAt;
+  const updatedAt = now.toISOString();
+  const expiresAt = new Date(now.getTime() + 30_000).toISOString();
   return {
-    contextId: hashParts([
-      source.windowId,
-      source.tabId,
-      source.url,
-      graph?.identity?.routeKey,
-      graph?.identity?.viewRevision,
-      input.snapshot.capturedAt
-    ]),
+    contextId,
     schemaVersion: "browser-perception-context.v1",
     adapterId: "extension",
     tabKey: [source.windowId, source.tabId].filter(Boolean).join(":") || graph?.identity?.tabKey,
@@ -56,9 +60,9 @@ export function buildPreparedBrowserViewContext(input: {
     mutationRevision: graph?.identity?.domRevision,
     routeKey: graph?.identity?.routeKey,
     graphDigest,
-    capturedAt: input.snapshot.capturedAt,
-    updatedAt: now.toISOString(),
-    expiresAt: new Date(now.getTime() + 30_000).toISOString(),
+    capturedAt,
+    updatedAt,
+    expiresAt,
     lastObservedReason: input.reason,
     diagnostics: {
       readyState: input.observation.readyState,
@@ -70,6 +74,34 @@ export function buildPreparedBrowserViewContext(input: {
     redaction: {
       mode: "metadata_only",
       persistedFields: ["source", "viewRevision", "routeKey", "freshness", "stability", "diagnostics"]
+    },
+    preparedContext: {
+      schemaVersion: "prepared-context.v1",
+      identity: {
+        surface: "browser_page",
+        sourceId: "extension",
+        surfaceId: [source.windowId, source.tabId].filter(Boolean).join(":") || graph?.identity?.tabKey,
+        url: source.url,
+        title: source.title,
+        origin: source.origin,
+        routeKey: graph?.identity?.routeKey,
+        revision: graph?.identity?.viewRevision,
+        mutationRevision: graph?.identity?.domRevision,
+        digest: graphDigest
+      },
+      freshness,
+      stability,
+      capturedAt,
+      updatedAt,
+      expiresAt,
+      redaction: {
+        mode: "metadata_only",
+        persistedFields: ["identity", "freshness", "stability", "diagnostics"]
+      },
+      diagnostics: {
+        readyState: input.observation.readyState,
+        mutationQuietMs: graph?.identity?.mutationQuietMs
+      }
     }
   };
 }

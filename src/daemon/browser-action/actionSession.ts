@@ -27,6 +27,7 @@ import { createDiagnosticSession } from "./actionSession/diagnostics.js";
 import { executeBrowserAction } from "./actionSession/executeAction.js";
 import { BrowserInteractionTransactionManager } from "./interaction/transactionManager.js";
 import type {
+  BrowserInteractionPhase,
   BrowserInteractionSource,
   BrowserInteractionTransaction,
   BrowserViewContextLease,
@@ -242,6 +243,15 @@ export class BrowserActionSessionManager {
 
   getInteraction(transactionId: string | undefined): BrowserInteractionTransaction | undefined {
     return this.interactions.get(transactionId);
+  }
+
+  updateInteractionPhase(
+    transactionId: string | undefined,
+    phase: BrowserInteractionPhase,
+    summary: string,
+    detail?: unknown
+  ): BrowserInteractionTransaction | undefined {
+    return this.interactions.updatePhase(transactionId, phase, summary, detail);
   }
 
   private requireSession(id: string): BrowserActionSession {

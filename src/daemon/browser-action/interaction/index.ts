@@ -1,5 +1,6 @@
 export * from "./types.js";
 export * from "./contextLease.js";
+export * from "./debugBundle.js";
 export * from "./intentFrame.js";
 export * from "./candidateStep.js";
 export * from "./planningGate.js";

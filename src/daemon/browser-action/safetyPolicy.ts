@@ -1,5 +1,6 @@
 import { summarizeBrowserElement } from "./browserObservation.js";
 import { inspectEvaluateCode } from "./evaluatePolicy.js";
+import { createSafetyDecision, normalizeSafetyRisk } from "../safety/index.js";
 import type { BrowserAction, BrowserActionMode, BrowserElement, BrowserActionSafetyDecision } from "./types.js";
 
 export function decideBrowserActionSafety(input: {
@@ -12,7 +13,7 @@ export function decideBrowserActionSafety(input: {
   if (input.action.type === "evaluate") {
     const guard = inspectEvaluateCode(input.action);
     if (input.mode !== "full_control_dev") {
-      return {
+      return withSharedSafetyDecision({
         decision: "block",
         risk: "high",
         reason: "Evaluate is only available in explicit full_control_dev mode.",
@@ -20,10 +21,10 @@ export function decideBrowserActionSafety(input: {
         targetSummary: summarizeBrowserElement(input.target),
         destructive: true,
         metadata: { codeHash: guard.codeHash }
-      };
+      });
     }
     if (!guard.ok) {
-      return {
+      return withSharedSafetyDecision({
         decision: "block",
         risk: "high",
         reason: guard.reason,
@@ -35,9 +36,9 @@ export function decideBrowserActionSafety(input: {
           timeoutMs: guard.timeoutMs,
           resultLimitBytes: guard.resultLimitBytes
         }
-      };
+      });
     }
-    return {
+    return withSharedSafetyDecision({
       decision: "confirm",
       risk: "high",
       reason: "full_control_dev evaluate requires visible approval with code preview before execution.",
@@ -50,69 +51,69 @@ export function decideBrowserActionSafety(input: {
         resultLimitBytes: guard.resultLimitBytes,
         codePreview: guard.preview
       }
-    };
+    });
   }
   if (input.mode === "read_only" && input.action.type !== "read" && input.action.type !== "screenshot") {
-    return {
+    return withSharedSafetyDecision({
       decision: "block",
       risk: "medium",
       reason: "Browser Action is in read-only mode.",
       actionLabel,
       targetSummary: summarizeBrowserElement(input.target),
       destructive: false
-    };
+    });
   }
   const safeSearchSubmit = isSafeSearchSubmitActivation(input.action, input.target);
   const destructive = !safeSearchSubmit && isDestructiveBrowserAction(input.action, input.target);
   const sensitive = !safeSearchSubmit && Boolean(input.target?.riskHints.some((hint) => ["password", "payment", "delete", "submit", "file_upload", "download", "auth"].includes(hint)));
   if (requiresResolvedElement(input.action) && input.targetConfidence < 0.75) {
-    return {
+    return withSharedSafetyDecision({
       decision: "clarify",
       risk: destructive || sensitive ? "high" : "medium",
       reason: "The action needs a specific browser element but the target is not resolved confidently.",
       actionLabel,
       targetSummary: summarizeBrowserElement(input.target),
       destructive: destructive || sensitive
-    };
+    });
   }
   if ((destructive || sensitive) && input.targetConfidence < 0.75) {
-    return {
+    return withSharedSafetyDecision({
       decision: "clarify",
       risk: "high",
       reason: "The action has side effects but the target is not resolved confidently.",
       actionLabel,
       targetSummary: summarizeBrowserElement(input.target),
       destructive: true
-    };
+    });
   }
   if (destructive || sensitive || requiresConfirmation(input.action)) {
-    return {
+    return withSharedSafetyDecision({
       decision: input.mode === "full_control_dev" ? "allow" : "confirm",
       risk: destructive || sensitive ? "high" : "medium",
       reason: "This browser action can submit, modify, navigate, upload, download, or expose sensitive state.",
       actionLabel,
       targetSummary: summarizeBrowserElement(input.target),
       destructive: destructive || sensitive
-    };
+    });
   }
   if (input.mode === "ask_before_action" && input.action.type !== "read" && input.action.type !== "screenshot") {
-    return {
+    return withSharedSafetyDecision({
       decision: "confirm",
       risk: "low",
       reason: "Browser Action is configured to ask before non-read actions.",
       actionLabel,
       targetSummary: summarizeBrowserElement(input.target),
       destructive: false
-    };
+    });
   }
-  return {
+  return withSharedSafetyDecision({
     decision: "allow",
     risk: "low",
     reason: "This browser action is low risk under the current policy.",
     actionLabel,
     targetSummary: summarizeBrowserElement(input.target),
     destructive: false
-  };
+  });
 }
 
 export function isDestructiveBrowserAction(action: BrowserAction, target?: BrowserElement): boolean {
@@ -169,4 +170,23 @@ function isSafeSearchSubmitActivation(action: BrowserAction, target?: BrowserEle
     return false;
   }
   return /(검색|search|find|lookup)/i.test(haystack);
+}
+
+function withSharedSafetyDecision(decision: BrowserActionSafetyDecision): BrowserActionSafetyDecision {
+  return {
+    ...decision,
+    metadata: {
+      ...decision.metadata,
+      sharedSafetyDecision: createSafetyDecision({
+        subjectKind: "browser_action",
+        actionFamily: decision.actionLabel,
+        decision: decision.decision,
+        risk: normalizeSafetyRisk(decision.risk),
+        reason: decision.reason,
+        targetSummary: decision.targetSummary,
+        destructive: decision.destructive,
+        sensitive: decision.destructive || decision.risk === "high"
+      })
+    }
+  };
 }

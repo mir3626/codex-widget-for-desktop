@@ -5,6 +5,7 @@ import type {
   BrowserViewGraph
 } from "../browser-action/types.js";
 import type { DomSnapshot } from "../providers/providerSnapshots.js";
+import type { PreparedContextSnapshot } from "../prepared-context/types.js";
 
 type BrowserExtensionActiveTab = NonNullable<BrowserExtensionBridgeStatus["activeTab"]>;
 
@@ -42,6 +43,7 @@ export type PreparedBrowserViewContext = {
     mode: "metadata_only";
     persistedFields: string[];
   };
+  preparedContext: PreparedContextSnapshot;
 };
 
 export type BrowserPerceptionObserveReason =

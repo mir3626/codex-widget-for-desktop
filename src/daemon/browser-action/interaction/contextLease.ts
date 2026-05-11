@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { PreparedBrowserViewContext } from "../../browser-perception/types.js";
+import type { PreparedContextLease } from "../../prepared-context/types.js";
 import type { BrowserAction, BrowserObservation } from "../types.js";
 import type { BrowserInteractionRiskClass, BrowserViewContextLease } from "./types.js";
 
@@ -24,8 +25,37 @@ export function createBrowserViewContextLease(input: {
 }): BrowserViewContextLease {
   const now = Date.now();
   const ttlMs = input.ttlMs ?? (input.requiredRiskClass === "read" ? 10_000 : 6_000);
+  const leaseId = `browser-view-lease-${randomUUID()}`;
+  const preparedContextLease: PreparedContextLease = {
+    leaseId,
+    contextId: input.context.contextId,
+    identity: {
+      surface: "browser_page",
+      sourceId: input.context.adapterId,
+      surfaceId: input.context.tabKey ?? [
+        input.context.adapterId,
+        input.context.source.windowId,
+        input.context.source.tabId
+      ].filter(Boolean).join(":"),
+      url: input.context.source.url ?? input.context.observation.url,
+      title: input.context.source.title ?? input.context.observation.title,
+      origin: input.context.source.origin,
+      routeKey: input.context.routeKey ?? input.context.viewGraph?.identity.routeKey,
+      revision: input.context.viewRevision ?? input.context.viewGraph?.identity.viewRevision,
+      mutationRevision: input.context.mutationRevision ?? input.context.viewGraph?.identity.domRevision,
+      digest: input.context.graphDigest ?? input.context.viewGraph?.identity.structureDigest
+    },
+    capturedAt: input.context.capturedAt,
+    expiresAt: new Date(now + ttlMs).toISOString(),
+    requiredRisk: input.requiredRiskClass,
+    freshness: input.context.freshness === "settling" ? "settling_ready" : input.context.freshness,
+    stability: input.context.stability,
+    diagnostics: {
+      lastObservedReason: input.context.lastObservedReason
+    }
+  };
   return {
-    leaseId: `browser-view-lease-${randomUUID()}`,
+    leaseId,
     contextId: input.context.contextId,
     adapterId: input.context.adapterId,
     tabKey: input.context.tabKey,
@@ -49,7 +79,8 @@ export function createBrowserViewContextLease(input: {
       contextFreshness: input.context.freshness,
       contextStability: input.context.stability
     },
-    context: input.context
+    context: input.context,
+    preparedContextLease
   };
 }
 
