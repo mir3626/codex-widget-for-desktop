@@ -96,6 +96,18 @@ export function handleBrowserActionServerEvent(event: ServerEvent, deps: WidgetS
     return true;
   }
 
+  if (event.type === "browserAction.diagnostics") {
+    deps.setBrowserAction((current) => ({
+      ...current,
+      actionSessionId: event.actionSessionId,
+      diagnosticsSummary: event.diagnostics,
+      progress: [...current.progress.slice(-7), { id: crypto.randomUUID(), status: "diagnostics", detail: event.diagnostics }],
+      error: null
+    }));
+    deps.appendLog("Browser Action diagnostics updated", "tool");
+    return true;
+  }
+
   if (event.type === "browserAction.error") {
     deps.setBrowserAction((current) => ({
       ...current,

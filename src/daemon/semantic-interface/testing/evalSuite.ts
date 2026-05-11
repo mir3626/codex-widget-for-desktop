@@ -25,6 +25,15 @@ export type SemanticGoldenTraceResult = {
   reason: string;
 };
 
+export type SemanticGoldenTraceMetrics = {
+  total: number;
+  passed: number;
+  failed: number;
+  passRate: number;
+  byMode: Record<string, { total: number; passed: number; passRate: number }>;
+  byAdversarialClass: Record<string, { total: number; passed: number; passRate: number }>;
+};
+
 export function createSemanticGoldenTraceSuite(now = new Date("2026-05-08T00:00:05.000Z")): SemanticGoldenTraceCase[] {
   const concept = createBrowserSemanticFixture();
   const duplicate = createBrowserSemanticFixture({ duplicateLabels: true });
@@ -191,4 +200,34 @@ export function runSemanticGoldenTraceSuite(input?: {
         : `expected ${testCase.expect.outcome}/${testCase.expect.selectedEntityId ?? "(any)"}, got ${outcome.kind}/${selectedEntityId ?? "(none)"}`
     };
   });
+}
+
+export function summarizeSemanticGoldenTraceMetrics(results: SemanticGoldenTraceResult[]): SemanticGoldenTraceMetrics {
+  const metrics: SemanticGoldenTraceMetrics = {
+    total: results.length,
+    passed: results.filter((result) => result.passed).length,
+    failed: results.filter((result) => !result.passed).length,
+    passRate: results.length > 0 ? results.filter((result) => result.passed).length / results.length : 0,
+    byMode: {},
+    byAdversarialClass: {}
+  };
+  for (const result of results) {
+    incrementMetricBucket(metrics.byMode, result.mode, result.passed);
+    if (result.adversarialClass) {
+      incrementMetricBucket(metrics.byAdversarialClass, result.adversarialClass, result.passed);
+    }
+  }
+  return metrics;
+}
+
+function incrementMetricBucket(
+  buckets: Record<string, { total: number; passed: number; passRate: number }>,
+  key: string,
+  passed: boolean
+): void {
+  const bucket = buckets[key] ?? { total: 0, passed: 0, passRate: 0 };
+  bucket.total += 1;
+  bucket.passed += passed ? 1 : 0;
+  bucket.passRate = bucket.total > 0 ? bucket.passed / bucket.total : 0;
+  buckets[key] = bucket;
 }

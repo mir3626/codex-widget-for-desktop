@@ -36,9 +36,20 @@ Browser Perception currently implements the first complete prepared-context
 store. Browser View Graph v2 is the prepared browser evidence graph consumed by
 Browser Action and Semantic Interface.
 
+## Other Surface Projections
+
+Non-browser surfaces should expose compact prepared-context projections before
+they gain a full scheduler:
+
+- Screen snapshots project provider/source identity, image hash, dimensions,
+  capture timestamp, and freshness diagnostics.
+- Vision TaskCapsules project task/evidence identity, selected local images,
+  transcript summary, retention metadata, and capsule digest.
+- Terminal state projects session/cwd/shell identity, recent output digest,
+  last exit code, idle status, and redaction metadata.
+
 ## Generalization Target
 
 Move common prepared-context identity, freshness, stability, lease, redaction,
 and diagnostics helpers into `src/daemon/prepared-context/`, then let Browser
 Perception implement the browser-specific adapter.
-

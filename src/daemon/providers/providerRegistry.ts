@@ -1,5 +1,6 @@
 import type { ProviderStatus, WidgetMode } from "../../shared/protocol.js";
 import { buildBrowserObservation, type BrowserObservation } from "../browser-action/index.js";
+import { screenSnapshotToPreparedContext } from "../prepared-context/index.js";
 import {
   createDomSnapshot,
   createScreenSnapshot,
@@ -102,6 +103,7 @@ export function augmentRequestWithProviderContext<T extends {
     if (!screenSnapshot) {
       return input;
     }
+    const prepared = screenSnapshotToPreparedContext(screenSnapshot);
 
     return {
       ...input,
@@ -110,6 +112,7 @@ export function augmentRequestWithProviderContext<T extends {
         : input.imageDataUrls,
       text: [
         "Screen/Vision context:",
+        `Prepared context: surface=${prepared.identity.surface}; source=${prepared.identity.sourceId}; revision=${prepared.identity.revision ?? "(none)"}; freshness=${prepared.freshness}; digest=${prepared.identity.digest ?? "(none)"}`,
         `Source: ${screenSnapshot.source || "(unknown)"}`,
         screenSnapshot.title ? `Title: ${screenSnapshot.title}` : "",
         `Captured: ${screenSnapshot.capturedAt}`,

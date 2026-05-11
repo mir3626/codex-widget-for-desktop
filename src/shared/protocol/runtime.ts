@@ -23,6 +23,21 @@ export type RuntimeInteraction = {
     value: string;
     description?: string;
     detail?: string;
+    visual?: {
+      kind: "bbox";
+      bbox: {
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+      };
+      viewport?: {
+        width: number;
+        height: number;
+      };
+      region?: string;
+      confidence?: number;
+    };
   }>;
 };
 

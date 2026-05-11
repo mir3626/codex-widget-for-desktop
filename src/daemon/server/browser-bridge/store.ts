@@ -1,4 +1,5 @@
 import type { BrowserExtensionBridgeStatus } from "../../../shared/protocol.js";
+import type { BrowserBridgeExpectedBuildInfo } from "./extensionBuild.js";
 
 const BROWSER_EXTENSION_BRIDGE_STALE_MS = 90_000;
 
@@ -7,18 +8,20 @@ export type BrowserExtensionBridgeStore = {
   snapshot: () => BrowserExtensionBridgeStatus;
 };
 
-export function createBrowserExtensionBridgeStore(): BrowserExtensionBridgeStore {
+export function createBrowserExtensionBridgeStore(input: { expectedBuild?: BrowserBridgeExpectedBuildInfo } = {}): BrowserExtensionBridgeStore {
   let latest: BrowserExtensionBridgeStatus = {
     connected: false,
     mode: "disconnected",
     updatedAt: new Date(0).toISOString(),
     lastError: "Browser Bridge has not connected yet.",
-    activeTab: { permission: "unknown" }
+    activeTab: { permission: "unknown" },
+    expectedExtensionBuildId: input.expectedBuild?.extensionBuildId,
+    expectedExtensionSourceHash: input.expectedBuild?.extensionSourceHash
   };
 
   return {
     update(status) {
-      latest = normalizeBrowserExtensionBridgeStatus(status);
+      latest = normalizeBrowserExtensionBridgeStatus(status, input.expectedBuild);
       return latest;
     },
     snapshot() {
@@ -35,15 +38,31 @@ export function createBrowserExtensionBridgeStore(): BrowserExtensionBridgeStore
   };
 }
 
-function normalizeBrowserExtensionBridgeStatus(input: unknown): BrowserExtensionBridgeStatus {
+function normalizeBrowserExtensionBridgeStatus(input: unknown, expectedBuild?: BrowserBridgeExpectedBuildInfo): BrowserExtensionBridgeStatus {
   const record = readRecord(input) ?? {};
   const activeTab = readRecord(record.activeTab);
   const settings = readRecord(record.settings);
   const now = new Date().toISOString();
   const mode = readBrowserExtensionBridgeMode(record.mode);
   const permission = readBrowserExtensionBridgePermission(activeTab?.permission);
+  const extensionSourceHash = readOptionalString(record.extensionSourceHash);
+  const extensionBuildId = readOptionalString(record.extensionBuildId);
+  const expectedExtensionSourceHash = expectedBuild?.extensionSourceHash;
+  const expectedExtensionBuildId = expectedBuild?.extensionBuildId;
+  const reloadRequired = Boolean(
+    extensionSourceHash &&
+    expectedExtensionSourceHash &&
+    extensionSourceHash !== expectedExtensionSourceHash
+  );
+  const lastError = readOptionalString(record.lastError) ?? null;
   return {
     extensionVersion: readOptionalString(record.extensionVersion),
+    extensionBuildId,
+    extensionSourceHash,
+    extensionRuntimeId: readOptionalString(record.extensionRuntimeId),
+    expectedExtensionBuildId,
+    expectedExtensionSourceHash,
+    reloadRequired,
     daemonBaseUrl: readOptionalString(record.daemonBaseUrl),
     connected: record.connected === true,
     mode,
@@ -52,7 +71,9 @@ function normalizeBrowserExtensionBridgeStatus(input: unknown): BrowserExtension
     lastSeenAt: now,
     lastObservationAt: readOptionalString(record.lastObservationAt),
     lastCommandId: readOptionalString(record.lastCommandId),
-    lastError: readOptionalString(record.lastError) ?? null,
+    lastError: reloadRequired
+      ? "Browser Bridge extension code is stale. Reload the unpacked extension before retesting."
+      : lastError,
     nativeHost: readBrowserExtensionNativeHost(record.nativeHost),
     activeTab: {
       tabId: readId(activeTab?.tabId),

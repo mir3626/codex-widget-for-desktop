@@ -33,6 +33,12 @@ redacted bundle containing:
 - timing breakdown
 - redaction summary
 
+Browser Action publishes this information to the renderer through
+`browserAction.diagnostics` for non-completed prompt transactions. The event is
+diagnostic-only: it may include timing summaries, redacted debug bundle metadata,
+transaction/request ids, and plan status, but it must not persist full page
+state or sensitive field values.
+
 ## Timing
 
 Latency should be measured per stage:
@@ -47,3 +53,10 @@ Latency should be measured per stage:
 - verification
 - assistant response completion
 
+## Semantic Trace Corpus
+
+`docs/dogfood/semantic-trace-corpus.jsonl` is the deterministic seed corpus for
+Semantic Interface calibration. `npm run smoke:semantic-trace-corpus` verifies
+that the corpus maps to golden trace cases, covers the suite, and keeps current
+pass/fail metrics at the expected baseline. Real dogfood traces should be
+reviewed and redacted before promotion into this corpus.

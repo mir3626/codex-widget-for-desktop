@@ -1,7 +1,4 @@
 import {
-  FormEvent,
-  KeyboardEvent,
-  PointerEvent,
   useEffect,
   useMemo,
   useRef,
@@ -34,6 +31,7 @@ import { useChatSessionController } from "./hooks/useChatSessionController";
 import { useWidgetShellController } from "./hooks/useWidgetShellController";
 import { useVoicePromptController } from "./hooks/useVoicePromptController";
 import { useWidgetRuntimeDerivedState } from "./hooks/useWidgetRuntimeDerivedState";
+import { usePromptSubmission } from "./hooks/usePromptSubmission";
 import { handleWidgetServerEvent } from "./runtime/serverEvents";
 import { WidgetRuntimeView } from "./WidgetRuntimeView";
 
@@ -393,25 +391,6 @@ export function WidgetRuntime() {
     });
   }
 
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    const text = input.trim();
-    if (!startAsk(text, mode)) {
-      return;
-    }
-
-    setInput("");
-  }
-
-  function submitFromPromptKey(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key !== "Enter" || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) {
-      return;
-    }
-
-    event.preventDefault();
-    event.currentTarget.form?.requestSubmit();
-  }
-
   function selectMode(nextMode: WidgetMode) {
     if (nextMode === mode) {
       if (nextMode === "browser") {
@@ -455,16 +434,13 @@ export function WidgetRuntime() {
     });
   }
 
-  function focusPromptInput(event: PointerEvent<HTMLFormElement>) {
-    const target = event.target;
-    if (target instanceof HTMLElement && target.closest("button, .prompt-resize-handle")) {
-      return;
-    }
-
-    window.requestAnimationFrame(() => {
-      promptInputRef.current?.focus();
-    });
-  }
+  const { focusPromptInput, submit, submitFromPromptKey } = usePromptSubmission({
+    input,
+    mode,
+    promptInputRef,
+    setInput,
+    startAsk
+  });
 
   const {
     activeProviderStatus,

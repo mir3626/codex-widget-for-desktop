@@ -80,6 +80,15 @@ npm run smoke:architecture-foundations
 
 This verifies the shared transaction timing/debug bundle, prepared-context identity, safety decision, and simulated Browser Action tool boundary.
 
+Run this after Semantic Interface golden-trace, trace corpus, or deterministic scoring changes:
+
+```powershell
+npm run smoke:semantic-trace-corpus
+```
+
+This verifies the reviewed semantic trace corpus still maps to the golden trace
+suite and keeps calibration seed metrics at the expected baseline.
+
 Run this after a release build when bundle resource wiring changes:
 
 ```powershell

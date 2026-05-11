@@ -75,6 +75,7 @@
     "smoke:screen": "npm run build:daemon && node scripts/smoke-screen-provider.mjs",
     "smoke:vision-context": "npm run build:daemon && node scripts/smoke-vision-context.mjs",
     "smoke:semantic-interface": "npm run build:daemon && node scripts/smoke-semantic-interface.mjs",
+    "smoke:semantic-trace-corpus": "npm run build:daemon && node scripts/smoke-semantic-trace-corpus.mjs",
     "smoke:semantic-memory": "npm run build:daemon && node scripts/smoke-semantic-memory.mjs",
     "smoke:architecture-foundations": "npm run build:daemon && node scripts/smoke-architecture-foundations.mjs",
     "smoke:screen-capture:live": "npm run build:daemon && node scripts/smoke-screen-capture-request.mjs",

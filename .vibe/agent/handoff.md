@@ -1530,3 +1530,16 @@ Completed Iteration `iter-21` for architecture/process consolidation.
 - Added `npm run smoke:architecture-foundations` and included it in `smoke:all`.
 
 Verification passed `npm run lint`, `npm run smoke:architecture-foundations`, `npm run smoke:terminal`, `npm run smoke:browser-action`, `npm run smoke:browser-interaction-transaction`, `npm run smoke:browser-perception`, `npm run smoke:browser-action:e2e-control`, `npm run smoke:browser-action:renderer`, and final `npm run smoke:all`.
+
+## Latest Update: iter-22 P0/P1 Priority Closure
+
+Completed the current P0/P1 follow-up set after architecture consolidation.
+
+- Browser Bridge now reports extension build id, source hash, runtime id, daemon expected build/hash, and `reloadRequired` so stale unpacked extension code is visible before live-site retesting.
+- Browser Action now emits `browserAction.diagnostics` events with timing summaries and redacted debug-bundle metadata for non-completed prompt transactions.
+- Ambiguous Browser Action clarification choices can render redacted bbox previews in the renderer, improving target selection without persisting full sensitive page state.
+- Screen snapshots now project into shared prepared-context identity/freshness/digest summaries, joining the existing Vision TaskCapsule and Terminal state adapters.
+- `WidgetRuntime` prompt submission/focus/key handling moved into `usePromptSubmission`, continuing renderer decomposition.
+- Added `docs/dogfood/semantic-trace-corpus.jsonl`, semantic golden-trace metric summarization, and `npm run smoke:semantic-trace-corpus`.
+
+Verification passed `npm run build:web`, `npm run smoke:all`, `git diff --check`, UTF-8/mojibake checks, project report refresh, and `npm run vibe:checkpoint`. The live dev runtime was restarted; renderer is listening on `127.0.0.1:5173`, daemon health is ok on `127.0.0.1:4128`, and the Tauri widget is running.

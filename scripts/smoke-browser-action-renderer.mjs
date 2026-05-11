@@ -104,6 +104,15 @@ daemon.on("connection", (socket) => {
     result: { id: "renderer-result", action: "read", status: "succeeded", safety: "allow", verification: "passed" }
   }));
   socket.send(JSON.stringify({
+    type: "browserAction.diagnostics",
+    actionSessionId: "renderer-browser-action",
+    diagnostics: {
+      schemaVersion: "browser-action-diagnostics.v1",
+      transactionId: "tx-renderer",
+      timingSummary: { transaction_started: 0, candidates_generated: 120, phase_completed: 240 }
+    }
+  }));
+  socket.send(JSON.stringify({
     type: "browserExtensionBridge.status",
     status: {
       connected: true,
@@ -130,8 +139,22 @@ daemon.on("connection", (socket) => {
       action: "Browser action: click",
       fields: [{ id: "choice", label: "Target", placeholder: "1" }],
       choices: [
-        { id: "candidate-1", label: "1. 링크: 공지", value: "1", description: "영역: main/본문 · 위치: 상단 중앙", detail: "요소 신뢰도: 65%" },
-        { id: "candidate-2", label: "2. 링크: 일반 게시글", value: "2", description: "영역: content-list/본문 · 위치: 중단 중앙", detail: "요소 신뢰도: 82%" }
+        {
+          id: "candidate-1",
+          label: "1. 링크: 공지",
+          value: "1",
+          description: "영역: main/본문 · 위치: 상단 중앙",
+          detail: "요소 신뢰도: 65%",
+          visual: { kind: "bbox", bbox: { x: 440, y: 90, w: 180, h: 28 }, viewport: { width: 1024, height: 768 }, region: "main/본문" }
+        },
+        {
+          id: "candidate-2",
+          label: "2. 링크: 일반 게시글",
+          value: "2",
+          description: "영역: content-list/본문 · 위치: 중단 중앙",
+          detail: "요소 신뢰도: 82%",
+          visual: { kind: "bbox", bbox: { x: 420, y: 360, w: 220, h: 32 }, viewport: { width: 1024, height: 768 }, region: "content-list/본문" }
+        }
       ]
     }
   }));
@@ -160,6 +183,7 @@ try {
   await waitUntil(async () => (await page.locator(".browser-action-panel").count()) === 0, "Idle Browser Bridge panel should stay out of the chat top.");
   await page.locator(".interaction-card").waitFor();
   await waitUntil(async () => (await page.locator(".interaction-choice-list button").count()) === 2, "Clarification choices did not render as selectable cards.");
+  await waitUntil(async () => (await page.locator(".interaction-target-preview").count()) === 2, "Clarification target previews did not render.");
   await page.locator(".interaction-choice-list button").nth(1).click();
   await waitUntil(
     () => clientMessages.some((message) =>

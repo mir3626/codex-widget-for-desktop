@@ -11,6 +11,7 @@ import { BrowserPerceptionService } from "./browser-perception/index.js";
 import { VisionContextSessionManager } from "./vision-context/index.js";
 import { createSemanticMemoryStore } from "./semantic-interface/index.js";
 import { createBrowserExtensionBridgeStore } from "./server/browser-bridge/store.js";
+import { readExpectedBrowserBridgeBuildInfo } from "./server/browser-bridge/extensionBuild.js";
 import {
   clearBrowserActionCommandWaiters,
   type BrowserActionCommandWaiter
@@ -46,7 +47,9 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
   const providers = new ProviderRegistry();
   const browserPerception = new BrowserPerceptionService();
   const visionContext = new VisionContextSessionManager();
-  const browserExtensionBridge = createBrowserExtensionBridgeStore();
+  const browserExtensionBridge = createBrowserExtensionBridgeStore({
+    expectedBuild: readExpectedBrowserBridgeBuildInfo()
+  });
   const storage = createStorageService();
   const semanticMemory = createSemanticMemoryStore();
   const browserActions = new BrowserActionSessionManager(undefined, semanticMemory);

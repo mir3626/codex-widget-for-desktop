@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-20",
+  "currentIteration": "iter-22",
   "iterations": [
     {
       "id": "iter-1",
@@ -727,6 +727,44 @@
       },
       "summary": "Iteration 21 completed architecture consolidation. Added docs/architecture shards, moved completed Browser/Semantic handoffs to docs/plans/deprecated, added shared daemon capability-transaction, prepared-context, safety, agent-tools, and surface-control modules, projected Browser Perception, Vision TaskCapsule, and Terminal state into shared prepared contexts, projected prepared context into Semantic Interface, embedded shared safety metadata in Browser Action decisions, moved Terminal destructive command gating onto the shared safety kernel, logged Browser Action timing/debug bundle evidence, extracted WidgetRuntime derived state, ignored noisy live artifacts, and added smoke:architecture-foundations.",
       "completedAt": "2026-05-11T14:23:00.000+09:00"
+    },
+    {
+      "id": "iter-22",
+      "label": "P0/P1 Priority Closure",
+      "startedAt": "2026-05-11T14:44:00.000+09:00",
+      "goal": "Close the highest-priority follow-up work after architecture consolidation: Browser Bridge extension reload detection, Browser Action diagnostics, shared prepared-context migration for screen/Vision/Terminal, renderer decomposition, clarification target preview, and semantic trace corpus calibration seed.",
+      "plannedSprints": [
+        "iter-22-sprint-01-browser-bridge-reload-diagnostics",
+        "iter-22-sprint-02-browser-action-observability-and-clarification-preview",
+        "iter-22-sprint-03-shared-context-renderer-and-semantic-corpus"
+      ],
+      "completedSprints": [
+        "iter-22-sprint-01-browser-bridge-reload-diagnostics",
+        "iter-22-sprint-02-browser-action-observability-and-clarification-preview",
+        "iter-22-sprint-03-shared-context-renderer-and-semantic-corpus"
+      ],
+      "carryover": "Iter-21 consolidated the architecture, but P0/P1 follow-ups still needed product-grade closure: stale unpacked extension detection, runtime-visible Browser Action timing/debug evidence, incremental migration of non-browser surfaces to shared prepared-context foundations, lower-friction clarification UI, renderer extraction, and a durable semantic trace corpus.",
+      "openRisks": [
+        "The installed unpacked Browser Bridge extension still must be manually reloaded in Chrome/Edge after source changes, but daemon/widget status now reports expected source hash and reloadRequired when stale code is detected.",
+        "Live browser dogfood remains the source of truth for semantic usefulness; the new corpus is a deterministic seed and should be expanded with reviewed real traces before statistical calibration.",
+        "Native browser chrome/restricted-page executable fallback remains blocked on a scoped Windows UI Automation or bounded native input helper."
+      ],
+      "milestoneProgress": {
+        "resident-widget-mvp": 0.985,
+        "durable-codex-runtime": 0.97,
+        "real-tool-providers": 1,
+        "resident-desktop-readiness": 0.965,
+        "durable-product-state": 0.99,
+        "semantic-interface": 1,
+        "semantic-memory": 1,
+        "browser-view-graph-v2": 1,
+        "browser-perception-interface": 1,
+        "browser-interaction-transaction": 1,
+        "architecture-foundation": 1,
+        "priority-p0-p1-closure": 1
+      },
+      "summary": "Iteration 22 closed the current P0/P1 set. Browser Bridge status now includes extension build/source hash/runtime id plus daemon expected hash and reloadRequired detection. Browser Action broadcasts renderer-visible diagnostics with timing summaries and redacted debug bundles for non-completed transactions. Clarification choices can render redacted bounding-box previews. Screen snapshots now project into shared prepared contexts alongside Vision TaskCapsules and Terminal state. WidgetRuntime prompt submission moved into a dedicated hook. A semantic trace corpus and smoke gate seed deterministic calibration coverage, while Semantic Interface audit metadata now retains semantic traces for candidate-bound Browser Action executions.",
+      "completedAt": "2026-05-11T15:45:00.000+09:00"
     }
   ]
 }

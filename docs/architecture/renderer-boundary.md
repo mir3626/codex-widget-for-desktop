@@ -29,8 +29,11 @@ Preferred future slices:
 - session model
 - message stream/typing
 - interaction decisions
-- composer submission
 - capability status
 - mode menu control
 - diagnostics surfaces
 
+Current extracted slices include derived runtime display state and composer
+submission/focus/key handling. Browser Action clarification cards may render
+redacted target previews, but target semantics, safety, and verification remain
+daemon-owned.

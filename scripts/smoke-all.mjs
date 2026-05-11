@@ -23,6 +23,7 @@ const steps = [
   ["Bundled Node runtime", process.execPath, ["scripts/smoke-node-runtime.mjs"]],
   ["Browser Bridge extension package", process.execPath, ["scripts/smoke-browser-extension.mjs"]],
   ["Browser Bridge heartbeat/status", process.execPath, ["scripts/smoke-browser-extension-bridge.mjs"]],
+  ["Semantic trace corpus", process.execPath, ["scripts/smoke-semantic-trace-corpus.mjs"]],
   ["Browser native host", process.execPath, ["scripts/smoke-browser-native-host.mjs"]],
   ["Browser store readiness", process.execPath, ["scripts/smoke-browser-store-readiness.mjs"]],
   ["OCR runtime packaging", process.execPath, ["scripts/smoke-ocr-runtime.mjs"]],

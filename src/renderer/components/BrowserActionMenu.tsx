@@ -234,6 +234,13 @@ function summarizeBridgeStatus(status: BrowserActionUiState["bridgeStatus"]): { 
   }
   const tab = status.activeTab;
   const tabLabel = tab?.title || tab?.url || "current tab";
+  if (status.reloadRequired) {
+    return {
+      label: "Reload extension",
+      detail: status.lastError || "Reload the unpacked Browser Bridge extension before retesting.",
+      tone: "ask"
+    };
+  }
   if (!status.connected || status.mode === "off" || status.mode === "disconnected") {
     return { label: "Browser disconnected", detail: status.lastError || "Start the widget daemon and check extension settings.", tone: "off" };
   }

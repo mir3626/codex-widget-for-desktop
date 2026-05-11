@@ -199,6 +199,11 @@ export type ServerEvent =
       result: unknown;
     }
   | {
+      type: "browserAction.diagnostics";
+      actionSessionId: string;
+      diagnostics: unknown;
+    }
+  | {
       type: "browserAction.error";
       actionSessionId: string;
       error: string;

@@ -70,6 +70,7 @@ export type BrowserActionUiState = {
   observationSummary: unknown;
   planSummary: unknown;
   resultSummary: unknown;
+  diagnosticsSummary: unknown;
   progress: Array<{ id: string; status: string; detail?: unknown }>;
   error: string | null;
   safetyMode: "read_only" | "ask_before_action" | "auto_safe_actions" | "full_control_dev";

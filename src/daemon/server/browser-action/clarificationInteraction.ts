@@ -1,5 +1,6 @@
 import {
   summarizeBrowserElement,
+  type Rect,
   type BrowserElement
 } from "../../browser-action/index.js";
 import type { RuntimeInteraction } from "../../../shared/protocol.js";
@@ -82,8 +83,38 @@ function buildSemanticTargetChoice(element: BrowserElement, index: number): NonN
     label: `${index}. ${summary}`,
     value: String(index),
     description: details.slice(0, 2).join(" · ") || undefined,
-    detail: details.slice(2).join(" · ") || undefined
+    detail: details.slice(2).join(" · ") || undefined,
+    visual: buildSemanticTargetVisual(element)
   };
+}
+
+function buildSemanticTargetVisual(element: BrowserElement): NonNullable<NonNullable<RuntimeInteraction["choices"]>[number]["visual"]> | undefined {
+  const bbox = element.bbox;
+  if (!bbox || !isFiniteRect(bbox)) {
+    return undefined;
+  }
+  return {
+    kind: "bbox",
+    bbox: {
+      x: Math.max(0, Math.round(bbox.x)),
+      y: Math.max(0, Math.round(bbox.y)),
+      w: Math.max(1, Math.round(bbox.w)),
+      h: Math.max(1, Math.round(bbox.h))
+    },
+    viewport: {
+      width: Math.max(320, Math.round(Math.max(bbox.x + bbox.w + 80, 1024))),
+      height: Math.max(240, Math.round(Math.max(bbox.y + bbox.h + 80, 768)))
+    },
+    region: summarizeRegion(element, "ko"),
+    confidence: Number.isFinite(element.confidence) ? Math.max(0, Math.min(1, element.confidence)) : undefined
+  };
+}
+
+function isFiniteRect(rect: Rect): boolean {
+  return Number.isFinite(rect.x) &&
+    Number.isFinite(rect.y) &&
+    Number.isFinite(rect.w) &&
+    Number.isFinite(rect.h);
 }
 
 function describeRole(element: BrowserElement, locale: "ko" | "en"): string {

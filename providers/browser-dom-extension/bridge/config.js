@@ -10,3 +10,19 @@ export const DEFAULT_BROWSER_ACTION_STATUS_PATH = "/browser-action/extension/sta
 export const NATIVE_HOST_NAME = "com.mir3626.codex_widget_dom";
 export const BRIDGE_ALARM_NAME = "codex-widget-browser-bridge";
 export const ALL_SITE_ORIGINS = ["http://*/*", "https://*/*"];
+export const BRIDGE_SOURCE_HASH_FILES = [
+  "manifest.json",
+  "service-worker.js",
+  "bridge/action-channel.js",
+  "bridge/badge.js",
+  "bridge/config.js",
+  "bridge/injected-actions.js",
+  "bridge/injected-dom.js",
+  "bridge/settings.js",
+  "bridge/tab-state.js",
+  "popup.html",
+  "popup.js",
+  "popup-utils.js",
+  "options.html",
+  "options.js"
+];

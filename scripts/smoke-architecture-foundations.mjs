@@ -6,6 +6,7 @@ import {
 } from "../dist/daemon/capability-transaction/index.js";
 import {
   createPreparedContextKey,
+  screenSnapshotToPreparedContext,
   taskCapsuleToPreparedContext,
   terminalStateToPreparedContext
 } from "../dist/daemon/prepared-context/index.js";
@@ -82,6 +83,22 @@ const terminalContext = terminalStateToPreparedContext({
   outputPreview: "file.txt"
 });
 assert.equal(terminalContext.identity.surface, "terminal");
+
+const screenContext = screenSnapshotToPreparedContext({
+  id: "screen-1",
+  source: "display-1",
+  title: "Desktop",
+  capturedAt: new Date(0).toISOString(),
+  description: "screen summary",
+  ocrText: "visible text",
+  imageHash: "hash-1",
+  imageChanged: true,
+  imageDiffRatio: 0.4,
+  imageDiffThreshold: 0.02,
+  imageMeaningfullyChanged: true,
+  imageDataUrl: "data:image/png;base64,AAAA"
+});
+assert.equal(screenContext.identity.surface, "screen");
 
 const safety = createSafetyDecision({
   subjectKind: "browser_action",

@@ -204,21 +204,25 @@
       "command": "npm run smoke:architecture-foundations",
       "expectExitCode": 0,
       "expectStdoutContains": "architecture foundations smoke ok"
+    },
+    {
+      "id": "smoke-semantic-trace-corpus",
+      "command": "npm run smoke:semantic-trace-corpus",
+      "expectExitCode": 0,
+      "expectStdoutContains": "semantic trace corpus smoke ok"
     }
   ],
   "handoff": {
-    "currentSprintId": "iter-21-complete",
-    "lastActionSummary": "Architecture foundation consolidation is complete. Current architecture is now sharded under docs/architecture, completed Browser/Semantic handoffs were tombstoned under docs/plans/deprecated, shared daemon foundations were added for capability transactions, prepared context, safety, agent-tool runtime, semantic evidence, and surface-control stages. Browser Action records shared timing/debug/safety/tool metadata, Browser/Vision/Terminal can project into prepared contexts, Semantic Interface can consume shared prepared contexts, Terminal destructive gating uses the shared safety kernel, WidgetRuntime derived display state was extracted, and noisy Browser Action live artifacts are ignored by default.",
+    "currentSprintId": "iter-22-complete",
+    "lastActionSummary": "P0/P1 priority closure is complete. Browser Bridge now detects stale unpacked extension code with build/source-hash metadata and reloadRequired status, Browser Action emits diagnostics events with timing/debug evidence, clarification choices can show redacted bbox previews, screen snapshots project into shared prepared contexts, WidgetRuntime prompt submission is extracted into a hook, and the Semantic Interface has a deterministic semantic trace corpus plus smoke gate.",
     "openIssues": [
-      "Reload the installed unpacked Browser Bridge extension before live-site retesting so Chrome/Edge uses the latest service-worker and bridge scripts.",
-      "Vision, Terminal, and future Desktop control should migrate incrementally onto the new shared capability transaction, prepared-context, safety, and debug/timing foundations.",
-      "Renderer decomposition is improved but not complete; WidgetRuntime/useChatSessionController remain larger composition surfaces for future refactor passes.",
-      "Ranked-choice clarification now has structured renderer choice cards; future polish can add visual page target highlighting when Browser Perception/extension can safely expose redacted bounding-box overlays.",
+      "Reloading the installed unpacked Browser Bridge extension is still a manual browser operation after extension source changes, but daemon/widget status now reports reloadRequired when the installed extension hash is stale.",
+      "Live browser dogfood remains the source of truth for Browser Action semantic usefulness; the semantic trace corpus is a deterministic seed and should grow with reviewed real traces before statistical calibration.",
+      "Renderer decomposition can continue opportunistically around `useChatSessionController`, Vision controller state, and mode-menu composition; the P1 prompt submission extraction is complete.",
       "Browser Action native desktop live executable browser chrome control is BLOCKED until a scoped Windows UI Automation or bounded native input helper is supplied and validated; current adapter reports diagnostics, exposes CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP_HELPER, and smoke-covers the helper JSON contract with a mock executable.",
       "Browser Action custom Codex app-server tool bridge is BLOCKED on a stable app-server custom tool/client-tool contract; current coverage uses daemon prompt/tool simulation, protocol events, approval, audit, and widget-context visibility.",
       "Restricted browser pages remain subject to browser/extension/CDP security boundaries and should report unsupported state rather than bypassing protections.",
       "Semantic Memory remains advisory and cannot bypass freshness, safety, visibility, approval, or current view evidence.",
-      "Semantic Interface statistical calibration is deferred until a held-out dogfood trace set exists; v1 uses operating profiles plus top-vs-runner-up margin.",
       "Vision Context real local ASR production backend remains behind the transcription sidecar interface until dogfooding chooses the first installed model/runtime.",
       "Mascot motion must be reworked with real authored pose/expression/state animation assets; generated static-pose sprites are not accepted."
     ],
@@ -229,11 +233,11 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-11T14:17:09.886+09:00"
+    "updatedAt": "2026-05-11T15:45:00.000+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-11T14:17:09.886+09:00"
+  "stateUpdatedAt": "2026-05-11T15:45:00.000+09:00"
 }

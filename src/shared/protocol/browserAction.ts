@@ -62,6 +62,12 @@ export type BrowserExtensionBridgeMode =
 
 export type BrowserExtensionBridgeStatus = {
   extensionVersion?: string;
+  extensionBuildId?: string;
+  extensionSourceHash?: string;
+  extensionRuntimeId?: string;
+  expectedExtensionBuildId?: string;
+  expectedExtensionSourceHash?: string;
+  reloadRequired?: boolean;
   daemonBaseUrl?: string;
   connected: boolean;
   mode: BrowserExtensionBridgeMode;

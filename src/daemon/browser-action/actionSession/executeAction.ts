@@ -158,9 +158,18 @@ export async function executeBrowserAction(input: {
     selectedCandidate,
     candidateSteps
   });
-  const targetResolution = candidateBoundResolution ?? (shouldResolveTarget(input.action, input.targetHint)
+  const semanticResolution = shouldResolveTarget(input.action, input.targetHint)
     ? resolveTarget({ graph, observation, action: input.action, target, hint: input.targetHint, memoryReadSet })
-    : { alternatives: [], confidence: 1, reason: "This browser action does not require a page element target." });
+    : undefined;
+  const targetResolution = candidateBoundResolution
+    ? {
+        ...candidateBoundResolution,
+        semantic: semanticResolution?.semantic,
+        reason: semanticResolution?.semantic
+          ? `${candidateBoundResolution.reason} Semantic trace retained for audit metadata.`
+          : candidateBoundResolution.reason
+      }
+    : semanticResolution ?? { alternatives: [], confidence: 1, reason: "This browser action does not require a page element target." };
   if (gate.decision === "clarify" && candidateSteps.length > 1 && !isExactElementBinding(target) && !hasStrongSemanticTargetSelection(targetResolution)) {
     targetResolution.primary = candidateSteps[0]?.element ?? targetResolution.primary;
     targetResolution.alternatives = candidateSteps.slice(1, 5).map((candidate) => candidate.element).filter((element): element is NonNullable<typeof element> => Boolean(element));

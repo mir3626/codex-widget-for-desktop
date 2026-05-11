@@ -33,6 +33,7 @@ export function InteractionCard({ interaction, values, onChange, onRespond }: In
               }}
             >
               <strong>{choice.label}</strong>
+              {choice.visual?.kind === "bbox" ? <TargetPreview visual={choice.visual} /> : null}
               {choice.description ? <span>{choice.description}</span> : null}
               {choice.detail ? <small>{choice.detail}</small> : null}
             </button>
@@ -83,4 +84,35 @@ export function InteractionCard({ interaction, values, onChange, onRespond }: In
       </div>
     </article>
   );
+}
+
+function TargetPreview({ visual }: {
+  visual: NonNullable<NonNullable<RuntimeInteraction["choices"]>[number]["visual"]>;
+}) {
+  const viewport = visual.viewport ?? { width: 1024, height: 768 };
+  const left = clampPercent((visual.bbox.x / viewport.width) * 100);
+  const top = clampPercent((visual.bbox.y / viewport.height) * 100);
+  const width = clampPercent((visual.bbox.w / viewport.width) * 100, 3, 100 - left);
+  const height = clampPercent((visual.bbox.h / viewport.height) * 100, 6, 100 - top);
+  return (
+    <span className="interaction-target-preview" aria-hidden="true">
+      <span
+        className="interaction-target-box"
+        style={{
+          left: `${left}%`,
+          top: `${top}%`,
+          width: `${width}%`,
+          height: `${height}%`
+        }}
+      />
+      {visual.region ? <em>{visual.region}</em> : null}
+    </span>
+  );
+}
+
+function clampPercent(value: number, min = 0, max = 100): number {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+  return Math.max(min, Math.min(max, value));
 }

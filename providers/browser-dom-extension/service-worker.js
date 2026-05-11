@@ -17,6 +17,7 @@ import {
   createBaseStatus,
   postHeartbeat,
   readActiveTab,
+  readExtensionBuildInfo,
   readTabPermission,
   testDaemonConnection
 } from "./bridge/tab-state.js";
@@ -140,7 +141,8 @@ async function refreshBridge(reason) {
   const settings = await readBridgeSettings();
   const tab = await readActiveTab();
   const daemonBaseUrl = settings.daemonBaseUrl;
-  const status = createBaseStatus({ settings, tab, reason });
+  const buildInfo = await readExtensionBuildInfo();
+  const status = createBaseStatus({ settings, tab, reason, buildInfo });
 
   if (!settings.autoConnect) {
     closeBridgeCommandSocket("auto_connect_disabled");

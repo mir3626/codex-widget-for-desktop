@@ -1,10 +1,12 @@
 import WebSocket from "ws";
 import { startDaemon } from "../dist/daemon/server.js";
+import { readExpectedBrowserBridgeBuildInfo } from "../dist/daemon/server/browser-bridge/extensionBuild.js";
 import { useSmokeAppData } from "./smoke-isolation.mjs";
 
 process.env.CODEX_WIDGET_AUTH_MODE = "mock";
 
 const smokeAppData = useSmokeAppData("codex-widget-browser-extension-bridge-smoke");
+const expectedBuild = readExpectedBrowserBridgeBuildInfo();
 const daemon = await startDaemon({ port: 0 });
 const baseUrl = `http://127.0.0.1:${daemon.port}`;
 const socket = new WebSocket(`ws://127.0.0.1:${daemon.port}`);
@@ -32,6 +34,8 @@ try {
 
   await postHeartbeat({
     extensionVersion: "0.1.0",
+    extensionBuildId: expectedBuild.extensionBuildId,
+    extensionSourceHash: expectedBuild.extensionSourceHash,
     daemonBaseUrl: baseUrl,
     connected: true,
     mode: "idle",
@@ -64,12 +68,36 @@ try {
   );
   assertEqual(idle.status.connected, true, "idle connected");
   assertEqual(idle.status.activeTab.permission, "allowed", "allowed permission");
+  assertEqual(idle.status.reloadRequired, false, "fresh extension build should not require reload");
+  assertEqual(idle.status.expectedExtensionSourceHash, expectedBuild.extensionSourceHash, "expected extension source hash");
 
   const status = await readBridgeStatus();
   assertEqual(status.mode, "idle", "GET bridge status mode");
   assertEqual(status.activeTab.permission, "allowed", "GET bridge permission");
   assertEqual(status.settings.allowAllSites, true, "GET bridge all-sites setting");
   assertEqual(status.settings.observeBlocklist[0], "https://blocked.example", "GET bridge observe blocklist");
+
+  await postHeartbeat({
+    extensionVersion: "0.1.0",
+    extensionBuildId: "0.1.0:stale",
+    extensionSourceHash: "stale-source-hash",
+    connected: true,
+    mode: "idle",
+    updatedAt: "2026-05-08T00:00:00.500Z",
+    activeTab: {
+      tabId: 31,
+      windowId: 4,
+      url: "https://example.test/browser-bridge",
+      title: "Browser Bridge Smoke",
+      origin: "https://example.test/*",
+      permission: "allowed"
+    }
+  });
+  const stale = await waitFor(
+    (event) => event.type === "browserExtensionBridge.status" && event.status?.reloadRequired === true,
+    "stale bridge build heartbeat"
+  );
+  assertEqual(stale.status.mode, "idle", "stale extension remains connected for diagnostics");
 
   await postHeartbeat({
     connected: true,

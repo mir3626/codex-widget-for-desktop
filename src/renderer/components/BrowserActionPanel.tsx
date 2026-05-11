@@ -78,6 +78,7 @@ export function BrowserActionPanel({
       </div>
       {state.planSummary ? <SummaryBlock title="Plan" value={state.planSummary} /> : null}
       {state.resultSummary ? <SummaryBlock title="Result" value={state.resultSummary} /> : null}
+      {state.diagnosticsSummary ? <SummaryBlock title="Timing / debug" value={state.diagnosticsSummary} /> : null}
       {state.error ? <p className="browser-action-error">{state.error}</p> : null}
     </section>
   );
@@ -112,6 +113,9 @@ function summarizeBridgePanel(state: BrowserActionUiState): { label: string; det
       label: "unknown",
       detail: state.actionSessionId ? `session ${shortId(state.actionSessionId)}` : "waiting for extension heartbeat"
     };
+  }
+  if (status.reloadRequired) {
+    return { label: "reload needed", detail: status.lastError || "reload the unpacked Browser Bridge extension" };
   }
   if (!status.connected || status.mode === "off" || status.mode === "disconnected") {
     return { label: "disconnected", detail: status.lastError || "extension not connected" };

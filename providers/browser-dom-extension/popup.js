@@ -14,6 +14,7 @@ const fields = {
   badge: document.querySelector("#badge"),
   connection: document.querySelector("#connection"),
   tabState: document.querySelector("#tab-state"),
+  buildState: document.querySelector("#build-state"),
   diagnostic: document.querySelector("#diagnostic"),
   daemonBaseUrl: document.querySelector("#daemon-base-url"),
   autoConnect: document.querySelector("#auto-connect"),
@@ -141,6 +142,7 @@ function render(status = {}, settings = DEFAULT_SETTINGS) {
   fields.badge.style.color = state.textColor;
   fields.connection.textContent = state.connection;
   fields.tabState.textContent = state.tab;
+  fields.buildState.textContent = summarizeBuildState(status);
   fields.diagnostic.textContent = status.lastError ?? status.reason ?? "";
 
   fields.daemonBaseUrl.value = settings.daemonBaseUrl ?? DEFAULT_SETTINGS.daemonBaseUrl;
@@ -157,6 +159,13 @@ function render(status = {}, settings = DEFAULT_SETTINGS) {
   fields.nativeHost.checked = settings.useNativeHost !== false;
   fields.debugSnapshot.checked = settings.debugSnapshot === true;
   fields.pollInterval.value = String(settings.pollIntervalSeconds ?? DEFAULT_SETTINGS.pollIntervalSeconds);
+}
+
+function summarizeBuildState(status) {
+  const buildId = status.extensionBuildId || status.extensionVersion || "unknown";
+  return status.reloadRequired
+    ? `Build: ${buildId} · reload required`
+    : `Build: ${buildId}`;
 }
 
 function readSettingsFromForm() {

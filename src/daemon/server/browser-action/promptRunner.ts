@@ -135,25 +135,41 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
     }
   ) ?? transaction;
 
+  let debugBundle: ReturnType<typeof createBrowserInteractionDebugBundle> | undefined;
   if (execution.plan.status !== "completed") {
     const latestResult = execution.results.at(-1);
+    debugBundle = createBrowserInteractionDebugBundle({
+      transaction,
+      diagnostics: {
+        planStatus: execution.plan.status,
+        resultCount: execution.results.length,
+        latestResult: latestResult
+          ? summarizeBrowserActionResultForDebug(latestResult)
+          : undefined
+      }
+    });
     recordRuntimeActivity(input.storage, input.sessionId, "warn", "browser-action", "Browser Action debug bundle", {
-      debugBundle: createBrowserInteractionDebugBundle({
-        transaction,
-        diagnostics: {
-          planStatus: execution.plan.status,
-          resultCount: execution.results.length,
-          latestResult: latestResult
-            ? summarizeBrowserActionResultForDebug(latestResult)
-            : undefined
-        }
-      })
+      debugBundle
     });
   }
+  const timingSummary = summarizeCapabilityTimings(transaction.timings);
   recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", "Browser Action timing summary", {
     transactionId: transaction.transactionId,
     planStatus: execution.plan.status,
-    timings: summarizeCapabilityTimings(transaction.timings)
+    timings: timingSummary
+  });
+  broadcast(input.clients, {
+    type: "browserAction.diagnostics",
+    actionSessionId: session.id,
+    diagnostics: {
+      schemaVersion: "browser-action-diagnostics.v1",
+      transactionId: transaction.transactionId,
+      requestId: input.message.id,
+      phase: transaction.phase,
+      planStatus: execution.plan.status,
+      timingSummary,
+      debugBundle
+    }
   });
 
   broadcast(input.clients, { type: "browserAction.plan", actionSessionId: session.id, plan: summarizeBrowserActionPlan(execution.plan) });

@@ -1,5 +1,6 @@
 import {
   ALL_SITE_ORIGINS,
+  BRIDGE_SOURCE_HASH_FILES,
   DEFAULT_BROWSER_ACTION_HEARTBEAT_PATH
 } from "./config.js";
 import {
@@ -7,6 +8,8 @@ import {
   resolveDaemonUrl,
   sanitizeSettings
 } from "./settings.js";
+
+let cachedBuildInfo = null;
 
 export async function readActiveTab() {
   const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
@@ -17,10 +20,13 @@ export async function readActiveTab() {
   return fallback[0] ?? null;
 }
 
-export function createBaseStatus({ settings, tab, reason }) {
+export function createBaseStatus({ settings, tab, reason, buildInfo }) {
   const manifest = chrome.runtime.getManifest();
   return {
     extensionVersion: manifest.version,
+    extensionBuildId: buildInfo?.extensionBuildId,
+    extensionSourceHash: buildInfo?.extensionSourceHash,
+    extensionRuntimeId: chrome.runtime.id,
     daemonBaseUrl: settings.daemonBaseUrl,
     connected: false,
     mode: "checking",
@@ -37,6 +43,44 @@ export function createBaseStatus({ settings, tab, reason }) {
     settings: sanitizeSettings(settings),
     lastError: null
   };
+}
+
+export async function readExtensionBuildInfo() {
+  if (cachedBuildInfo) {
+    return cachedBuildInfo;
+  }
+  const manifest = chrome.runtime.getManifest();
+  try {
+    const hash = await hashExtensionSources(BRIDGE_SOURCE_HASH_FILES);
+    cachedBuildInfo = {
+      extensionVersion: manifest.version,
+      extensionSourceHash: hash,
+      extensionBuildId: `${manifest.version}:${hash.slice(0, 12)}`
+    };
+  } catch (error) {
+    console.debug("[Codex Widget] Browser Bridge source hash failed.", error);
+    cachedBuildInfo = {
+      extensionVersion: manifest.version,
+      extensionBuildId: `${manifest.version}:unhashed`
+    };
+  }
+  return cachedBuildInfo;
+}
+
+async function hashExtensionSources(files) {
+  const chunks = [];
+  for (const relativePath of files) {
+    const response = await fetch(chrome.runtime.getURL(relativePath), { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Unable to read extension resource ${relativePath} (${response.status}).`);
+    }
+    chunks.push(relativePath, "\0", await response.text(), "\0");
+  }
+  const bytes = new TextEncoder().encode(chunks.join(""));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 export async function testDaemonConnection(baseUrl) {
