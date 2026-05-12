@@ -1745,3 +1745,5 @@ Completed the behavior-preserving refactor pass from `docs/plans/post-daemon-fou
 Verification passed `npm run build:daemon`, `npm run build:renderer`, `npm run lint`, `npm run smoke:architecture-foundations`, focused capability smokes (`capability-runtime`, `browser-chrome-capability`, `ocr-capability`, `terminal-capability`, `agent-tool-capability`), final `npm run smoke:all`, `git diff --check`, strict UTF-8 decoding for touched files, and mojibake scans. `git diff --check` emitted only the existing CRLF normalization warning for `src/daemon/server.ts`; the `file` utility is unavailable in this Windows PowerShell environment, so strict .NET UTF-8 decoding was used as fallback.
 
 Runtime state: dev-hot is running. Renderer/Vite listens on `127.0.0.1:5173` (PID `102756`), daemon health is ok on `127.0.0.1:4128` (PID `74232`), and the Tauri widget remains running as PID `121300`. Use `npm run dev` for a full restart if the Tauri shell itself needs to be relaunched.
+
+Pushed refactor commit `592b2ba` (`Refactor capability foundation wiring`) to `origin/main`.
