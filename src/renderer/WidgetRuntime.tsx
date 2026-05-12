@@ -16,8 +16,9 @@ import {
   TERMINAL_MOUSE_DRAG_INTERVAL_MS,
   VISION_AGENT_STREAM_FRAME_INTERVAL_MS
 } from "./config";
-import type { CapabilityJobsUiState, LogLine } from "./types";
+import type { LogLine } from "./types";
 import { readInitialWidgetMode } from "./utils/storage";
+import { useCapabilityJobsController } from "./hooks/useCapabilityJobsController";
 import { useDismissableOverlay } from "./hooks/useDismissableOverlay";
 import { useModelSelectionController } from "./hooks/useModelSelectionController";
 import { useWidgetAuthController } from "./hooks/useWidgetAuthController";
@@ -41,12 +42,6 @@ export function WidgetRuntime() {
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus | null>(null);
   const [input, setInput] = useState("");
   const [executionPermissions, setExecutionPermissions] = useState<ExecutionPermissionSummary[]>([]);
-  const [capabilityJobs, setCapabilityJobs] = useState<CapabilityJobsUiState>({
-    jobs: [],
-    eventsByJobId: {},
-    resourcesByJobId: {},
-    lastUpdatedAt: null
-  });
   const [showActivityDetails, setShowActivityDetails] = useState(false);
   const [logLines, setLogLines] = useState<LogLine[]>([]);
   const [showSettings, setShowSettings] = useState(false);
@@ -242,6 +237,16 @@ export function WidgetRuntime() {
     appendTerminalLine
   });
   const {
+    capabilityJobs,
+    setCapabilityJobs,
+    refreshCapabilityJobs,
+    cancelCapabilityJob,
+    approveCapabilityJob
+  } = useCapabilityJobsController({
+    activeSessionId,
+    send
+  });
+  const {
     browserAction,
     setBrowserAction,
     showBrowserActionMenu,
@@ -406,26 +411,6 @@ export function WidgetRuntime() {
       type: "execution.permission.set",
       action,
       decision
-    });
-  }
-
-  function refreshCapabilityJobs() {
-    send({ type: "capability.list", sessionId: activeSessionId ?? undefined });
-  }
-
-  function cancelCapabilityJob(jobId: string) {
-    send({
-      type: "capability.cancel",
-      requestId: `capability-cancel-${jobId}`,
-      cancel: { jobId, reason: "renderer_panel_cancel" }
-    });
-  }
-
-  function approveCapabilityJob(jobId: string) {
-    send({
-      type: "capability.approve",
-      requestId: `capability-approve-${jobId}`,
-      jobId
     });
   }
 
