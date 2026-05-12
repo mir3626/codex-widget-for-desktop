@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { buildBrowserObservation } from "../browserObservation.js";
 import { createBrowserQueuedCommand } from "../actionExecutor.js";
+import {
+  describeBrowserActionRouting,
+  resolveBrowserActionExecutionAdapter
+} from "../actionRouting.js";
 import { createTimelineEvent } from "../actionTimeline.js";
 import { buildElementGraph } from "../elementGraph.js";
 import { auditActionResult } from "../auditLog.js";
@@ -71,6 +75,15 @@ export async function executeBrowserAction(input: {
   policyMatch?: BrowserActionPolicyMatch;
   policies?: BrowserActionPolicy[];
 }): Promise<{ session: BrowserActionSession; result: BrowserActionResult; command?: BrowserQueuedCommand; approval?: BrowserActionApproval; audit: BrowserActionAuditEntry }> {
+  const effectiveAdapterId = resolveBrowserActionExecutionAdapter({
+    action: input.action,
+    requestedAdapterId: input.adapterId
+  });
+  const routing = describeBrowserActionRouting({
+    action: input.action,
+    requestedAdapterId: input.adapterId,
+    effectiveAdapterId
+  });
   const observation = input.contextLease?.context.observation ?? input.session.latestObservation ?? buildBrowserObservation({ source: input.session.source, snapshot: input.snapshot });
   input.session.latestObservation = observation;
   const graph = buildElementGraph({ observationId: observation.id, focusedElementId: observation.focusedElementId, elements: observation.elements });
@@ -115,6 +128,7 @@ export async function executeBrowserAction(input: {
       : "The browser view lease is stale and must be refreshed before execution.";
     const result = createPendingBrowserActionResult({
       ...input,
+      adapterId: effectiveAdapterId,
       expected: input.expected,
       transaction: {
         transactionId: input.transaction?.transactionId,
@@ -140,7 +154,8 @@ export async function executeBrowserAction(input: {
         browserInteraction: {
           intentFrame,
           gate,
-          lease: summarizeBrowserViewContextLease(input.contextLease)
+          lease: summarizeBrowserViewContextLease(input.contextLease),
+          routing
         }
       }
     });
@@ -217,7 +232,7 @@ export async function executeBrowserAction(input: {
   }
   safety.metadata = {
     ...(safety.metadata ?? {}),
-    browserInteraction: {
+      browserInteraction: {
       transactionId: input.transaction?.transactionId,
       intentFrame,
       gate: {
@@ -236,12 +251,14 @@ export async function executeBrowserAction(input: {
         reasonCodes: candidate.reasonCodes,
         elementId: candidate.element?.id
       })),
-      lease: summarizeBrowserViewContextLease(input.contextLease)
+      lease: summarizeBrowserViewContextLease(input.contextLease),
+      routing
     }
   };
 
   const result = createPendingBrowserActionResult({
     ...input,
+    adapterId: effectiveAdapterId,
     expected: input.expected,
     transaction: {
       transactionId: input.transaction?.transactionId,
@@ -295,7 +312,7 @@ export async function executeBrowserAction(input: {
   }
 
   if (safety.decision === "confirm" && !input.approved) {
-    const approval = createBrowserActionApproval(input, result, targetResolution.primary, safety);
+    const approval = createBrowserActionApproval({ ...input, adapterId: effectiveAdapterId }, result, targetResolution.primary, safety);
     input.session.approvals.push(approval);
     input.pendingApprovals.set(approval.id, approval);
     input.session.timeline.push(createTimelineEvent({ startedAt: input.session.startedAt, type: "approval", summary: safety.reason, detail: { approvalId: approval.id } }));
@@ -320,18 +337,21 @@ export async function executeBrowserAction(input: {
     return { session: cloneSession(input.session), result: cloneResult(result), audit: auditActionResult(input.session, result) };
   }
 
-  if (input.adapterId && input.adapterId !== "extension") {
-    return executeViaAdapter({ adapters: input.adapters, adapterId: input.adapterId, session: input.session, result, observation });
+  if (effectiveAdapterId && effectiveAdapterId !== "extension") {
+    return executeViaAdapter({ adapters: input.adapters, adapterId: effectiveAdapterId, session: input.session, result, observation });
   }
 
   const command = createBrowserQueuedCommand({
     requestId: `browser-command-${randomUUID()}`,
     actionSessionId: input.session.id,
     resultId: result.id,
-    adapterId: input.adapterId ?? "extension",
+    adapterId: effectiveAdapterId ?? "extension",
     action: input.action,
     target: targetResolution.primary,
     expectedSource: readExpectedSourceForCommand(input.session, observation),
+    metadata: {
+      routing
+    },
     timeoutMs: readActionTimeoutMs(input.action),
     expiresInMs: readExtensionCommandPickupTimeoutMs()
   });

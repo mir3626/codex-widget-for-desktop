@@ -397,6 +397,7 @@ async function verifyTargetlessActionsIgnoreFallbackTargets() {
   });
   const back = await manager.execute({
     actionSessionId: session.id,
+    adapterId: "native-desktop",
     snapshot,
     contextLease: settlingLease,
     action: { type: "back" }
@@ -404,6 +405,9 @@ async function verifyTargetlessActionsIgnoreFallbackTargets() {
   if (!back.command || back.result.status === "needs_clarification" || back.result.status === "failed") {
     throw new Error(`Targetless back should queue from a settling active-tab lease: ${JSON.stringify(back.result)}`);
   }
+  assertEqual(back.command.adapterId, "extension", "targetless back should use background-safe extension adapter");
+  assertEqual(back.result.adapterId, "extension", "targetless back result adapter");
+  assertEqual(back.command.metadata?.routing?.focusPolicy, "background_tab_control_preferred", "targetless back focus policy");
 }
 
 async function verifyExtensionCommandTimeoutCancellation(snapshot) {

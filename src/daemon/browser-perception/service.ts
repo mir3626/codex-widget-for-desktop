@@ -90,8 +90,8 @@ export class BrowserPerceptionService {
       reason: "background",
       requiredFreshness: "stable",
       maxAgeMs: input.maxAgeMs ?? 5_000,
-      settleQuietMs: input.settleQuietMs ?? 500,
-      timeoutMs: input.timeoutMs ?? 20_000,
+      settleQuietMs: input.settleQuietMs ?? 250,
+      timeoutMs: input.timeoutMs ?? 10_000,
       actionRisk: "read",
       allowSettlingForRead: true
     });
@@ -119,7 +119,7 @@ export class BrowserPerceptionService {
     }
 
     const now = Date.now();
-    const cooldownMs = input.cooldownMs ?? 1_500;
+    const cooldownMs = input.cooldownMs ?? 750;
     const lastScheduledAt = sourceKey ? this.backgroundScheduledAtBySource.get(sourceKey) : undefined;
     if (sourceKey && lastScheduledAt && now - lastScheduledAt < cooldownMs) {
       return {
@@ -317,7 +317,8 @@ export class BrowserPerceptionService {
         title: snapshot.title,
         mutationRevision: input.payload.mutationRevision,
         mutationQuietMs: input.payload.mutationQuietMs,
-        readyState: input.payload.readyState
+        readyState: input.payload.readyState,
+        bridgeLatencyTrace: input.payload.metadata?.latencyTrace
       }
     };
     this.cleanupBackgroundCommand(input.payload.commandId);

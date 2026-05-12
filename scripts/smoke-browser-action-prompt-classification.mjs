@@ -23,6 +23,9 @@ assertNavigate("구글 홈페이지 켜줘", "browser", "https://www.google.com/
 assertNavigate("구글 홈페이지 열어줘", "browser", "https://www.google.com/");
 assertNavigate("왜 엉뚱한 답변하고있어. 구글 홈페이지 켜달라고했잖아.", "browser", "https://www.google.com/");
 assertSearchNavigate("특이저 ㅁ 갤러리로 이동해줘", "browser");
+assertPlan("뒤로가기", "browser", ["back"]);
+assertPlan("앞으로가기", "browser", ["forward"]);
+assertPlan("새로고침해줘", "browser", ["reload"]);
 assertPlan("cdp로 새로고침해줘", "browser", ["reload"], "cdp");
 assertNoPlan("Browser Action 기능 알려줘. 그리고 위험한 액션은 어떻게 승인돼?", "browser");
 

@@ -72,11 +72,26 @@ export async function executePolledBrowserActionCommand(tab, settings, permissio
   markBrowserActionCommandInFlight(command.requestId);
   await setBridgeBadge("RUN", tab.id);
   const resultUrl = resolveDaemonUrl(settings.daemonBaseUrl, DEFAULT_BROWSER_ACTION_RESULT_PATH);
+  const trace = createBridgeLatencyTrace(command);
   try {
+    traceMark(trace, "ack_started");
     await postBrowserActionCommandAck(settings, tab, command);
-    const permissionError = permission.permission === "allowed" ? "" : permission.detail ?? "Site permission is required before Browser Action execution.";
-    const before = permissionError ? null : await safeReadSnapshotFromTab(tab.id);
+    traceMark(trace, "ack_posted");
+    const tabNavigation = isTargetlessTabNavigationAction(command.action);
+    const permissionError = permission.permission === "allowed" || tabNavigation ? "" : permission.detail ?? "Site permission is required before Browser Action execution.";
+    traceMark(trace, "before_snapshot_started", { lightweight: tabNavigation });
+    const before = permissionError
+      ? null
+      : tabNavigation
+        ? readLightweightTabSnapshot(tab, "before_tab_navigation")
+        : await safeReadSnapshotFromTab(tab.id);
+    traceMark(trace, "before_snapshot_completed", {
+      lightweight: tabNavigation,
+      hasSnapshot: Boolean(before),
+      url: before?.url
+    });
     const sourceMismatch = permissionError || detectSourceMismatch(command.expectedSource, tab, before, command.action);
+    traceMark(trace, "action_started", { sourceMismatch: Boolean(sourceMismatch), action: command.action?.type });
     const result = sourceMismatch
       ? {
           ok: false,
@@ -85,10 +100,18 @@ export async function executePolledBrowserActionCommand(tab, settings, permissio
           metadata: { actualUrl: tab.url ?? before?.url, actualTitle: tab.title ?? before?.title, permission: permission.permission }
         }
       : await executeBrowserActionCommand(tab, command);
+    traceMark(trace, "action_completed", { ok: result.ok, metadata: result.metadata });
+    traceMark(trace, "after_snapshot_started", { tabNavigation: Boolean(result.metadata?.tabNavigation) });
     const after = result.metadata?.tabNavigation && result.after
       ? result.after
       : await readPostActionSnapshot(tab.id, command.action, result.after);
+    traceMark(trace, "after_snapshot_completed", {
+      hasSnapshot: Boolean(after),
+      url: after?.url,
+      readyState: after?.readyState
+    });
     const afterTab = await safeReadTab(tab.id) ?? tab;
+    traceMark(trace, "result_post_started");
     await postBrowserActionResultWithRetry(resultUrl, {
       requestId: command.requestId,
       ok: result.ok,
@@ -104,9 +127,11 @@ export async function executePolledBrowserActionCommand(tab, settings, permissio
           title: afterTab.title ?? after?.title ?? tab.title
         },
         permission: permission.permission,
-        bridgeMode: "command_first"
+        bridgeMode: "command_first",
+        latencyTrace: finalizeBridgeLatencyTrace(trace)
       }
     });
+    traceMark(trace, "result_posted");
     markBrowserActionCommandRecent(command.requestId);
     await setBridgeBadge(result.ok ? "IDLE" : "ERR", tab.id);
     return true;
@@ -164,14 +189,18 @@ export async function executeBrowserPerceptionObserveCommand(tab, settings, perm
     permission: permission.permission
   };
   const ackStatus = readObserveAckStatus(tab, permission, command);
+  const trace = createBridgeLatencyTrace(command);
+  traceMark(trace, "observe_ack_started", { ackStatus: ackStatus.status });
   await postJsonWithRetry(ackUrl, {
     commandId: command.commandId,
     status: ackStatus.status,
     activeTab,
     receivedAt: new Date().toISOString(),
     estimatedResultMs: ackStatus.status === "accepted" ? 350 : undefined,
-    error: ackStatus.error
+    error: ackStatus.error,
+    metadata: { latencyTrace: finalizeBridgeLatencyTrace(trace) }
   });
+  traceMark(trace, "observe_ack_posted");
   if (ackStatus.status !== "accepted") {
     await postJsonWithRetry(resultUrl, {
       commandId: command.commandId,
@@ -179,7 +208,7 @@ export async function executeBrowserPerceptionObserveCommand(tab, settings, perm
       activeTab,
       resultPostedAt: new Date().toISOString(),
       error: ackStatus.error,
-      metadata: { ackStatus: ackStatus.status }
+      metadata: { ackStatus: ackStatus.status, latencyTrace: finalizeBridgeLatencyTrace(trace) }
     });
     await setBridgeBadge(ackStatus.status === "missing_permission" ? "ASK" : "ERR", tab.id);
     return;
@@ -187,8 +216,15 @@ export async function executeBrowserPerceptionObserveCommand(tab, settings, perm
 
   await setBridgeBadge("RUN", tab.id);
   try {
+    traceMark(trace, "observe_snapshot_started", { settleQuietMs: command.settleQuietMs });
     const snapshot = await readStableSnapshotFromTab(tab.id, command);
+    traceMark(trace, "observe_snapshot_completed", {
+      url: snapshot?.url,
+      readyState: snapshot?.readyState,
+      mutationQuietMs: snapshot?.mutationQuietMs
+    });
     const afterTab = await safeReadTab(tab.id) ?? tab;
+    traceMark(trace, "observe_result_post_started");
     await postJsonWithRetry(resultUrl, {
       commandId: command.commandId,
       status: "succeeded",
@@ -204,8 +240,9 @@ export async function executeBrowserPerceptionObserveCommand(tab, settings, perm
       mutationQuietMs: snapshot?.mutationQuietMs,
       readyState: snapshot?.readyState,
       resultPostedAt: new Date().toISOString(),
-      metadata: { bridgeMode: "perception_observe_now", reason: command.reason }
+      metadata: { bridgeMode: "perception_observe_now", reason: command.reason, latencyTrace: finalizeBridgeLatencyTrace(trace) }
     });
+    traceMark(trace, "observe_result_posted");
     await setBridgeBadge("IDLE", tab.id);
   } catch (error) {
     await postJsonWithRetry(resultUrl, {
@@ -214,7 +251,7 @@ export async function executeBrowserPerceptionObserveCommand(tab, settings, perm
       activeTab,
       resultPostedAt: new Date().toISOString(),
       error: error instanceof Error ? error.message : String(error),
-      metadata: { bridgeMode: "perception_observe_now" }
+      metadata: { bridgeMode: "perception_observe_now", latencyTrace: finalizeBridgeLatencyTrace(trace) }
     });
     await setBridgeBadge("ERR", tab.id);
   }
@@ -282,11 +319,11 @@ export function assertTabCanRunBrowserAction(tab) {
 
 async function executeBrowserActionCommand(tab, command) {
   try {
-    assertTabCanRunBrowserAction(tab);
     const tabNavigation = await executeTabNavigationAction(tab, command.action);
     if (tabNavigation) {
       return tabNavigation;
     }
+    assertTabCanRunBrowserAction(tab);
     if (command.action?.type === "screenshot") {
       const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
       const after = await safeReadSnapshotFromTab(tab.id);
@@ -325,7 +362,7 @@ async function executeTabNavigationAction(tab, action) {
   if (!tab?.id) {
     return { ok: false, error: "Browser tab is unavailable for navigation.", after: null };
   }
-  const before = await safeReadSnapshotFromTab(tab.id);
+  const before = readLightweightTabSnapshot(tab, "tab_navigation_before");
   try {
     if (action.type === "navigate") {
       if (!action.url) {
@@ -348,11 +385,50 @@ async function executeTabNavigationAction(tab, action) {
         metadata: { tabNavigation: true, staleNavigationObservation: true }
       };
     }
-    return { ok: true, after, metadata: { tabNavigation: true } };
+    return { ok: true, after, metadata: { tabNavigation: true, method: readTabNavigationMethod(action.type), tabId: tab.id } };
   } catch (error) {
     const fallback = await safeReadSnapshotFromTab(tab.id);
     return { ok: false, error: error instanceof Error ? error.message : String(error), after: fallback ?? before, metadata: { tabNavigation: true } };
   }
+}
+
+function readTabNavigationMethod(type) {
+  if (type === "navigate") {
+    return "chrome.tabs.update";
+  }
+  if (type === "back") {
+    return "chrome.tabs.goBack";
+  }
+  if (type === "forward") {
+    return "chrome.tabs.goForward";
+  }
+  if (type === "reload") {
+    return "chrome.tabs.reload";
+  }
+  return "unknown";
+}
+
+function isTargetlessTabNavigationAction(action) {
+  return ["navigate", "back", "forward", "reload"].includes(action?.type);
+}
+
+function readLightweightTabSnapshot(tab, reason) {
+  return {
+    url: tab?.url ?? "",
+    title: tab?.title ?? "",
+    capturedAt: new Date().toISOString(),
+    readyState: "complete",
+    text: "",
+    elements: [],
+    bridge: {
+      reason,
+      observedAt: new Date().toISOString(),
+      tabId: tab?.id,
+      windowId: tab?.windowId,
+      url: tab?.url,
+      title: tab?.title
+    }
+  };
 }
 
 function callChromeTabApi(invoker) {
@@ -391,6 +467,7 @@ async function readStableSnapshotFromTab(tabId, command) {
   const quietTarget = Math.max(0, Number(command.settleQuietMs) || 0);
   const deadline = Date.parse(command.deadlineAt || "") || Date.now() + 10_000;
   let latest = null;
+  const sleepMs = quietTarget <= 250 ? 80 : 150;
   while (Date.now() < deadline) {
     latest = await readSnapshotFromTab(tabId);
     const quietMs = Number(latest?.mutationQuietMs);
@@ -400,7 +477,7 @@ async function readStableSnapshotFromTab(tabId, command) {
     if (quietTarget && Number.isFinite(quietMs) && quietMs >= quietTarget) {
       return latest;
     }
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await new Promise((resolve) => setTimeout(resolve, sleepMs));
   }
   return latest ?? await readSnapshotFromTab(tabId);
 }
@@ -420,8 +497,9 @@ async function readPostActionSnapshot(tabId, action, fallback) {
 
   const fallbackUrl = fallback?.url ?? "";
   let latest = fallback ?? null;
-  for (let attempt = 0; attempt < 18; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, attempt < 4 ? 150 : attempt < 10 ? 250 : 500));
+  const maxAttempts = readPostActionSnapshotAttempts(action);
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, readPostActionSnapshotDelayMs(action, attempt)));
     const snapshot = await safeReadSnapshotFromTab(tabId);
     if (!snapshot) {
       continue;
@@ -443,6 +521,26 @@ async function readPostActionSnapshot(tabId, action, fallback) {
   }
 
   return latest ?? fallback ?? await safeReadSnapshotFromTab(tabId);
+}
+
+function readPostActionSnapshotAttempts(action) {
+  if (["back", "forward", "navigate", "reload"].includes(action?.type)) {
+    return 10;
+  }
+  if (action?.type === "click") {
+    return 12;
+  }
+  return 6;
+}
+
+function readPostActionSnapshotDelayMs(action, attempt) {
+  if (["back", "forward", "navigate", "reload"].includes(action?.type)) {
+    return attempt < 3 ? 80 : attempt < 7 ? 160 : 300;
+  }
+  if (action?.type === "click") {
+    return attempt < 3 ? 120 : attempt < 8 ? 220 : 400;
+  }
+  return 120;
 }
 
 function mayChangePage(action) {
@@ -538,4 +636,39 @@ function normalizeUrlForSource(value) {
   } catch {
     return String(value || "").replace(/#.*$/, "");
   }
+}
+
+function createBridgeLatencyTrace(command) {
+  const startedAt = Date.now();
+  return {
+    schemaVersion: "browser-bridge-latency.v1",
+    commandId: command?.commandId,
+    requestId: command?.requestId,
+    action: command?.action?.type,
+    startedAt,
+    events: [
+      { name: "extension_command_received", at: new Date(startedAt).toISOString(), elapsedMs: 0 }
+    ]
+  };
+}
+
+function traceMark(trace, name, detail) {
+  const now = Date.now();
+  trace.events.push({
+    name,
+    at: new Date(now).toISOString(),
+    elapsedMs: Math.max(0, now - trace.startedAt),
+    ...(detail && typeof detail === "object" ? { detail } : {})
+  });
+}
+
+function finalizeBridgeLatencyTrace(trace) {
+  return {
+    schemaVersion: trace.schemaVersion,
+    commandId: trace.commandId,
+    requestId: trace.requestId,
+    action: trace.action,
+    totalElapsedMs: Math.max(0, Date.now() - trace.startedAt),
+    events: trace.events
+  };
 }

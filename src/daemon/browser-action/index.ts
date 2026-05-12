@@ -1,6 +1,7 @@
 export { BrowserActionSessionManager, summarizeBrowserActionSession } from "./actionSession.js";
 export * from "./interaction/index.js";
 export { BrowserActionAdapterRegistry, executeWithAdapter, observeWithAdapter, readAdapterStatus, withBrowserActionTimeout } from "./adapterRegistry.js";
+export { describeBrowserActionRouting, isBackgroundSafeBrowserAdapter, isTargetlessTabNavigationAction, resolveBrowserActionExecutionAdapter } from "./actionRouting.js";
 export { cdpAdapter, extensionAdapter, nativeDesktopAdapter, playwrightAdapter } from "./adapters/index.js";
 export { buildBrowserObservation, summarizeBrowserElement, summarizeBrowserObservation } from "./browserObservation.js";
 export { buildBrowserActionPlanFromCommand, isBrowserActionDirectExecutionCommand } from "./directCommand.js";

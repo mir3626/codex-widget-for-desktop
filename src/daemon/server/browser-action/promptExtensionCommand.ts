@@ -25,6 +25,11 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
   results: BrowserActionResult[];
   command: BrowserQueuedCommand;
 }): Promise<boolean> {
+  const transactionId = detail.results.at(-1)?.transaction?.transactionId;
+  input.browserActions.markInteractionTiming(transactionId, "extension_command_wait_started", "executing", {
+    requestId: detail.command.requestId,
+    action: detail.command.action.type
+  });
   const commandResultPromise = waitForBrowserActionCommandResult({
     requestId: detail.command.requestId,
     waiters: input.browserActionCommandWaiters,
@@ -37,6 +42,13 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
     detail: { requestId: detail.command.requestId, action: detail.command.action.type, plan: summarizeBrowserActionPlan(detail.plan) }
   });
   const commandResult = await commandResultPromise;
+  input.browserActions.markInteractionTiming(transactionId, "extension_command_wait_completed", "executing", {
+    requestId: detail.command.requestId,
+    action: detail.command.action.type,
+    received: Boolean(commandResult),
+    status: commandResult?.status,
+    verification: commandResult?.verification.status
+  });
   if (!commandResult) {
     const waitedMs = readBrowserActionPromptCommandWaitMs(detail.command.action);
     const error = `Browser Bridge did not pick up the action within ${Math.round(waitedMs / 1000)} seconds. The queued browser command was cancelled before it could execute.`;

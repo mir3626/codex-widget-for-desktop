@@ -241,6 +241,15 @@ export class BrowserActionSessionManager {
     return this.interactions.selectCandidate(transactionId, candidateId);
   }
 
+  markInteractionTiming(
+    transactionId: string | undefined,
+    name: string,
+    phase: BrowserInteractionPhase,
+    detail?: Record<string, unknown>
+  ): BrowserInteractionTransaction | undefined {
+    return this.interactions.markTiming(transactionId, name, phase, detail);
+  }
+
   getInteraction(transactionId: string | undefined): BrowserInteractionTransaction | undefined {
     return this.interactions.get(transactionId);
   }

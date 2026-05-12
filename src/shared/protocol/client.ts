@@ -90,6 +90,16 @@ export type ClientMessage =
       sessionId?: string;
     }
   | {
+      type: "debug.feedback.save";
+      sessionId?: string;
+      messageId: string;
+      reason?: string;
+      userText?: string;
+      assistantText?: string;
+      mode?: WidgetMode;
+      tags?: string[];
+    }
+  | {
       type: "artifact.open";
       artifactFileId: string;
       versionId?: string;

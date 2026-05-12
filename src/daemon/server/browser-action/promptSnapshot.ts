@@ -26,8 +26,18 @@ export async function readFreshPromptBrowserSnapshot(input: BrowserActionPromptI
 }> {
   const promptRisk = readPromptActionRisk(input.message.text, firstAction);
   const isFastNavigation = promptRisk === "safe_navigation";
+  const fastNavigationSnapshot = isFastNavigation ? readFastNavigationSnapshot(input) : undefined;
+  if (fastNavigationSnapshot) {
+    recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", "Using fast Browser Action navigation snapshot without request-time DOM observe", {
+      action: firstAction?.type,
+      source: fastNavigationSnapshot.source,
+      url: fastNavigationSnapshot.url,
+      title: fastNavigationSnapshot.title
+    });
+    return { snapshot: fastNavigationSnapshot.snapshot, handled: false };
+  }
   const minCapturedAt = isFastNavigation || promptRisk === "read" ? undefined : requestStartedAt;
-  const timeoutMs = promptRisk === "read" ? 12_000 : isFastNavigation ? 3_500 : 35_000;
+  const timeoutMs = promptRisk === "read" ? 8_000 : isFastNavigation ? 1_500 : 18_000;
   const context = await input.browserPerception.ensureFreshContext({
     providers: input.providers,
     bridgeStatus: input.browserExtensionBridge.snapshot(),
@@ -38,9 +48,9 @@ export async function readFreshPromptBrowserSnapshot(input: BrowserActionPromptI
       actionRisk: promptRisk,
       allowSettlingForRead: promptRisk === "read" || isFastNavigation,
       minCapturedAt,
-      maxAgeMs: promptRisk === "read" ? 3_000 : isFastNavigation ? 30_000 : 10_000,
+      maxAgeMs: promptRisk === "read" ? 5_000 : isFastNavigation ? 30_000 : 8_000,
       timeoutMs,
-      settleQuietMs: isFastNavigation ? 0 : 500
+      settleQuietMs: isFastNavigation ? 0 : 300
     },
     onProgress: (detail) => {
       input.emit({
@@ -149,6 +159,46 @@ function readPromptActionRisk(text: string, firstAction?: BrowserAction): "read"
     return "safe_navigation";
   }
   return isLikelyReadPrompt(text) ? "read" : "side_effect";
+}
+
+function readFastNavigationSnapshot(input: BrowserActionPromptInput): { snapshot: Record<string, unknown>; source: string; url?: string; title?: string } | undefined {
+  const status = input.browserExtensionBridge.snapshot();
+  const active = status.activeTab;
+  if (status.connected && active?.tabId !== undefined && active.url) {
+    return {
+      source: "browser_bridge_active_tab",
+      url: active.url,
+      title: active.title,
+      snapshot: {
+        url: active.url,
+        title: active.title ?? "",
+        capturedAt: new Date().toISOString(),
+        readyState: "complete",
+        elements: [],
+        text: "",
+        bridge: {
+          reason: "fast_navigation",
+          observedAt: new Date().toISOString(),
+          permission: active.permission,
+          tabId: active.tabId,
+          windowId: active.windowId,
+          url: active.url,
+          title: active.title
+        }
+      }
+    };
+  }
+  const snapshot = input.providers.getDomSnapshot();
+  if (snapshot && typeof snapshot === "object") {
+    const record = snapshot as Record<string, unknown>;
+    return {
+      source: "provider_snapshot",
+      url: typeof record.url === "string" ? record.url : undefined,
+      title: typeof record.title === "string" ? record.title : undefined,
+      snapshot
+    };
+  }
+  return undefined;
 }
 
 function isTargetlessNavigationAction(action: BrowserAction): boolean {

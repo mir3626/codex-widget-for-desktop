@@ -48,7 +48,10 @@ daemon.on("connection", (socket) => {
         }
       ],
       trashedSessions: [],
-      messages: []
+      messages: [
+        { id: "renderer-user-debug", role: "user", text: "개념글 눌러서 아무 글이나 보여줘" },
+        { id: "renderer-assistant-debug", role: "assistant", text: "브라우저 동작을 완료했습니다.", status: "done" }
+      ]
     }
   }));
   socket.send(JSON.stringify({
@@ -180,6 +183,19 @@ try {
     throw new Error("Vite did not bind.");
   }
   await page.goto(`http://127.0.0.1:${viteAddress.port}/?daemonPort=${daemonPort}`);
+  await page.getByRole("button", { name: "Save debug note" }).click();
+  await page.getByRole("dialog", { name: "Debug note" }).waitFor();
+  await page.getByPlaceholder("사유를 입력하세요. 비워둬도 저장됩니다.").fill("wrong target opened");
+  await page.getByRole("button", { name: "확인" }).click();
+  await waitUntil(
+    () => clientMessages.some((message) =>
+      message.type === "debug.feedback.save" &&
+      message.messageId === "renderer-assistant-debug" &&
+      message.reason === "wrong target opened" &&
+      message.userText === "개념글 눌러서 아무 글이나 보여줘"
+    ),
+    "Debug feedback button did not send a save message."
+  );
   await page.locator(".interaction-card").waitFor();
   await waitUntil(async () => (await page.locator(".interaction-choice-list button").count()) === 2, "Clarification choices did not render as selectable cards.");
   await waitUntil(async () => (await page.locator(".interaction-target-preview").count()) === 2, "Clarification target previews did not render.");

@@ -65,6 +65,7 @@ type ConversationPanelProps = {
   onCopyCodeBlock: (code: string) => void;
   onCopyMessage: (messageId: string, text: string) => void;
   onRegenerateMessage: (messageId: string) => void;
+  onSaveDebugLog: (messageId: string, reason: string) => void;
   onToggleMessageActions: (messageId: string) => void;
   onBranchMessage: (messageId: string) => void;
   onReadMessageAloud: (messageId: string, text: string) => void;
@@ -111,6 +112,7 @@ export function ConversationPanel({
   onCopyCodeBlock,
   onCopyMessage,
   onRegenerateMessage,
+  onSaveDebugLog,
   onToggleMessageActions,
   onBranchMessage,
   onReadMessageAloud,
@@ -268,6 +270,7 @@ export function ConversationPanel({
                         speaking={speakingMessageId === message.id}
                         onCopy={() => onCopyMessage(message.id, message.text)}
                         onRegenerate={() => onRegenerateMessage(message.id)}
+                        onSaveDebugLog={(reason) => onSaveDebugLog(message.id, reason)}
                         onToggle={() => onToggleMessageActions(message.id)}
                         onBranch={() => onBranchMessage(message.id)}
                         onReadAloud={() => onReadMessageAloud(message.id, message.text)}

@@ -70,6 +70,60 @@ try {
     throw new Error(`Prompt google navigation answer should not read the current page: ${googleAnswer.text}`);
   }
 
+  const fastNavigationSnapshot = createSnapshot("fast-navigation");
+  await postBridgeHeartbeat(fastNavigationSnapshot);
+  send({
+    type: "ask",
+    id: "prompt-browser-action-fast-back",
+    text: "뒤로가기",
+    mode: "browser"
+  });
+  const fastBackQueued = await waitFor(
+    (event) => event.type === "browserAction.progress" &&
+      event.actionSessionId.includes("prompt-browser-action-fast-back") &&
+      event.status === "plan_paused_for_extension",
+    "fast prompt back command"
+  );
+  const fastBackDiagnostics = await waitFor(
+    (event) => event.type === "browserAction.diagnostics" &&
+      event.actionSessionId.includes("prompt-browser-action-fast-back"),
+    "fast prompt back diagnostics"
+  );
+  assertTiming(fastBackDiagnostics.diagnostics?.timingSummary, "prompt_plan_created");
+  assertTiming(fastBackDiagnostics.diagnostics?.timingSummary, "fresh_context_wait_completed");
+  const fastBackCommand = await pollBrowserActionCommand(fastNavigationSnapshot);
+  assertEqual(fastBackCommand?.requestId, fastBackQueued.detail?.requestId, "fast prompt back command request id");
+  assertEqual(fastBackCommand?.action?.type, "back", "fast prompt back command action");
+  assertEqual(fastBackCommand?.expectedSource?.url, fastNavigationSnapshot.url, "fast prompt back uses active bridge source instead of stale snapshot");
+  await postBrowserActionResult(fastBackCommand.requestId, true, fastNavigationSnapshot, createSnapshot("history-back"));
+  await waitFor((event) => event.type === "message.completed" && event.id === "prompt-browser-action-fast-back", "fast prompt back answer");
+
+  await postDomSnapshot(beforeSnapshot);
+  send({
+    type: "ask",
+    id: "prompt-browser-action-back",
+    text: "뒤로가기",
+    mode: "browser"
+  });
+  const backQueued = await waitFor(
+    (event) => event.type === "browserAction.progress" &&
+      event.actionSessionId.includes("prompt-browser-action-back") &&
+      event.status === "plan_paused_for_extension",
+    "prompt back command"
+  );
+  const backCommand = await pollBrowserActionCommand(beforeSnapshot);
+  assertEqual(backCommand?.requestId, backQueued.detail?.requestId, "prompt back command request id");
+  assertEqual(backCommand?.action?.type, "back", "prompt back command action");
+  assertEqual(backCommand?.adapterId, "extension", "prompt back uses extension adapter");
+  if (backCommand?.metadata?.routing?.focusPolicy !== "background_tab_control_preferred") {
+    throw new Error(`Prompt back command did not carry background focus routing metadata: ${JSON.stringify(backCommand)}`);
+  }
+  await postBrowserActionResult(backCommand.requestId, true, beforeSnapshot, createSnapshot("history-back"));
+  const backAnswer = await waitFor((event) => event.type === "message.completed" && event.id === "prompt-browser-action-back", "prompt back answer");
+  if (!backAnswer.text.includes("브라우저 동작을 완료했습니다") && !backAnswer.text.includes("Browser action completed")) {
+    throw new Error(`Prompt back should complete through Browser Action, not external URL opening: ${backAnswer.text}`);
+  }
+
   await postDomSnapshot(beforeSnapshot);
   send({
     type: "ask",
@@ -315,8 +369,12 @@ function createSnapshot(state) {
     ? "https://example.test/browser-action-e2e/lists/?id=pathofexile&exception_mode=recommend"
     : state === "query-normalized"
       ? "https://example.test/browser-action-e2e/lists?id=pathofexile"
-      : state === "google"
+    : state === "google"
         ? "https://www.google.com/"
+    : state === "history-back"
+        ? "https://example.test/browser-action-e2e/history-back"
+      : state === "fast-navigation"
+        ? "https://example.test/browser-action-e2e/fast-navigation"
       : `https://example.test/browser-action-e2e/${state}`;
   return {
     url,
@@ -398,6 +456,36 @@ async function postDomSnapshot(snapshot) {
   }
 }
 
+async function postBridgeHeartbeat(snapshot) {
+  const response = await fetch(`${baseUrl}/browser-action/extension/heartbeat`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      connected: true,
+      mode: "idle",
+      reason: "fast-navigation-smoke",
+      updatedAt: new Date().toISOString(),
+      activeTab: {
+        tabId: 11,
+        windowId: 7,
+        url: snapshot.url,
+        title: snapshot.title,
+        origin: "https://example.test/*",
+        permission: "allowed"
+      },
+      settings: {
+        daemonBaseUrl: baseUrl,
+        autoConnect: true,
+        autoObserve: true,
+        allowAllSites: true
+      }
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`Browser Bridge heartbeat failed: ${response.status}`);
+  }
+}
+
 async function pollBrowserActionCommand(snapshot = beforeSnapshot) {
   const response = await fetch(`${baseUrl}/browser-action/extension/poll?tabId=11&windowId=7&url=${encodeURIComponent(snapshot.url)}&title=${encodeURIComponent(snapshot.title)}`);
   if (!response.ok) {
@@ -438,6 +526,12 @@ function waitFor(predicate, label, timeoutMs = 15_000) {
 function assertEqual(actual, expected, label) {
   if (actual !== expected) {
     throw new Error(`${label}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+  }
+}
+
+function assertTiming(timingSummary, name) {
+  if (!timingSummary || typeof timingSummary[name] !== "number") {
+    throw new Error(`Expected Browser Action timing ${name}: ${JSON.stringify(timingSummary)}`);
   }
 }
 

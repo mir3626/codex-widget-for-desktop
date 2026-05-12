@@ -23,8 +23,8 @@ import {
 } from "./promptPlanState.js";
 import { refreshPromptBrowserActionSnapshotAfterCommand } from "./promptSnapshotRefresh.js";
 
-export const BROWSER_ACTION_PROMPT_COMMAND_WAIT_MS = 40_000;
-const BROWSER_ACTION_PROMPT_NAVIGATION_WAIT_MS = 12_000;
+export const BROWSER_ACTION_PROMPT_COMMAND_WAIT_MS = 25_000;
+const BROWSER_ACTION_PROMPT_NAVIGATION_WAIT_MS = 7_000;
 
 export function readBrowserActionPromptCommandWaitMs(action: BrowserQueuedCommand["action"]): number {
   return action.type === "back" || action.type === "forward" || action.type === "reload" || action.type === "navigate"
@@ -107,6 +107,11 @@ export async function continuePromptBrowserActionPlan(input: {
     }
 
     if (execution.command) {
+      input.browserActions.markInteractionTiming(execution.result.transaction?.transactionId, "extension_followup_wait_started", "executing", {
+        requestId: execution.command.requestId,
+        action: execution.command.action.type,
+        stepId: nextStep.id
+      });
       nextStep.status = "awaiting_extension";
       nextStep.completedAt = new Date().toISOString();
       plan.status = "paused";
@@ -123,6 +128,14 @@ export async function continuePromptBrowserActionPlan(input: {
         detail: { requestId: execution.command.requestId, action: execution.command.action.type, plan: summarizeBrowserActionPlan(plan) }
       });
       const commandResult = await commandResultPromise;
+      input.browserActions.markInteractionTiming(execution.result.transaction?.transactionId, "extension_followup_wait_completed", "executing", {
+        requestId: execution.command.requestId,
+        action: execution.command.action.type,
+        stepId: nextStep.id,
+        received: Boolean(commandResult),
+        status: commandResult?.status,
+        verification: commandResult?.verification.status
+      });
       if (!commandResult) {
         const waitedMs = readBrowserActionPromptCommandWaitMs(execution.command.action);
         const error = `Browser Bridge did not pick up the follow-up action within ${Math.round(waitedMs / 1000)} seconds. The queued browser command was cancelled before it could execute.`;

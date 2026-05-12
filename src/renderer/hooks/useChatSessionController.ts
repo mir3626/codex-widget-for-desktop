@@ -502,6 +502,33 @@ export function useChatSessionController(input: UseChatSessionControllerInput) {
     });
   }
 
+  function saveDebugLogForAssistantMessage(messageId: string, reason: string) {
+    const messageIndex = chatMessagesRef.current.findIndex((message) => message.id === messageId);
+    const assistantMessage = chatMessagesRef.current[messageIndex];
+    if (!assistantMessage || assistantMessage.role !== "assistant") {
+      input.appendLog("debug note target unavailable", "error");
+      return;
+    }
+    const userMessage = findPreviousUserMessage(chatMessagesRef.current, messageIndex);
+    const sent = input.send({
+      type: "debug.feedback.save",
+      sessionId: activeSessionIdRef.current ?? undefined,
+      messageId,
+      reason: reason.trim() || undefined,
+      userText: userMessage?.text,
+      assistantText: assistantMessage.text,
+      mode: input.mode,
+      tags: ["assistant-response", "manual-debug"]
+    });
+    if (!sent) {
+      input.appendLog("debug note save unavailable", "error");
+      return;
+    }
+    input.appendLog("debug note saved", "tool");
+    input.showToast("Debug note saved");
+    setOpenActionMenuId(null);
+  }
+
   function pulseSessionControls() {
     if (sessionControlsPulseTimerRef.current !== null) {
       window.clearTimeout(sessionControlsPulseTimerRef.current);
@@ -566,6 +593,7 @@ export function useChatSessionController(input: UseChatSessionControllerInput) {
     respondToInteraction,
     restoreSession,
     retryAssistantMessage,
+    saveDebugLogForAssistantMessage,
     startAsk,
     stopReadAloud,
     trashSession,

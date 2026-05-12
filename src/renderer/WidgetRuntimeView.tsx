@@ -124,6 +124,7 @@ type WidgetRuntimeViewProps = {
   refreshSemanticMemory: () => void;
   restoreSession: (sessionId: string) => void;
   retryAssistantMessage: (messageId: string) => void;
+  saveDebugLogForAssistantMessage: (messageId: string, reason: string) => void;
   runBrowserActionCommand: (command: BrowserActionDirectCommandInput) => void;
   runTerminalQuickAction: (command: string) => void;
   runtimeStatus: RuntimeStatus | null;
@@ -424,6 +425,7 @@ export function WidgetRuntimeView(props: WidgetRuntimeViewProps) {
             onCopyCodeBlock: props.copyCodeBlock,
             onCopyMessage: props.copyMessage,
             onRegenerateMessage: props.retryAssistantMessage,
+            onSaveDebugLog: props.saveDebugLogForAssistantMessage,
             onToggleMessageActions: (messageId) => props.setOpenActionMenuId((current) => (current === messageId ? null : messageId)),
             onBranchMessage: props.branchFromAssistantMessage,
             onReadMessageAloud: props.readMessageAloud,

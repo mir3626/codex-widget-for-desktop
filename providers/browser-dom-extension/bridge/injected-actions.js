@@ -39,17 +39,17 @@ export async function executeBrowserActionInPage(command) {
 
     if (action.type === "back") {
       history.back();
-      return { ok: true, after: collectSnapshot() };
+      return { ok: true, after: collectSnapshot(), metadata: { method: "history.back", fallbackPageNavigation: true } };
     }
 
     if (action.type === "forward") {
       history.forward();
-      return { ok: true, after: collectSnapshot() };
+      return { ok: true, after: collectSnapshot(), metadata: { method: "history.forward", fallbackPageNavigation: true } };
     }
 
     if (action.type === "reload") {
       location.reload();
-      return { ok: true, after: collectSnapshot() };
+      return { ok: true, after: collectSnapshot(), metadata: { method: "location.reload", fallbackPageNavigation: true } };
     }
 
     if (action.type === "scroll") {
@@ -63,7 +63,8 @@ export async function executeBrowserActionInPage(command) {
       return { ok: true, after: collectSnapshot() };
     }
 
-    const element = resolveTarget(target);
+    const resolution = resolveTargetWithMethod(target);
+    const element = resolution.element;
     if (!element) {
       throw new Error("Browser Action target element was not found.");
     }
@@ -71,7 +72,7 @@ export async function executeBrowserActionInPage(command) {
     if (action.type === "click") {
       element.scrollIntoView({ block: "center", inline: "center" });
       element.click();
-      return { ok: true, after: collectSnapshot() };
+      return { ok: true, after: collectSnapshot(), metadata: { targetResolutionMethod: resolution.method } };
     }
 
     if (action.type === "type") {
@@ -85,7 +86,7 @@ export async function executeBrowserActionInPage(command) {
           element.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", bubbles: true }));
         }
       }
-      return { ok: true, after: collectSnapshot() };
+      return { ok: true, after: collectSnapshot(), metadata: { targetResolutionMethod: resolution.method } };
     }
 
     if (action.type === "select") {
@@ -94,7 +95,7 @@ export async function executeBrowserActionInPage(command) {
       }
       element.value = action.value ?? "";
       dispatchInputEvents(element);
-      return { ok: true, after: collectSnapshot() };
+      return { ok: true, after: collectSnapshot(), metadata: { targetResolutionMethod: resolution.method } };
     }
 
     if (action.type === "check") {
@@ -103,7 +104,7 @@ export async function executeBrowserActionInPage(command) {
       }
       element.checked = Boolean(action.checked);
       dispatchInputEvents(element);
-      return { ok: true, after: collectSnapshot() };
+      return { ok: true, after: collectSnapshot(), metadata: { targetResolutionMethod: resolution.method } };
     }
 
     throw new Error(`Unsupported Browser Action type: ${action.type}`);
@@ -116,33 +117,38 @@ export async function executeBrowserActionInPage(command) {
   }
 
   function resolveTarget(candidate) {
+    return resolveTargetWithMethod(candidate).element;
+  }
+
+  function resolveTargetWithMethod(candidate) {
     if (!candidate) {
-      return null;
+      return { element: null, method: "none" };
     }
     if (candidate.selector) {
       const selected = document.querySelector(candidate.selector);
       if (selected instanceof HTMLElement) {
-        return selected;
+        return { element: selected, method: "dom.querySelector" };
       }
     }
     if (candidate.kind === "selector" && candidate.selector) {
       const selected = document.querySelector(candidate.selector);
       if (selected instanceof HTMLElement) {
-        return selected;
+        return { element: selected, method: "dom.querySelector" };
       }
     }
     if (candidate.kind === "focused") {
-      return document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      return { element: document.activeElement instanceof HTMLElement ? document.activeElement : null, method: "document.activeElement" };
     }
     if (candidate.kind === "bbox" && candidate.bbox) {
       const centerX = candidate.bbox.x + candidate.bbox.w / 2;
       const centerY = candidate.bbox.y + candidate.bbox.h / 2;
-      return document.elementFromPoint(centerX, centerY);
+      const element = document.elementFromPoint(centerX, centerY);
+      return { element: element instanceof HTMLElement ? element : null, method: "document.elementFromPoint" };
     }
     const text = candidate.kind === "text" ? candidate.text : candidate.text || candidate.label || candidate.ariaLabel;
     if (text) {
       const normalized = normalizeText(text).toLowerCase();
-      return Array.from(document.querySelectorAll("a,button,input,textarea,select,[role],[aria-label],[title],[contenteditable='true'],[onclick],[tabindex]"))
+      const element = Array.from(document.querySelectorAll("a,button,input,textarea,select,[role],[aria-label],[title],[contenteditable='true'],[onclick],[tabindex]"))
         .find((element) => {
           const haystack = normalizeText([
             element.getAttribute("aria-label"),
@@ -153,8 +159,9 @@ export async function executeBrowserActionInPage(command) {
           ].filter(Boolean).join(" ")).toLowerCase();
           return haystack.includes(normalized);
         }) ?? null;
+      return { element, method: "dom.textMatch" };
     }
-    return null;
+    return { element: null, method: "none" };
   }
 
   function writeElementText(element, text, clearFirst) {

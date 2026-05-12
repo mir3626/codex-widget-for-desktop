@@ -212,6 +212,7 @@ export function WidgetRuntime() {
     respondToInteraction,
     restoreSession,
     retryAssistantMessage,
+    saveDebugLogForAssistantMessage,
     startAsk,
     stopReadAloud,
     trashSession,
@@ -362,6 +363,7 @@ export function WidgetRuntime() {
       markAssistantMessage,
       registerTerminalRequest,
       resetVisibleSession,
+      restorePromptFocus,
       setActiveId,
       setBrowserAction,
       setExecutionPermissions,
@@ -373,6 +375,15 @@ export function WidgetRuntime() {
       terminalOutputRequestIdsRef,
       terminalRequestIdsRef,
       trashArtifactSessionIdRef
+    });
+  }
+
+  function restorePromptFocus() {
+    window.requestAnimationFrame(() => {
+      if (showTokenForm || showSettings) {
+        return;
+      }
+      promptInputRef.current?.focus({ preventScroll: true });
     });
   }
 
@@ -544,6 +555,7 @@ export function WidgetRuntime() {
       respondToInteraction={respondToInteraction}
       restoreSession={restoreSession}
       retryAssistantMessage={retryAssistantMessage}
+      saveDebugLogForAssistantMessage={saveDebugLogForAssistantMessage}
       revealOpacityValue={revealOpacityValue}
       runBrowserActionCommand={runBrowserActionCommand}
       runTerminalQuickAction={runTerminalQuickAction}

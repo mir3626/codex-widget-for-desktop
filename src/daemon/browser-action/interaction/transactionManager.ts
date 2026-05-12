@@ -146,6 +146,21 @@ export class BrowserInteractionTransactionManager {
     return cloneTransaction(transaction);
   }
 
+  markTiming(
+    transactionId: string | undefined,
+    name: string,
+    phase: BrowserInteractionPhase,
+    detail?: Record<string, unknown>
+  ): BrowserInteractionTransaction | undefined {
+    const transaction = this.readMutable(transactionId);
+    if (!transaction) {
+      return undefined;
+    }
+    transaction.timings.push(markTransactionTiming(transaction, name, phase, detail));
+    transaction.capability.updatedAt = new Date().toISOString();
+    return cloneTransaction(transaction);
+  }
+
   updatePhase(transactionId: string | undefined, phase: BrowserInteractionPhase, summary: string, detail?: unknown): BrowserInteractionTransaction | undefined {
     const transaction = this.readMutable(transactionId);
     if (!transaction) {

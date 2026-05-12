@@ -68,6 +68,7 @@ export function handleSessionServerEvent(event: ServerEvent, deps: WidgetServerE
     deps.completeAssistantMessage(event.id, event.text);
     deps.completeTerminalRequest(event.id, event.text);
     deps.setActiveId(null);
+    deps.restorePromptFocus();
     return true;
   }
 

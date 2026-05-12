@@ -1,5 +1,5 @@
-import { CircleStop, Copy, MoreHorizontal, RotateCw, Volume2 } from "lucide-react";
-import { useRef } from "react";
+import { Bug, CircleStop, Copy, MoreHorizontal, RotateCw, Volume2 } from "lucide-react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useFloatingSurface } from "../hooks/useFloatingSurface";
 
@@ -10,6 +10,7 @@ type AssistantResponseActionsProps = {
   speaking: boolean;
   onCopy: () => void;
   onRegenerate: () => void;
+  onSaveDebugLog: (reason: string) => void;
   onToggle: () => void;
   onBranch: () => void;
   onReadAloud: () => void;
@@ -22,12 +23,31 @@ export function AssistantResponseActions({
   speaking,
   onCopy,
   onRegenerate,
+  onSaveDebugLog,
   onToggle,
   onBranch,
   onReadAloud
 }: AssistantResponseActionsProps) {
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const reasonRef = useRef<HTMLTextAreaElement | null>(null);
+  const [debugOpen, setDebugOpen] = useState(false);
+  const [debugReason, setDebugReason] = useState("");
   const floating = useFloatingSurface(open, triggerRef, { preferred: "top-start", offset: 6, margin: 8 });
+
+  function openDebugDialog() {
+    setDebugOpen(true);
+    window.requestAnimationFrame(() => reasonRef.current?.focus());
+  }
+
+  function closeDebugDialog() {
+    setDebugOpen(false);
+    setDebugReason("");
+  }
+
+  function submitDebugLog() {
+    onSaveDebugLog(debugReason);
+    closeDebugDialog();
+  }
 
   return (
     <div className="message-actions-shell">
@@ -43,6 +63,14 @@ export function AssistantResponseActions({
           onClick={onRegenerate}
         >
           <RotateCw size={13} />
+        </button>
+        <button
+          type="button"
+          data-tooltip="Save debug note"
+          aria-label="Save debug note"
+          onClick={openDebugDialog}
+        >
+          <Bug size={13} />
         </button>
         <button
           ref={triggerRef}
@@ -82,6 +110,50 @@ export function AssistantResponseActions({
                   </>
                 )}
               </button>
+            </div>,
+            document.body
+          )
+        : null}
+      {debugOpen
+        ? createPortal(
+            <div className="debug-feedback-backdrop" role="presentation" onPointerDown={closeDebugDialog}>
+              <div
+                className="debug-feedback-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={`debug-feedback-title-${messageId}`}
+                onPointerDown={(event) => event.stopPropagation()}
+              >
+                <div className="debug-feedback-heading">
+                  <strong id={`debug-feedback-title-${messageId}`}>Debug note</strong>
+                  <span>사용자 의도와 다른 동작을 기록합니다.</span>
+                </div>
+                <textarea
+                  ref={reasonRef}
+                  value={debugReason}
+                  rows={4}
+                  placeholder="사유를 입력하세요. 비워둬도 저장됩니다."
+                  onChange={(event) => setDebugReason(event.currentTarget.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      closeDebugDialog();
+                    }
+                    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                      event.preventDefault();
+                      submitDebugLog();
+                    }
+                  }}
+                />
+                <div className="debug-feedback-actions">
+                  <button type="button" className="secondary" onClick={closeDebugDialog}>
+                    취소
+                  </button>
+                  <button type="button" onClick={submitDebugLog}>
+                    확인
+                  </button>
+                </div>
+              </div>
             </div>,
             document.body
           )

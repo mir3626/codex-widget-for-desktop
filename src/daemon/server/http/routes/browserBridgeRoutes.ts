@@ -114,24 +114,27 @@ export async function handleBrowserBridgeRoute(
         payload
       });
       if (result.context) {
-        const sessionId = storage.ensureSessionSnapshot().activeSessionId;
-        storage.recordProviderSnapshot({
-          sessionId,
-          provider: "dom",
-          title: result.context.snapshot.title || "Browser Perception observation",
-          summary: `Browser Perception ${result.status}: ${result.context.snapshot.title || result.context.snapshot.url || "active tab"}`,
-          data: {
-            url: result.context.snapshot.url,
-            title: result.context.snapshot.title,
-            capturedAt: result.context.snapshot.capturedAt,
-            viewRevision: result.context.viewRevision,
-            routeKey: result.context.routeKey,
-            freshness: result.context.freshness,
-            stability: result.context.stability
-          },
-          capturedAt: result.context.snapshot.capturedAt
-        });
-        broadcast(clients, { type: "provider.status", providers: context.providers.getStatuses() });
+        const shouldPersistProviderSnapshot = result.context.lastObservedReason !== "background";
+        const sessionId = shouldPersistProviderSnapshot ? storage.ensureSessionSnapshot().activeSessionId : undefined;
+        if (shouldPersistProviderSnapshot && sessionId) {
+          storage.recordProviderSnapshot({
+            sessionId,
+            provider: "dom",
+            title: result.context.snapshot.title || "Browser Perception observation",
+            summary: `Browser Perception ${result.status}: ${result.context.snapshot.title || result.context.snapshot.url || "active tab"}`,
+            data: {
+              url: result.context.snapshot.url,
+              title: result.context.snapshot.title,
+              capturedAt: result.context.snapshot.capturedAt,
+              viewRevision: result.context.viewRevision,
+              routeKey: result.context.routeKey,
+              freshness: result.context.freshness,
+              stability: result.context.stability
+            },
+            capturedAt: result.context.snapshot.capturedAt
+          });
+          broadcast(clients, { type: "provider.status", providers: context.providers.getStatuses() });
+        }
         broadcast(clients, {
           type: "browserAction.progress",
           actionSessionId: result.context.contextId,
@@ -144,7 +147,9 @@ export async function handleBrowserBridgeRoute(
             viewRevision: result.context.viewRevision
           }
         });
-        broadcastLedgerSnapshot(clients, storage, resolveClientSessionId(storage, sessionId));
+        if (shouldPersistProviderSnapshot && sessionId) {
+          broadcastLedgerSnapshot(clients, storage, resolveClientSessionId(storage, sessionId));
+        }
       }
       writeJsonResponse(response, 200, { ok: true, result });
     } catch (error) {
@@ -239,7 +244,7 @@ export async function pollBrowserBridgeCommand(input: {
   }
   const deadline = Date.now() + input.waitMs;
   while (Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await new Promise((resolve) => setTimeout(resolve, 100));
     const command = input.browserActions.pollExtensionCommand() ?? input.browserPerception.pollExtensionCommand() ?? null;
     if (command) {
       return command;

@@ -891,6 +891,31 @@
       },
       "summary": "Iteration 26 added providers/browser-native-desktop-helper-rs, a Rust native UI Automation helper implementing the existing browser-native-desktop-helper.v1 contract for status, observe, read, bounded element actions, browser chrome navigation commands, evaluate rejection, and sensitive-text blocking. The build now emits dist/browser-native-desktop-helper/browser-native-desktop-helper.exe, Tauri resources include that dist directory, daemon discovery prefers explicit env override, then bundled Rust helper, then PowerShell fallback, and native/signature smokes cover the path. A signtool signing script is available, but production signing remains BLOCKED on a certificate or CI signing service.",
       "completedAt": "2026-05-12T05:30:00.000+09:00"
+    },
+    {
+      "id": "iter-27",
+      "label": "Browser Action Latency Optimization",
+      "startedAt": "2026-05-12T09:43:21.557+09:00",
+      "goal": "Apply the Browser Action speed roadmap: phase timing, targetless navigation fast paths, hotter prepared context, faster extension wake/poll, action-specific post-observe waits, and lower background observe persistence overhead.",
+      "plannedSprints": [
+        "iter-27-sprint-01-fast-paths-hot-context-and-latency-trace"
+      ],
+      "completedSprints": [
+        "iter-27-sprint-01-fast-paths-hot-context-and-latency-trace"
+      ],
+      "carryover": "Browser Action reliability foundations were in place, but manual testing still exposed slow prompt-to-action latency for simple browser actions.",
+      "openRisks": [
+        "Live public-site latency still depends on browser/extension wake state, network latency, and page-specific script cost.",
+        "Delta DOM/View Graph transport and offline subagent log mining remain future deeper optimizations beyond this concrete speed slice."
+      ],
+      "milestoneProgress": {
+        "browser-action-latency-tracing": 1,
+        "browser-action-fast-navigation": 1,
+        "browser-perception-hot-context": 0.82,
+        "browser-bridge-command-wakeup": 0.9
+      },
+      "summary": "Iteration 27 added fine-grained Browser Action transaction timing, fast targetless navigation source handling, Browser Bridge latency traces, lightweight tab-navigation snapshots, shorter post-action polling, hotter Browser Perception background observe defaults, earlier extension wake retries, lower WebSocket command-poll waits, command-first auto-observe refresh, and reduced durable ledger writes for background observe results. Focused and aggregate Browser Action/Perception/Bridge/Extension/DOM/transaction/app-server/adapter smokes passed.",
+      "completedAt": "2026-05-12T09:43:21.557+09:00"
     }
   ]
 }

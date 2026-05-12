@@ -16,6 +16,7 @@ export type BrowserQueuedCommand = {
   action: BrowserAction;
   target?: BrowserElement;
   expectedSource?: BrowserActionSource;
+  metadata?: Record<string, unknown>;
   createdAt: string;
   expiresAt?: string;
   deliveredAt?: string;

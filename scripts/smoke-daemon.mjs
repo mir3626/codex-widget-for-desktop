@@ -171,6 +171,28 @@ try {
   if (!ledgerSnapshots.some((event) => event.snapshot?.activities?.some((activity) => activity.category === "vision"))) {
     throw new Error("Vision activity was not recorded in the ledger.");
   }
+  socket.send(
+    JSON.stringify({
+      type: "debug.feedback.save",
+      messageId: "smoke-3",
+      reason: "smoke mismatch note",
+      userText: "capture ledger artifact",
+      assistantText: "simulated assistant output",
+      mode: "browser",
+      tags: ["smoke"]
+    })
+  );
+  const debugLedger = await waitForEvent((event) =>
+    event.type === "ledger.snapshot" &&
+    event.snapshot?.activities?.some((activity) =>
+      activity.category === "debug-feedback" &&
+      activity.detail?.messageId === "smoke-3" &&
+      activity.detail?.reason === "smoke mismatch note"
+    )
+  );
+  if (!debugLedger) {
+    throw new Error("Debug feedback activity was not recorded in the ledger.");
+  }
   if (
     !ledgerSnapshots.some((event) =>
       event.snapshot?.activities?.some((activity) =>

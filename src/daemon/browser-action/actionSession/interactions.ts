@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { createBrowserQueuedCommand } from "../actionExecutor.js";
+import {
+  describeBrowserActionRouting,
+  resolveBrowserActionExecutionAdapter
+} from "../actionRouting.js";
 import { createTimelineEvent } from "../actionTimeline.js";
 import type { BrowserActionAdapterRegistry } from "../adapterRegistry.js";
 import type {
@@ -57,10 +61,24 @@ export async function respondToBrowserActionInteraction(input: {
     }));
     return { handled: true, approved: false, approval, result: cloneResult(result) };
   }
-  if (approval.adapterId && approval.adapterId !== "extension") {
+  const effectiveAdapterId = resolveBrowserActionExecutionAdapter({
+    action: approval.action,
+    requestedAdapterId: approval.adapterId
+  });
+  const routing = describeBrowserActionRouting({
+    action: approval.action,
+    requestedAdapterId: approval.adapterId,
+    effectiveAdapterId
+  });
+  result.adapterId = effectiveAdapterId;
+  result.safety.metadata = {
+    ...(result.safety.metadata ?? {}),
+    browserActionRouting: routing
+  };
+  if (effectiveAdapterId && effectiveAdapterId !== "extension") {
     const direct = await executeViaAdapter({
       adapters: input.adapters,
-      adapterId: approval.adapterId,
+      adapterId: effectiveAdapterId,
       session,
       result,
       observation: result.before
@@ -71,10 +89,13 @@ export async function respondToBrowserActionInteraction(input: {
     requestId: `browser-command-${randomUUID()}`,
     actionSessionId: session.id,
     resultId: result.id,
-    adapterId: approval.adapterId ?? "extension",
+    adapterId: effectiveAdapterId ?? "extension",
     action: approval.action,
     target: approval.target,
     expectedSource: readExpectedSourceForCommand(session, result.before),
+    metadata: {
+      routing
+    },
     timeoutMs: readActionTimeoutMs(approval.action),
     expiresInMs: readExtensionCommandPickupTimeoutMs()
   });

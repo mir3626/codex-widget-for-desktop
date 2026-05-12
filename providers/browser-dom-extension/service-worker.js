@@ -213,9 +213,9 @@ async function refreshBridge(reason) {
 
   if (settings.autoObserve && tab?.id) {
     try {
-      await syncActiveTabObservation(tab, settings, "auto_observe");
+      scheduleBridgeCommandPump("auto_observe", 25, { force: true });
       status.lastObservationAt = new Date().toISOString();
-      await postHeartbeat(daemonBaseUrl, { ...status, reason: `${reason}:observed` });
+      await postHeartbeat(daemonBaseUrl, { ...status, reason: `${reason}:observe_requested` });
     } catch (error) {
       status.lastError = readError(error);
       await setBridgeBadge("ERR", tab.id);
@@ -429,7 +429,7 @@ async function handleBridgeCommandSocketMessage(raw) {
 }
 
 function scheduleBridgeCommandSocketWakeRetries(reason) {
-  for (const delayMs of [900, 1_800, 3_000]) {
+  for (const delayMs of [150, 500, 1_200]) {
     setTimeout(() => {
       void sendBridgeCommandSocketPoll(`wake_retry:${reason}:${delayMs}`);
     }, delayMs);
@@ -454,7 +454,7 @@ function isBridgeCommandWakeEvent(message) {
 
 async function runBridgeCommandPump(reason) {
   if (bridgeCommandPumpRunning) {
-    scheduleBridgeCommandPump(`pump_busy:${reason}`, 250);
+    scheduleBridgeCommandPump(`pump_busy:${reason}`, 100);
     return;
   }
   bridgeCommandPumpRunning = true;

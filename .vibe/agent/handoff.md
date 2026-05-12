@@ -1637,3 +1637,16 @@ Verification passed `cargo check --manifest-path providers/browser-native-deskto
 Remaining blocker: actual Authenticode signing requires a code-signing certificate or CI signing service. Once available, set `CODEX_WIDGET_SIGN_HELPERS=1` plus certificate env vars for signing and `CODEX_WIDGET_REQUIRE_SIGNED_HELPERS=1` for release enforcement.
 
 Runtime state: dev daemon and renderer were restarted after the helper/Tauri resource changes; daemon health is ok on `127.0.0.1:4128`, renderer responds on `127.0.0.1:5173`, widget PID is `101648`, and logs are under `dist/logs/dev-runtime-native-helper-hardening-20260512b.log`.
+
+## Latest Update: Browser Action Latency Optimization
+
+Implemented the requested Browser Action speed roadmap slice after reviewing the prompt -> perception -> extension -> verification path.
+
+- Added fine-grained Browser Interaction timing marks for prompt planning, fresh-context wait, observation recording, plan execution, extension command wait, and follow-up extension command wait.
+- Targetless `navigate` / `back` / `forward` / `reload` prompts now use Browser Bridge active-tab metadata as a lightweight source snapshot when possible, avoiding request-time DOM observe before browser-history/navigation commands.
+- Browser Bridge extension commands now attach redacted latency traces to observe/action results, use lightweight tab snapshots for tab-navigation actions, shorten stable/post-action snapshot polling, and allow tab-navigation execution before DOM injection checks.
+- Browser Perception background observe defaults are hotter and shorter, WebSocket command-poll wait is lower, extension wake retries are earlier, and normal auto-observe refresh no longer posts a heavy legacy DOM snapshot before command-first perception can run.
+- Background observe results refresh in-memory prepared context without writing every background observation into provider snapshot history or broadcasting a ledger update; foreground/explicit observations still persist normally.
+- E2E smoke now covers fast history navigation from Browser Bridge active-tab state and asserts transaction timing diagnostics.
+
+Verification passed `npm run lint`, `npm run build:daemon`, `npm run build:web`, `npm run smoke`, Browser Action focused smokes, Browser Perception/View Graph/Bridge/Extension/DOM smokes, transaction smokes, app-server smoke, Playwright/CDP/evaluate/native adapter smokes, and final `npm run smoke:all`. Project report and checkpoint were refreshed. Live dev runtime was restarted; daemon is healthy on `127.0.0.1:4128`, Vite is listening on `127.0.0.1:5173`, widget PID is `86152`, and logs are under `dist/logs/dev-runtime-latency-optimization-20260512.log`. Reload the unpacked Browser Bridge extension once before manual browser-action retesting.

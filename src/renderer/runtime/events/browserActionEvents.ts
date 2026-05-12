@@ -93,6 +93,7 @@ export function handleBrowserActionServerEvent(event: ServerEvent, deps: WidgetS
       error: null
     }));
     deps.appendLog("Browser Action result ready", "tool");
+    deps.restorePromptFocus();
     return true;
   }
 

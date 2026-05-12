@@ -56,6 +56,12 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
     mode: promptPlan.mode,
     browserSource: promptPlan.source
   });
+  transaction = input.browserActions.markInteractionTiming(transaction.transactionId, "prompt_plan_created", "perceiving", {
+    planId: promptPlan.id,
+    stepCount: promptPlan.steps.length,
+    firstAction: promptPlan.steps[0]?.action.type,
+    confidence: promptPlan.confidence
+  }) ?? transaction;
   recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", "Prompt-driven Browser Action started", {
     requestId: input.message.id,
     planId: promptPlan.id,
@@ -70,7 +76,17 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
   });
 
   const firstAction = promptPlan.steps[0]?.action;
+  transaction = input.browserActions.markInteractionTiming(transaction.transactionId, "fresh_context_wait_started", "perceiving", {
+    firstAction: firstAction?.type
+  }) ?? transaction;
   const snapshotResult = await readFreshPromptBrowserSnapshot(input, new Date(), firstAction);
+  transaction = input.browserActions.markInteractionTiming(transaction.transactionId, "fresh_context_wait_completed", "perceiving", {
+    handled: snapshotResult.handled,
+    hasContext: Boolean(snapshotResult.context),
+    hasSnapshot: Boolean(snapshotResult.snapshot),
+    viewRevision: snapshotResult.context?.viewRevision,
+    routeKey: snapshotResult.context?.routeKey
+  }) ?? transaction;
   if (snapshotResult.handled) {
     return true;
   }
@@ -95,6 +111,12 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
     })) ?? transaction;
   }
   const observed = input.browserActions.observe({ actionSessionId: session.id, snapshot });
+  transaction = input.browserActions.markInteractionTiming(transaction.transactionId, "observation_recorded", "framing_intent", {
+    url: observed.observation.url,
+    title: observed.observation.title,
+    elements: observed.observation.elements.length,
+    viewRevision: observed.observation.viewGraph?.identity.viewRevision
+  }) ?? transaction;
   recordBrowserActionAudit(input.storage, observed.audit);
   broadcast(input.clients, {
     type: "browserAction.observation",
@@ -113,6 +135,10 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
       confidence: promptPlan.confidence
     }
   });
+  transaction = input.browserActions.markInteractionTiming(transaction.transactionId, "plan_execution_started", "executing", {
+    planId: plan.id,
+    stepCount: plan.steps.length
+  }) ?? transaction;
   const execution = await input.browserActions.executePlan({
     plan,
     snapshot,
@@ -121,6 +147,13 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
     adapterId: promptPlan.adapterId,
     policies: input.storage.readBrowserActionPolicies()
   });
+  transaction = input.browserActions.markInteractionTiming(transaction.transactionId, "plan_execution_completed", "verifying", {
+    planStatus: execution.plan.status,
+    resultCount: execution.results.length,
+    latestStatus: execution.results.at(-1)?.status,
+    pendingCommand: execution.command?.requestId,
+    approval: execution.approval?.id
+  }) ?? transaction;
   for (const audit of execution.audits) {
     recordBrowserActionAudit(input.storage, audit);
   }
@@ -216,7 +249,9 @@ function summarizeBrowserActionResultForDebug(result: BrowserActionResult): Reco
       decision: result.safety.decision,
       risk: result.safety.risk,
       reason: result.safety.reason,
-      destructive: result.safety.destructive
+      destructive: result.safety.destructive,
+      browserInteraction: result.safety.metadata?.browserInteraction,
+      bridgeExecution: result.safety.metadata?.bridgeExecution
     },
     error: result.error
   };

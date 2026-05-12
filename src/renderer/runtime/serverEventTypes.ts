@@ -27,6 +27,7 @@ export type WidgetServerEventDeps = {
   markAssistantMessage(id: string, status: "thinking" | "tooling" | "streaming" | "cancelled" | "error"): void;
   registerTerminalRequest(id: string, command: string, echoCommand?: boolean): void;
   resetVisibleSession(sendToDaemon?: boolean): void;
+  restorePromptFocus(): void;
   setActiveId: Dispatch<SetStateAction<string | null>>;
   setBrowserAction: Dispatch<SetStateAction<BrowserActionUiState>>;
   setExecutionPermissions: Dispatch<SetStateAction<ExecutionPermissionSummary[]>>;

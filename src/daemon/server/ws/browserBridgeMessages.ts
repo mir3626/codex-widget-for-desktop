@@ -3,7 +3,7 @@ import { browserBridgeActiveTabChanged, pollBrowserBridgeCommand } from "../http
 import { broadcast, send } from "../events.js";
 import type { MessageRouterContext } from "./context.js";
 
-const BROWSER_BRIDGE_WS_COMMAND_WAIT_MS = 1_000;
+const BROWSER_BRIDGE_WS_COMMAND_WAIT_MS = 500;
 
 type BrowserBridgeCommandPollMessage = {
   type?: string;

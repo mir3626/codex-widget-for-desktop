@@ -65,6 +65,9 @@ export function acknowledgeBrowserExtensionCommand(input: {
   command.acknowledgedAt = new Date().toISOString();
   const session = input.sessions.get(command.actionSessionId);
   if (session) {
+    const createdAt = Date.parse(command.createdAt);
+    const deliveredAt = command.deliveredAt ? Date.parse(command.deliveredAt) : undefined;
+    const acknowledgedAt = Date.now();
     session.timeline.push(createTimelineEvent({
       startedAt: session.startedAt,
       type: "execute",
@@ -72,7 +75,12 @@ export function acknowledgeBrowserExtensionCommand(input: {
       detail: {
         requestId: input.requestId,
         resultId: result.id,
-        deliveryAttempts: command.deliveryAttempts ?? 1
+        deliveryAttempts: command.deliveryAttempts ?? 1,
+        latency: {
+          queuedToDeliveryMs: deliveredAt && Number.isFinite(createdAt) ? Math.max(0, deliveredAt - createdAt) : undefined,
+          deliveryToAckMs: deliveredAt ? Math.max(0, acknowledgedAt - deliveredAt) : undefined,
+          queuedToAckMs: Number.isFinite(createdAt) ? Math.max(0, acknowledgedAt - createdAt) : undefined
+        }
       }
     }));
   }
@@ -133,9 +141,7 @@ export function completeBrowserExtensionCommand(input: {
     throw new Error(`Browser action result not found for request: ${input.execution.requestId}`);
   }
   const commandIndex = input.pendingCommands.findIndex((command) => command.requestId === input.execution.requestId);
-  if (commandIndex >= 0) {
-    input.pendingCommands.splice(commandIndex, 1);
-  }
+  const command = commandIndex >= 0 ? input.pendingCommands.splice(commandIndex, 1)[0] : undefined;
   input.commandResultIds.delete(input.execution.requestId);
   const session = input.requireSession(commandResult.actionSessionId);
   const after = input.execution.after
@@ -153,6 +159,15 @@ export function completeBrowserExtensionCommand(input: {
     ok: input.execution.ok,
     error: input.execution.error
   });
+  commandResult.safety.metadata = {
+    ...(commandResult.safety.metadata ?? {}),
+    bridgeExecution: {
+      requestId: input.execution.requestId,
+      adapterId: input.execution.adapterId,
+      metadata: input.execution.metadata,
+      latency: summarizeExtensionCommandLatency(command, input.execution)
+    }
+  };
   if (after) {
     session.latestObservation = after;
     session.source = { ...session.source, url: after.url, title: after.title };
@@ -161,12 +176,30 @@ export function completeBrowserExtensionCommand(input: {
     startedAt: session.startedAt,
     type: "result",
     summary: `Browser action ${commandResult.status}: ${commandResult.action.type}`,
-    detail: { requestId: input.execution.requestId, verification: commandResult.verification }
+    detail: {
+      requestId: input.execution.requestId,
+      verification: commandResult.verification,
+      latency: commandResult.safety.metadata.bridgeExecution
+    }
   }));
   return {
     session: cloneSession(session),
     result: cloneResult(commandResult),
     audit: auditActionResult(session, commandResult)
+  };
+}
+
+function summarizeExtensionCommandLatency(command: BrowserQueuedCommand | undefined, execution: BrowserActionExecutionResult): Record<string, unknown> {
+  const now = Date.now();
+  const createdAt = command?.createdAt ? Date.parse(command.createdAt) : undefined;
+  const deliveredAt = command?.deliveredAt ? Date.parse(command.deliveredAt) : undefined;
+  const acknowledgedAt = command?.acknowledgedAt ? Date.parse(command.acknowledgedAt) : undefined;
+  return {
+    queuedToDeliveryMs: createdAt && deliveredAt ? Math.max(0, deliveredAt - createdAt) : undefined,
+    deliveryToAckMs: deliveredAt && acknowledgedAt ? Math.max(0, acknowledgedAt - deliveredAt) : undefined,
+    ackToResultMs: acknowledgedAt ? Math.max(0, now - acknowledgedAt) : undefined,
+    queuedToResultMs: createdAt ? Math.max(0, now - createdAt) : undefined,
+    bridgeTrace: execution.metadata?.latencyTrace
   };
 }
 

@@ -8,6 +8,7 @@ export function createBrowserQueuedCommand(input: {
   action: BrowserAction;
   target?: BrowserElement;
   expectedSource?: BrowserQueuedCommand["expectedSource"];
+  metadata?: BrowserQueuedCommand["metadata"];
   timeoutMs?: number;
   expiresInMs?: number;
 }): BrowserQueuedCommand {
@@ -21,6 +22,7 @@ export function createBrowserQueuedCommand(input: {
     action: input.action,
     target: input.target,
     expectedSource: input.expectedSource,
+    metadata: input.metadata,
     createdAt: createdAt.toISOString(),
     expiresAt: new Date(createdAt.getTime() + expiresInMs).toISOString()
   };
