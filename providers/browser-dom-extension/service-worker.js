@@ -29,6 +29,7 @@ import {
   pollAndExecuteBrowserAction,
   readSnapshotFromTab
 } from "./bridge/action-channel.js";
+import { executeBrowserChromeCommand } from "./bridge/browser-chrome.js";
 
 const BRIDGE_COMMAND_SOCKET_KEEPALIVE_MS = 20_000;
 const BRIDGE_COMMAND_SOCKET_RECONNECT_MS = 2_000;
@@ -422,6 +423,8 @@ async function handleBridgeCommandSocketMessage(raw) {
   const permission = await readTabPermission(tab, settings);
   if (message.command.kind === "observe_now") {
     await executeBrowserPerceptionObserveCommand(tab, settings, permission, message.command);
+  } else if (message.command.kind === "browser_chrome") {
+    await executeBrowserChromeCommand(tab, settings, message.command);
   } else {
     await executePolledBrowserActionCommand(tab, settings, permission, message.command);
   }

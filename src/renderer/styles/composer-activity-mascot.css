@@ -319,8 +319,8 @@ body.is-resizing-prompt .prompt-resize-handle::after {
   right: 8px;
   bottom: calc(100% + 6px);
   z-index: 18;
-  width: min(520px, calc(100vw - 20px));
-  max-height: 260px;
+  width: min(620px, calc(100vw - 20px));
+  max-height: min(520px, calc(100vh - 24px));
   display: grid;
   gap: 5px;
   overflow: auto;
@@ -468,6 +468,282 @@ body.is-resizing-prompt .prompt-resize-handle::after {
   padding: 8px 2px 4px;
   color: #77818e;
   font-size: 11.5px;
+}
+
+.capability-jobs-panel {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  margin-bottom: 3px;
+  padding: 8px;
+  border: 1px solid rgba(36, 42, 50, 0.1);
+  border-radius: 8px;
+  background: rgba(247, 250, 250, 0.8);
+}
+
+.capability-jobs-head,
+.capability-job-detail-head {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.capability-jobs-head > div:first-child,
+.capability-job-detail-head > div:first-child {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.capability-jobs-head strong,
+.capability-job-detail-head strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #2f3942;
+  font-size: 11.5px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capability-jobs-head span,
+.capability-job-detail-head span {
+  color: #76828e;
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.capability-jobs-actions {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.capability-jobs-actions button {
+  width: 23px;
+  height: 23px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  color: #64707d;
+  background: rgba(232, 237, 239, 0.8);
+}
+
+.capability-jobs-actions button:hover {
+  color: #123f36;
+  background: var(--accent-soft);
+}
+
+.capability-jobs-actions button:disabled {
+  cursor: default;
+  color: #a2acb6;
+  background: rgba(232, 237, 239, 0.5);
+}
+
+.capability-job-list {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.capability-job-row {
+  min-width: 0;
+  height: 32px;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 6px;
+  padding: 0 7px;
+  border: 1px solid rgba(36, 42, 50, 0.08);
+  border-radius: 7px;
+  color: #31404c;
+  background: rgba(255, 255, 255, 0.78);
+  text-align: left;
+}
+
+.capability-job-row:hover,
+.capability-job-row.selected {
+  border-color: rgba(39, 119, 101, 0.28);
+  background: rgba(232, 245, 242, 0.9);
+}
+
+.capability-job-row strong,
+.capability-job-row small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capability-job-row strong {
+  font-size: 10.5px;
+  font-weight: 820;
+}
+
+.capability-job-row small {
+  color: #7a8591;
+  font-size: 9.5px;
+  font-weight: 720;
+}
+
+.capability-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 17px;
+  max-width: 92px;
+  padding: 0 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 820;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capability-status.active {
+  background: #2f6f87;
+}
+
+.capability-status.ok {
+  background: #277765;
+}
+
+.capability-status.warn {
+  background: #8a6b24;
+}
+
+.capability-status.error {
+  background: var(--danger);
+}
+
+.capability-job-detail {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  padding: 7px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.capability-job-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin: 0;
+}
+
+.capability-job-metrics div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 5px 6px;
+  border-radius: 7px;
+  background: rgba(240, 246, 246, 0.72);
+}
+
+.capability-job-metrics dt,
+.capability-job-metrics dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capability-job-metrics dt {
+  color: #7a8591;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.capability-job-metrics dd {
+  color: #303b45;
+  font-size: 10.5px;
+  font-weight: 760;
+}
+
+.capability-job-error {
+  margin: 0;
+  padding: 6px 7px;
+  border-radius: 7px;
+  color: var(--danger);
+  background: rgba(179, 72, 72, 0.08);
+  font-size: 10.5px;
+  font-weight: 740;
+}
+
+.capability-job-timeline {
+  display: grid;
+  gap: 4px;
+}
+
+.capability-job-event {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 7px;
+  background: rgba(240, 246, 246, 0.82);
+}
+
+.capability-job-event.resource {
+  background: rgba(232, 241, 255, 0.76);
+}
+
+.capability-job-event span,
+.capability-job-event small {
+  color: #7a8591;
+  font-size: 9.5px;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+.capability-job-event strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #303b45;
+  font-size: 10.5px;
+  font-weight: 740;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capability-job-json {
+  min-width: 0;
+}
+
+.capability-job-json summary {
+  cursor: pointer;
+  color: #52606b;
+  font-size: 10.5px;
+  font-weight: 780;
+}
+
+.capability-job-json pre {
+  max-height: 160px;
+  margin: 5px 0 0;
+  overflow: auto;
+  padding: 7px;
+  border-radius: 7px;
+  color: #26323d;
+  background: rgba(20, 26, 32, 0.06);
+  font-family: "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.35;
+  white-space: pre-wrap;
 }
 
 .mascot {

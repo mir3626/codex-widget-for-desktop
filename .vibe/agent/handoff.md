@@ -1650,3 +1650,84 @@ Implemented the requested Browser Action speed roadmap slice after reviewing the
 - E2E smoke now covers fast history navigation from Browser Bridge active-tab state and asserts transaction timing diagnostics.
 
 Verification passed `npm run lint`, `npm run build:daemon`, `npm run build:web`, `npm run smoke`, Browser Action focused smokes, Browser Perception/View Graph/Bridge/Extension/DOM smokes, transaction smokes, app-server smoke, Playwright/CDP/evaluate/native adapter smokes, and final `npm run smoke:all`. Project report and checkpoint were refreshed. Live dev runtime was restarted; daemon is healthy on `127.0.0.1:4128`, Vite is listening on `127.0.0.1:5173`, widget PID is `86152`, and logs are under `dist/logs/dev-runtime-latency-optimization-20260512.log`. Reload the unpacked Browser Bridge extension once before manual browser-action retesting.
+
+## Latest Update: Windows Computer Use Daemon Foundation Handoff
+
+Added `docs/plans/windows-computer-use-daemon-foundation-handoff.md` as the proposed design handoff for the daemon-side foundation needed before broader Windows computer-use work.
+
+- The design keeps the daemon as the local control plane and explicitly avoids a helper-to-helper invocation mesh or external broker.
+- It defines durable capability jobs, helper process supervision, resource/blob offload, concurrency scheduling, cancellation, common capability events, shared approval/safety, context leases, verification/evidence, restart reconciliation, and a migration path from existing Browser Action/Vision/Terminal flows.
+- `docs/plans/README.md` now links the new proposed handoff.
+
+Open risks: the handoff is planning-only; no runtime code or storage migration has been implemented yet. The first implementation slice should add a capability runtime skeleton, SQLite migration, event contract, and a read-only screen/OCR wrapper before moving side-effecting desktop/browser actions.
+
+## Latest Update: Windows Computer Use Daemon Foundation Implemented
+
+Implemented the first daemon-owned capability runtime slice from `docs/plans/windows-computer-use-daemon-foundation-handoff.md`.
+
+- Added shared capability protocol events/messages, WebSocket handlers, and HTTP diagnostics routes for `capability.start`, `capability.cancel`, job listing, and job detail/resource inspection.
+- Added SQLite schema v3 plus storage APIs for durable capability jobs, job events, resources, startup reconciliation, shutdown cancellation, and blob-backed resource records.
+- Added `src/daemon/capability-runtime/` with durable queue, scheduler, cancellation registry, helper supervisor, resource manager, safety gate, runtime, and renderer event mapper.
+- Wired the daemon to instantiate the runtime, emit capability events to connected clients, reconcile jobs on startup, and shut down active jobs through the runtime before closing storage.
+- Routed direct `screen_observe` and existing `provider.captureScreen` through capability jobs, added a native `desktop_action` handler over the existing bounded browser-native desktop helper, and kept Browser Action APIs compatible during migration.
+- Added a foundation safety policy: read-only screen/OCR/observe work can run automatically; desktop/browser/terminal/tool side effects default to `awaiting_approval` even when the caller omits `requireApproval`.
+- Added lease-key serialization through the scheduler so same-surface jobs do not run concurrently when a caller supplies a `leaseId`/`lockKey`.
+- Added `scripts/smoke-capability-runtime.mjs` and included it in `smoke:all`; it covers queue completion, approval denial, helper-supervised OCR, helper timeout, helper cancellation/kill, blob resources, same-lease serialization, startup reconciliation, shutdown cancellation, and schema version 3.
+
+Verification passed `npm run smoke:capability-runtime`, `npm run smoke:storage`, `npm run smoke:screen`, `npm run smoke:ocr-runtime`, `npm run smoke:browser-action`, `npm run smoke:browser-action:e2e-control`, `npm run smoke:browser-native-desktop-helper-native`, `npm run smoke:terminal`, `npm run lint`, final `npm run smoke:all`, `git diff --check`, strict UTF-8 decoding for 36 touched files, and replacement-character scan. The `file` command is unavailable in this Windows PowerShell environment, so UTF-8 validation used .NET strict decoding instead.
+
+Remaining migration follow-ups: Browser Action should dual-emit/store its internal queued commands as capability jobs, browser chrome/bookmark helpers still need concrete implementation, context leases/per-surface locks need deeper adapter-specific keys, and verification/evidence classes are still foundation-level rather than full effect-specific proof.
+
+## Latest Update: Windows Computer Use Daemon Foundation Browser/Terminal/Tool Migration
+
+Extended the daemon-owned capability runtime beyond the initial foundation slice.
+
+- Browser Action now dual-writes and dual-emits capability jobs for approvals, queued extension commands, extension pickup/running transitions, results, observes, and failures while keeping existing Browser Action APIs compatible.
+- Added `browser_chrome` capability routing through the Browser Bridge extension with bookmark list/create/update/remove/open support, result callbacks, audited side-effect approval, and Chrome/Edge extension `bookmarks` permission docs/smokes.
+- Added supervised `terminal` capability execution for approved one-shot shell commands, using the shared helper supervisor timeout/cancel/stdout/stderr/diagnostics path.
+- Added `agent_tool` capability boundary jobs for the supported simulated daemon runtime and explicit app-server client-tool BLOCKED contract reporting, without adding arbitrary tool execution.
+- Added helper diagnostics, verification summaries, resource accounting, ephemeral cleanup reporting, and focused smokes for browser chrome, terminal, and agent-tool capability paths.
+- Split Browser Bridge browser-chrome/bookmark execution into `providers/browser-dom-extension/bridge/browser-chrome.js` so `action-channel.js` stays below the architecture source-size budget.
+
+Verification passed `npm run build:daemon`, `npm run smoke:terminal-capability`, `npm run smoke:agent-tool-capability`, `npm run lint`, direct capability smokes, `npm run smoke:browser-action`, `npm run smoke:storage`, `npm run smoke:extension`, `npm run smoke:browser-store`, `npm run smoke:browser-action:e2e-control`, `npm run smoke:architecture-foundations`, final `npm run smoke:all`, `git diff --check`, strict UTF-8 decoding for 63 touched text files, replacement-character scan for 63 touched text files, `.cs` touched-file check, and `npm run vibe:checkpoint`. `git diff --check` emitted only existing CRLF normalization warnings for `src/daemon/server.ts` and `src/daemon/storage/storage.ts`.
+
+## Latest Update: Windows Computer Use Daemon Foundation Audited Complete
+
+Completed the post-implementation audit pass against `docs/plans/windows-computer-use-daemon-foundation-handoff.md` and closed the remaining foundation gaps found during the audit.
+
+- Added durable `capability_locks` storage APIs, runtime lock acquire/release, HTTP diagnostics lock reporting, and smoke coverage for lock persistence/release.
+- Added runtime priority dispatch so queued interactive capability work starts before lower-priority background work when capacity frees.
+- Added context lease expiry/mismatch validation before execution and before verification, plus approval deadline expiry handling.
+- Added daemon-level `ocr` capability handling with bounded helper command support, capped text previews, and optional full-text blob evidence; included it in `smoke:all`.
+- Added recursive sensitive-input redaction before capability persistence and credential-like terminal command rejection before execution.
+- Added final capability-state activity records for session ledgers.
+- Updated Browser Action command waiter shutdown clearing to resolve pending prompt waiters with `undefined`, allowing cancellation/failure continuation paths to complete.
+- Strengthened verification summaries with failure classes and required explicit effect proof for desktop actions that declare `expectedEffect`/`expectedState`.
+- Wrote `docs/reports/windows-computer-use-daemon-foundation-completion-audit-2026-05-12.md`, mapping handoff requirements to implementation evidence.
+
+Final verification passed `npm run lint`, `npm run smoke:architecture-foundations`, final `npm run smoke:all`, `git diff --check`, strict UTF-8 decoding for 66 touched text files, replacement-character scan for 66 touched text files, `.cs` touched-file check, and `npm run vibe:checkpoint`. `git diff --check` emitted only CRLF normalization warnings for `src/daemon/server.ts` and `src/daemon/storage/storage.ts`.
+
+## Latest Update: Capability Jobs Panel and Windows Dogfood Matrix
+
+Implemented the recommended follow-up order after the daemon foundation: a renderer Capability Jobs MVP first, then a safe Windows high-risk dogfood matrix and evidence collector.
+
+- Added renderer state and event handling for `capability.jobs`, `capability.job`, and `capability.resource` events.
+- Added `CapabilityJobsPanel` inside the Activity details popover. It lists recent capability jobs, shows status/kind/priority/requested-by metrics, displays recent events/resources, fetches `/capabilities/jobs/:id` detail JSON, supports refresh/copy JSON, and exposes approve/cancel controls for eligible jobs.
+- Wired capability job refresh/cancel/approve through existing daemon WebSocket messages and included job count in the Activity badge.
+- Added `docs/plans/windows-computer-use-high-risk-dogfood-matrix.md` with read-only, reversible side-effect, high-risk, credential-sensitive, and destructive scenario classes.
+- Added `npm run dogfood:windows-computer-use`, which runs a safe baseline collector: Windows theme registry read-only evidence, simulated Browser Chrome bookmark CRUD through the daemon command bridge, and credential-like terminal command rejection before persistence.
+- Generated `docs/reports/windows-computer-use-high-risk-dogfood-2026-05-12.md` and JSON evidence under `docs/reports/assets/windows-computer-use-high-risk-dogfood-2026-05-12/`.
+
+Verification passed `npm run lint`, `npm run build:renderer`, `npm run dogfood:windows-computer-use`, `npm run smoke:capability-runtime`, `npm run smoke:browser-chrome-capability`, `npm run smoke:terminal-capability`, `npm run smoke:agent-tool-capability`, final `npm run smoke:all`, `git diff --check`, strict UTF-8 decoding for touched files, replacement-character scan, quoted-question mojibake scan, `.cs` touched-file check, and `npm run vibe:checkpoint`. `git diff --check` emitted only the existing CRLF normalization warnings for `src/daemon/server.ts` and `src/daemon/storage/storage.ts`.
+
+Runtime state: the dev widget is running. Renderer/Vite listens on `127.0.0.1:5173` (PID `102756`), daemon listens on `127.0.0.1:4128` (PID `81472`), and Tauri widget PID is `121300`. Two safe OCR seed jobs exist in the live daemon so the new Capability Jobs panel has visible rows; use Activity details -> Capability Jobs -> refresh if the panel opened before the events arrived.
+
+## Latest Update: Push/Refactor Prep
+
+Prepared the current working tree for push on `main`.
+
+- Added `docs/plans/post-daemon-foundation-refactor-prep.md` to define the next behavior-preserving refactor pass.
+- The recommended refactor order is daemon capability registration extraction, Activity/Capability stylesheet split, optional renderer capability hook extraction, then separate live dogfood expansion.
+- The prep explicitly keeps live Windows OS mutation and release signing hardening out of the first refactor pass.
+
+Pre-push verification from the previous closure remains valid: `npm run lint`, `npm run build:renderer`, `npm run dogfood:windows-computer-use`, focused capability smokes, `npm run smoke:all`, `git diff --check`, UTF-8/mojibake scans, and `npm run vibe:checkpoint` passed. Run checkpoint again after the push record is appended.

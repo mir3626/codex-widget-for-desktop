@@ -9,7 +9,7 @@ import type {
   ServerEvent,
   SessionSnapshot
 } from "../../shared/protocol.js";
-import type { BrowserActionUiState, LogLine, TerminalLine } from "../types";
+import type { BrowserActionUiState, CapabilityJobsUiState, LogLine, TerminalLine } from "../types";
 
 export type WidgetServerEventDeps = {
   activeSessionIdRef: MutableRefObject<string | null>;
@@ -30,6 +30,7 @@ export type WidgetServerEventDeps = {
   restorePromptFocus(): void;
   setActiveId: Dispatch<SetStateAction<string | null>>;
   setBrowserAction: Dispatch<SetStateAction<BrowserActionUiState>>;
+  setCapabilityJobs: Dispatch<SetStateAction<CapabilityJobsUiState>>;
   setExecutionPermissions: Dispatch<SetStateAction<ExecutionPermissionSummary[]>>;
   setLedger: Dispatch<SetStateAction<LedgerSnapshot | null>>;
   setProviderStatuses: Dispatch<SetStateAction<ProviderStatus[]>>;

@@ -5,6 +5,11 @@ const includeLive = process.argv.includes("--include-live");
 const steps = [
   npmStep("lint"),
   npmStep("build:web"),
+  ["Capability runtime", process.execPath, ["scripts/smoke-capability-runtime.mjs"]],
+  ["Browser Chrome capability", process.execPath, ["scripts/smoke-browser-chrome-capability.mjs"]],
+  ["OCR capability", process.execPath, ["scripts/smoke-ocr-capability.mjs"]],
+  ["Terminal capability", process.execPath, ["scripts/smoke-terminal-capability.mjs"]],
+  ["Agent tool capability", process.execPath, ["scripts/smoke-agent-tool-capability.mjs"]],
   ["Storage foundation", process.execPath, ["scripts/smoke-storage.mjs"]],
   ["daemon stream", process.execPath, ["scripts/smoke-daemon.mjs"]],
   ["daemon reconnect replay", process.execPath, ["scripts/smoke-daemon-reconnect.mjs"]],

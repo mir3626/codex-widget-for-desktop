@@ -10,6 +10,11 @@ import {
   buildBrowserActionApprovalBody,
   recordBrowserActionAudit
 } from "../helpers.js";
+import {
+  recordBrowserActionCapabilityApproval,
+  recordBrowserActionCapabilityCommandQueued,
+  recordBrowserActionCapabilityResult
+} from "../capabilityMirror.js";
 import type { BrowserActionMessageContext } from "./context.js";
 
 export async function handleBrowserActionExecuteMessage(
@@ -34,6 +39,16 @@ export async function handleBrowserActionExecuteMessage(
     recordBrowserActionAudit(storage, execution.audit);
     const sessionId = resolveClientSessionId(storage, execution.session.sessionId);
     if (execution.approval) {
+      recordBrowserActionCapabilityApproval({
+        storage,
+        clients,
+        requestId: message.requestId ?? execution.approval.id,
+        actionSessionId: message.actionSessionId,
+        sessionId,
+        action: execution.approval.action,
+        result: execution.result,
+        approvalId: execution.approval.id
+      });
       broadcast(clients, {
         type: "interaction.required",
         interaction: {
@@ -52,6 +67,13 @@ export async function handleBrowserActionExecuteMessage(
         detail: summarizeBrowserActionResult(execution.result)
       });
     } else if (execution.command) {
+      recordBrowserActionCapabilityCommandQueued({
+        storage,
+        clients,
+        command: execution.command,
+        sessionId,
+        result: execution.result
+      });
       broadcast(clients, {
         type: "browserAction.progress",
         actionSessionId: message.actionSessionId,
@@ -59,6 +81,13 @@ export async function handleBrowserActionExecuteMessage(
         detail: { requestId: execution.command.requestId, action: execution.command.action.type }
       });
     } else {
+      recordBrowserActionCapabilityResult({
+        storage,
+        clients,
+        result: execution.result,
+        requestId: message.requestId,
+        sessionId
+      });
       broadcast(clients, {
         type: "browserAction.result",
         actionSessionId: message.actionSessionId,

@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { WebSocket } from "ws";
 import type { OAuthSession } from "../../oauth.js";
 import type { BrowserActionSessionManager } from "../../browser-action/index.js";
+import type { BrowserChromeCommandBridge } from "../../browser-chrome/index.js";
 import type { BrowserPerceptionService } from "../../browser-perception/index.js";
 import type { ProviderRegistry } from "../../providers/providerRegistry.js";
 import type { SemanticMemoryStore } from "../../semantic-interface/index.js";
@@ -10,6 +11,7 @@ import type { BrowserActionCommandWaiter } from "../browser-action/commandWaiter
 import type { BrowserExtensionBridgeStore } from "../browser-bridge/store.js";
 import type { HttpRouteContext } from "./context.js";
 import { handleBrowserBridgeRoute } from "./routes/browserBridgeRoutes.js";
+import { handleCapabilityRoute } from "./routes/capabilityRoutes.js";
 import { handleOAuthRoute } from "./routes/oauthRoutes.js";
 import { handleProviderSnapshotRoute } from "./routes/providerSnapshotRoutes.js";
 import { handleSemanticMemoryRoute } from "./routes/semanticMemoryRoutes.js";
@@ -23,6 +25,7 @@ type HttpRouteHandler = (
 ) => Promise<boolean>;
 
 const routeHandlers: HttpRouteHandler[] = [
+  handleCapabilityRoute,
   handleBrowserBridgeRoute,
   handleOAuthRoute,
   handleProviderSnapshotRoute,
@@ -38,9 +41,11 @@ export async function handleHttpRequest(
   providers: ProviderRegistry,
   browserPerception: BrowserPerceptionService,
   browserActions: BrowserActionSessionManager,
+  browserChromeCommands: BrowserChromeCommandBridge,
   browserExtensionBridge: BrowserExtensionBridgeStore,
   clients: Set<WebSocket>,
   storage: StorageService,
+  capabilityRuntime: import("../../capability-runtime/index.js").CapabilityRuntime,
   semanticMemory: SemanticMemoryStore,
   browserActionCommandWaiters: Map<string, BrowserActionCommandWaiter>
 ): Promise<void> {
@@ -67,9 +72,11 @@ export async function handleHttpRequest(
     providers,
     browserPerception,
     browserActions,
+    browserChromeCommands,
     browserExtensionBridge,
     clients,
     storage,
+    capabilityRuntime,
     semanticMemory,
     browserActionCommandWaiters
   };
@@ -84,7 +91,7 @@ export async function handleHttpRequest(
 }
 
 function isCorsRoute(pathname: string): boolean {
-  return isProviderSnapshotPath(pathname) || isBrowserActionPath(pathname) || isSemanticMemoryPath(pathname);
+  return isProviderSnapshotPath(pathname) || isBrowserActionPath(pathname) || isSemanticMemoryPath(pathname) || isCapabilityPath(pathname);
 }
 
 function isProviderSnapshotPath(pathname: string): boolean {
@@ -97,4 +104,8 @@ function isBrowserActionPath(pathname: string): boolean {
 
 function isSemanticMemoryPath(pathname: string): boolean {
   return pathname.startsWith("/semantic-memory/");
+}
+
+function isCapabilityPath(pathname: string): boolean {
+  return pathname.startsWith("/capabilities/");
 }

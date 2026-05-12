@@ -4,6 +4,7 @@ export const DEFAULT_BROWSER_ACTION_POLL_PATH = "/browser-action/extension/poll"
 export const DEFAULT_BROWSER_ACTION_ACK_PATH = "/browser-action/extension/ack";
 export const DEFAULT_BROWSER_ACTION_COMMAND_ACK_PATH = "/browser-action/extension/action-ack";
 export const DEFAULT_BROWSER_ACTION_RESULT_PATH = "/browser-action/extension/result";
+export const DEFAULT_BROWSER_CHROME_RESULT_PATH = "/browser-action/extension/browser-chrome-result";
 export const DEFAULT_BROWSER_ACTION_OBSERVE_RESULT_PATH = "/browser-action/extension/observe-result";
 export const DEFAULT_BROWSER_ACTION_HEARTBEAT_PATH = "/browser-action/extension/heartbeat";
 export const DEFAULT_BROWSER_ACTION_STATUS_PATH = "/browser-action/extension/status";

@@ -4,6 +4,7 @@ import { handleBrowserActionMessage } from "../browser-action/messageHandler.js"
 import { send } from "../events.js";
 import { handleAuthMessage } from "./authMessages.js";
 import { handleBrowserBridgeMessage } from "./browserBridgeMessages.js";
+import { handleCapabilityMessage } from "./capabilityMessages.js";
 import { handleDebugFeedbackMessage } from "./debugFeedbackMessages.js";
 import type { MessageRouterContext } from "./context.js";
 import { handleInteractionMessage } from "./interactionMessages.js";
@@ -20,6 +21,7 @@ const messageHandlers: MessageHandler[] = [
   handleSessionMessage,
   handleDebugFeedbackMessage,
   handleInteractionMessage,
+  handleCapabilityMessage,
   handleProviderMessage,
   handleVisionContextMessage,
   async (message, context) =>

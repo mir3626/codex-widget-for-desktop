@@ -22,6 +22,7 @@ The extension can use an optional Chrome/Edge native messaging host installed wi
 
 - `activeTab`: provides a one-time fallback when the user opens the popup from the active tab.
 - `alarms`: wakes the Manifest V3 service worker to refresh heartbeat, badge, and command polling state.
+- `bookmarks`: lets the local daemon run explicitly approved browser-chrome bookmark actions such as listing, creating, updating, removing, or opening bookmarks.
 - `scripting`: required to collect page observations and execute typed Browser Action commands on approved pages.
 - `storage`: required to save local Browser Bridge settings.
 - `tabs`: required to identify the active tab, URL, title, and window for bridge status and source matching.

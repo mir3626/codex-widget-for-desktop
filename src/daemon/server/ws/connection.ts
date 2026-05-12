@@ -3,7 +3,9 @@ import { daemonInfo, type AgentSessionState } from "../../agent.js";
 import type { CodexAppServerBridge } from "../../codexAppServer.js";
 import type { OAuthSession } from "../../oauth.js";
 import type { BrowserActionSessionManager } from "../../browser-action/index.js";
+import type { BrowserChromeCommandBridge } from "../../browser-chrome/index.js";
 import type { BrowserPerceptionService } from "../../browser-perception/index.js";
+import type { CapabilityRuntime } from "../../capability-runtime/index.js";
 import type { ProviderRegistry } from "../../providers/providerRegistry.js";
 import type { SemanticMemoryStore } from "../../semantic-interface/index.js";
 import type { StorageService } from "../../storage/storage.js";
@@ -38,7 +40,9 @@ export function handleWebSocketConnection(input: {
   providers: ProviderRegistry;
   browserPerception: BrowserPerceptionService;
   visionContext: VisionContextSessionManager;
+  capabilityRuntime: CapabilityRuntime;
   browserActions: BrowserActionSessionManager;
+  browserChromeCommands: BrowserChromeCommandBridge;
   browserExtensionBridge: BrowserExtensionBridgeStore;
   semanticMemory: SemanticMemoryStore;
   semanticClarifications: Map<string, PendingSemanticClarification>;
@@ -67,6 +71,7 @@ export function handleWebSocketConnection(input: {
   sendBrowserActionPolicies(socket, storage);
   sendSessionSnapshot(socket, storage);
   sendLedgerSnapshot(socket, storage);
+  send(socket, { type: "capability.jobs", jobs: input.capabilityRuntime.list({ limit: 50 }) });
   send(socket, { type: "session.state", state: "idle" });
   replayRetainedMessages(socket, retainedMessages);
 
@@ -85,7 +90,9 @@ export function handleWebSocketConnection(input: {
       providers,
       browserPerception: input.browserPerception,
       visionContext: input.visionContext,
+      capabilityRuntime: input.capabilityRuntime,
       browserActions: input.browserActions,
+      browserChromeCommands: input.browserChromeCommands,
       browserExtensionBridge,
       semanticMemory: input.semanticMemory,
       semanticClarifications: input.semanticClarifications,

@@ -6,5 +6,14 @@ This directory now keeps active planning state and historical tombstones.
   planning ledgers.
 - `browser-action-reliability-foundation-handoff.md` is the active handoff for
   the next Browser Action reliability/foundation goal.
+- `windows-computer-use-daemon-foundation-handoff.md` is the implemented
+  and audited daemon-side foundation handoff for broader Windows computer-use
+  work.
+- `windows-computer-use-high-risk-dogfood-matrix.md` tracks the current
+  read-only, reversible, and blocked workflow matrix for Windows computer-use
+  dogfood evidence.
+- `post-daemon-foundation-refactor-prep.md` defines the next behavior-preserving
+  refactor sequence after the daemon capability foundation and Capability Jobs
+  panel landed.
 - Completed handoff documents that have been consolidated into
   `docs/architecture/` live under `docs/plans/deprecated/`.

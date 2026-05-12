@@ -14,6 +14,10 @@ import {
 } from "./commandWaiters.js";
 import { summarizeBrowserActionPlan } from "./presentation.js";
 import { recordBrowserActionAudit } from "./helpers.js";
+import {
+  recordBrowserActionCapabilityCommandQueued,
+  recordBrowserActionCapabilityResult
+} from "./capabilityMirror.js";
 import type { BrowserExtensionBridgeStore } from "../browser-bridge/store.js";
 import { broadcast } from "../events.js";
 import { recordRuntimeActivity } from "../runtimeActivity.js";
@@ -107,6 +111,13 @@ export async function continuePromptBrowserActionPlan(input: {
     }
 
     if (execution.command) {
+      recordBrowserActionCapabilityCommandQueued({
+        storage: input.storage,
+        clients: input.clients,
+        command: execution.command,
+        sessionId: input.sessionId,
+        result: execution.result
+      });
       input.browserActions.markInteractionTiming(execution.result.transaction?.transactionId, "extension_followup_wait_started", "executing", {
         requestId: execution.command.requestId,
         action: execution.command.action.type,
@@ -143,6 +154,13 @@ export async function continuePromptBrowserActionPlan(input: {
         if (failedResult) {
           results[results.length - 1] = failedResult;
           markPromptPlanStepFromResult(plan, failedResult);
+          recordBrowserActionCapabilityResult({
+            storage: input.storage,
+            clients: input.clients,
+            result: failedResult,
+            requestId: execution.command.requestId,
+            sessionId: input.sessionId
+          });
         } else {
           nextStep.status = "failed";
           nextStep.error = error;
@@ -161,6 +179,13 @@ export async function continuePromptBrowserActionPlan(input: {
         return { plan, results };
       }
       results[results.length - 1] = commandResult;
+      recordBrowserActionCapabilityResult({
+        storage: input.storage,
+        clients: input.clients,
+        result: commandResult,
+        requestId: execution.command.requestId,
+        sessionId: input.sessionId
+      });
       snapshot = await refreshPromptBrowserActionSnapshotAfterCommand({
         actionSessionId: plan.actionSessionId,
         result: commandResult,

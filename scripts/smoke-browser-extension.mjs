@@ -14,6 +14,7 @@ const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 assertEqual(manifest.manifest_version, 3, "manifest_version");
 assertIncludes(manifest.permissions, "activeTab", "permissions");
 assertIncludes(manifest.permissions, "alarms", "permissions");
+assertIncludes(manifest.permissions, "bookmarks", "permissions");
 assertIncludes(manifest.permissions, "scripting", "permissions");
 assertIncludes(manifest.permissions, "storage", "permissions");
 assertIncludes(manifest.permissions, "tabs", "permissions");
@@ -74,10 +75,12 @@ for (const marker of [
   "chrome.scripting.executeScript",
   "chrome.storage.sync.get",
   "chrome.runtime.sendNativeMessage",
+  "chrome.bookmarks",
   "com.mir3626.codex_widget_dom",
   "/providers/dom/snapshot",
   "/browser-action/extension/poll",
   "/browser-action/extension/result",
+  "/browser-action/extension/browser-chrome-result",
   "/browser-action/extension/heartbeat",
   "/browser-action/extension/status",
   "autoObserve",
@@ -90,6 +93,7 @@ for (const marker of [
   "document.body",
   "collectInteractiveElements",
   "executeBrowserActionInPage",
+  "executeBrowserChromeCommand",
   "chrome.tabs.captureVisibleTab",
   "chrome.tabs.goForward",
   "chrome.tabs.goBack",

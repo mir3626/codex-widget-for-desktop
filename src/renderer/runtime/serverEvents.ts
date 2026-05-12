@@ -1,6 +1,7 @@
 import type { ServerEvent } from "../../shared/protocol.js";
 import { handleAuthServerEvent } from "./events/authEvents";
 import { handleBrowserActionServerEvent } from "./events/browserActionEvents";
+import { handleCapabilityServerEvent } from "./events/capabilityEvents";
 import { handleProviderServerEvent } from "./events/providerEvents";
 import { handleRuntimeServerEvent } from "./events/runtimeEvents";
 import { handleSessionServerEvent } from "./events/sessionEvents";
@@ -17,6 +18,9 @@ export function handleWidgetServerEvent(event: ServerEvent, deps: WidgetServerEv
     return;
   }
   if (handleBrowserActionServerEvent(event, deps)) {
+    return;
+  }
+  if (handleCapabilityServerEvent(event, deps)) {
     return;
   }
   handleRuntimeServerEvent(event, deps);

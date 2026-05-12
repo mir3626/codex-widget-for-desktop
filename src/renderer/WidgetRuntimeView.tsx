@@ -36,6 +36,7 @@ import { WidgetResizeHandles } from "./components/widget-runtime/WidgetResizeHan
 import { closeWidget, type NativeDaemonStatus } from "./shell";
 import type {
   BrowserActionUiState,
+  CapabilityJobsUiState,
   ChatMessage,
   InteractionDrafts,
   LogLine,
@@ -70,7 +71,9 @@ type WidgetRuntimeViewProps = {
   browserModeButtonRef: RefObject<HTMLButtonElement | null>;
   cancel: () => void;
   cancelBrowserAction: () => void;
+  cancelCapabilityJob: (jobId: string) => void;
   captureScreen: () => void;
+  capabilityJobs: CapabilityJobsUiState;
   chatMessages: ChatMessage[];
   clearSemanticMemory: () => void;
   clearTerminalViewport: () => void;
@@ -82,6 +85,7 @@ type WidgetRuntimeViewProps = {
   cropPickerSelection: { width: number; height: number } | null;
   cropPickerSelectionStyle?: CSSProperties;
   deleteSession: (sessionId: string) => void;
+  daemonPort: string;
   displayStatus: string;
   executionPermissions: ExecutionPermissionSummary[];
   fallbackLines: LogLine[];
@@ -119,7 +123,9 @@ type WidgetRuntimeViewProps = {
   readMessageAloud: (messageId: string, text: string) => void;
   reasoningEffort: ReasoningEffort;
   revealOpacityValue: () => void;
+  approveCapabilityJob: (jobId: string) => void;
   refreshBrowserActionAdapters: () => void;
+  refreshCapabilityJobs: () => void;
   refreshLedger: () => void;
   refreshSemanticMemory: () => void;
   restoreSession: (sessionId: string) => void;
@@ -465,9 +471,14 @@ export function WidgetRuntimeView(props: WidgetRuntimeViewProps) {
               visibleActivities: props.visibleActivities,
               fallbackLines: props.fallbackLines,
               showDetails: props.showActivityDetails,
-              activityBadgeCount: props.activityBadgeCount,
+              activityBadgeCount: props.activityBadgeCount + props.capabilityJobs.jobs.length,
               ledger: props.ledger,
+              capabilityJobs: props.capabilityJobs,
+              daemonPort: props.daemonPort,
               providerSnapshots: props.providerSnapshots,
+              onApproveCapabilityJob: props.approveCapabilityJob,
+              onCancelCapabilityJob: props.cancelCapabilityJob,
+              onRefreshCapabilityJobs: props.refreshCapabilityJobs,
               onToggleDetails: () => props.setShowActivityDetails((current) => !current),
               onRefresh: props.refreshLedger
             }}

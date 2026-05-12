@@ -14,6 +14,11 @@ import {
   normalizeBrowserActionPlan,
   recordBrowserActionAudit
 } from "./helpers.js";
+import {
+  recordBrowserActionCapabilityApproval,
+  recordBrowserActionCapabilityCommandQueued,
+  recordBrowserActionCapabilityResult
+} from "./capabilityMirror.js";
 import { handlePromptExtensionCommand } from "./promptExtensionCommand.js";
 import {
   completePromptWithResult,
@@ -207,6 +212,16 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
 
   broadcast(input.clients, { type: "browserAction.plan", actionSessionId: session.id, plan: summarizeBrowserActionPlan(execution.plan) });
   if (execution.approval) {
+    recordBrowserActionCapabilityApproval({
+      storage: input.storage,
+      clients: input.clients,
+      requestId: input.message.id,
+      actionSessionId: session.id,
+      sessionId: input.sessionId,
+      action: execution.approval.action,
+      result: execution.results.at(-1),
+      approvalId: execution.approval.id
+    });
     emitPromptApprovalRequired(input, {
       approval: execution.approval,
       plan: execution.plan,
@@ -216,6 +231,13 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
   }
 
   if (execution.command) {
+    recordBrowserActionCapabilityCommandQueued({
+      storage: input.storage,
+      clients: input.clients,
+      command: execution.command,
+      sessionId: input.sessionId,
+      result: execution.results.at(-1)
+    });
     return handlePromptExtensionCommand(input, {
       plan: execution.plan,
       results: execution.results,
@@ -236,6 +258,16 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
     results: execution.results,
     runtimeSummary: `Prompt Browser Action ${execution.plan.status}`
   });
+  const latestResult = execution.results.at(-1);
+  if (latestResult) {
+    recordBrowserActionCapabilityResult({
+      storage: input.storage,
+      clients: input.clients,
+      result: latestResult,
+      requestId: input.message.id,
+      sessionId: input.sessionId
+    });
+  }
   return true;
 }
 

@@ -17,6 +17,11 @@ import {
   completePromptWithResult,
   emitPromptApprovalRequired
 } from "./promptResponses.js";
+import {
+  recordBrowserActionCapabilityApproval,
+  recordBrowserActionCapabilityCommandQueued,
+  recordBrowserActionCapabilityResult
+} from "./capabilityMirror.js";
 import { summarizeBrowserActionPlan } from "./presentation.js";
 import type { BrowserActionPromptInput } from "./promptTypes.js";
 
@@ -56,6 +61,13 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
     const results = failedResult ? [...detail.results.slice(0, -1), failedResult] : detail.results;
     if (failedResult) {
       markPromptPlanStepFromResult(detail.plan, failedResult);
+      recordBrowserActionCapabilityResult({
+        storage: input.storage,
+        clients: input.clients,
+        result: failedResult,
+        requestId: detail.command.requestId,
+        sessionId: input.sessionId
+      });
     } else {
       detail.plan.status = "failed";
       detail.plan.summary = error;
@@ -88,6 +100,16 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
     waiters: input.browserActionCommandWaiters
   });
   if (continued.approval) {
+    recordBrowserActionCapabilityApproval({
+      storage: input.storage,
+      clients: input.clients,
+      requestId: continued.approval.id,
+      actionSessionId: continued.approval.actionSessionId,
+      sessionId: input.sessionId,
+      action: continued.approval.action,
+      result: continued.results.at(-1),
+      approvalId: continued.approval.id
+    });
     emitPromptApprovalRequired(input, {
       approval: continued.approval,
       plan: continued.plan,
@@ -96,6 +118,13 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
     return true;
   }
   if (continued.pendingCommand) {
+    recordBrowserActionCapabilityCommandQueued({
+      storage: input.storage,
+      clients: input.clients,
+      command: continued.pendingCommand,
+      sessionId: input.sessionId,
+      result: continued.results.at(-1)
+    });
     return handlePromptExtensionCommand(input, {
       plan: continued.plan,
       results: continued.results,
@@ -107,5 +136,14 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
     results: continued.results,
     runtimeSummary: `Prompt Browser Action ${continued.plan.status} after extension result`
   });
+  const latestResult = continued.results.at(-1);
+  if (latestResult) {
+    recordBrowserActionCapabilityResult({
+      storage: input.storage,
+      clients: input.clients,
+      result: latestResult,
+      sessionId: input.sessionId
+    });
+  }
   return true;
 }

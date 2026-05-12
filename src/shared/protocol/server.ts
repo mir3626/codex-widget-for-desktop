@@ -4,6 +4,7 @@ import type {
   BrowserActionPolicySummary,
   BrowserExtensionBridgeStatus
 } from "./browserAction.js";
+import type { CapabilityJobEvent } from "./capability.js";
 import type {
   ArtifactFileChangeEvent,
   LedgerSnapshot
@@ -203,6 +204,7 @@ export type ServerEvent =
       actionSessionId: string;
       diagnostics: unknown;
     }
+  | CapabilityJobEvent
   | {
       type: "browserAction.error";
       actionSessionId: string;

@@ -16,7 +16,7 @@ import {
   TERMINAL_MOUSE_DRAG_INTERVAL_MS,
   VISION_AGENT_STREAM_FRAME_INTERVAL_MS
 } from "./config";
-import type { LogLine } from "./types";
+import type { CapabilityJobsUiState, LogLine } from "./types";
 import { readInitialWidgetMode } from "./utils/storage";
 import { useDismissableOverlay } from "./hooks/useDismissableOverlay";
 import { useModelSelectionController } from "./hooks/useModelSelectionController";
@@ -41,6 +41,12 @@ export function WidgetRuntime() {
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus | null>(null);
   const [input, setInput] = useState("");
   const [executionPermissions, setExecutionPermissions] = useState<ExecutionPermissionSummary[]>([]);
+  const [capabilityJobs, setCapabilityJobs] = useState<CapabilityJobsUiState>({
+    jobs: [],
+    eventsByJobId: {},
+    resourcesByJobId: {},
+    lastUpdatedAt: null
+  });
   const [showActivityDetails, setShowActivityDetails] = useState(false);
   const [logLines, setLogLines] = useState<LogLine[]>([]);
   const [showSettings, setShowSettings] = useState(false);
@@ -366,6 +372,7 @@ export function WidgetRuntime() {
       restorePromptFocus,
       setActiveId,
       setBrowserAction,
+      setCapabilityJobs,
       setExecutionPermissions,
       setLedger,
       setProviderStatuses,
@@ -399,6 +406,26 @@ export function WidgetRuntime() {
       type: "execution.permission.set",
       action,
       decision
+    });
+  }
+
+  function refreshCapabilityJobs() {
+    send({ type: "capability.list", sessionId: activeSessionId ?? undefined });
+  }
+
+  function cancelCapabilityJob(jobId: string) {
+    send({
+      type: "capability.cancel",
+      requestId: `capability-cancel-${jobId}`,
+      cancel: { jobId, reason: "renderer_panel_cancel" }
+    });
+  }
+
+  function approveCapabilityJob(jobId: string) {
+    send({
+      type: "capability.approve",
+      requestId: `capability-approve-${jobId}`,
+      jobId
     });
   }
 
@@ -501,6 +528,7 @@ export function WidgetRuntime() {
       browserModeButtonRef={browserModeButtonRef}
       cancel={cancel}
       cancelBrowserAction={cancelBrowserAction}
+      cancelCapabilityJob={cancelCapabilityJob}
       captureScreen={captureScreen}
       chatMessages={chatMessages}
       clearSemanticMemory={clearSemanticMemory}
@@ -514,6 +542,7 @@ export function WidgetRuntime() {
       cropPickerSelectionStyle={cropPickerSelectionStyle}
       deleteSession={deleteSession}
       displayStatus={displayStatus}
+      daemonPort={daemonPort}
       executionPermissions={executionPermissions}
       fallbackLines={fallbackLines}
       finishPromptResize={finishPromptResize}
@@ -527,6 +556,7 @@ export function WidgetRuntime() {
       isVisionRecording={isVisionRecording}
       isVisionStreaming={isVisionStreaming}
       ledger={ledger}
+      capabilityJobs={capabilityJobs}
       liveLabel={liveLabel}
       maximized={maximized}
       minimize={minimize}
@@ -550,6 +580,7 @@ export function WidgetRuntime() {
       readMessageAloud={readMessageAloud}
       reasoningEffort={reasoningEffort}
       refreshBrowserActionAdapters={refreshBrowserActionAdapters}
+      refreshCapabilityJobs={refreshCapabilityJobs}
       refreshLedger={refreshLedger}
       refreshSemanticMemory={refreshSemanticMemory}
       respondToInteraction={respondToInteraction}
@@ -557,6 +588,7 @@ export function WidgetRuntime() {
       retryAssistantMessage={retryAssistantMessage}
       saveDebugLogForAssistantMessage={saveDebugLogForAssistantMessage}
       revealOpacityValue={revealOpacityValue}
+      approveCapabilityJob={approveCapabilityJob}
       runBrowserActionCommand={runBrowserActionCommand}
       runTerminalQuickAction={runTerminalQuickAction}
       runtimeStatus={runtimeStatus}

@@ -18,9 +18,20 @@ import type {
   VisionStreamMode,
   VisionStreamStatus,
   VisionStreamSummary,
-  WidgetMode
+  WidgetMode,
+  CapabilityJobSummary,
+  CapabilityLockSummary,
+  CapabilityResourceSummary
 } from "../../shared/protocol.js";
+import type {
+  CapabilityJobCreateInput,
+  CapabilityJobEventInput,
+  CapabilityJobUpdateInput,
+  CapabilityLockAcquireInput,
+  CapabilityResourceCreateInput
+} from "./capabilityJobs.js";
 import type { BrowserActionPolicy } from "../browser-action/types.js";
+import type { StoredBlob } from "./blobs.js";
 import type { StoragePathOptions, StoragePaths } from "./paths.js";
 
 export type StorageHealth = {
@@ -71,6 +82,20 @@ export type StorageService = {
   createVisionStream: (input: VisionStreamInput) => VisionStreamSummary;
   stopVisionStream: (input: StopVisionStreamInput) => VisionStreamSummary;
   completeVisionRecording: (input: CompleteVisionRecordingInput) => VisionStreamSummary;
+  writeBlob: (input: { bytes: Buffer; mime: string; displayName: string }) => StoredBlob;
+  createCapabilityJob: (input: CapabilityJobCreateInput) => CapabilityJobSummary;
+  readCapabilityJob: (id: string) => CapabilityJobSummary | null;
+  listCapabilityJobs: (input?: { sessionId?: string; statuses?: CapabilityJobSummary["status"][]; limit?: number }) => CapabilityJobSummary[];
+  updateCapabilityJob: (input: CapabilityJobUpdateInput) => CapabilityJobSummary;
+  appendCapabilityJobEvent: (input: CapabilityJobEventInput) => void;
+  createCapabilityResource: (input: CapabilityResourceCreateInput) => CapabilityResourceSummary;
+  listCapabilityResources: (jobId: string) => CapabilityResourceSummary[];
+  acquireCapabilityLock: (input: CapabilityLockAcquireInput) => CapabilityLockSummary | null;
+  releaseCapabilityLock: (input: { jobId?: string; lockKey?: string }) => number;
+  listCapabilityLocks: (input?: { jobId?: string; lockKey?: string }) => CapabilityLockSummary[];
+  cleanupEphemeralCapabilityResources: (input?: { completedBefore?: string }) => { resourcesDeleted: number; blobsDeleted: number; bytesDeleted: number };
+  reconcileCapabilityJobsOnStartup: () => CapabilityJobSummary[];
+  markActiveCapabilityJobsForShutdown: () => CapabilityJobSummary[];
   recordActivity: (input: {
     id: string;
     sessionId?: string | null;
@@ -230,5 +255,8 @@ export type {
   VisionStreamStatus,
   VisionStreamSummary,
   WidgetMode,
-  BrowserActionPolicy
+  BrowserActionPolicy,
+  CapabilityJobSummary,
+  CapabilityLockSummary,
+  CapabilityResourceSummary
 };

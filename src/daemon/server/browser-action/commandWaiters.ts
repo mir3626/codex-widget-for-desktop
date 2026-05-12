@@ -1,7 +1,7 @@
 import type { BrowserActionResult } from "../../browser-action/index.js";
 
 export type BrowserActionCommandWaiter = {
-  resolve: (result: BrowserActionResult) => void;
+  resolve: (result: BrowserActionResult | undefined) => void;
   timer: ReturnType<typeof setTimeout>;
 };
 
@@ -41,6 +41,7 @@ export function resolveBrowserActionCommandWaiter(
 export function clearBrowserActionCommandWaiters(waiters: Map<string, BrowserActionCommandWaiter>): void {
   for (const waiter of waiters.values()) {
     clearTimeout(waiter.timer);
+    waiter.resolve(undefined);
   }
   waiters.clear();
 }

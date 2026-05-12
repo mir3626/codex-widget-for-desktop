@@ -51,6 +51,7 @@ export async function handleBrowserBridgeMessage(message: unknown, context: Mess
   const command = await pollBrowserBridgeCommand({
     browserPerception: context.browserPerception,
     browserActions: context.browserActions,
+    browserChromeCommands: context.browserChromeCommands,
     waitMs: BROWSER_BRIDGE_WS_COMMAND_WAIT_MS
   });
   send(context.socket, { type: "browserBridge.command", command });

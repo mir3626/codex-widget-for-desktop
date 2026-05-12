@@ -36,7 +36,7 @@ for (const iconSize of ["16", "48", "128"]) {
   assertFile(path.join(extensionDir, manifest.icons?.[iconSize] ?? ""), `manifest icon ${iconSize}`);
 }
 
-for (const permission of ["activeTab", "alarms", "scripting", "storage", "tabs", "nativeMessaging"]) {
+for (const permission of ["activeTab", "alarms", "bookmarks", "scripting", "storage", "tabs", "nativeMessaging"]) {
   assertIncludes(manifest.permissions, permission, "manifest.permissions");
   assertIncludesText(listing, `\`${permission}\``, `store listing permission rationale for ${permission}`);
   assertIncludesText(reviewNotes, `\`${permission}\``, `review notes permission rationale for ${permission}`);

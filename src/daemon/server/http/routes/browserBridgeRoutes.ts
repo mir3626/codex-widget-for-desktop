@@ -8,6 +8,10 @@ import {
   type BrowserActionExecutionResult
 } from "../../../browser-action/index.js";
 import { resolveBrowserActionCommandWaiter } from "../../browser-action/commandWaiters.js";
+import {
+  recordBrowserActionCapabilityAcknowledged,
+  recordBrowserActionCapabilityResult
+} from "../../browser-action/capabilityMirror.js";
 import { recordBrowserActionAudit } from "../../browser-action/helpers.js";
 import { broadcastLedgerSnapshot } from "../../clientEvents.js";
 import { broadcast } from "../../events.js";
@@ -21,7 +25,7 @@ export async function handleBrowserBridgeRoute(
   url: URL,
   context: HttpRouteContext
 ): Promise<boolean> {
-  const { browserExtensionBridge, browserPerception, browserActions, browserActionCommandWaiters, clients, providers, storage } = context;
+  const { browserExtensionBridge, browserPerception, browserActions, browserChromeCommands, browserActionCommandWaiters, clients, providers, storage } = context;
 
   if (request.method === "POST" && url.pathname === "/browser-action/extension/heartbeat") {
     try {
@@ -59,6 +63,7 @@ export async function handleBrowserBridgeRoute(
     const command = await pollBrowserBridgeCommand({
       browserPerception,
       browserActions,
+      browserChromeCommands,
       waitMs: readPollWaitMs(url.searchParams.get("waitMs"))
     });
     writeJsonResponse(response, 200, { ok: true, command });
@@ -88,6 +93,12 @@ export async function handleBrowserBridgeRoute(
       }
       const result = browserActions.acknowledgeExtensionCommand(requestId);
       if (result) {
+        recordBrowserActionCapabilityAcknowledged({
+          storage,
+          clients,
+          requestId,
+          result
+        });
         broadcast(clients, {
           type: "browserAction.progress",
           actionSessionId: result.actionSessionId,
@@ -166,6 +177,13 @@ export async function handleBrowserBridgeRoute(
       const payload = JSON.parse(await readRequestBody(request, 512 * 1024)) as BrowserActionExecutionResult;
       const completed = browserActions.completeExtensionCommand(payload);
       recordBrowserActionAudit(storage, completed.audit);
+      recordBrowserActionCapabilityResult({
+        storage,
+        clients,
+        result: completed.result,
+        requestId: payload.requestId,
+        sessionId: resolveClientSessionId(storage, completed.session.sessionId)
+      });
       resolveBrowserActionCommandWaiter(browserActionCommandWaiters, payload.requestId, completed.result);
       broadcast(clients, {
         type: "browserAction.result",
@@ -178,6 +196,37 @@ export async function handleBrowserBridgeRoute(
       writeJsonResponse(response, 400, {
         ok: false,
         error: error instanceof Error ? error.message : "Invalid browser action result."
+      });
+    }
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/browser-action/extension/browser-chrome-result") {
+    try {
+      const payload = JSON.parse(await readRequestBody(request, 512 * 1024)) as {
+        requestId?: string;
+        ok?: boolean;
+        output?: unknown;
+        error?: string;
+        metadata?: Record<string, unknown>;
+      };
+      const requestId = typeof payload.requestId === "string" ? payload.requestId.trim() : "";
+      if (!requestId) {
+        writeJsonResponse(response, 400, { ok: false, error: "Browser Chrome result requires requestId." });
+        return true;
+      }
+      const completed = browserChromeCommands.complete({
+        requestId,
+        ok: Boolean(payload.ok),
+        output: payload.output,
+        error: typeof payload.error === "string" ? payload.error : undefined,
+        metadata: payload.metadata && typeof payload.metadata === "object" ? payload.metadata : undefined
+      });
+      writeJsonResponse(response, 200, { ok: true, completed });
+    } catch (error) {
+      writeJsonResponse(response, 400, {
+        ok: false,
+        error: error instanceof Error ? error.message : "Invalid Browser Chrome result."
       });
     }
     return true;
@@ -236,16 +285,17 @@ function browserBridgeActiveTabSignature(status: BrowserExtensionBridgeStatus): 
 export async function pollBrowserBridgeCommand(input: {
   browserPerception: HttpRouteContext["browserPerception"];
   browserActions: HttpRouteContext["browserActions"];
+  browserChromeCommands: HttpRouteContext["browserChromeCommands"];
   waitMs: number;
 }) {
-  const immediate = input.browserActions.pollExtensionCommand() ?? input.browserPerception.pollExtensionCommand() ?? null;
+  const immediate = input.browserActions.pollExtensionCommand() ?? input.browserChromeCommands.poll() ?? input.browserPerception.pollExtensionCommand() ?? null;
   if (immediate || input.waitMs <= 0) {
     return immediate;
   }
   const deadline = Date.now() + input.waitMs;
   while (Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, 100));
-    const command = input.browserActions.pollExtensionCommand() ?? input.browserPerception.pollExtensionCommand() ?? null;
+    const command = input.browserActions.pollExtensionCommand() ?? input.browserChromeCommands.poll() ?? input.browserPerception.pollExtensionCommand() ?? null;
     if (command) {
       return command;
     }

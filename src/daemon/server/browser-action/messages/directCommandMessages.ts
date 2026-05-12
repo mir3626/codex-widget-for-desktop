@@ -17,6 +17,12 @@ import {
   recordBrowserActionAudit
 } from "../helpers.js";
 import {
+  recordBrowserActionCapabilityApproval,
+  recordBrowserActionCapabilityCommandQueued,
+  recordBrowserActionCapabilityObserve,
+  recordBrowserActionCapabilityResult
+} from "../capabilityMirror.js";
+import {
   readBrowserSourceFromSnapshot,
   summarizeBrowserActionPlan
 } from "../presentation.js";
@@ -124,6 +130,14 @@ export async function handleBrowserActionDirectCommandMessage(
     });
 
     if (command.kind === "observe") {
+      recordBrowserActionCapabilityObserve({
+        storage,
+        clients,
+        requestId,
+        actionSessionId: session.id,
+        sessionId,
+        outputJson: summarizeBrowserObservation(observed.observation)
+      });
       recordRuntimeActivity(storage, sessionId, "info", "browser-action", "Direct Browser Action observe completed", summarizeBrowserObservation(observed.observation));
       broadcastLedgerSnapshot(clients, storage, sessionId);
       return true;
@@ -146,6 +160,16 @@ export async function handleBrowserActionDirectCommandMessage(
     broadcast(clients, { type: "browserAction.plan", actionSessionId: execution.session.id, plan: summarizeBrowserActionPlan(execution.plan) });
     if (execution.approval) {
       const latestResult = execution.results.at(-1);
+      recordBrowserActionCapabilityApproval({
+        storage,
+        clients,
+        requestId,
+        actionSessionId: execution.session.id,
+        sessionId,
+        action: execution.approval.action,
+        result: latestResult,
+        approvalId: execution.approval.id
+      });
       broadcast(clients, {
         type: "interaction.required",
         interaction: {
@@ -164,6 +188,13 @@ export async function handleBrowserActionDirectCommandMessage(
         detail: summarizeBrowserActionPlan(execution.plan)
       });
     } else if (execution.command) {
+      recordBrowserActionCapabilityCommandQueued({
+        storage,
+        clients,
+        command: execution.command,
+        sessionId,
+        result: execution.results.at(-1)
+      });
       broadcast(clients, {
         type: "browserAction.progress",
         actionSessionId: execution.session.id,
@@ -171,6 +202,16 @@ export async function handleBrowserActionDirectCommandMessage(
         detail: { requestId: execution.command.requestId, action: execution.command.action.type, plan: summarizeBrowserActionPlan(execution.plan) }
       });
     } else {
+      const latestResult = execution.results.at(-1);
+      if (latestResult) {
+        recordBrowserActionCapabilityResult({
+          storage,
+          clients,
+          result: latestResult,
+          requestId,
+          sessionId
+        });
+      }
       broadcast(clients, {
         type: "browserAction.result",
         actionSessionId: execution.session.id,

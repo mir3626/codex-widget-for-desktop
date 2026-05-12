@@ -64,6 +64,14 @@ try {
   });
   const readResult = await waitFor((event) => event.type === "browserAction.result" && event.result?.action === "read", "read result");
   assertEqual(readResult.result.status, "succeeded", "read status");
+  const readCapability = await waitFor(
+    (event) => event.type === "capability.job" &&
+      event.kind === "browser_action" &&
+      event.status === "completed" &&
+      event.detail?.resultId === readResult.result.id,
+    "read capability completion"
+  );
+  assertEqual(readCapability.jobId, `browser-action:${readResult.result.id}`, "read capability job id");
 
   send({
     type: "browserAction.execute",
@@ -74,9 +82,27 @@ try {
   const command = await pollBrowserActionCommand();
   assertEqual(command?.requestId, queued.detail?.requestId, "queued command request id");
   assertEqual(command?.target?.id, "open-details", "queued command target");
+  const clickCapabilityQueued = await waitFor(
+    (event) => event.type === "capability.job" &&
+      event.kind === "browser_action" &&
+      event.status === "queued" &&
+      event.detail?.requestId === command.requestId,
+    "click capability queued"
+  );
+  assertEqual(clickCapabilityQueued.jobId, `browser-action:${command.requestId}`, "click capability queued job id");
   await postBrowserActionResult(command.requestId, true, beforeSnapshot, afterSnapshot);
   const clickResult = await waitFor((event) => event.type === "browserAction.result" && event.result?.action === "click", "click result");
   assertEqual(clickResult.result.status, "succeeded", "click status");
+  const clickCapabilityCompleted = await waitFor(
+    (event) => event.type === "capability.job" &&
+      event.jobId === `browser-action:${command.requestId}` &&
+      event.status === "completed",
+    "click capability completed"
+  );
+  assertEqual(clickCapabilityCompleted.detail?.resultId, command.resultId, "click capability result id");
+  const clickCapabilityJob = await fetchCapabilityJob(command.requestId);
+  assertEqual(clickCapabilityJob.job.status, "completed", "stored click capability status");
+  assertEqual(clickCapabilityJob.job.kind, "browser_action", "stored click capability kind");
 
   send({
     type: "browserAction.execute",
@@ -85,6 +111,13 @@ try {
     action: { type: "click", target: { kind: "element_id", id: "delete-repo" } }
   });
   const approval = await waitFor((event) => event.type === "interaction.required" && event.interaction?.title === "Browser action approval", "browser action approval");
+  await waitFor(
+    (event) => event.type === "capability.job" &&
+      event.kind === "browser_action" &&
+      event.status === "awaiting_approval" &&
+      event.detail?.approvalId === approval.interaction.id,
+    "approval capability awaiting approval"
+  );
   send({ type: "interaction.respond", id: approval.interaction.id, decision: "approve" });
   const approvedQueued = await waitFor(
     (event) => event.type === "browserAction.progress" &&
@@ -96,9 +129,21 @@ try {
   const approvedCommand = await pollBrowserActionCommand();
   assertEqual(approvedCommand?.requestId, approvedQueued.detail?.requestId, "approved command request id");
   assertEqual(approvedCommand?.target?.id, "delete-repo", "approved command target");
+  await waitFor(
+    (event) => event.type === "capability.job" &&
+      event.jobId === `browser-action:${approvedCommand.requestId}` &&
+      event.status === "queued",
+    "approved command capability queued"
+  );
   await postBrowserActionResult(approvedCommand.requestId, true, beforeSnapshot, createSnapshot("deleted"));
   const approvedResult = await waitFor((event) => event.type === "browserAction.result" && event.result?.id === approvedCommand.resultId, "approved result");
   assertEqual(approvedResult.result.status, "succeeded", "approved result status");
+  await waitFor(
+    (event) => event.type === "capability.job" &&
+      event.jobId === `browser-action:${approvedCommand.requestId}` &&
+      event.status === "completed",
+    "approved command capability completed"
+  );
 
   send({
     type: "browserAction.execute",
@@ -748,6 +793,14 @@ async function postBrowserActionResult(requestId, ok, before, after, error) {
   if (!response.ok) {
     throw new Error(`Browser Action result POST failed (${response.status}).`);
   }
+}
+
+async function fetchCapabilityJob(requestId) {
+  const response = await fetch(`${baseUrl}/capabilities/jobs/browser-action:${encodeURIComponent(requestId)}`);
+  if (!response.ok) {
+    throw new Error(`Capability job GET failed (${response.status}).`);
+  }
+  return await response.json();
 }
 
 function send(message) {

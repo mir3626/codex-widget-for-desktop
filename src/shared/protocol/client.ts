@@ -13,6 +13,10 @@ import type {
   BrowserActionSourceRequest
 } from "./browserAction.js";
 import type {
+  CapabilityCancelInput,
+  CapabilityStartInput
+} from "./capability.js";
+import type {
   ExecutionPermissionDecision,
   RuntimeInteractionDecision
 } from "./runtime.js";
@@ -233,6 +237,25 @@ export type ClientMessage =
   | {
       type: "browserAction.cancel";
       actionSessionId: string;
+    }
+  | {
+      type: "capability.start";
+      requestId?: string;
+      job: CapabilityStartInput;
+    }
+  | {
+      type: "capability.cancel";
+      requestId?: string;
+      cancel: CapabilityCancelInput;
+    }
+  | {
+      type: "capability.approve";
+      requestId?: string;
+      jobId: string;
+    }
+  | {
+      type: "capability.list";
+      sessionId?: string;
     }
   | {
       type: "terminal.input";

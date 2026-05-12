@@ -9,6 +9,7 @@ Codex Widget Browser Bridge sends page context only for approved sites and only 
 - Visible page text and labels from interactive elements
 - Structured metadata for interactive elements such as role, label, selector, bounding box, enabled state, and low-level risk hints
 - Before/after observations for typed Browser Action execution
+- Bookmark metadata only when the user or daemon starts an explicit browser-chrome bookmark capability
 
 Password, token, payment, cookie, and other credential values are not persisted by the extension. Sensitive input values are redacted before page context leaves the tab.
 

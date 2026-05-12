@@ -3,6 +3,10 @@ import type {
   BrowserActionAdapterStatus,
   BrowserActionPolicySummary,
   BrowserExtensionBridgeStatus,
+  CapabilityEventPhase,
+  CapabilityJobKind,
+  CapabilityJobStatus,
+  CapabilityJobSummary,
   RuntimeInteraction,
   ScreenCrop
 } from "../shared/protocol.js";
@@ -74,6 +78,36 @@ export type BrowserActionUiState = {
   progress: Array<{ id: string; status: string; detail?: unknown }>;
   error: string | null;
   safetyMode: "read_only" | "ask_before_action" | "auto_safe_actions" | "full_control_dev";
+};
+
+export type CapabilityJobLogEntry = {
+  id: string;
+  jobId: string;
+  transactionId: string;
+  kind: CapabilityJobKind;
+  status: CapabilityJobStatus;
+  phase?: CapabilityEventPhase;
+  summary: string;
+  detail?: unknown;
+  createdAt: string;
+};
+
+export type CapabilityJobResourcePreview = {
+  id: string;
+  jobId: string;
+  transactionId: string;
+  resourceId: string;
+  role: string;
+  mime: string;
+  preview?: unknown;
+  createdAt: string;
+};
+
+export type CapabilityJobsUiState = {
+  jobs: CapabilityJobSummary[];
+  eventsByJobId: Record<string, CapabilityJobLogEntry[]>;
+  resourcesByJobId: Record<string, CapabilityJobResourcePreview[]>;
+  lastUpdatedAt: string | null;
 };
 
 export type SpeechRecognitionResultLike = {

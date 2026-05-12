@@ -15,6 +15,10 @@ import {
 } from "../clientEvents.js";
 import { respondToSemanticTargetClarification } from "../browser-action/clarification.js";
 import { waitForBrowserActionCommandResult } from "../browser-action/commandWaiters.js";
+import {
+  recordBrowserActionCapabilityCommandQueued,
+  recordBrowserActionCapabilityResult
+} from "../browser-action/capabilityMirror.js";
 import { readBrowserActionPromptCommandWaitMs } from "../browser-action/promptPlan.js";
 import { broadcast, send } from "../events.js";
 import { recordRuntimeActivity } from "../runtimeActivity.js";
@@ -71,6 +75,13 @@ export async function handleInteractionMessage(message: ClientMessage, context: 
         });
       }
       if (browserActionResponse.command && session) {
+        recordBrowserActionCapabilityCommandQueued({
+          storage,
+          clients,
+          command: browserActionResponse.command,
+          sessionId: resolveClientSessionId(storage, session.sessionId),
+          result: browserActionResponse.result
+        });
         broadcast(clients, {
           type: "browserAction.progress",
           actionSessionId: session.id,
@@ -93,6 +104,13 @@ export async function handleInteractionMessage(message: ClientMessage, context: 
         });
       }
       if (browserActionResponse.result && session && !browserActionResponse.command) {
+        recordBrowserActionCapabilityResult({
+          storage,
+          clients,
+          result: browserActionResponse.result,
+          requestId: message.id,
+          sessionId: resolveClientSessionId(storage, session.sessionId)
+        });
         broadcast(clients, {
           type: "browserAction.result",
           actionSessionId: session.id,
@@ -174,6 +192,13 @@ async function settleApprovedBrowserActionCommand(input: {
   if (!result) {
     return;
   }
+  recordBrowserActionCapabilityResult({
+    storage: input.storage,
+    clients: input.clients,
+    result,
+    requestId: input.command.requestId,
+    sessionId: input.sessionId
+  });
   recordRuntimeActivity(input.storage, input.sessionId, result.status === "succeeded" ? "info" : "warn", "browser-action", "Approved Browser Action finished", summarizeBrowserActionResult(result));
   broadcast(input.clients, {
     type: "browserAction.result",

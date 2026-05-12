@@ -1,0 +1,330 @@
+{
+  "date": "2026-05-12",
+  "daemonPort": 31886,
+  "matrix": "docs/plans/windows-computer-use-high-risk-dogfood-matrix.md",
+  "scenarios": [
+    {
+      "id": "settings.theme.read",
+      "surface": "Windows Settings",
+      "risk": "read_only",
+      "status": "passed",
+      "notes": [
+        "Read current theme state only; no Windows setting was changed."
+      ],
+      "capabilityJobs": [
+        {
+          "id": "dogfood-settings-theme-read-1778587853027",
+          "kind": "terminal",
+          "status": "completed",
+          "priority": "interactive",
+          "requestedBy": "direct_ui",
+          "verification": {
+            "status": "passed",
+            "class": "terminal_state",
+            "reason": "Terminal helper completed with output.",
+            "evidence": {
+              "ok": true,
+              "outputKeys": [
+                "ok",
+                "exitCode",
+                "signal",
+                "stdout",
+                "stderr",
+                "shell",
+                "truncated"
+              ]
+            }
+          },
+          "diagnostics": {
+            "jobId": "dogfood-settings-theme-read-1778587853027",
+            "transactionId": "capability-transaction-02a9bd14-0dcb-4625-ba5c-90068bf27eb9",
+            "kind": "terminal",
+            "status": "completed",
+            "timing": {
+              "queuedMs": 21,
+              "runningMs": 171,
+              "totalMs": 192
+            },
+            "resources": [],
+            "locks": []
+          },
+          "resources": 0,
+          "locks": 0
+        }
+      ],
+      "theme": {
+        "AppsUseLightTheme": 1,
+        "SystemUsesLightTheme": 0,
+        "rawPreview": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\r\n    ColorPrevalence    REG_DWORD    0x0\r\n    EnableTransparency    REG_DWORD    0x1\r\n    AppsUseLightTheme    REG_DWORD    0x1\r\n    SystemUsesLightTheme    REG_DWORD    0x0"
+      }
+    },
+    {
+      "id": "browser.bookmark.crud",
+      "surface": "Browser Chrome",
+      "risk": "reversible_side_effect",
+      "status": "passed",
+      "notes": [
+        "Uses simulated Browser Bridge command/result exchange against the daemon command bridge."
+      ],
+      "capabilityJobs": [
+        {
+          "id": "dogfood-browser-bookmark-list",
+          "kind": "browser_chrome",
+          "status": "completed",
+          "priority": "interactive",
+          "requestedBy": "direct_ui",
+          "verification": {
+            "status": "passed",
+            "class": "browser_bookmark_effect",
+            "reason": "bookmark_tree_read",
+            "evidence": {
+              "ok": true,
+              "metadata": {
+                "verification": "bookmark_tree_read",
+                "mode": "dogfood_simulated_bridge"
+              },
+              "outputKeys": [
+                "requestId",
+                "ok",
+                "output",
+                "error"
+              ]
+            }
+          },
+          "diagnostics": {
+            "jobId": "dogfood-browser-bookmark-list",
+            "transactionId": "capability-transaction-33ae6fa4-9ed4-471c-a9c5-b585bffd2554",
+            "kind": "browser_chrome",
+            "status": "completed",
+            "timing": {
+              "queuedMs": 9,
+              "runningMs": 13,
+              "totalMs": 22
+            },
+            "resources": [],
+            "locks": []
+          },
+          "resources": 0,
+          "locks": 0
+        },
+        {
+          "id": "dogfood-browser-bookmark-create",
+          "kind": "browser_chrome",
+          "status": "completed",
+          "priority": "interactive",
+          "requestedBy": "direct_ui",
+          "verification": {
+            "status": "passed",
+            "class": "browser_bookmark_effect",
+            "reason": "bookmark_created",
+            "evidence": {
+              "ok": true,
+              "metadata": {
+                "verification": "bookmark_created",
+                "bookmarkId": "dogfood-bookmark-1778587853243",
+                "mode": "dogfood_simulated_bridge"
+              },
+              "outputKeys": [
+                "requestId",
+                "ok",
+                "output",
+                "error"
+              ]
+            }
+          },
+          "diagnostics": {
+            "jobId": "dogfood-browser-bookmark-create",
+            "transactionId": "capability-transaction-bcbc358a-a31b-4411-85f1-584a584ed458",
+            "kind": "browser_chrome",
+            "status": "completed",
+            "timing": {
+              "queuedMs": 20,
+              "runningMs": 8,
+              "totalMs": 28
+            },
+            "resources": [],
+            "locks": []
+          },
+          "resources": 0,
+          "locks": 0
+        },
+        {
+          "id": "dogfood-browser-bookmark-update",
+          "kind": "browser_chrome",
+          "status": "completed",
+          "priority": "interactive",
+          "requestedBy": "direct_ui",
+          "verification": {
+            "status": "passed",
+            "class": "browser_bookmark_effect",
+            "reason": "bookmark_updated",
+            "evidence": {
+              "ok": true,
+              "metadata": {
+                "verification": "bookmark_updated",
+                "bookmarkId": "dogfood-bookmark-1778587853243",
+                "mode": "dogfood_simulated_bridge"
+              },
+              "outputKeys": [
+                "requestId",
+                "ok",
+                "output",
+                "error"
+              ]
+            }
+          },
+          "diagnostics": {
+            "jobId": "dogfood-browser-bookmark-update",
+            "transactionId": "capability-transaction-30f2c003-dbc0-4d10-af6d-d06903eac79e",
+            "kind": "browser_chrome",
+            "status": "completed",
+            "timing": {
+              "queuedMs": 20,
+              "runningMs": 8,
+              "totalMs": 28
+            },
+            "resources": [],
+            "locks": []
+          },
+          "resources": 0,
+          "locks": 0
+        },
+        {
+          "id": "dogfood-browser-bookmark-open",
+          "kind": "browser_chrome",
+          "status": "completed",
+          "priority": "interactive",
+          "requestedBy": "direct_ui",
+          "verification": {
+            "status": "passed",
+            "class": "browser_bookmark_effect",
+            "reason": "bookmark_opened",
+            "evidence": {
+              "ok": true,
+              "metadata": {
+                "verification": "bookmark_opened",
+                "bookmarkId": "dogfood-bookmark-1778587853243",
+                "mode": "dogfood_simulated_bridge"
+              },
+              "outputKeys": [
+                "requestId",
+                "ok",
+                "output",
+                "error"
+              ]
+            }
+          },
+          "diagnostics": {
+            "jobId": "dogfood-browser-bookmark-open",
+            "transactionId": "capability-transaction-6fe2ec95-040b-458e-a50d-7e5ca46a583b",
+            "kind": "browser_chrome",
+            "status": "completed",
+            "timing": {
+              "queuedMs": 19,
+              "runningMs": 8,
+              "totalMs": 27
+            },
+            "resources": [],
+            "locks": []
+          },
+          "resources": 0,
+          "locks": 0
+        },
+        {
+          "id": "dogfood-browser-bookmark-remove",
+          "kind": "browser_chrome",
+          "status": "completed",
+          "priority": "interactive",
+          "requestedBy": "direct_ui",
+          "verification": {
+            "status": "passed",
+            "class": "browser_bookmark_effect",
+            "reason": "bookmark_removed",
+            "evidence": {
+              "ok": true,
+              "metadata": {
+                "verification": "bookmark_removed",
+                "bookmarkId": "dogfood-bookmark-1778587853243",
+                "mode": "dogfood_simulated_bridge"
+              },
+              "outputKeys": [
+                "requestId",
+                "ok",
+                "output",
+                "error"
+              ]
+            }
+          },
+          "diagnostics": {
+            "jobId": "dogfood-browser-bookmark-remove",
+            "transactionId": "capability-transaction-cb69d56f-c8bc-4757-b1c5-074d34bec8ac",
+            "kind": "browser_chrome",
+            "status": "completed",
+            "timing": {
+              "queuedMs": 20,
+              "runningMs": 7,
+              "totalMs": 27
+            },
+            "resources": [],
+            "locks": []
+          },
+          "resources": 0,
+          "locks": 0
+        }
+      ],
+      "transcript": [
+        {
+          "jobId": "dogfood-browser-bookmark-list",
+          "command": "bookmark.list",
+          "approvalRequired": false,
+          "verification": "passed"
+        },
+        {
+          "jobId": "dogfood-browser-bookmark-create",
+          "command": "bookmark.create",
+          "approvalRequired": true,
+          "verification": "passed"
+        },
+        {
+          "jobId": "dogfood-browser-bookmark-update",
+          "command": "bookmark.update",
+          "approvalRequired": true,
+          "verification": "passed"
+        },
+        {
+          "jobId": "dogfood-browser-bookmark-open",
+          "command": "bookmark.open",
+          "approvalRequired": true,
+          "verification": "passed"
+        },
+        {
+          "jobId": "dogfood-browser-bookmark-remove",
+          "command": "bookmark.remove",
+          "approvalRequired": true,
+          "verification": "passed"
+        }
+      ],
+      "rollback": {
+        "removedBookmarkId": "dogfood-bookmark-1778587853243"
+      }
+    },
+    {
+      "id": "terminal.credential.blocked",
+      "surface": "Terminal",
+      "risk": "credential_sensitive",
+      "status": "passed",
+      "blockedMessage": "Refusing to persist or execute a terminal capability command containing credential-like text.",
+      "persisted": false,
+      "notes": [
+        "Credential-like terminal command should be rejected before capability job persistence."
+      ]
+    }
+  ],
+  "acceptance": {
+    "safeBaselineOnly": true,
+    "realWindowsSettingMutation": false,
+    "allExecutedScenariosPassed": true,
+    "capabilityDetailsCaptured": true,
+    "credentialLikeTerminalBlockedBeforePersistence": true
+  }
+}

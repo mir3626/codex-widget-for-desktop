@@ -4,7 +4,9 @@ import { createPortal } from "react-dom";
 import type { ActivityLogEntry, LedgerSnapshot, ProviderSnapshotSummary } from "../../shared/protocol.js";
 import { useFloatingSurface } from "../hooks/useFloatingSurface";
 import type { LogLine } from "../types";
+import type { CapabilityJobsUiState } from "../types";
 import { formatActivityTime } from "../utils/format";
+import { CapabilityJobsPanel } from "./CapabilityJobsPanel";
 import { ProviderSnapshotRow } from "./ProviderSnapshotRow";
 
 type ActivityLogProps = {
@@ -13,7 +15,12 @@ type ActivityLogProps = {
   showDetails: boolean;
   activityBadgeCount: number;
   ledger: LedgerSnapshot | null;
+  capabilityJobs: CapabilityJobsUiState;
+  daemonPort: string;
   providerSnapshots: ProviderSnapshotSummary[];
+  onApproveCapabilityJob: (jobId: string) => void;
+  onCancelCapabilityJob: (jobId: string) => void;
+  onRefreshCapabilityJobs: () => void;
   onToggleDetails: () => void;
   onRefresh: () => void;
 };
@@ -24,7 +31,12 @@ export function ActivityLog({
   showDetails,
   activityBadgeCount,
   ledger,
+  capabilityJobs,
+  daemonPort,
   providerSnapshots,
+  onApproveCapabilityJob,
+  onCancelCapabilityJob,
+  onRefreshCapabilityJobs,
   onToggleDetails,
   onRefresh
 }: ActivityLogProps) {
@@ -84,6 +96,13 @@ export function ActivityLog({
                   <RotateCw size={12} />
                 </button>
               </div>
+              <CapabilityJobsPanel
+                state={capabilityJobs}
+                daemonPort={daemonPort}
+                onApprove={onApproveCapabilityJob}
+                onCancel={onCancelCapabilityJob}
+                onRefresh={onRefreshCapabilityJobs}
+              />
               {(ledger?.activities ?? []).slice(0, 12).map((activity) => (
                 <div key={activity.id} className={`activity-detail-row ${activity.level}`}>
                   <span>{formatActivityTime(activity.createdAt)}</span>

@@ -12,10 +12,10 @@ import type { MessageRouterContext } from "./context.js";
 const MAX_VISION_RECORDING_DATA_URL_CHARS = 16 * 1024 * 1024;
 
 export async function handleProviderMessage(message: ClientMessage, context: MessageRouterContext): Promise<boolean> {
-  const { socket, clients, storage, daemonPort } = context;
+  const { socket, clients, storage, daemonPort, capabilityRuntime } = context;
 
   if (message.type === "provider.captureScreen") {
-    void captureScreenFromHelper(message.description, message.crop, clients, daemonPort);
+    void captureScreenFromHelper(message.description, message.crop, clients, daemonPort, capabilityRuntime);
     return true;
   }
 

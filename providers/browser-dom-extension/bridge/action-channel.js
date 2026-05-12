@@ -6,7 +6,8 @@ import {
   DEFAULT_BROWSER_ACTION_POLL_PATH,
   DEFAULT_BROWSER_ACTION_RESULT_PATH
 } from "./config.js";
-import { resolveDaemonUrl } from "./settings.js";
+import { executeBrowserChromeCommand } from "./browser-chrome.js";
+import { readError, resolveDaemonUrl } from "./settings.js";
 import { setBridgeBadge } from "./badge.js";
 import { readTabPermission } from "./tab-state.js";
 
@@ -46,6 +47,10 @@ export async function pollAndExecuteBrowserAction(tab, settings, options = {}) {
   const command = payload?.command;
   if (command?.kind === "observe_now") {
     await executeBrowserPerceptionObserveCommand(tab, settings, permission, command);
+    return true;
+  }
+  if (command?.kind === "browser_chrome") {
+    await executeBrowserChromeCommand(tab, settings, command);
     return true;
   }
   if (!command?.requestId || !command?.action) {
