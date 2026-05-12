@@ -1724,10 +1724,11 @@ Runtime state: the dev widget is running. Renderer/Vite listens on `127.0.0.1:51
 
 ## Latest Update: Push/Refactor Prep
 
-Prepared the current working tree for push on `main`.
+Prepared and pushed the current working tree on `main`.
 
 - Added `docs/plans/post-daemon-foundation-refactor-prep.md` to define the next behavior-preserving refactor pass.
 - The recommended refactor order is daemon capability registration extraction, Activity/Capability stylesheet split, optional renderer capability hook extraction, then separate live dogfood expansion.
 - The prep explicitly keeps live Windows OS mutation and release signing hardening out of the first refactor pass.
+- Pushed implementation commit `98096d8` (`Add Windows computer-use capability foundation`) to `origin/main`.
 
-Pre-push verification from the previous closure remains valid: `npm run lint`, `npm run build:renderer`, `npm run dogfood:windows-computer-use`, focused capability smokes, `npm run smoke:all`, `git diff --check`, UTF-8/mojibake scans, and `npm run vibe:checkpoint` passed. Run checkpoint again after the push record is appended.
+Verification from the previous closure remains valid: `npm run lint`, `npm run build:renderer`, `npm run dogfood:windows-computer-use`, focused capability smokes, `npm run smoke:all`, `git diff --check`, UTF-8/mojibake scans, and `npm run vibe:checkpoint` passed.
