@@ -32,6 +32,7 @@ export function useBrowserActionController(input: {
     planSummary: null,
     resultSummary: null,
     diagnosticsSummary: null,
+    diagnosticsHistory: [],
     progress: [],
     error: null,
     safetyMode: "auto_safe_actions"

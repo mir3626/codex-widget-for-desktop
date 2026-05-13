@@ -29,6 +29,7 @@ import { useWidgetShellController } from "./hooks/useWidgetShellController";
 import { useVoicePromptController } from "./hooks/useVoicePromptController";
 import { useWidgetRuntimeDerivedState } from "./hooks/useWidgetRuntimeDerivedState";
 import { usePromptSubmission } from "./hooks/usePromptSubmission";
+import { useWidgetModeMenus } from "./hooks/useWidgetModeMenus";
 import { handleWidgetServerEvent } from "./runtime/serverEvents";
 import { WidgetRuntimeView } from "./WidgetRuntimeView";
 
@@ -298,24 +299,15 @@ export function WidgetRuntime() {
     appendLog,
     setMode
   });
-
-  useDismissableOverlay({
-    open: showBrowserActionMenu,
-    safeSelector: ".mode-row, .browser-action-menu",
-    onDismiss: () => setShowBrowserActionMenu(false)
-  });
-
-  useEffect(() => {
-    if (!showBrowserActionMenu) {
-      return;
-    }
-    send({ type: "browserAction.adapters", actionSessionId: browserAction.actionSessionId ?? undefined });
-  }, [showBrowserActionMenu]);
-
-  useDismissableOverlay({
-    open: showVisionMenu,
-    safeSelector: ".mode-row, .vision-action-wrap, .vision-action-menu",
-    onDismiss: () => setShowVisionMenu(false)
+  const { selectMode } = useWidgetModeMenus({
+    mode,
+    setMode,
+    showBrowserActionMenu,
+    setShowBrowserActionMenu,
+    showVisionMenu,
+    setShowVisionMenu,
+    browserActionSessionId: browserAction.actionSessionId,
+    send
   });
 
   useDismissableOverlay({
@@ -407,33 +399,6 @@ export function WidgetRuntime() {
       action,
       decision
     });
-  }
-
-  function selectMode(nextMode: WidgetMode) {
-    if (nextMode === mode) {
-      if (nextMode === "browser") {
-        setShowBrowserActionMenu((current) => !current);
-      }
-      return;
-    }
-
-    if (nextMode === "screen") {
-      setMode("screen");
-      setShowVisionMenu(true);
-      setShowBrowserActionMenu(false);
-      return;
-    }
-
-    if (nextMode === "browser") {
-      setMode("browser");
-      setShowBrowserActionMenu(true);
-      setShowVisionMenu(false);
-      return;
-    }
-
-    setShowVisionMenu(false);
-    setShowBrowserActionMenu(false);
-    setMode(nextMode);
   }
 
   function runTerminalQuickAction(command: string) {

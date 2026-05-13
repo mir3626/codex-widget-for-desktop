@@ -21,7 +21,10 @@ const corpus = (await readFile(corpusPath, "utf8"))
 
 const suite = createSemanticGoldenTraceSuite();
 const suiteById = new Map(suite.map((testCase) => [testCase.id, testCase]));
-for (const entry of corpus) {
+const fixtureEntries = corpus.filter((entry) => entry.source === "fixture");
+const liveEntries = corpus.filter((entry) => String(entry.source ?? "").startsWith("live-"));
+
+for (const entry of fixtureEntries) {
   assert.equal(typeof entry.id, "string", "corpus entry id");
   assert.equal(suiteById.has(entry.id), true, `corpus entry ${entry.id} must map to a golden trace case`);
   const expected = suiteById.get(entry.id)?.expect;
@@ -34,8 +37,32 @@ for (const entry of corpus) {
   }
 }
 
-const missing = suite.filter((testCase) => !corpus.some((entry) => entry.id === testCase.id));
+const missing = suite.filter((testCase) => !fixtureEntries.some((entry) => entry.id === testCase.id));
 assert.deepEqual(missing.map((item) => item.id), [], "semantic corpus should cover every golden trace case");
+
+const liveIds = new Set();
+const liveIntentClasses = new Set();
+for (const entry of liveEntries) {
+  assert.equal(typeof entry.id, "string", "live trace id");
+  assert.equal(liveIds.has(entry.id), false, `duplicate live trace id: ${entry.id}`);
+  liveIds.add(entry.id);
+  assert.equal(typeof entry.reportPath, "string", `${entry.id} reportPath`);
+  assert.equal(typeof entry.scenarioId, "string", `${entry.id} scenarioId`);
+  assert.equal(typeof entry.runId, "string", `${entry.id} runId`);
+  assert.equal(entry.redaction, "content_redacted", `${entry.id} redaction marker`);
+  assert.ok(Array.isArray(entry.semanticEvidence) && entry.semanticEvidence.length > 0, `${entry.id} semantic evidence tags`);
+  assert.equal(hasSensitiveLiteral(entry), false, `${entry.id} should not store raw secrets or private page content`);
+  liveIntentClasses.add(entry.intentClass);
+}
+
+for (const requiredIntent of [
+  "read_current_page",
+  "history_navigation",
+  "search_form_fill_submit",
+  "representative_content_selection"
+]) {
+  assert.equal(liveIntentClasses.has(requiredIntent), true, `missing live calibration intent class: ${requiredIntent}`);
+}
 
 const results = runSemanticGoldenTraceSuite({ cases: suite });
 const metrics = summarizeSemanticGoldenTraceMetrics(results);
@@ -45,4 +72,9 @@ for (const [mode, bucket] of Object.entries(metrics.byMode)) {
   assert.equal(bucket.passRate, 1, `semantic trace corpus mode ${mode} pass rate`);
 }
 
-console.log(`semantic trace corpus smoke ok: cases=${metrics.total} passRate=${metrics.passRate}`);
+console.log(`semantic trace corpus smoke ok: cases=${metrics.total} live=${liveEntries.length} passRate=${metrics.passRate}`);
+
+function hasSensitiveLiteral(entry) {
+  const text = JSON.stringify(entry).toLowerCase();
+  return /\b(password|token|cookie|payment|secret|credential)\b/.test(text);
+}

@@ -909,6 +909,39 @@
   white-space: pre-wrap;
 }
 
+.browser-action-debug-list {
+  display: grid;
+  gap: 5px;
+  padding: 6px 8px 8px;
+  border-top: 1px solid var(--border);
+}
+
+.browser-action-debug-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content max-content;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  background: var(--surface-quiet);
+}
+
+.browser-action-debug-row strong,
+.browser-action-debug-row span,
+.browser-action-debug-row small {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-action-debug-row span,
+.browser-action-debug-row small {
+  color: var(--muted);
+}
+
 .browser-action-error {
   margin: 0;
   color: var(--failed-text);

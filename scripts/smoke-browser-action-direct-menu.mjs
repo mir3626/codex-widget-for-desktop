@@ -100,6 +100,24 @@ daemon.on("connection", (socket) => {
           { id: "extension", label: "Browser extension active tab", state: "ready", detail: "refreshed", capabilities: ["observe_dom", "click"], checkedAt: "2026-05-08T00:00:01.000Z" }
         ]
       }));
+      socket.send(JSON.stringify({
+        type: "browserExtensionBridge.status",
+        status: {
+          connected: true,
+          mode: "idle",
+          reloadRequired: true,
+          updatedAt: "2026-05-08T00:00:01.000Z",
+          activeTab: {
+            tabId: 17,
+            windowId: 3,
+            url: "https://example.test/direct-menu",
+            title: "Direct menu smoke",
+            origin: "https://example.test/*",
+            permission: "allowed"
+          },
+          nativeHost: "enabled"
+        }
+      }));
     }
   });
 });
@@ -128,6 +146,8 @@ try {
   await expectMenuText(page, "UIA helper is not installed.");
 
   await page.getByRole("menuitem", { name: "Adapter status" }).click();
+  await expectMenuText(page, "Reload bridge");
+  await expectMenuText(page, "Open the Browser Bridge popup and click Reload bridge");
   await page.getByRole("menuitem", { name: "Observe state" }).click();
   await page.getByRole("menuitem", { name: "Explain page" }).click();
   await page.getByLabel("Browser Action target").fill("Open details");

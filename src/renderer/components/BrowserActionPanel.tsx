@@ -27,6 +27,8 @@ export function BrowserActionPanel({
   const readyAdapters = state.adapters.filter((adapter) => adapter.state === "ready");
   const latestProgress = state.progress.at(-1);
   const bridge = summarizeBridgePanel(state);
+  const reviewRecords = state.diagnosticsHistory.filter((record) => record.status === "needs_review");
+  const debugExport = createBrowserActionDebugExport(state);
   return (
     <section className="browser-action-panel" aria-label="Browser Action">
       <div className="browser-action-head">
@@ -79,6 +81,21 @@ export function BrowserActionPanel({
       {state.planSummary ? <SummaryBlock title="Plan" value={state.planSummary} /> : null}
       {state.resultSummary ? <SummaryBlock title="Result" value={state.resultSummary} /> : null}
       {state.diagnosticsSummary ? <SummaryBlock title="Timing / debug" value={state.diagnosticsSummary} /> : null}
+      {reviewRecords.length > 0 ? (
+        <details className="browser-action-summary">
+          <summary>Recent failed transactions</summary>
+          <div className="browser-action-debug-list">
+            {reviewRecords.map((record) => (
+              <div key={record.id} className="browser-action-debug-row">
+                <strong>{record.planStatus ?? record.phase ?? "needs review"}</strong>
+                <span>{record.transactionId ? shortId(record.transactionId) : shortId(record.actionSessionId)}</span>
+                <small>{new Date(record.createdAt).toLocaleTimeString()}</small>
+              </div>
+            ))}
+          </div>
+        </details>
+      ) : null}
+      {debugExport ? <SummaryBlock title="Debug bundle" value={debugExport} /> : null}
       {state.error ? <p className="browser-action-error">{state.error}</p> : null}
     </section>
   );
@@ -125,6 +142,50 @@ function downloadSummary(title: string, json: string) {
   URL.revokeObjectURL(url);
 }
 
+function createBrowserActionDebugExport(state: BrowserActionUiState) {
+  if (!state.diagnosticsSummary && !state.error && state.diagnosticsHistory.length === 0) {
+    return null;
+  }
+  return {
+    schemaVersion: "browser-action-renderer-debug-export.v1",
+    exportedAt: new Date().toISOString(),
+    actionSessionId: state.actionSessionId,
+    safetyMode: state.safetyMode,
+    bridge: state.bridgeStatus
+      ? {
+          connected: state.bridgeStatus.connected,
+          mode: state.bridgeStatus.mode,
+          reloadRequired: state.bridgeStatus.reloadRequired,
+          permission: state.bridgeStatus.activeTab?.permission,
+          origin: state.bridgeStatus.activeTab?.origin,
+          lastError: state.bridgeStatus.lastError
+        }
+      : null,
+    adapters: state.adapters.map((adapter) => ({
+      id: adapter.id,
+      state: adapter.state,
+      capabilities: adapter.capabilities,
+      detail: adapter.detail
+    })),
+    latest: {
+      error: state.error,
+      progress: state.progress.slice(-8),
+      plan: state.planSummary,
+      result: state.resultSummary,
+      diagnostics: state.diagnosticsSummary
+    },
+    recentTransactions: state.diagnosticsHistory.map((record) => ({
+      actionSessionId: record.actionSessionId,
+      transactionId: record.transactionId,
+      planStatus: record.planStatus,
+      phase: record.phase,
+      status: record.status,
+      createdAt: record.createdAt,
+      summary: record.summary
+    }))
+  };
+}
+
 function slugify(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "summary";
 }
@@ -142,7 +203,7 @@ function summarizeBridgePanel(state: BrowserActionUiState): { label: string; det
     };
   }
   if (status.reloadRequired) {
-    return { label: "reload needed", detail: status.lastError || "reload the unpacked Browser Bridge extension" };
+    return { label: "reload needed", detail: status.lastError || "open the Browser Bridge popup and click Reload bridge" };
   }
   if (!status.connected || status.mode === "off" || status.mode === "disconnected") {
     return { label: "disconnected", detail: status.lastError || "extension not connected" };
@@ -164,5 +225,5 @@ function summarizeBridgePanel(state: BrowserActionUiState): { label: string; det
 
 function restrictedBridgeDetail(lastError?: string | null): string {
   return lastError ||
-    "Browser security blocks this page; switch to a normal http/https tab or inspect adapter diagnostics.";
+    "Browser security blocks this page; switch to a normal http/https tab, or use native-helper diagnostics for approved browser chrome, permission prompt, or file picker recovery.";
 }

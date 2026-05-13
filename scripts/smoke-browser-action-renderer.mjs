@@ -112,7 +112,23 @@ daemon.on("connection", (socket) => {
     diagnostics: {
       schemaVersion: "browser-action-diagnostics.v1",
       transactionId: "tx-renderer",
+      planStatus: "completed",
       timingSummary: { transaction_started: 0, candidates_generated: 120, phase_completed: 240 }
+    }
+  }));
+  socket.send(JSON.stringify({
+    type: "browserAction.diagnostics",
+    actionSessionId: "renderer-browser-action",
+    diagnostics: {
+      schemaVersion: "browser-action-diagnostics.v1",
+      transactionId: "tx-renderer-failed",
+      planStatus: "failed",
+      phase: "failed",
+      timingSummary: { transaction_started: 0, candidates_generated: 120, phase_failed: 240 },
+      debugBundle: {
+        transactionId: "tx-renderer-failed",
+        diagnostics: { planStatus: "failed", latestResult: { status: "failed", error: "target changed" } }
+      }
     }
   }));
   socket.send(JSON.stringify({
@@ -212,6 +228,11 @@ try {
   await page.getByText("Timing / debug").click();
   await waitUntil(async () => (await page.getByRole("button", { name: "Copy Timing / debug" }).count()) > 0, "Diagnostics copy action did not render.");
   await waitUntil(async () => (await page.getByRole("button", { name: "Download Timing / debug" }).count()) > 0, "Diagnostics download action did not render.");
+  await page.getByText("Recent failed transactions").click();
+  await expectPanelText(page, "tx-render");
+  await page.getByText("Debug bundle").click();
+  await waitUntil(async () => (await page.getByRole("button", { name: "Copy Debug bundle" }).count()) > 0, "Debug bundle copy action did not render.");
+  await waitUntil(async () => (await page.getByRole("button", { name: "Download Debug bundle" }).count()) > 0, "Debug bundle download action did not render.");
   await page.locator(".mode-row").getByRole("button", { name: "Browser" }).click();
   await page.locator(".browser-action-menu").waitFor();
   await expectMenuText(page, "Browser connected");
@@ -236,6 +257,13 @@ async function expectMenuText(page, text) {
     const content = await page.locator(".browser-action-menu").evaluate((node) => node.textContent ?? "");
     return content.includes(text);
   }, `Browser Action menu did not contain ${JSON.stringify(text)}.`);
+}
+
+async function expectPanelText(page, text) {
+  await waitUntil(async () => {
+    const content = await page.locator(".browser-action-panel").evaluate((node) => node.textContent ?? "");
+    return content.includes(text);
+  }, `Browser Action panel did not contain ${JSON.stringify(text)}.`);
 }
 
 async function waitUntil(predicate, message) {

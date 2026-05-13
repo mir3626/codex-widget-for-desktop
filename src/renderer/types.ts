@@ -75,9 +75,22 @@ export type BrowserActionUiState = {
   planSummary: unknown;
   resultSummary: unknown;
   diagnosticsSummary: unknown;
+  diagnosticsHistory: BrowserActionDebugRecord[];
   progress: Array<{ id: string; status: string; detail?: unknown }>;
   error: string | null;
   safetyMode: "read_only" | "ask_before_action" | "auto_safe_actions" | "full_control_dev";
+};
+
+export type BrowserActionDebugRecord = {
+  id: string;
+  actionSessionId: string;
+  transactionId?: string;
+  planStatus?: string;
+  phase?: string;
+  status: "completed" | "needs_review";
+  createdAt: string;
+  summary: string;
+  diagnostics: unknown;
 };
 
 export type CapabilityJobLogEntry = {

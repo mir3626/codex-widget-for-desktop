@@ -1,4 +1,5 @@
 import type { ServerEvent } from "../../../shared/protocol.js";
+import type { BrowserActionDebugRecord } from "../../types";
 import type { WidgetServerEventDeps } from "../serverEventTypes";
 
 export function handleBrowserActionServerEvent(event: ServerEvent, deps: WidgetServerEventDeps): boolean {
@@ -98,10 +99,12 @@ export function handleBrowserActionServerEvent(event: ServerEvent, deps: WidgetS
   }
 
   if (event.type === "browserAction.diagnostics") {
+    const record = createDiagnosticsRecord(event.actionSessionId, event.diagnostics);
     deps.setBrowserAction((current) => ({
       ...current,
       actionSessionId: event.actionSessionId,
       diagnosticsSummary: event.diagnostics,
+      diagnosticsHistory: [record, ...current.diagnosticsHistory].slice(0, 8),
       progress: [...current.progress.slice(-7), { id: crypto.randomUUID(), status: "diagnostics", detail: event.diagnostics }],
       error: null
     }));
@@ -121,4 +124,32 @@ export function handleBrowserActionServerEvent(event: ServerEvent, deps: WidgetS
   }
 
   return false;
+}
+
+function createDiagnosticsRecord(actionSessionId: string, diagnostics: unknown): BrowserActionDebugRecord {
+  const record = diagnostics && typeof diagnostics === "object" ? diagnostics as Record<string, unknown> : {};
+  const planStatus = typeof record.planStatus === "string" ? record.planStatus : undefined;
+  const phase = typeof record.phase === "string" ? record.phase : undefined;
+  const transactionId = typeof record.transactionId === "string" ? record.transactionId : undefined;
+  const status: BrowserActionDebugRecord["status"] = planStatus && planStatus !== "completed" ? "needs_review" : "completed";
+  const summary = [
+    transactionId ? `tx ${shortId(transactionId)}` : "transaction",
+    planStatus ?? phase ?? "diagnostics",
+    status === "needs_review" ? "review" : "ok"
+  ].join(" / ");
+  return {
+    id: `browser-action-debug-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`,
+    actionSessionId,
+    transactionId,
+    planStatus,
+    phase,
+    status,
+    createdAt: new Date().toISOString(),
+    summary,
+    diagnostics
+  };
+}
+
+function shortId(value: string): string {
+  return value.length > 14 ? `${value.slice(0, 8)}...${value.slice(-4)}` : value;
 }

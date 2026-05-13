@@ -87,6 +87,7 @@
     "smoke:node-runtime": "npm run build:daemon-bundle && npm run build:node-runtime && node scripts/smoke-node-runtime.mjs",
     "smoke:screen": "npm run build:daemon && node scripts/smoke-screen-provider.mjs",
     "smoke:vision-context": "npm run build:daemon && node scripts/smoke-vision-context.mjs",
+    "smoke:asr-sidecar": "npm run build:daemon && node scripts/smoke-asr-sidecar.mjs",
     "smoke:semantic-interface": "npm run build:daemon && node scripts/smoke-semantic-interface.mjs",
     "smoke:semantic-trace-corpus": "npm run build:daemon && node scripts/smoke-semantic-trace-corpus.mjs",
     "smoke:browser-action:semantic-live-corpus": "node scripts/smoke-browser-action-semantic-live-corpus.mjs",

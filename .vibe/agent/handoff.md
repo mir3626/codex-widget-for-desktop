@@ -4,6 +4,25 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Non-BLOCKED Browser Action And Vision Follow-ups
+
+Continued the post-cleanup follow-up queue and kept externally blocked items out of scope.
+
+Implemented:
+
+- Pushed prior unused-code cleanup as `0444668` (`Remove confirmed unused code`) before starting the new slice.
+- Promoted reviewed live Browser Action traces into `docs/dogfood/semantic-trace-corpus.jsonl` as redacted calibration rows for read, search-submit, history navigation, and representative-content selection.
+- Strengthened `smoke:semantic-trace-corpus` so fixture rows still cover every golden trace while live rows must carry redaction markers, report/scenario/run IDs, semantic evidence tags, and required intent-class coverage.
+- Added Browser Action renderer debug bundle export: diagnostics history, recent failed transactions, copy/download actions, and a compact export covering bridge/adapters/latest diagnostics/recent transaction summaries.
+- Extracted Browser/Vision mode menu overlay behavior from `WidgetRuntime.tsx` into `useWidgetModeMenus`.
+- Clarified Browser Bridge `reloadRequired` UX so widget menus/panels point users to the extension popup `Reload bridge` button; `smoke:browser-action:direct-menu` now covers that state.
+- Clarified restricted-page recovery copy without implying bypass: use a normal http/https tab, or native-helper diagnostics only for approved browser chrome, permission prompt, or file picker recovery.
+- Added `npm run smoke:asr-sidecar` and included it in `smoke:all`; it verifies the ASR sidecar stdin/stdout JSON contract, transcript normalization, invalid JSON, nonzero exit, and timeout behavior without selecting a production ASR model.
+
+Verification passed `npm run lint`, `npm run smoke:browser-action:renderer`, `npm run smoke:browser-action:direct-menu`, `npm run smoke:extension`, `npm run smoke:semantic-trace-corpus`, `npm run smoke:browser-action:semantic-live-corpus`, `npm run smoke:vision-context`, `npm run smoke:asr-sidecar`, `npm run smoke:browser-bridge`, `npm run smoke:architecture-foundations`, Browser native helper focused smokes including signature-readiness, final `npm run smoke:all`, `git diff --check`, and strict UTF-8/mojibake scans for touched files. The native helper remains unsigned in development; release enforcement is still blocked on an Authenticode certificate or CI signing service.
+
+Remaining blockers: official app-server client-tool contract, production helper signing secret/certificate, and selecting/installing the first real local ASR runtime/model. Reload the unpacked Browser Bridge extension once before manual live browser retesting so Chrome/Edge uses current popup/service-worker code.
+
 ## Latest Update: Browser Action Clarification Choice Cards
 
 Continued non-manual Browser Action work by closing the remaining ranked-choice UX gap where daemon clarification text was richer but the widget still showed it as a plain text input.

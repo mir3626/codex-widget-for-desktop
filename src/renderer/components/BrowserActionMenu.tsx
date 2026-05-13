@@ -236,8 +236,8 @@ function summarizeBridgeStatus(status: BrowserActionUiState["bridgeStatus"]): { 
   const tabLabel = tab?.title || tab?.url || "current tab";
   if (status.reloadRequired) {
     return {
-      label: "Reload extension",
-      detail: status.lastError || "Reload the unpacked Browser Bridge extension before retesting.",
+      label: "Reload bridge",
+      detail: status.lastError || "Open the Browser Bridge popup and click Reload bridge before retesting.",
       tone: "ask"
     };
   }
@@ -261,5 +261,5 @@ function summarizeBridgeStatus(status: BrowserActionUiState["bridgeStatus"]): { 
 
 function restrictedBridgeDetail(lastError?: string | null): string {
   return lastError ||
-    "Browser security blocks this page. Open a normal http/https tab, or use CDP/Playwright/native-helper diagnostics for browser chrome boundaries.";
+    "Browser security blocks this page. Move to a normal http/https tab; use native-helper diagnostics only for approved browser chrome, permission prompt, or file picker recovery.";
 }

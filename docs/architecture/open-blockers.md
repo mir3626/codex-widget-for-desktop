@@ -54,7 +54,10 @@ This file records items that should not be silently downgraded to complete.
 - Status: sidecar contract implemented; local model/runtime selection remains
   environment-owned.
 - Current path: mock ASR for deterministic tests plus executable JSON sidecar
-  support through `CODEX_WIDGET_ASR_SIDECAR_COMMAND`.
+  support through `CODEX_WIDGET_ASR_SIDECAR_COMMAND`. `npm run
+  smoke:asr-sidecar` now locks the stdin/stdout JSON contract, transcript
+  normalization, nonzero-exit handling, invalid JSON handling, and timeout
+  behavior without selecting a production model.
 - Required scope expansion: choose and install the first local ASR runtime/model
   for dogfood, then provide a sidecar command that reads the documented JSON
   request from stdin and returns transcript JSON on stdout.
