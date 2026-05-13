@@ -4,6 +4,30 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Local ASR CPU Dogfood Baseline
+
+Executed the next ASR plan after adding runtime candidates.
+
+Completed:
+
+- Added `.runtime/` to `.gitignore` and created local venv `.runtime/asr/faster-whisper`.
+- Installed `faster-whisper` into the ignored local venv.
+- Added reusable `npm run asr:tts-samples` via `scripts/generate-asr-tts-samples.ps1`; the script generates five Korean command WAV fixtures using Windows SAPI `Microsoft Heami Desktop - Korean`.
+- Improved `scripts/benchmark-asr-candidates.mjs` to support manifest-based corpus benchmarking, UTF-8 BOM manifests, and slot-aware normalization for punctuation plus `리액트 라우터 돔` / `react-router-dom`.
+- Downloaded/cache-tested `large-v3-turbo` and `large-v3` under `.runtime/asr/models/faster-whisper`.
+- Ran CPU comparison across five generated Korean command samples and wrote `docs/reports/local-asr-cpu-benchmark-2026-05-13.md`.
+- Probed the GPU candidate on local RTX 3060 Ti; wiring reached CUDA runtime but failed because `cublas64_12.dll` is not installed or not on `PATH`.
+
+Result:
+
+- `faster-whisper-large-v3-turbo-cpu`: average 14.25s per sidecar request, normalized similarity 1.00.
+- `faster-whisper-large-v3-cpu`: average 20.41s per sidecar request, normalized similarity 1.00.
+- Recommendation remains `large-v3-turbo-cpu` as the first default. `large-v3-cpu` stays as accuracy baseline.
+
+Verification passed JS syntax checks, Python py_compile, `npm run asr:tts-samples`, `npm run smoke:asr-runtime-candidates`, `npm run lint`, `npm run smoke:asr-sidecar`, `npm run smoke:vision-context`, final `npm run smoke:all`, `git diff --check`, and strict UTF-8/mojibake scans.
+
+Next ASR step: install CUDA 12/cuDNN 9 runtime DLLs or add them to `PATH`, rerun `faster-whisper-large-v3-turbo-gpu`, then replace synthetic SAPI samples with human microphone Korean command WAVs.
+
 ## Latest Update: Local ASR Runtime Candidate Implementation
 
 Implemented the CPU-first local ASR selection path requested after the GPT-Realtime-2/free-tier review.

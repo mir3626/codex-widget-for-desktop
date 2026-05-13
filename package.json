@@ -74,6 +74,7 @@
     "dogfood:semantic-memory": "npm run build:daemon && node scripts/collect-semantic-memory-dogfood-evidence.mjs",
     "asr:candidates": "node scripts/asr-candidates.mjs",
     "asr:benchmark": "npm run build:daemon && node scripts/benchmark-asr-candidates.mjs",
+    "asr:tts-samples": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/generate-asr-tts-samples.ps1",
     "smoke:daemon-reconnect": "npm run build:daemon && node scripts/smoke-daemon-reconnect.mjs",
     "smoke:extension": "node scripts/smoke-browser-extension.mjs",
     "smoke:browser-bridge": "npm run build:daemon && node scripts/smoke-browser-extension-bridge.mjs",

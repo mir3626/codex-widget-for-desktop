@@ -37,6 +37,7 @@ config/credentials.json
 scripts/tmp-*.ts
 scripts/tmp-*.mjs
 .tmp/
+.runtime/
 # dashboard runtime artifacts (M14-B)
 # run-codex.sh unavailable signal (runtime artifact, auto-cleared on next success)
 

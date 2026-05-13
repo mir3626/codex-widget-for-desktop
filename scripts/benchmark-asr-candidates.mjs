@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { SidecarAsrEngine, createMockVadSegments } from "../dist/daemon/transcription/index.js";
@@ -14,28 +14,28 @@ if (options.list) {
 const candidateIds = options.candidates.length > 0 ? options.candidates : ["faster-whisper-large-v3-turbo-cpu"];
 const tempRoot = mkdtempSync(path.join(tmpdir(), "codex-widget-asr-benchmark-"));
 try {
-  const audioPath = options.audio || path.join(tempRoot, "fixture.wav");
-  if (!options.audio) {
-    writeFileSync(audioPath, "fixture audio placeholder");
-  }
   const results = [];
-  for (const candidateId of candidateIds) {
-    const candidate = resolveAsrCandidate(candidateId);
-    const result = await runCandidate(candidate, {
-      audioPath,
-      language: options.language,
-      expected: options.expected,
-      fixtureText: options.fixtureText
-    });
-    results.push(result);
-    if (!options.json) {
-      console.log(`${result.id}: ${result.status} ${result.elapsedMs}ms`);
-      console.log(`  text: ${result.text}`);
-      if (typeof result.similarity === "number") {
-        console.log(`  similarity: ${result.similarity.toFixed(3)}`);
-      }
-      if (result.error) {
-        console.log(`  error: ${result.error}`);
+  const samples = options.manifest ? readManifest(options.manifest) : [readSingleSample(options, tempRoot)];
+  for (const sample of samples) {
+    for (const candidateId of candidateIds) {
+      const candidate = resolveAsrCandidate(candidateId);
+      const result = await runCandidate(candidate, {
+        audioPath: sample.audioPath,
+        language: sample.language ?? options.language,
+        expected: sample.expected,
+        fixtureText: options.fixtureText
+      });
+      results.push({ sampleId: sample.id, expected: sample.expected, ...result });
+      if (!options.json) {
+        console.log(`${sample.id} / ${result.id}: ${result.status} ${result.elapsedMs}ms`);
+        console.log(`  expected: ${sample.expected}`);
+        console.log(`  text: ${result.text}`);
+        if (typeof result.similarity === "number") {
+          console.log(`  similarity: ${result.similarity.toFixed(3)}`);
+        }
+        if (result.error) {
+          console.log(`  error: ${result.error}`);
+        }
       }
     }
   }
@@ -100,7 +100,8 @@ function printCandidates() {
 function parseArgs(args) {
   const options = {
     candidates: [],
-    audio: "",
+      audio: "",
+    manifest: "",
     expected: "",
     language: "ko",
     fixtureText: "",
@@ -113,12 +114,18 @@ function parseArgs(args) {
       options.candidates.push(...String(args[++index] ?? "").split(",").map((item) => item.trim()).filter(Boolean));
     } else if (arg === "--audio") {
       options.audio = args[++index] ?? "";
+    } else if (arg === "--manifest") {
+      options.manifest = args[++index] ?? "";
     } else if (arg === "--expected") {
-      options.expected = args[++index] ?? "";
+      const value = readPossiblySpacedValue(args, index + 1);
+      options.expected = value.text;
+      index = value.nextIndex - 1;
     } else if (arg === "--language") {
       options.language = args[++index] ?? "ko";
     } else if (arg === "--fixture-text") {
-      options.fixtureText = args[++index] ?? "";
+      const value = readPossiblySpacedValue(args, index + 1);
+      options.fixtureText = value.text;
+      index = value.nextIndex - 1;
     } else if (arg === "--json") {
       options.json = true;
     } else if (arg === "--list") {
@@ -126,6 +133,51 @@ function parseArgs(args) {
     }
   }
   return options;
+}
+
+function readSingleSample(options, tempRoot) {
+  const audioPath = options.audio || path.join(tempRoot, "fixture.wav");
+  if (!options.audio) {
+    writeFileSync(audioPath, "fixture audio placeholder");
+  }
+  return {
+    id: path.basename(audioPath, path.extname(audioPath)) || "single",
+    audioPath,
+    expected: options.expected,
+    language: options.language
+  };
+}
+
+function readManifest(manifestPath) {
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8").replace(/^\uFEFF/, ""));
+  const root = path.dirname(path.resolve(manifestPath));
+  const rows = Array.isArray(manifest) ? manifest : manifest.samples;
+  if (!Array.isArray(rows) || rows.length === 0) {
+    throw new Error(`ASR benchmark manifest must be a non-empty array or { samples: [] }: ${manifestPath}`);
+  }
+  return rows.map((row, index) => {
+    const audioPath = path.resolve(root, row.path ?? row.audioPath ?? "");
+    const expected = row.text ?? row.expected ?? "";
+    if (!audioPath || !expected) {
+      throw new Error(`ASR benchmark manifest row ${index + 1} must include path and text/expected.`);
+    }
+    return {
+      id: row.id ?? `sample-${index + 1}`,
+      audioPath,
+      expected,
+      language: row.language
+    };
+  });
+}
+
+function readPossiblySpacedValue(args, startIndex) {
+  const parts = [];
+  let index = startIndex;
+  while (index < args.length && !String(args[index]).startsWith("--")) {
+    parts.push(args[index]);
+    index += 1;
+  }
+  return { text: parts.join(" "), nextIndex: index };
 }
 
 function normalizedSimilarity(expected, actual) {
@@ -142,7 +194,13 @@ function normalizedSimilarity(expected, actual) {
 }
 
 function normalizeText(value) {
-  return String(value ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/리액트\s*라우터\s*돔/g, "react router dom")
+    .replace(/react\s*[-_ ]?\s*router\s*[-_ ]?\s*dom/g, "react router dom")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function levenshtein(left, right) {

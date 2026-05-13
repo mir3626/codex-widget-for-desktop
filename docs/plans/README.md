@@ -17,5 +17,7 @@ This directory now keeps active planning state and historical tombstones.
   panel landed.
 - `local-asr-runtime-selection.md` defines the CPU-first local ASR candidate
   sidecars and dogfood benchmark path for selecting the first default model.
+- `../reports/local-asr-cpu-benchmark-2026-05-13.md` records the first
+  faster-whisper CPU comparison and the current GPU runtime blocker.
 - Completed handoff documents that have been consolidated into
   `docs/architecture/` live under `docs/plans/deprecated/`.

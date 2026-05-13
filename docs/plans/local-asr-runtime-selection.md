@@ -55,6 +55,15 @@ Compare against the accuracy baseline:
 npm run asr:benchmark -- --candidate faster-whisper-large-v3-turbo-cpu,faster-whisper-large-v3-cpu --audio C:\path\to\sample-ko-command.wav --expected "검색창에 브라우저 액션 테스트 입력하고 검색해줘" --json
 ```
 
+For repeatable Windows smoke samples, generate a synthetic SAPI corpus:
+
+```powershell
+npm run asr:tts-samples
+$env:CODEX_WIDGET_ASR_PYTHON = "$PWD\.runtime\asr\faster-whisper\Scripts\python.exe"
+$env:CODEX_WIDGET_ASR_FASTER_WHISPER_DOWNLOAD_ROOT = "$PWD\.runtime\asr\models\faster-whisper"
+node scripts/benchmark-asr-candidates.mjs --candidate faster-whisper-large-v3-turbo-cpu,faster-whisper-large-v3-cpu --manifest "$PWD\.runtime\asr\samples\manifest.json" --json
+```
+
 First run downloads the selected model unless
 `CODEX_WIDGET_ASR_FASTER_WHISPER_LOCAL_FILES_ONLY=1` is set.
 
@@ -131,3 +140,12 @@ Select the default by:
 
 The expected first default is `faster-whisper-large-v3-turbo-cpu`, promoted to
 `faster-whisper-large-v3-turbo-gpu` when CUDA is available and stable.
+
+## 2026-05-13 CPU Baseline
+
+`docs/reports/local-asr-cpu-benchmark-2026-05-13.md` records the first local
+CPU run. On five synthetic Korean SAPI command samples, `large-v3-turbo-cpu`
+averaged 14.25s per sidecar request while `large-v3-cpu` averaged 20.41s. Both
+preserved normalized command slots. GPU probing reached the CUDA boundary on an
+RTX 3060 Ti but failed until `cublas64_12.dll` / CUDA 12 runtime libraries are
+installed and visible on `PATH`.
