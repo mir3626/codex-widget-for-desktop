@@ -4,6 +4,23 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Research-Driven Performance Architecture Handoff
+
+Recorded the macro-architecture direction for the next major performance and accuracy phase.
+
+Decision:
+
+- Paper-backed methods take priority over existing implementation shape when they conflict, except for safety, credential, restricted-page, consent, and retention boundaries.
+- The daemon remains the local control plane, but should evolve into a scientific execution engine for scenario setup, multimodal evidence collection, cascade scheduling, verification, failure calibration, and metric promotion.
+- Subsystem metrics are subordinate to end-to-end task success, p50/p95 latency, clarification rate, proof quality, and recovery quality.
+
+Added:
+
+- `docs/plans/research-driven-performance-architecture-handoff.md`, covering the proposed architecture and process mandates from ASR contextual bias/WFST decoding, GUI grounding/perception graphs, ROI/delta OCR cascades, ReAct/Reflexion-style bounded loops, OSWorld/WebArena-style eval ledgers, early-exit scheduling, and capability DAG migration.
+- `docs/plans/README.md` now links the new handoff.
+
+Recommended next slice: implement the unified computer-use eval ledger and scenario/result schema first, then add ASR command-slot metric fields. This creates the measuring instrument before changing target selection, ASR decoding, or Vision pipelines.
+
 ## Latest Update: Local ASR Persistent Worker Baseline
 
 Continued the CPU-first ASR plan after GPU validation was deferred.

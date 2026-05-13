@@ -17,6 +17,9 @@ This directory now keeps active planning state and historical tombstones.
   panel landed.
 - `local-asr-runtime-selection.md` defines the CPU-first local ASR candidate
   sidecars and dogfood benchmark path for selecting the first default model.
+- `research-driven-performance-architecture-handoff.md` defines the proposed
+  paper-prioritized macro-architecture for improving task success, ASR,
+  Vision/OCR, agent feedback, capability scheduling, and release metrics.
 - `../reports/local-asr-cpu-benchmark-2026-05-13.md` records the first
   faster-whisper CPU comparison and the current GPU runtime blocker.
 - Completed handoff documents that have been consolidated into
