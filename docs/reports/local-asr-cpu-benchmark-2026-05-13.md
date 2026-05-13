@@ -40,10 +40,14 @@ samples are still required before final model selection.
 - The GPU candidate was probed on the local RTX 3060 Ti path and reached the
 CUDA runtime boundary, but failed because `cublas64_12.dll` was unavailable:
   `Library cublas64_12.dll is not found or cannot be loaded`.
+- GPU DLL installation and CUDA retesting are deferred by the 2026-05-14
+product-owner decision; keep this as a reactivation note, not the immediate
+next step.
 
 ## Recommendation
 
 Keep `faster-whisper-large-v3-turbo-cpu` as the first local ASR default for
-dogfood. Next, install CUDA 12/cuDNN 9 runtime libraries for GPU testing and
-collect human Korean command WAV samples to validate noise, microphone, and
-natural phrasing behavior.
+dogfood. Next, collect human Korean command WAV samples to validate noise,
+microphone, and natural phrasing behavior, and prototype a persistent ASR
+worker/service path to remove per-request model load latency. GPU testing stays
+deferred until explicitly resumed.

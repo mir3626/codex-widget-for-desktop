@@ -4,6 +4,23 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Local ASR GPU Deferred
+
+Recorded the product-owner decision to defer local ASR GPU validation.
+
+Decision:
+
+- Keep `faster-whisper-large-v3-turbo-cpu` as the current ASR dogfood default.
+- Do not install CUDA/cuDNN DLLs or rerun `faster-whisper` CUDA candidates in the current loop.
+- Keep GPU candidates implemented as dormant benchmark options for a later explicit GPU pass.
+
+Updated:
+
+- `docs/plans/local-asr-runtime-selection.md` now marks GPU enablement as deferred and keeps the CUDA commands as a future reactivation checklist.
+- `docs/reports/local-asr-cpu-benchmark-2026-05-13.md` now makes human microphone CPU corpus collection and persistent-worker latency the next ASR steps.
+
+Next ASR step: collect human Korean microphone command WAVs on the CPU default, then measure a persistent ASR worker/service path so latency excludes process spawn and model load. GPU DLL installation/testing is deferred until explicitly resumed.
+
 ## Latest Update: Local ASR CPU Dogfood Baseline
 
 Executed the next ASR plan after adding runtime candidates.
@@ -26,7 +43,7 @@ Result:
 
 Verification passed JS syntax checks, Python py_compile, `npm run asr:tts-samples`, `npm run smoke:asr-runtime-candidates`, `npm run lint`, `npm run smoke:asr-sidecar`, `npm run smoke:vision-context`, final `npm run smoke:all`, `git diff --check`, and strict UTF-8/mojibake scans.
 
-Next ASR step: install CUDA 12/cuDNN 9 runtime DLLs or add them to `PATH`, rerun `faster-whisper-large-v3-turbo-gpu`, then replace synthetic SAPI samples with human microphone Korean command WAVs.
+Next ASR step: replace synthetic SAPI samples with human microphone Korean command WAVs and measure persistent-worker latency. CUDA 12/cuDNN 9 DLL installation and GPU retesting are deferred until explicitly resumed.
 
 ## Latest Update: Local ASR Runtime Candidate Implementation
 

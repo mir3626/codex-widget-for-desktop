@@ -16,8 +16,10 @@ efficient model by dogfooding workflow success, not just raw WER.
 3. `faster-whisper-large-v3-turbo-gpu`
    - Preferred GPU path after CUDA/cuDNN is configured.
    - Uses `device=cuda`, `compute_type=int8_float16`.
+   - Status: implemented but dogfood-deferred until GPU validation resumes.
 4. `faster-whisper-large-v3-gpu`
    - GPU accuracy baseline.
+   - Status: implemented but dogfood-deferred until GPU validation resumes.
 5. `whisper-cpp-large-v3-turbo-cpu`
    - Native packaging fallback candidate.
    - Requires `whisper-cli` and a ggml model path.
@@ -67,11 +69,15 @@ node scripts/benchmark-asr-candidates.mjs --candidate faster-whisper-large-v3-tu
 First run downloads the selected model unless
 `CODEX_WIDGET_ASR_FASTER_WHISPER_LOCAL_FILES_ONLY=1` is set.
 
-## GPU Enablement
+## GPU Enablement (Deferred)
 
-The GPU candidate wiring is already present, but should be dogfooded after the
-CPU path works. Configure NVIDIA CUDA 12 and cuDNN 9 for `faster-whisper`, then
-run:
+The GPU candidate wiring is already present, but GPU validation is deferred by
+the 2026-05-14 product-owner decision. Do not install CUDA/cuDNN DLLs or rerun
+CUDA candidates in the current ASR selection loop. Keep the commands below as a
+reactivation checklist for the later GPU pass.
+
+When GPU validation resumes, configure NVIDIA CUDA 12 and cuDNN 9 for
+`faster-whisper`, then run:
 
 ```powershell
 $env:CODEX_WIDGET_ASR_PYTHON = "$PWD\.runtime\asr\faster-whisper\Scripts\python.exe"
@@ -138,8 +144,9 @@ Select the default by:
 - transcript correction rate
 - memory and installation friction
 
-The expected first default is `faster-whisper-large-v3-turbo-cpu`, promoted to
-`faster-whisper-large-v3-turbo-gpu` when CUDA is available and stable.
+The expected first default is `faster-whisper-large-v3-turbo-cpu`. Promotion to
+`faster-whisper-large-v3-turbo-gpu` is deferred until GPU validation explicitly
+resumes and CUDA is available and stable.
 
 ## 2026-05-13 CPU Baseline
 
@@ -148,4 +155,6 @@ CPU run. On five synthetic Korean SAPI command samples, `large-v3-turbo-cpu`
 averaged 14.25s per sidecar request while `large-v3-cpu` averaged 20.41s. Both
 preserved normalized command slots. GPU probing reached the CUDA boundary on an
 RTX 3060 Ti but failed until `cublas64_12.dll` / CUDA 12 runtime libraries are
-installed and visible on `PATH`.
+installed and visible on `PATH`. The 2026-05-14 product-owner decision defers
+that DLL install and GPU retest; the next ASR evidence should focus on human
+microphone Korean command samples and persistent-worker latency.
