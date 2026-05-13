@@ -42,7 +42,7 @@ Git Bash를 직접 탐색한다. bare `bash`가 WSL launcher(`WindowsApps\bash.e
 ### Codex 플러그인 (잠정 보류)
 
 OpenAI 공식 Codex 플러그인 (`openai/codex-plugin-cc`)은 Windows 환경에서 불안정·속도 저하 이슈로 **잠정 보류** 상태다.
-Generator 호출은 반드시 **Codex CLI** (`Bash("codex exec ...")`)를 사용한다.
+Generator 호출은 반드시 **Codex CLI wrapper** (`npm run vibe:run-agent -- --provider codex --role generator` 또는 `run-codex.cmd`/`run-codex.sh`)를 사용한다.
 
 **보류된 스킬/에이전트** (참고용):
 - `codex:rescue` (스킬) — 잠정 보류

@@ -17,8 +17,76 @@ const PRESET_FILES = {
   extended: 'agent-delegation-extended.json',
 };
 
+const LEGACY_PRESET_ALLOW_RULES = [
+  'Bash(npm install:*)',
+  'Bash(npm ci:*)',
+  'Bash(npm run build:*)',
+  'Bash(npm run dev:*)',
+  'Bash(npm run test:*)',
+  'Bash(npm run typecheck:*)',
+  'Bash(npm run test:unit:*)',
+  'Bash(npm run preview:*)',
+  'Bash(npm run lint:*)',
+  'Bash(npm run vibe:*)',
+  'Bash(npm test:*)',
+  'Bash(npx tsc:*)',
+  'Bash(npx vitest:*)',
+  'Bash(npx eslint:*)',
+  'Bash(npx playwright:*)',
+  'Bash(node --import tsx:*)',
+  'Bash(node --import tsx --test:*)',
+  'Bash(node --test:*)',
+  'Bash(node --check:*)',
+  'Bash(node .vibe/harness/scripts/:*)',
+  'Bash(cat * | ./.vibe/harness/scripts/run-codex.sh:*)',
+  'Bash(./.vibe/harness/scripts/run-codex.sh:*)',
+  'Bash(git add:*)',
+  'Bash(git commit:*)',
+  'Bash(git status:*)',
+  'Bash(git diff:*)',
+  'Bash(git log:*)',
+  'Bash(git show:*)',
+  'Bash(git ls-files:*)',
+  'Bash(git push:*)',
+  'Bash(git checkout:*)',
+  'Bash(git branch:*)',
+  'Bash(git rev-parse:*)',
+  'Bash(git rev-list:*)',
+  'Bash(git tag:*)',
+  'Bash(git tag -l:*)',
+  'Bash(git tag --list:*)',
+  'Bash(git fetch:*)',
+  'Bash(git merge-base:*)',
+  'Bash(git config --get:*)',
+  'Bash(git ls-remote:*)',
+  'Bash(git stash list:*)',
+  'Bash(mkdir:*)',
+  'Bash(cp:*)',
+  'Bash(mv:*)',
+  'Bash(ls:*)',
+  'Bash(cat:*)',
+  'Bash(head:*)',
+  'Bash(tail:*)',
+  'Bash(wc:*)',
+  'Bash(grep:*)',
+  'Bash(find:*)',
+  'Bash(xargs:*)',
+  'Bash(cmd /c *)',
+  'Bash(cmd //c *)',
+  'Bash(cmd //c "npx tsc:*)',
+  'Bash(cmd //c "npm run:*)',
+  'Bash(cmd //c "node:*)',
+  'Bash(cmd //c "node --import tsx:*)',
+];
+
 function getPresetPath(rootDir, tier) {
   return path.resolve(rootDir, '.vibe', 'settings-presets', PRESET_FILES[tier]);
+}
+
+function assertStringArray(value, label) {
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
+    fail(`Invalid ${label}; expected a string array`);
+  }
 }
 
 function loadPreset(rootDir, tier = 'core', options = {}) {
@@ -37,27 +105,33 @@ function loadPreset(rootDir, tier = 'core', options = {}) {
   }
 
   const preset = readJson(presetPath);
-  if (!Array.isArray(preset.rules) || preset.rules.some((entry) => typeof entry !== 'string')) {
-    fail(`Invalid preset rules in ${presetPath}`);
-  }
+  const allowRules = preset.rules ?? preset.allowRules;
+  const denyRules = preset.denyRules ?? [];
+  assertStringArray(allowRules, `preset allow rules in ${presetPath}`);
+  assertStringArray(denyRules, `preset deny rules in ${presetPath}`);
 
-  return preset.rules;
+  return { allowRules, denyRules };
 }
 
 function loadAllPresetRules(rootDir) {
-  const rules = new Set();
+  const allowRules = new Set(LEGACY_PRESET_ALLOW_RULES);
+  const denyRules = new Set();
   for (const tier of ['core', 'extended']) {
     const presetPath = getPresetPath(rootDir, tier);
     if (!existsSync(presetPath)) {
       continue;
     }
 
-    for (const rule of loadPreset(rootDir, tier)) {
-      rules.add(rule);
+    const preset = loadPreset(rootDir, tier);
+    for (const rule of preset.allowRules) {
+      allowRules.add(rule);
+    }
+    for (const rule of preset.denyRules) {
+      denyRules.add(rule);
     }
   }
 
-  return rules;
+  return { allowRules, denyRules };
 }
 
 function loadSettings(rootDir, createIfMissing = false) {
@@ -96,7 +170,20 @@ function getAllowRules(settings) {
   return allow;
 }
 
-function mergePermissions(settings, allowRules) {
+function getDenyRules(settings) {
+  const deny = settings?.permissions?.deny;
+  if (deny === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(deny) || deny.some((entry) => typeof entry !== 'string')) {
+    fail('Expected .claude/settings.local.json permissions.deny to be a string array');
+  }
+
+  return deny;
+}
+
+function mergePermissions(settings, allowRules, denyRules = getDenyRules(settings)) {
   const nextSettings =
     settings && typeof settings === 'object' && !Array.isArray(settings) ? settings : {};
   const nextPermissions =
@@ -111,6 +198,7 @@ function mergePermissions(settings, allowRules) {
     permissions: {
       ...nextPermissions,
       allow: allowRules,
+      deny: denyRules,
     },
   };
 }
@@ -121,18 +209,22 @@ function saveSettings(settingsPath, settings) {
 }
 
 function runOn(rootDir, tier) {
-  const presetRules = loadPreset(rootDir, tier, {
+  const preset = loadPreset(rootDir, tier, {
     fallbackToCore: true,
     warnOnFallback: tier === 'extended',
   });
   const { settingsPath, settings } = loadSettings(rootDir, true);
-  const currentAllow = getAllowRules(settings);
-  const nextAllow = [...new Set([...currentAllow, ...presetRules])];
+  const legacyPresetSet = new Set(LEGACY_PRESET_ALLOW_RULES);
+  const currentAllow = getAllowRules(settings).filter((entry) => !legacyPresetSet.has(entry));
+  const currentDeny = getDenyRules(settings);
+  const nextAllow = [...new Set([...currentAllow, ...preset.allowRules])];
+  const nextDeny = [...new Set([...currentDeny, ...preset.denyRules])];
   const addedCount = nextAllow.length - currentAllow.length;
+  const addedDenyCount = nextDeny.length - currentDeny.length;
 
-  saveSettings(settingsPath, mergePermissions(settings, nextAllow));
+  saveSettings(settingsPath, mergePermissions(settings, nextAllow, nextDeny));
   process.stdout.write(
-    `[vibe-sprint-mode] ON -- ${presetRules.length} preset rules merged (${addedCount} new). Total allow rules: ${nextAllow.length}\n`,
+    `[vibe-sprint-mode] ON -- ${preset.allowRules.length} allow rules and ${preset.denyRules.length} deny guards merged (${addedCount} allow new, ${addedDenyCount} deny new). Total allow rules: ${nextAllow.length}\n`,
   );
 }
 
@@ -146,28 +238,34 @@ function runOff(rootDir) {
   }
 
   const currentAllow = getAllowRules(settings);
-  const nextAllow = currentAllow.filter((entry) => !presetSet.has(entry));
+  const currentDeny = getDenyRules(settings);
+  const nextAllow = currentAllow.filter((entry) => !presetSet.allowRules.has(entry));
+  const nextDeny = currentDeny.filter((entry) => !presetSet.denyRules.has(entry));
   const removedCount = currentAllow.length - nextAllow.length;
+  const removedDenyCount = currentDeny.length - nextDeny.length;
 
-  saveSettings(settingsPath, mergePermissions(settings, nextAllow));
+  saveSettings(settingsPath, mergePermissions(settings, nextAllow, nextDeny));
   process.stdout.write(
-    `[vibe-sprint-mode] OFF -- ${removedCount} preset rules removed. Remaining allow rules: ${nextAllow.length}\n`,
+    `[vibe-sprint-mode] OFF -- ${removedCount} allow rules and ${removedDenyCount} deny guards removed. Remaining allow rules: ${nextAllow.length}\n`,
   );
 }
 
 function runStatus(rootDir) {
   const hasExtendedPreset = existsSync(getPresetPath(rootDir, 'extended'));
   const statusTier = hasExtendedPreset ? 'extended' : 'core';
-  const presetRules = loadPreset(rootDir, statusTier);
-  const presetSet = new Set(presetRules);
-  const coreRules = hasExtendedPreset ? loadPreset(rootDir, 'core') : presetRules;
+  const preset = loadPreset(rootDir, statusTier);
+  const presetSet = new Set(preset.allowRules);
+  const coreRules = hasExtendedPreset ? loadPreset(rootDir, 'core').allowRules : preset.allowRules;
+  const denySet = new Set(preset.denyRules);
   const { settings } = loadSettings(rootDir, false);
   const currentAllow = settings === null ? [] : getAllowRules(settings);
+  const currentDeny = settings === null ? [] : getDenyRules(settings);
   const activeSet = new Set(currentAllow.filter((entry) => presetSet.has(entry)));
+  const activeDenySet = new Set(currentDeny.filter((entry) => denySet.has(entry)));
   const activeCount = activeSet.size;
   const hasAllCoreRules = coreRules.every((entry) => activeSet.has(entry));
   const hasOnlyCoreRules = hasAllCoreRules && activeCount === coreRules.length;
-  const hasAllPresetRules = activeCount === presetRules.length;
+  const hasAllPresetRules = activeCount === preset.allowRules.length;
   const mode =
     hasExtendedPreset && activeCount > 0 && !hasOnlyCoreRules && !hasAllPresetRules
       ? 'PARTIAL'
@@ -182,7 +280,7 @@ function runStatus(rootDir) {
       : '';
 
   process.stdout.write(
-    `[vibe-sprint-mode] ${mode}${tierLabel} -- ${activeCount}/${presetRules.length} preset rules active\n`,
+    `[vibe-sprint-mode] ${mode}${tierLabel} -- ${activeCount}/${preset.allowRules.length} allow rules active, ${activeDenySet.size}/${preset.denyRules.length} deny guards active\n`,
   );
 }
 

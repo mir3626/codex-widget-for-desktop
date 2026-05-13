@@ -264,7 +264,10 @@ function hasTemplateProjectState(productMd: string, sprintStatus: unknown, rootB
       : {};
   const statusProjectName = typeof project.name === 'string' ? project.name : '';
 
-  return statusProjectName === 'vibe-doctor' || /\*\*vibe-doctor\*\*|^#\s+vibe-doctor\b/im.test(productMd);
+  return (
+    statusProjectName === 'vibe-doctor' ||
+    /\*\*vibe-doctor\*\*|^#\s+vibe-doctor\b|PROJECT NOT INITIALIZED/im.test(productMd)
+  );
 }
 
 export async function hasVibeInitArtifacts(root = paths.root): Promise<boolean> {

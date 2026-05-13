@@ -11,9 +11,14 @@ const tempDirs: string[] = [];
 const sprintModePath = path.resolve('.vibe', 'harness', 'scripts', 'vibe-sprint-mode.mjs');
 
 const presetRules = [
-  'Bash(npm install:*)',
-  'Bash(npx tsc:*)',
-  'Bash(git status:*)',
+  'Bash(npm *)',
+  'Bash(npx *)',
+  'Bash(git *)',
+];
+
+const presetDenyRules = [
+  'Bash(npm publish *)',
+  'Bash(git reset --hard*)',
 ];
 
 afterEach(async () => {
@@ -47,6 +52,7 @@ async function scaffoldPreset(root: string): Promise<void> {
     presetVersion: '1.0.0',
     description: 'test preset',
     rules: presetRules,
+    denyRules: presetDenyRules,
   });
 }
 
@@ -63,13 +69,17 @@ describe('vibe-sprint-mode', () => {
     await scaffoldPreset(root);
 
     const { stdout } = await runSprintMode(root, 'on');
-    const settings = await readJson<{ permissions: { allow: string[] } }>(
+    const settings = await readJson<{ permissions: { allow: string[]; deny: string[] } }>(
       root,
       path.join('.claude', 'settings.local.json'),
     );
 
-    assert.match(stdout, /\[vibe-sprint-mode\] ON -- 3 preset rules merged \(3 new\)\. Total allow rules: 3/);
+    assert.match(
+      stdout,
+      /\[vibe-sprint-mode\] ON -- 3 allow rules and 2 deny guards merged \(3 allow new, 2 deny new\)\. Total allow rules: 3/,
+    );
     assert.deepEqual(settings.permissions.allow, presetRules);
+    assert.deepEqual(settings.permissions.deny, presetDenyRules);
   });
 
   it('preserves existing custom rules when enabling the preset', async () => {
@@ -78,6 +88,7 @@ describe('vibe-sprint-mode', () => {
     await writeJson(root, path.join('.claude', 'settings.local.json'), {
       permissions: {
         allow: ['Bash(custom:*)'],
+        deny: ['Bash(custom-danger *)'],
       },
       hooks: {
         postAction: ['echo ok'],
@@ -86,12 +97,32 @@ describe('vibe-sprint-mode', () => {
 
     await runSprintMode(root, 'on');
     const settings = await readJson<{
-      permissions: { allow: string[] };
+      permissions: { allow: string[]; deny: string[] };
       hooks: { postAction: string[] };
     }>(root, path.join('.claude', 'settings.local.json'));
 
     assert.deepEqual(settings.permissions.allow, ['Bash(custom:*)', ...presetRules]);
+    assert.deepEqual(settings.permissions.deny, ['Bash(custom-danger *)', ...presetDenyRules]);
     assert.deepEqual(settings.hooks.postAction, ['echo ok']);
+  });
+
+  it('replaces legacy colon preset rules when enabling the preset', async () => {
+    const root = await makeTempDir('sprint-mode-legacy-');
+    await scaffoldPreset(root);
+    await writeJson(root, path.join('.claude', 'settings.local.json'), {
+      permissions: {
+        allow: ['Bash(custom:*)', 'Bash(npm install:*)', 'Bash(git status:*)'],
+      },
+    });
+
+    await runSprintMode(root, 'on');
+    const settings = await readJson<{ permissions: { allow: string[]; deny: string[] } }>(
+      root,
+      path.join('.claude', 'settings.local.json'),
+    );
+
+    assert.deepEqual(settings.permissions.allow, ['Bash(custom:*)', ...presetRules]);
+    assert.deepEqual(settings.permissions.deny, presetDenyRules);
   });
 
   it('is idempotent when on is run twice', async () => {
@@ -118,19 +149,21 @@ describe('vibe-sprint-mode', () => {
     await scaffoldPreset(root);
     await writeJson(root, path.join('.claude', 'settings.local.json'), {
       permissions: {
-        allow: ['Bash(custom:*)', ...presetRules, 'Bash(extra:*)'],
+        allow: ['Bash(custom:*)', ...presetRules, 'Bash(npm install:*)', 'Bash(extra:*)'],
+        deny: ['Bash(custom-danger *)', ...presetDenyRules],
       },
       deny: ['Bash(rm -rf:*)'],
     });
 
     const { stdout } = await runSprintMode(root, 'off');
     const settings = await readJson<{
-      permissions: { allow: string[] };
+      permissions: { allow: string[]; deny: string[] };
       deny: string[];
     }>(root, path.join('.claude', 'settings.local.json'));
 
-    assert.match(stdout, /\[vibe-sprint-mode\] OFF -- 3 preset rules removed\. Remaining allow rules: 2/);
+    assert.match(stdout, /\[vibe-sprint-mode\] OFF -- 4 allow rules and 2 deny guards removed\. Remaining allow rules: 2/);
     assert.deepEqual(settings.permissions.allow, ['Bash(custom:*)', 'Bash(extra:*)']);
+    assert.deepEqual(settings.permissions.deny, ['Bash(custom-danger *)']);
     assert.deepEqual(settings.deny, ['Bash(rm -rf:*)']);
   });
 
@@ -150,6 +183,6 @@ describe('vibe-sprint-mode', () => {
 
     const { stdout } = await runSprintMode(root, 'status');
 
-    assert.equal(stdout.trim(), '[vibe-sprint-mode] ON -- 3/3 preset rules active');
+    assert.equal(stdout.trim(), '[vibe-sprint-mode] ON -- 3/3 allow rules active, 2/2 deny guards active');
   });
 });

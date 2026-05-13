@@ -148,9 +148,9 @@ Orchestrator 단독 작성. 각 entry 필드:
 
 ### 5.2 Generator 위임 규율
 
-- 단일 엔트리포인트: `cat docs/prompts/sprint-NN-*.md | ./.vibe/harness/scripts/run-codex.sh -`
+- 단일 엔트리포인트: Windows `Get-Content -Raw docs\prompts\sprint-NN-*.md | .\.vibe\harness\scripts\run-codex.cmd`; POSIX/Git Bash `cat docs/prompts/sprint-NN-*.md | ./.vibe/harness/scripts/run-codex.sh -`
 - 추가 컨텍스트 prepend는 헤더 한두 줄로만 (scope expansion, deps 상태 안내 등)
-- Agent 도구로 코드 위임 금지 (Claude가 실행됨)
+- Claude Code Agent 도구로 Codex Generator 역할을 대체하지 않는다.
 
 ### 5.3 Orchestrator self-QA
 

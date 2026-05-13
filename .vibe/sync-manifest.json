@@ -33,9 +33,18 @@
       ".codex/agents/**",
       ".codex/skills/**",
       "docs/context/codex-execution.md",
+      "docs/context/codex-wrapper-injection-audit.md",
+      "docs/context/md-injection-guarantees.md",
       "docs/context/orchestration.md",
       "docs/context/sidecars.md",
       "docs/context/harness-gaps.md",
+      "docs/context/vibe-init-sharding.md",
+      "docs/context/vibe-interview-sharding.md",
+      "docs/context/vibe-iterate-sharding.md",
+      "docs/context/vibe-review-sharding.md",
+      "docs/context/vibe-sprint-mode-audit.md",
+      "docs/context/vibe-sync-audit.md",
+      "docs/guides/**",
       "docs/orchestration/providers.md",
       "docs/release/**"
     ],
@@ -182,6 +191,7 @@
       ".vibe/archive/README.md",
       "docs/plans/project-milestones.md",
       "docs/plans/**",
+      "docs/prompts/**",
       "docs/reports/**",
       "src/**",
       "scripts/**",
@@ -200,6 +210,8 @@
     "1.4.0": ".vibe/harness/migrations/1.4.0.mjs",
     "1.6.2": ".vibe/harness/migrations/1.6.2.mjs",
     "1.7.0": ".vibe/harness/migrations/1.7.0.mjs",
-    "1.7.3": ".vibe/harness/migrations/1.7.3.mjs"
+    "1.7.3": ".vibe/harness/migrations/1.7.3.mjs",
+    "1.7.13": ".vibe/harness/migrations/1.7.13.mjs",
+    "1.7.14": ".vibe/harness/migrations/1.7.14.mjs"
   }
 }

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -127,7 +127,31 @@ function plannerPresence(records: PreflightRecord[]): PreflightRecord {
   return record;
 }
 
+function runPreflightRaw(root: string): SpawnSyncReturns<string> {
+  return spawnSync(process.execPath, [preflightPath, '--json'], {
+    cwd: root,
+    encoding: 'utf8',
+  });
+}
+
 describe('vibe-preflight planner presence check', () => {
+  it('fails when product context is still the explicit not-initialized placeholder', async () => {
+    const root = await makeTempDir('preflight-product-placeholder-');
+    await scaffoldRepo(root);
+    await writeFile(
+      path.join(root, 'docs', 'context', 'product.md'),
+      '# Product context\n\nPROJECT NOT INITIALIZED - run /vibe-init.\n',
+      'utf8',
+    );
+
+    const result = runPreflightRaw(root);
+    assert.equal(result.status, 1);
+    const records = JSON.parse(result.stdout) as PreflightRecord[];
+    const product = records.find((entry) => entry.id === 'phase0.product');
+    assert.equal(product?.ok, false);
+    assert.match(product?.detail ?? '', /template placeholder/);
+  });
+
   it('emits WARN when next pending sprint has no prompt file', async () => {
     const root = await makeTempDir('preflight-planner-missing-');
     await scaffoldRepo(root, {

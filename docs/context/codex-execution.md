@@ -74,10 +74,33 @@ wrapper가 자동 설정하는 항목:
 | `CODEX_RETRY` (기본 3) | exponential backoff | 일시 오류 자동 회복 |
 
 프롬프트가 허용된 rule/context Markdown 파일을 명시적으로 참조하면 wrapper가 해당
-본문을 `Referenced MD Context` 블록으로 자동 주입한다. 이는 agent가 "파일을 읽어야
-한다"는 MD 지시를 놓쳐서 skip하는 것을 막기 위한 비차단 guard다. 자동 주입 대상은
-`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `docs/context/*`의 규칙 shard, `.claude/agents/*.md`,
-`.claude/skills/**/*.md`, `.codex/skills/**/*.md` 범위로 제한한다.
+본문을 `Referenced MD Context` 블록으로 자동 주입한다. 주입된 Markdown 안에
+`<!-- BEGIN:*SHARDS -->` / `<!-- END:*SHARDS -->` marker block이 있으면 wrapper는
+그 block 안에 명시된 허용 Markdown 경로만 깊이 제한 안에서 transitive하게 추가
+주입한다. 일반 설명 문장에 등장하는 Markdown 링크는 재귀 추적하지 않는다. 이는
+agent가 "파일을 읽어야 한다"는 MD 지시를 놓쳐서 skip하는 것을 막기 위한 비차단
+guard다. 자동 주입 대상은
+`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `docs/context/*.md`, `docs/guides/*.md`,
+`docs/orchestration/*.md`, `docs/plans/sprint-roadmap.md`, `docs/release/README.md`,
+`.vibe/agent/*.md`, `.vibe/harness/sidecars/*.md`, `.claude/agents/*.md`,
+`.claude/skills/**/*.md`, `.claude/templates/*.md`, `.codex/skills/**/*.md` 범위로
+제한한다. `_common-rules.md`는 stdin 프롬프트에서 항상 먼저 주입되므로 명시
+참조로 중복 주입하지 않는다.
+
+샤딩 전후에는 wrapper diagnostic으로 실제 주입 범위를 먼저 확인한다. 이 명령은
+Codex CLI를 실행하지 않고 JSON만 출력하므로 session-start, retry, status-tick 같은
+런타임 side effect가 없다:
+
+```bash
+cat docs/prompts/task.md | ./.vibe/harness/scripts/run-codex.sh --diagnose-md-injection -
+```
+
+`--dry-run-md-injection`은 같은 옵션의 alias다. `runtimeInjectionApplies`가 `true`인
+경우만 실제 wrapper 실행에서도 referenced Markdown이 주입된다. 현재 referenced
+Markdown 자동 주입은 stdin 프롬프트에만 적용되므로 positional arg 진단은
+`argv-not-injected`로 표시된다. 진단 결과의 `scanMode`가 `transitive`이면 main
+Markdown의 explicit shard marker block에서 참조한 shard Markdown까지 실제 주입
+후보에 포함됐다는 뜻이다.
 
 ### 3.3 방어층 3 — `~/.codex/config.toml` 권장
 

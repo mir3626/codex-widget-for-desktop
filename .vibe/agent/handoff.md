@@ -4,6 +4,40 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Harness Sync To v1.7.17
+
+Branch `main` is synced to vibe-doctor harness `v1.7.17`.
+
+Completed:
+
+- Ran `/vibe-sync` dry-run and confirmed upstream range `^v1.7.16` resolved to `v1.7.17`.
+- Backed up the three local conflict files under `.runtime/vibe-sync-manual-merge/local-conflicts-1.7.17/`, then ran `npm run vibe:sync -- --force`.
+- Reapplied downstream project contracts after forced sync:
+  - `docs/context/orchestration.md` keeps Codex as the default Orchestrator, Planner, Generator, and Evaluator path.
+  - `docs/orchestration/providers.md` keeps Codex wrapper usage as the default and forbids raw `codex exec` for Korean Windows safety.
+  - `.vibe/harness/test/template-hygiene.test.ts` skips upstream template placeholder assertions when the checkout is an initialized downstream project, while keeping the dashboard/report template split assertion active.
+
+New harness capabilities now available from `v1.7.17`:
+
+- Codex wrapper Markdown injection diagnostics and `vibe:codex-wrapper-audit`.
+- Sharded `/vibe-init`, `/vibe-interview`, `/vibe-iterate`, and `/vibe-review` runbooks with dedicated audit scripts.
+- Sprint-mode and sync boundary audits.
+- Dashboard and project-report render templates split into `.vibe/harness/scripts/lib/*`.
+- Updated troubleshooting, upgrade, sync, and injection guarantee docs.
+
+Verification passed:
+
+- `npm run vibe:typecheck`
+- `node .vibe/harness/scripts/vibe-preflight.mjs --bootstrap`
+- `node --import tsx --test .vibe/harness/test/template-hygiene.test.ts`
+- `npm test` (`436` tests, `435` pass, `1` skip, `0` fail)
+- `git diff --check`
+- strict UTF-8 decode over tracked and untracked changes
+- quoted-question mojibake scan over tracked and untracked changes
+- touched `.cs` check: no `.cs` files touched
+
+Next: goal prompt generation remains paused by product-owner request. If resumed, incorporate the `v1.7.17` sharded skill/audit changes into the prompt.
+
 ## Latest Update: Research-Driven Performance Architecture Handoff
 
 Recorded the macro-architecture direction for the next major performance and accuracy phase.

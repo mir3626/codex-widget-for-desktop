@@ -422,6 +422,352 @@ describe('run-codex.sh wrapper', { skip: bashCommand === null }, () => {
     assert.match(child.stdout, /Use docs\/context\/qa\.md while planning verification\./);
   });
 
+  it('auto-injects transitive markdown references from injected context', async () => {
+    const binDir = await createShellStubBin('stdin');
+    const cwd = await makeTempDir('run-codex-transitive-md-');
+    await mkdir(path.join(cwd, 'docs', 'context'), { recursive: true });
+    await writeFile(
+      path.join(cwd, 'docs', 'context', 'parent.md'),
+      [
+        '# Parent',
+        '',
+        'Read docs/context/ignored.md as ordinary prose.',
+        '<!-- BEGIN:TEST:SHARDS -->',
+        '- `docs/context/child.md`',
+        '<!-- END:TEST:SHARDS -->',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+    await writeFile(path.join(cwd, 'docs', 'context', 'child.md'), '# Child\n\nTransitive shard body.\n', 'utf8');
+    await writeFile(path.join(cwd, 'docs', 'context', 'ignored.md'), '# Ignored\n\nOrdinary link body.\n', 'utf8');
+
+    const child = spawnSync(bashCommand ?? 'bash', [bashScriptPath, '-'], {
+      cwd,
+      env: shellEnv(binDir, { VIBE_SPRINT_ID: '' }),
+      input: 'Use docs/context/parent.md for this task.',
+      encoding: 'utf8',
+    });
+
+    assert.equal(child.status, 0, child.stderr);
+    assert.match(child.stderr, /injected referenced MD context count=2/);
+    assert.match(child.stdout, /## Source: `docs\/context\/parent\.md`/);
+    assert.match(child.stdout, /## Source: `docs\/context\/child\.md`/);
+    assert.match(child.stdout, /Transitive shard body\./);
+    assert.doesNotMatch(child.stdout, /Ordinary link body\./);
+  });
+
+  it('auto-injects explicit project context, guide, release index, and sidecar markdown references', async () => {
+    const binDir = await createShellStubBin('stdin');
+    const child = spawnSync(bashCommand ?? 'bash', [bashScriptPath, '-'], {
+      env: shellEnv(binDir, { VIBE_SPRINT_ID: '' }),
+      input: 'Use docs/context/product.md, docs/guides/upgrade.md, docs/release/README.md, and .vibe/harness/sidecars/diff-reviewer.md.',
+      encoding: 'utf8',
+    });
+
+    assert.equal(child.status, 0);
+    assert.match(child.stderr, /injected referenced MD context/);
+    assert.match(child.stdout, /## Source: `docs\/context\/product\.md`/);
+    assert.match(child.stdout, /## Source: `docs\/guides\/upgrade\.md`/);
+    assert.match(child.stdout, /## Source: `docs\/release\/README\.md`/);
+    assert.match(child.stdout, /## Source: `.vibe\/harness\/sidecars\/diff-reviewer\.md`/);
+  });
+
+  it('diagnoses stdin markdown injection without invoking codex', async () => {
+    const binDir = await makeTempDir('run-codex-diagnostic-empty-bin-');
+    await writeExecutable(path.join(binDir, 'codex'), '#!/usr/bin/env bash\necho "codex invoked" >&2\nexit 66\n');
+    const child = spawnSync(bashCommand ?? 'bash', [bashScriptPath, '--diagnose-md-injection', '-'], {
+      env: shellEnv(binDir, { VIBE_SPRINT_ID: '', VIBE_SKIP_AGENT_SESSION_START: '0' }),
+      input: [
+        'Use docs/context/qa.md for verification.',
+        'Also inspect docs/context/missing-diagnostic.md, README.md, and .vibe/agent/_common-rules.md.',
+      ].join('\n'),
+      encoding: 'utf8',
+    });
+
+    assert.equal(child.status, 0, child.stderr);
+    assert.doesNotMatch(child.stderr, /codex invoked|codex CLI not found/);
+
+    const diagnostic = JSON.parse(child.stdout) as {
+      mode?: string;
+      scanMode?: string;
+      promptSource?: string;
+      runtimeInjectionApplies?: boolean;
+      commonRules?: { path?: string; exists?: boolean; wouldInject?: boolean };
+      referencedMarkdown?: Array<{ path?: string; status?: string; reason?: string }>;
+      summary?: { inject?: number; missing?: number; skipped?: number };
+    };
+    assert.equal(diagnostic.mode, 'md-injection-diagnostic');
+    assert.equal(diagnostic.scanMode, 'transitive');
+    assert.equal(diagnostic.promptSource, 'stdin');
+    assert.equal(diagnostic.runtimeInjectionApplies, true);
+    assert.equal(diagnostic.commonRules?.path, '.vibe/agent/_common-rules.md');
+    assert.equal(diagnostic.commonRules?.exists, true);
+    assert.equal(diagnostic.commonRules?.wouldInject, true);
+
+    const byPath = new Map((diagnostic.referencedMarkdown ?? []).map((entry) => [entry.path, entry]));
+    assert.equal(byPath.get('docs/context/qa.md')?.status, 'inject');
+    assert.equal(byPath.get('docs/context/missing-diagnostic.md')?.status, 'missing');
+    assert.equal(byPath.get('README.md')?.reason, 'not-allowlisted');
+    assert.equal(byPath.get('.vibe/agent/_common-rules.md')?.reason, 'common-rules-injected-separately');
+    assert.equal(diagnostic.summary?.inject, 1);
+    assert.equal(diagnostic.summary?.missing, 1);
+    assert.equal(diagnostic.summary?.skipped, 2);
+  });
+
+  it('diagnoses transitive stdin markdown injection without invoking codex', async () => {
+    const binDir = await makeTempDir('run-codex-diagnostic-transitive-bin-');
+    const cwd = await makeTempDir('run-codex-diagnostic-transitive-');
+    await writeExecutable(path.join(binDir, 'codex'), '#!/usr/bin/env bash\necho "codex invoked" >&2\nexit 66\n');
+    await mkdir(path.join(cwd, 'docs', 'context'), { recursive: true });
+    await writeFile(
+      path.join(cwd, 'docs', 'context', 'parent.md'),
+      [
+        '# Parent',
+        '',
+        'Read docs/context/ignored.md as ordinary prose.',
+        '<!-- BEGIN:TEST:SHARDS -->',
+        '- `docs/context/child.md`',
+        '<!-- END:TEST:SHARDS -->',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+    await writeFile(path.join(cwd, 'docs', 'context', 'child.md'), '# Child\n\nTransitive shard body.\n', 'utf8');
+    await writeFile(path.join(cwd, 'docs', 'context', 'ignored.md'), '# Ignored\n\nOrdinary link body.\n', 'utf8');
+
+    const child = spawnSync(bashCommand ?? 'bash', [bashScriptPath, '--diagnose-md-injection', '-'], {
+      cwd,
+      env: shellEnv(binDir, { VIBE_SPRINT_ID: '', VIBE_SKIP_AGENT_SESSION_START: '0' }),
+      input: 'Use docs/context/parent.md for this task.',
+      encoding: 'utf8',
+    });
+
+    assert.equal(child.status, 0, child.stderr);
+    assert.doesNotMatch(child.stderr, /codex invoked|codex CLI not found/);
+
+    const diagnostic = JSON.parse(child.stdout) as {
+      scanMode?: string;
+      referencedMarkdown?: Array<{ path?: string; status?: string }>;
+      summary?: { inject?: number };
+    };
+    const byPath = new Map((diagnostic.referencedMarkdown ?? []).map((entry) => [entry.path, entry]));
+    assert.equal(diagnostic.scanMode, 'transitive');
+    assert.equal(byPath.get('docs/context/parent.md')?.status, 'inject');
+    assert.equal(byPath.get('docs/context/child.md')?.status, 'inject');
+    assert.equal(byPath.has('docs/context/ignored.md'), false);
+    assert.equal(diagnostic.summary?.inject, 2);
+  });
+
+  it('diagnoses Codex vibe-init wrapper injection through shared phase shards', async () => {
+    const binDir = await makeTempDir('run-codex-diagnostic-vibe-init-bin-');
+    await writeExecutable(path.join(binDir, 'codex'), '#!/usr/bin/env bash\necho "codex invoked" >&2\nexit 66\n');
+    const child = spawnSync(bashCommand ?? 'bash', [bashScriptPath, '--diagnose-md-injection', '-'], {
+      env: shellEnv(binDir, { VIBE_SPRINT_ID: '', VIBE_SKIP_AGENT_SESSION_START: '0' }),
+      input: 'Use .codex/skills/vibe-init/SKILL.md for initialization.',
+      encoding: 'utf8',
+    });
+
+    assert.equal(child.status, 0, child.stderr);
+    assert.doesNotMatch(child.stderr, /codex invoked|codex CLI not found/);
+
+    const diagnostic = JSON.parse(child.stdout) as {
+      referencedMarkdown?: Array<{ path?: string; status?: string }>;
+      summary?: { inject?: number; missing?: number; skipped?: number };
+    };
+    const byPath = new Map((diagnostic.referencedMarkdown ?? []).map((entry) => [entry.path, entry]));
+    for (const expectedPath of [
+      '.codex/skills/vibe-init/SKILL.md',
+      '.claude/skills/vibe-init/SKILL.md',
+      '.claude/skills/vibe-init/phases/phase-2-providers.md',
+      '.claude/skills/vibe-init/phases/phase-3-interview.md',
+      '.claude/skills/vibe-init/phases/phase-4-complete.md',
+      '.claude/skills/vibe-init/phases/rules.md',
+    ]) {
+      assert.equal(byPath.get(expectedPath)?.status, 'inject', expectedPath);
+    }
+    assert.equal(diagnostic.summary?.inject, 6);
+    assert.equal(diagnostic.summary?.missing, 0);
+    assert.equal(diagnostic.summary?.skipped, 0);
+  });
+
+  it('diagnoses Codex vibe-review wrapper injection through shared section shards', async () => {
+    const binDir = await makeTempDir('run-codex-diagnostic-vibe-review-bin-');
+    await writeExecutable(path.join(binDir, 'codex'), '#!/usr/bin/env bash\necho "codex invoked" >&2\nexit 66\n');
+    const child = spawnSync(bashCommand ?? 'bash', [bashScriptPath, '--diagnose-md-injection', '-'], {
+      env: shellEnv(binDir, { VIBE_SPRINT_ID: '', VIBE_SKIP_AGENT_SESSION_START: '0' }),
+      input: 'Use .codex/skills/vibe-review/SKILL.md for harness review.',
+      encoding: 'utf8',
+    });
+
+    assert.equal(child.status, 0, child.stderr);
+    assert.doesNotMatch(child.stderr, /codex invoked|codex CLI not found/);
+
+    const diagnostic = JSON.parse(child.stdout) as {
+      referencedMarkdown?: Array<{ path?: string; status?: string }>;
+      summary?: { inject?: number; missing?: number; skipped?: number };
+    };
+    const byPath = new Map((diagnostic.referencedMarkdown ?? []).map((entry) => [entry.path, entry]));
+    for (const expectedPath of [
+      '.codex/skills/vibe-review/SKILL.md',
+      '.claude/skills/vibe-review/SKILL.md',
+      '.claude/skills/vibe-review/sections/protocol.md',
+      '.claude/skills/vibe-review/sections/rubric-and-findings.md',
+      '.claude/skills/vibe-review/sections/automatic-checks.md',
+      '.claude/skills/vibe-review/sections/report-shape.md',
+    ]) {
+      assert.equal(byPath.get(expectedPath)?.status, 'inject', expectedPath);
+    }
+    assert.equal(diagnostic.summary?.inject, 6);
+    assert.equal(diagnostic.summary?.missing, 0);
+    assert.equal(diagnostic.summary?.skipped, 0);
+  });
+
+  it('diagnoses Codex vibe-interview wrapper injection through shared section shards', async () => {
+    const binDir = await makeTempDir('run-codex-diagnostic-vibe-interview-bin-');
+    await writeExecutable(path.join(binDir, 'codex'), '#!/usr/bin/env bash\necho "codex invoked" >&2\nexit 66\n');
+    const child = spawnSync(bashCommand ?? 'bash', [bashScriptPath, '--diagnose-md-injection', '-'], {
+      env: shellEnv(binDir, { VIBE_SPRINT_ID: '', VIBE_SKIP_AGENT_SESSION_START: '0' }),
+      input: 'Use .codex/skills/vibe-interview/SKILL.md for native interview.',
+      encoding: 'utf8',
+    });
+
+    assert.equal(child.status, 0, child.stderr);
+    assert.doesNotMatch(child.stderr, /codex invoked|codex CLI not found/);
+
+    const diagnostic = JSON.parse(child.stdout) as {
+      referencedMarkdown?: Array<{ path?: string; status?: string }>;
+      summary?: { inject?: number; missing?: number; skipped?: number };
+    };
+    const byPath = new Map((diagnostic.referencedMarkdown ?? []).map((entry) => [entry.path, entry]));
+    for (const expectedPath of [
+      '.codex/skills/vibe-interview/SKILL.md',
+      '.claude/skills/vibe-interview/SKILL.md',
+      '.claude/skills/vibe-interview/sections/invocation-protocol.md',
+      '.claude/skills/vibe-interview/sections/operating-modes.md',
+      '.claude/skills/vibe-interview/sections/termination-consensus.md',
+      '.claude/skills/vibe-interview/sections/output-artifacts.md',
+    ]) {
+      assert.equal(byPath.get(expectedPath)?.status, 'inject', expectedPath);
+    }
+    assert.equal(diagnostic.summary?.inject, 6);
+    assert.equal(diagnostic.summary?.missing, 0);
+    assert.equal(diagnostic.summary?.skipped, 0);
+  });
+
+  it('diagnoses Codex vibe-iterate wrapper injection through shared phase shards', async () => {
+    const binDir = await makeTempDir('run-codex-diagnostic-vibe-iterate-bin-');
+    await writeExecutable(path.join(binDir, 'codex'), '#!/usr/bin/env bash\necho "codex invoked" >&2\nexit 66\n');
+    const child = spawnSync(bashCommand ?? 'bash', [bashScriptPath, '--diagnose-md-injection', '-'], {
+      env: shellEnv(binDir, { VIBE_SPRINT_ID: '', VIBE_SKIP_AGENT_SESSION_START: '0' }),
+      input: 'Use .codex/skills/vibe-iterate/SKILL.md for the next iteration.',
+      encoding: 'utf8',
+    });
+
+    assert.equal(child.status, 0, child.stderr);
+    assert.doesNotMatch(child.stderr, /codex invoked|codex CLI not found/);
+
+    const diagnostic = JSON.parse(child.stdout) as {
+      referencedMarkdown?: Array<{ path?: string; status?: string }>;
+      summary?: { inject?: number; missing?: number; skipped?: number };
+    };
+    const byPath = new Map((diagnostic.referencedMarkdown ?? []).map((entry) => [entry.path, entry]));
+    for (const expectedPath of [
+      '.codex/skills/vibe-iterate/SKILL.md',
+      '.claude/skills/vibe-iterate/SKILL.md',
+      '.claude/skills/vibe-iterate/phases/phase-0-load-state.md',
+      '.claude/skills/vibe-iterate/phases/phase-1-differential-interview.md',
+      '.claude/skills/vibe-iterate/phases/phase-2-roadmap-history.md',
+      '.claude/skills/vibe-iterate/phases/phase-4-sprints-report.md',
+    ]) {
+      assert.equal(byPath.get(expectedPath)?.status, 'inject', expectedPath);
+    }
+    assert.equal(diagnostic.summary?.inject, 6);
+    assert.equal(diagnostic.summary?.missing, 0);
+    assert.equal(diagnostic.summary?.skipped, 0);
+  });
+
+  it('diagnoses Codex vibe-sync wrapper injection through the shared runbook', async () => {
+    const binDir = await makeTempDir('run-codex-diagnostic-vibe-sync-bin-');
+    await writeExecutable(path.join(binDir, 'codex'), '#!/usr/bin/env bash\necho "codex invoked" >&2\nexit 66\n');
+    const child = spawnSync(bashCommand ?? 'bash', [bashScriptPath, '--diagnose-md-injection', '-'], {
+      env: shellEnv(binDir, { VIBE_SPRINT_ID: '', VIBE_SKIP_AGENT_SESSION_START: '0' }),
+      input: 'Use .codex/skills/vibe-sync/SKILL.md for harness sync.',
+      encoding: 'utf8',
+    });
+
+    assert.equal(child.status, 0, child.stderr);
+    assert.doesNotMatch(child.stderr, /codex invoked|codex CLI not found/);
+
+    const diagnostic = JSON.parse(child.stdout) as {
+      referencedMarkdown?: Array<{ path?: string; status?: string }>;
+      summary?: { inject?: number; missing?: number; skipped?: number };
+    };
+    const byPath = new Map((diagnostic.referencedMarkdown ?? []).map((entry) => [entry.path, entry]));
+    for (const expectedPath of [
+      '.codex/skills/vibe-sync/SKILL.md',
+      '.claude/skills/vibe-sync/SKILL.md',
+    ]) {
+      assert.equal(byPath.get(expectedPath)?.status, 'inject', expectedPath);
+    }
+    assert.equal(diagnostic.summary?.inject, 2);
+    assert.equal(diagnostic.summary?.missing, 0);
+    assert.equal(diagnostic.summary?.skipped, 0);
+  });
+
+  it('diagnoses compact Codex wrappers through their shared runbooks', async () => {
+    const binDir = await makeTempDir('run-codex-diagnostic-compact-skills-bin-');
+    await writeExecutable(path.join(binDir, 'codex'), '#!/usr/bin/env bash\necho "codex invoked" >&2\nexit 66\n');
+
+    for (const skillName of ['goal-to-plan', 'maintain-context', 'self-qa', 'vibe-sprint-mode', 'write-report']) {
+      const child = spawnSync(bashCommand ?? 'bash', [bashScriptPath, '--diagnose-md-injection', '-'], {
+        env: shellEnv(binDir, { VIBE_SPRINT_ID: '', VIBE_SKIP_AGENT_SESSION_START: '0' }),
+        input: `Use .codex/skills/${skillName}/SKILL.md for this workflow.`,
+        encoding: 'utf8',
+      });
+
+      assert.equal(child.status, 0, `${skillName}\n${child.stderr}`);
+      assert.doesNotMatch(child.stderr, /codex invoked|codex CLI not found/);
+
+      const diagnostic = JSON.parse(child.stdout) as {
+        referencedMarkdown?: Array<{ path?: string; status?: string }>;
+        summary?: { inject?: number; missing?: number; skipped?: number };
+      };
+      const byPath = new Map((diagnostic.referencedMarkdown ?? []).map((entry) => [entry.path, entry]));
+      assert.equal(byPath.get(`.codex/skills/${skillName}/SKILL.md`)?.status, 'inject', skillName);
+      assert.equal(byPath.get(`.claude/skills/${skillName}/SKILL.md`)?.status, 'inject', skillName);
+      assert.equal(diagnostic.summary?.inject, 2, skillName);
+      assert.equal(diagnostic.summary?.missing, 0, skillName);
+      assert.equal(diagnostic.summary?.skipped, 0, skillName);
+    }
+  });
+
+  it('marks argv markdown references as not injected at runtime', async () => {
+    const binDir = await makeTempDir('run-codex-diagnostic-argv-bin-');
+    const child = spawnSync(bashCommand ?? 'bash', [bashScriptPath, '--dry-run-md-injection', 'Use docs/context/qa.md.'], {
+      env: shellEnv(binDir, { VIBE_SPRINT_ID: '' }),
+      input: '',
+      encoding: 'utf8',
+    });
+
+    assert.equal(child.status, 0, child.stderr);
+    const diagnostic = JSON.parse(child.stdout) as {
+      promptSource?: string;
+      runtimeInjectionApplies?: boolean;
+      referencedMarkdown?: Array<{ path?: string; status?: string; reason?: string }>;
+      summary?: { skipped?: number };
+    };
+    assert.equal(diagnostic.promptSource, 'argv');
+    assert.equal(diagnostic.runtimeInjectionApplies, false);
+    assert.deepEqual(diagnostic.referencedMarkdown?.[0], {
+      reference: 'docs/context/qa.md',
+      path: 'docs/context/qa.md',
+      status: 'argv-not-injected',
+      reason: 'referenced-md-injection-only-applies-to-stdin-prompts',
+    });
+    assert.equal(diagnostic.summary?.skipped, 1);
+  });
+
   it('emits a dashboard attention event after successful Codex execution when enabled', async () => {
     const binDir = await createShellStubBin('ok');
     const cwd = await makeTempDir('run-codex-attention-');

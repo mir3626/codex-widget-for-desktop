@@ -7,9 +7,13 @@ description: Codex-compatible wrapper for the shared vibe-doctor goal-to-plan wo
 
 This repository keeps provider-neutral skill runbooks under `.claude/skills`.
 
-When this skill is invoked in Codex, open and follow:
+<!-- BEGIN:VIBE-CODEX:SHARDS -->
+- `.claude/skills/goal-to-plan/SKILL.md`
+<!-- END:VIBE-CODEX:SHARDS -->
 
-`../../../.claude/skills/goal-to-plan/SKILL.md`
+When this skill is invoked in Codex, open the repository-root path and follow:
+
+`.claude/skills/goal-to-plan/SKILL.md`
 
 Codex notes:
 

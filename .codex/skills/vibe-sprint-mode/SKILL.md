@@ -7,9 +7,13 @@ description: Codex-compatible wrapper for the shared vibe-doctor sprint mode wor
 
 This repository keeps provider-neutral skill runbooks under `.claude/skills`.
 
-When this skill is invoked in Codex, open and follow:
+<!-- BEGIN:VIBE-CODEX:SHARDS -->
+- `.claude/skills/vibe-sprint-mode/SKILL.md`
+<!-- END:VIBE-CODEX:SHARDS -->
 
-`../../../.claude/skills/vibe-sprint-mode/SKILL.md`
+When this skill is invoked in Codex, open the repository-root path and follow:
+
+`.claude/skills/vibe-sprint-mode/SKILL.md`
 
 Codex notes:
 

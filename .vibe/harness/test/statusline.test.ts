@@ -14,6 +14,7 @@ const powershellScriptPath = path.resolve('.claude', 'statusline.ps1');
 const settingsPath = path.resolve('.claude', 'settings.json');
 const emojiTarget = '\u{1F3AF}';
 const emojiWarning = '\u26A0\uFE0F';
+const emojiSprint = '\u{1F3C3}';
 
 function detectWorkingBash(): string | null {
   try {
@@ -207,6 +208,26 @@ describe('statusline.mjs', () => {
 
     assert.match(stdout, /v1\.3\.1 pinned$/);
     assert.doesNotMatch(stdout, /\/vibe-sync/);
+  });
+
+  it('shows active extended sprint-mode from settings.local.json', async () => {
+    const root = await makeTempDir('statusline-sprint-mode-');
+    await writeStatus(root);
+    await writeJson(root, path.join('.vibe', 'settings-presets', 'agent-delegation.json'), {
+      rules: ['Bash(npm run *)'],
+    });
+    await writeJson(root, path.join('.vibe', 'settings-presets', 'agent-delegation-extended.json'), {
+      rules: ['Bash(npm *)', 'Bash(git *)'],
+    });
+    await writeJson(root, path.join('.claude', 'settings.local.json'), {
+      permissions: {
+        allow: ['Bash(npm *)', 'Bash(git *)'],
+      },
+    });
+
+    const { stdout } = runNodeStatusline(root);
+
+    assert.equal(stdout, `🎯 sprint-M9-statusline-permissions (2/3) | ${emojiSprint} sprint:extended | ⚠️ 2`);
   });
 });
 

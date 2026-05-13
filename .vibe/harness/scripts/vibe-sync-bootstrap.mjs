@@ -46,7 +46,10 @@ function hasTemplateProjectState(productMd, sprintStatus, rootBasename) {
       ? sprintStatus.project.name
       : '';
 
-  return statusProjectName === 'vibe-doctor' || /\*\*vibe-doctor\*\*|^#\s+vibe-doctor\b/im.test(productMd);
+  return (
+    statusProjectName === 'vibe-doctor' ||
+    /\*\*vibe-doctor\*\*|^#\s+vibe-doctor\b|PROJECT NOT INITIALIZED/im.test(productMd)
+  );
 }
 
 function hasVibeInitArtifacts(root) {

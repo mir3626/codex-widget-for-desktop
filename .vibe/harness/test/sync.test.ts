@@ -259,6 +259,24 @@ describe('vibe init artifact guard', () => {
     assert.equal(await hasVibeInitArtifacts(root), false);
   });
 
+  it('rejects explicit not-initialized product placeholders even after mechanical state exists', async () => {
+    const root = await makeTempDir('sync-placeholder-product-');
+    await mkdir(path.join(root, 'docs', 'context'), { recursive: true });
+    await writeFile(
+      path.join(root, 'docs', 'context', 'product.md'),
+      '# Product context\n\nPROJECT NOT INITIALIZED - run /vibe-init.\n',
+      'utf8',
+    );
+    await writeJson(path.join(root, '.vibe', 'agent', 'sprint-status.json'), {
+      schemaVersion: '0.1',
+      project: { name: 'demo', createdAt: '2026-04-01T00:00:00.000Z' },
+      sprints: [],
+      verificationCommands: [],
+    });
+
+    assert.equal(await hasVibeInitArtifacts(root), false);
+  });
+
   it('accepts initialized project state with an empty sprint history', async () => {
     const root = await makeTempDir('sync-initialized-');
     await mkdir(path.join(root, 'docs', 'context'), { recursive: true });
@@ -812,6 +830,7 @@ describe('sync manifest', () => {
     assert.equal(manifest.files.harness.includes('docs/release/**'), true);
     assert.equal(manifest.files.harness.includes('.codex/skills/**'), true);
     assert.equal(manifest.files.harness.includes('.claude/statusline.mjs'), true);
+    assert.equal(manifest.files.harness.includes('README.md'), false);
     assert.equal(manifest.files.harness.includes('src/lib/sprint-status.ts'), false);
     assert.equal(manifest.files.harness.includes('scripts/vibe-sprint-commit.mjs'), false);
     assert.equal(manifest.files.harness.includes('test/checkpoint.test.ts'), false);
@@ -843,9 +862,12 @@ describe('sync manifest', () => {
     assert.equal(manifest.files.project.includes('.vibe/agent/sprint-api-contracts.json'), true);
     assert.equal(manifest.files.project.includes('.vibe/agent/project-decisions.jsonl'), true);
     assert.equal(manifest.files.project.includes('.vibe/archive/README.md'), true);
+    assert.equal(manifest.files.project.includes('docs/prompts/**'), true);
     assert.equal(manifest.migrations['1.1.0'], '.vibe/harness/migrations/1.1.0.mjs');
     assert.equal(manifest.migrations['1.7.0'], '.vibe/harness/migrations/1.7.0.mjs');
     assert.equal(manifest.migrations['1.7.3'], '.vibe/harness/migrations/1.7.3.mjs');
+    assert.equal(manifest.migrations['1.7.13'], '.vibe/harness/migrations/1.7.13.mjs');
+    assert.equal(manifest.migrations['1.7.14'], '.vibe/harness/migrations/1.7.14.mjs');
   });
 });
 
@@ -937,5 +959,197 @@ describe('v1.7.3 migration', () => {
     assert.equal(typeof status.pendingRisks[0]?.statusUpdatedAt, 'string');
     assert.equal(status.pendingRisks[1]?.status, 'closed-by-scope');
     assert.equal(typeof status.pendingRisks[1]?.statusUpdatedAt, 'string');
+  });
+});
+
+describe('v1.7.13 migration', () => {
+  it('removes copied upstream template iteration state without keeping iter-9 as project state', async () => {
+    const root = await makeTempDir('vibe-migration-1713-');
+    await writeJson(path.join(root, '.vibe', 'agent', 'iteration-history.json'), {
+      $schema: './iteration-history.schema.json',
+      currentIteration: null,
+      iterations: [
+        {
+          id: 'iter-9',
+          label: 'rule-gates-and-wiring-drift',
+          startedAt: '2026-04-24T05:30:00.000Z',
+          completedAt: '2026-04-24T05:39:04.765Z',
+          goal: 'template iteration history copied from upstream',
+          plannedSprints: ['sprint-rule-disposition-gate', 'sprint-wiring-drift-detector'],
+          completedSprints: ['sprint-rule-disposition-gate', 'sprint-wiring-drift-detector'],
+          milestoneProgress: {},
+          summary: 'stale template entry',
+        },
+      ],
+    });
+    await mkdir(path.join(root, 'docs', 'plans'), { recursive: true });
+    await writeFile(
+      path.join(root, 'docs', 'plans', 'sprint-roadmap.md'),
+      [
+        '# Sprint Roadmap',
+        '',
+        '# Iteration 9 - rule-gates-and-wiring-drift',
+        '',
+        '- **id**: `sprint-rule-disposition-gate`',
+        '- **id**: `sprint-wiring-drift-detector`',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const { stdout } = await execFile(process.execPath, [
+      path.join(process.cwd(), '.vibe', 'harness', 'migrations', '1.7.13.mjs'),
+      root,
+    ]);
+
+    const history = JSON.parse(await readFile(path.join(root, '.vibe', 'agent', 'iteration-history.json'), 'utf8')) as {
+      currentIteration: string | null;
+      iterations: unknown[];
+    };
+    const roadmap = await readFile(path.join(root, 'docs', 'plans', 'sprint-roadmap.md'), 'utf8');
+
+    assert.match(stdout, /iterationHistory=reset-template/);
+    assert.match(stdout, /sprintRoadmap=reset-template/);
+    assert.equal(history.currentIteration, null);
+    assert.deepEqual(history.iterations, []);
+    assert.doesNotMatch(roadmap, /Iteration 9/);
+    assert.doesNotMatch(roadmap, /sprint-rule-disposition-gate/);
+  });
+
+  it('keeps project-owned iteration state even when a project reaches iter-9 itself', async () => {
+    const root = await makeTempDir('vibe-migration-1713-project-');
+    await writeJson(path.join(root, '.vibe', 'agent', 'iteration-history.json'), {
+      $schema: './iteration-history.schema.json',
+      currentIteration: 'iter-9',
+      iterations: [
+        {
+          id: 'iter-9',
+          label: 'customer-billing-polish',
+          startedAt: '2026-05-08T00:00:00.000Z',
+          completedAt: null,
+          goal: 'real downstream project iteration',
+          plannedSprints: ['sprint-billing-polish'],
+          completedSprints: [],
+          milestoneProgress: {},
+          summary: '',
+        },
+      ],
+    });
+    await mkdir(path.join(root, 'docs', 'plans'), { recursive: true });
+    await writeFile(
+      path.join(root, 'docs', 'plans', 'sprint-roadmap.md'),
+      [
+        '# Sprint Roadmap',
+        '',
+        '# Iteration 9 - customer-billing-polish',
+        '',
+        '- **id**: `sprint-billing-polish`',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const { stdout } = await execFile(process.execPath, [
+      path.join(process.cwd(), '.vibe', 'harness', 'migrations', '1.7.13.mjs'),
+      root,
+    ]);
+
+    const history = JSON.parse(await readFile(path.join(root, '.vibe', 'agent', 'iteration-history.json'), 'utf8')) as {
+      currentIteration: string | null;
+      iterations: Array<{ label?: string }>;
+    };
+    const roadmap = await readFile(path.join(root, 'docs', 'plans', 'sprint-roadmap.md'), 'utf8');
+
+    assert.match(stdout, /iterationHistory=idempotent/);
+    assert.match(stdout, /sprintRoadmap=idempotent/);
+    assert.equal(history.currentIteration, 'iter-9');
+    assert.equal(history.iterations[0]?.label, 'customer-billing-polish');
+    assert.match(roadmap, /sprint-billing-polish/);
+  });
+});
+
+describe('v1.7.14 migration', () => {
+  it('removes copied template-owned docs, reports, and archived prompts', async () => {
+    const root = await makeTempDir('vibe-migration-1714-');
+    await mkdir(path.join(root, 'docs', 'plans'), { recursive: true });
+    await mkdir(path.join(root, 'docs', 'prompts'), { recursive: true });
+    await mkdir(path.join(root, 'docs', 'reports'), { recursive: true });
+    await mkdir(path.join(root, '.vibe', 'archive', 'prompts'), { recursive: true });
+    await writeFile(path.join(root, 'docs', 'plans', 'dogfood6-improvements.md'), 'dogfood6 stale plan\n', 'utf8');
+    await writeFile(
+      path.join(root, 'docs', 'plans', 'iter-7-upstream-handoff.md'),
+      'dogfood10 upstream iter-7 handoff\n',
+      'utf8',
+    );
+    await writeFile(
+      path.join(root, 'docs', 'prompts', 'dashboard-redesign.md'),
+      'Dashboard 디자인 리팩토링 stale prompt renderShellHtml()\n',
+      'utf8',
+    );
+    await writeFile(
+      path.join(root, 'docs', 'reports', 'project-report.html'),
+      '<html>vibe-doctor iter-7-kickoff</html>\n',
+      'utf8',
+    );
+    await writeFile(
+      path.join(root, '.vibe', 'archive', 'prompts', 'sprint-M1-codex-unavailable-signal.md'),
+      'CODEX_UNAVAILABLE sprint-M1-codex-unavailable-signal\n',
+      'utf8',
+    );
+    await writeJson(path.join(root, '.vibe', 'agent', 'project-map.json'), {
+      $schema: './project-map.schema.json',
+      schemaVersion: '0.1',
+      updatedAt: '2026-04-16T00:00:00.000Z',
+      modules: {},
+      activePlatformRules: [],
+    });
+    await writeJson(path.join(root, '.vibe', 'agent', 'sprint-api-contracts.json'), {
+      $schema: './sprint-api-contracts.schema.json',
+      schemaVersion: '0.1',
+      updatedAt: '2026-04-16T00:00:00.000Z',
+      contracts: {},
+    });
+
+    const { stdout } = await execFile(process.execPath, [
+      path.join(process.cwd(), '.vibe', 'harness', 'migrations', '1.7.14.mjs'),
+      root,
+    ]);
+
+    assert.match(stdout, /removedTemplateArtifacts=5/);
+    assert.match(stdout, /projectMap=normalized/);
+    assert.match(stdout, /contracts=normalized/);
+    await assert.rejects(readFile(path.join(root, 'docs', 'plans', 'dogfood6-improvements.md'), 'utf8'), /ENOENT/);
+    await assert.rejects(readFile(path.join(root, 'docs', 'plans', 'iter-7-upstream-handoff.md'), 'utf8'), /ENOENT/);
+    await assert.rejects(readFile(path.join(root, 'docs', 'prompts', 'dashboard-redesign.md'), 'utf8'), /ENOENT/);
+    await assert.rejects(readFile(path.join(root, 'docs', 'reports', 'project-report.html'), 'utf8'), /ENOENT/);
+    await assert.rejects(
+      readFile(path.join(root, '.vibe', 'archive', 'prompts', 'sprint-M1-codex-unavailable-signal.md'), 'utf8'),
+      /ENOENT/,
+    );
+    assert.equal(await readFile(path.join(root, 'docs', 'prompts', '.gitkeep'), 'utf8'), '');
+    assert.equal(await readFile(path.join(root, 'docs', 'reports', '.gitkeep'), 'utf8'), '');
+  });
+
+  it('preserves project-owned files that reuse common output names', async () => {
+    const root = await makeTempDir('vibe-migration-1714-preserve-');
+    await mkdir(path.join(root, 'docs', 'prompts'), { recursive: true });
+    await mkdir(path.join(root, 'docs', 'reports'), { recursive: true });
+    await writeFile(path.join(root, 'docs', 'prompts', 'dashboard-redesign.md'), 'project dashboard redesign\n', 'utf8');
+    await writeFile(path.join(root, 'docs', 'reports', 'project-report.html'), '<html>customer project</html>\n', 'utf8');
+
+    const { stdout } = await execFile(process.execPath, [
+      path.join(process.cwd(), '.vibe', 'harness', 'migrations', '1.7.14.mjs'),
+      root,
+    ]);
+
+    assert.match(stdout, /removedTemplateArtifacts=0/);
+    assert.equal(
+      await readFile(path.join(root, 'docs', 'prompts', 'dashboard-redesign.md'), 'utf8'),
+      'project dashboard redesign\n',
+    );
+    assert.equal(
+      await readFile(path.join(root, 'docs', 'reports', 'project-report.html'), 'utf8'),
+      '<html>customer project</html>\n',
+    );
   });
 });

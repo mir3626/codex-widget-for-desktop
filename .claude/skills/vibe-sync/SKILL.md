@@ -21,6 +21,19 @@ description: Sync vibe-doctor harness/template updates while preserving project-
    - bootstrap preflight via `.vibe/harness/scripts/vibe-preflight.mjs --bootstrap`
 5. If sync fails, use `.vibe/sync-backup/<timestamp>/` for recovery context.
 
+## Safety Gate
+
+Run this before and after changing sync boundaries or the sync runbook:
+
+```bash
+npm run vibe:sync-audit
+```
+
+The audit must pass before release because `/vibe-sync` is allowed to replace
+harness-owned files across downstream projects. It verifies that the manifest
+does not move project-owned source, context, runtime state, provider settings,
+or product scripts into harness ownership.
+
 ## Options
 
 | Flag | Purpose |
@@ -65,5 +78,5 @@ Default templates use caret refs so plain `/vibe-sync` advances to the latest co
 
 - Root `src/**`, `scripts/**`, `test/**`, `app/**`, `components/**`, and `lib/**` are project-owned after v1.7.0.
 - Harness runtime, tests, migrations, and configs live under `.vibe/harness/**`.
-- Root Markdown files stay hybrid through marker blocks.
+- Root agent-memory Markdown files (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`) stay hybrid through marker blocks. Root `README.md` is not full harness-owned; use a future marker strategy before syncing project README content.
 - `package.json` sync owns `scripts.vibe:*` and `engines`; product scripts such as `test`, `build`, `typecheck`, and `test:ui` are project-owned.

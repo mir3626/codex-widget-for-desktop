@@ -46,10 +46,14 @@ print_usage() {
   cat <<'EOF'
 Usage:
   run-codex.sh --health|--version|--help
+  cat prompt.md | run-codex.sh --diagnose-md-injection -
   cat prompt.md | run-codex.sh -
   run-codex.sh "prompt text"
 EOF
 }
+
+RULES_FILE=".vibe/agent/_common-rules.md"
+md_injection_diagnostic=0
 
 is_wsl_host() {
   if [[ -n "${WSL_DISTRO_NAME:-}" || -n "${WSL_INTEROP:-}" ]]; then
@@ -364,17 +368,16 @@ if [[ $# -ge 1 ]]; then
       print_usage
       exit 0
       ;;
+    --diagnose-md-injection|--dry-run-md-injection)
+      md_injection_diagnostic=1
+      shift
+      ;;
   esac
 fi
 
-agent_session_start
-
-attempt_output="$(mktemp "${TMPDIR:-/tmp}/run-codex.XXXXXX")"
-attempt_stderr="$(mktemp "${TMPDIR:-/tmp}/run-codex.XXXXXX")"
-cleanup() {
-  rm -f "$attempt_output" "$attempt_stderr"
-}
-trap cleanup EXIT
+if [[ "$md_injection_diagnostic" != "1" ]]; then
+  agent_session_start
+fi
 
 is_windows_host() {
   local uname_s os_name
@@ -449,10 +452,10 @@ is_autoinjectable_md_path() {
     CLAUDE.md|AGENTS.md|GEMINI.md)
       return 0
       ;;
-    docs/context/codex-execution.md|docs/context/conventions.md|docs/context/harness-gaps.md|docs/context/orchestration.md|docs/context/qa.md|docs/context/secrets.md|docs/context/tokens.md)
+    docs/context/*.md|docs/guides/*.md|docs/orchestration/*.md|docs/plans/sprint-roadmap.md|docs/release/README.md)
       return 0
       ;;
-    .claude/agents/*.md|.claude/skills/*.md|.codex/skills/*.md)
+    .vibe/agent/*.md|.vibe/harness/sidecars/*.md|.claude/agents/*.md|.claude/skills/*.md|.claude/templates/*.md|.codex/skills/*.md)
       return 0
       ;;
   esac
@@ -463,11 +466,232 @@ is_autoinjectable_md_path() {
 extract_referenced_md_paths() {
   printf '%s\n' "$1" |
     grep -Eo '(\.?[A-Za-z0-9_.-]+[\\/][A-Za-z0-9_./\\-]+\.md|[A-Z][A-Z0-9_.-]+\.md)' |
-    sort -u || true
+    awk '!seen[$0]++' || true
+}
+
+extract_declared_shard_md_paths() {
+  printf '%s\n' "$1" |
+    awk '
+      /<!--[[:space:]]*BEGIN:[^>]*SHARDS[[:space:]]*-->/ { in_block = 1; next }
+      /<!--[[:space:]]*END:[^>]*SHARDS[[:space:]]*-->/ { in_block = 0; next }
+      in_block { print }
+    ' |
+    grep -Eo '(\.?[A-Za-z0-9_.-]+[\\/][A-Za-z0-9_./\\-]+\.md|[A-Z][A-Z0-9_.-]+\.md)' |
+    awk '!seen[$0]++' || true
+}
+
+classify_md_reference() {
+  local referenced_path
+
+  referenced_path="$1"
+  MD_CONTEXT_PATH="$(normalize_md_path "$referenced_path")"
+  MD_CONTEXT_STATUS="skipped"
+  MD_CONTEXT_REASON="unknown"
+
+  if [[ "$MD_CONTEXT_PATH" == *..* || "$MD_CONTEXT_PATH" = /* ]]; then
+    MD_CONTEXT_REASON="unsafe-path"
+    return 0
+  fi
+  if [[ "$MD_CONTEXT_PATH" == "$RULES_FILE" ]]; then
+    MD_CONTEXT_REASON="common-rules-injected-separately"
+    return 0
+  fi
+  if ! is_autoinjectable_md_path "$MD_CONTEXT_PATH"; then
+    MD_CONTEXT_REASON="not-allowlisted"
+    return 0
+  fi
+  if [[ ! -f "$MD_CONTEXT_PATH" ]]; then
+    MD_CONTEXT_STATUS="missing"
+    MD_CONTEXT_REASON="file-not-found"
+    return 0
+  fi
+  if [[ "${VIBE_DISABLE_MD_CONTEXT_INJECTION:-}" == "1" ]]; then
+    MD_CONTEXT_STATUS="disabled"
+    MD_CONTEXT_REASON="VIBE_DISABLE_MD_CONTEXT_INJECTION=1"
+    return 0
+  fi
+
+  MD_CONTEXT_STATUS="inject"
+  MD_CONTEXT_REASON="allowed-existing"
+}
+
+json_escape() {
+  local value
+
+  value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\t'/\\t}"
+  printf '%s' "$value"
+}
+
+json_bool() {
+  if [[ "$1" == "1" ]]; then
+    printf 'true'
+  else
+    printf 'false'
+  fi
+}
+
+md_context_max_depth() {
+  local max_depth
+
+  max_depth="${VIBE_MD_CONTEXT_MAX_DEPTH:-5}"
+  if ! [[ "$max_depth" =~ ^[0-9]+$ ]] || [[ "$max_depth" -lt 1 ]]; then
+    max_depth=5
+  fi
+  printf '%s' "$max_depth"
+}
+
+collect_md_reference_records() {
+  local scan_prompt runtime_applies max_depth depth queue next_queue referenced_path md_path status reason
+  local seen_paths nested content
+
+  scan_prompt="$1"
+  runtime_applies="$2"
+  max_depth="$(md_context_max_depth)"
+
+  queue="$(extract_referenced_md_paths "$scan_prompt")"
+  seen_paths=" "
+  depth=0
+
+  while [[ -n "$queue" && "$depth" -lt "$max_depth" ]]; do
+    next_queue=""
+    while IFS= read -r referenced_path; do
+      [[ -n "$referenced_path" ]] || continue
+      classify_md_reference "$referenced_path"
+      md_path="$MD_CONTEXT_PATH"
+
+      if [[ " $seen_paths " == *" $md_path "* ]]; then
+        continue
+      fi
+      seen_paths="${seen_paths}${md_path} "
+
+      status="$MD_CONTEXT_STATUS"
+      reason="$MD_CONTEXT_REASON"
+      if [[ "$runtime_applies" != "1" && "$status" == "inject" ]]; then
+        status="argv-not-injected"
+        reason="referenced-md-injection-only-applies-to-stdin-prompts"
+      fi
+
+      printf '%s\t%s\t%s\t%s\n' "$referenced_path" "$md_path" "$status" "$reason"
+
+      if [[ "$runtime_applies" == "1" && "$MD_CONTEXT_STATUS" == "inject" ]]; then
+        content="$(cat "$md_path")"
+        nested="$(extract_declared_shard_md_paths "$content")"
+        if [[ -n "$nested" ]]; then
+          next_queue="$(printf '%s\n%s\n' "$next_queue" "$nested")"
+        fi
+      fi
+    done <<<"$queue"
+
+    queue="$(printf '%s\n' "$next_queue" | awk 'NF && !seen[$0]++')"
+    depth=$((depth + 1))
+  done
+
+  if [[ -n "$queue" ]]; then
+    while IFS= read -r referenced_path; do
+      [[ -n "$referenced_path" ]] || continue
+      classify_md_reference "$referenced_path"
+      md_path="$MD_CONTEXT_PATH"
+      if [[ " $seen_paths " == *" $md_path "* ]]; then
+        continue
+      fi
+      seen_paths="${seen_paths}${md_path} "
+      printf '%s\t%s\tskipped\tmax-depth-exceeded\n' "$referenced_path" "$md_path"
+    done <<<"$queue"
+  fi
+}
+
+emit_md_injection_diagnostic() {
+  local scan_prompt prompt_source runtime_applies common_rules_exists common_rules_would_inject windows_header_would_inject
+  local seen_paths first_entry referenced_path escaped_referenced escaped_path status reason
+  local referenced_count inject_count missing_count skipped_count disabled_count
+
+  scan_prompt="$1"
+  prompt_source="$2"
+  runtime_applies="$3"
+  common_rules_exists=0
+  common_rules_would_inject=0
+  windows_header_would_inject=0
+  referenced_count=0
+  inject_count=0
+  missing_count=0
+  skipped_count=0
+  disabled_count=0
+
+  if [[ -f "$RULES_FILE" ]]; then
+    common_rules_exists=1
+    if [[ "$prompt_source" == "stdin" ]]; then
+      common_rules_would_inject=1
+      if is_windows_host; then
+        windows_header_would_inject=1
+      fi
+    fi
+  fi
+
+  printf '{\n'
+  printf '  "version": 1,\n'
+  printf '  "mode": "md-injection-diagnostic",\n'
+  printf '  "scanMode": "transitive",\n'
+  printf '  "maxDepth": %s,\n' "$(md_context_max_depth)"
+  printf '  "promptSource": "%s",\n' "$(json_escape "$prompt_source")"
+  printf '  "runtimeInjectionApplies": %s,\n' "$(json_bool "$runtime_applies")"
+  printf '  "disableEnvSet": %s,\n' "$(json_bool "$(if [[ "${VIBE_DISABLE_MD_CONTEXT_INJECTION:-}" == "1" ]]; then printf 1; else printf 0; fi)")"
+  printf '  "commonRules": {\n'
+  printf '    "path": "%s",\n' "$(json_escape "$RULES_FILE")"
+  printf '    "exists": %s,\n' "$(json_bool "$common_rules_exists")"
+  printf '    "wouldInject": %s,\n' "$(json_bool "$common_rules_would_inject")"
+  printf '    "windowsSandboxHeaderWouldInject": %s\n' "$(json_bool "$windows_header_would_inject")"
+  printf '  },\n'
+  printf '  "referencedMarkdown": [\n'
+
+  seen_paths=" "
+  first_entry=1
+  while IFS=$'\t' read -r referenced_path md_path status reason; do
+    [[ -n "$referenced_path" ]] || continue
+    if [[ " $seen_paths " == *" $md_path "* ]]; then
+      continue
+    fi
+    seen_paths="${seen_paths}${md_path} "
+
+    referenced_count=$((referenced_count + 1))
+    case "$status" in
+      inject) inject_count=$((inject_count + 1)) ;;
+      missing) missing_count=$((missing_count + 1)) ;;
+      disabled) disabled_count=$((disabled_count + 1)) ;;
+      *) skipped_count=$((skipped_count + 1)) ;;
+    esac
+
+    if [[ "$first_entry" -eq 0 ]]; then
+      printf ',\n'
+    fi
+    first_entry=0
+    escaped_referenced="$(json_escape "$referenced_path")"
+    escaped_path="$(json_escape "$md_path")"
+    printf '    {"reference": "%s", "path": "%s", "status": "%s", "reason": "%s"}' \
+      "$escaped_referenced" \
+      "$escaped_path" \
+      "$(json_escape "$status")" \
+      "$(json_escape "$reason")"
+  done < <(collect_md_reference_records "$scan_prompt" "$runtime_applies")
+
+  printf '\n'
+  printf '  ],\n'
+  printf '  "summary": {\n'
+  printf '    "referenced": %s,\n' "$referenced_count"
+  printf '    "inject": %s,\n' "$inject_count"
+  printf '    "missing": %s,\n' "$missing_count"
+  printf '    "skipped": %s,\n' "$skipped_count"
+  printf '    "disabled": %s\n' "$disabled_count"
+  printf '  }\n'
+  printf '}\n'
 }
 
 inject_referenced_md_context() {
-  local scan_prompt full_prompt referenced_path md_path seen_paths context injected_count content
+  local scan_prompt full_prompt referenced_path md_path status reason seen_paths context injected_count content
 
   scan_prompt="$1"
   full_prompt="$2"
@@ -480,30 +704,25 @@ inject_referenced_md_context() {
   context=""
   injected_count=0
 
-  while IFS= read -r referenced_path; do
+  while IFS=$'\t' read -r referenced_path md_path status reason; do
     [[ -n "$referenced_path" ]] || continue
-    md_path="$(normalize_md_path "$referenced_path")"
-
-    if [[ "$md_path" == *..* || "$md_path" = /* || "$md_path" == "$RULES_FILE" ]]; then
-      continue
-    fi
     if [[ " $seen_paths " == *" $md_path "* ]]; then
       continue
     fi
     seen_paths="${seen_paths}${md_path} "
 
-    if ! is_autoinjectable_md_path "$md_path"; then
+    if [[ "$status" == "missing" ]]; then
+      echo "[run-codex] referenced MD context missing: $md_path" >&2
       continue
     fi
-    if [[ ! -f "$md_path" ]]; then
-      echo "[run-codex] referenced MD context missing: $md_path" >&2
+    if [[ "$status" != "inject" ]]; then
       continue
     fi
 
     content="$(cat "$md_path")"
     context="$(printf '%s\n\n## Source: `%s`\n\n%s\n' "$context" "$md_path" "$content")"
     injected_count=$((injected_count + 1))
-  done < <(extract_referenced_md_paths "$scan_prompt")
+  done < <(collect_md_reference_records "$scan_prompt" "1")
 
   if [[ "$injected_count" -eq 0 ]]; then
     printf '%s' "$full_prompt"
@@ -566,11 +785,48 @@ export PYTHONIOENCODING=utf-8
 export DOTNET_SYSTEM_GLOBALIZATION_USENLS=false
 
 # ---------- 2. Flip Windows console code page to UTF-8 ----------
-if command -v chcp.com >/dev/null 2>&1; then
+if [[ "$md_injection_diagnostic" != "1" ]] && command -v chcp.com >/dev/null 2>&1; then
   chcp.com 65001 </dev/null >/dev/null 2>&1 || true
 fi
 
-# ---------- 3. Build codex argv ----------
+# ---------- 3. Buffer stdin so diagnostics and retries can replay it ----------
+stdin_buf=""
+if [[ ! -t 0 ]]; then
+  stdin_buf=$(cat)
+fi
+raw_stdin_buf="$stdin_buf"
+
+if [[ "$md_injection_diagnostic" == "1" ]]; then
+  diagnostic_scan_prompt=""
+  diagnostic_prompt_source="none"
+  diagnostic_runtime_applies=0
+
+  if [[ -n "$raw_stdin_buf" ]]; then
+    diagnostic_scan_prompt="$raw_stdin_buf"
+    diagnostic_prompt_source="stdin"
+    diagnostic_runtime_applies=1
+  elif [[ $# -gt 0 ]]; then
+    diagnostic_scan_prompt="$*"
+    diagnostic_prompt_source="argv"
+  fi
+
+  emit_md_injection_diagnostic "$diagnostic_scan_prompt" "$diagnostic_prompt_source" "$diagnostic_runtime_applies"
+  exit 0
+fi
+
+if [[ $# -eq 0 && -t 0 ]]; then
+  print_usage >&2
+  exit 1
+fi
+
+attempt_output="$(mktemp "${TMPDIR:-/tmp}/run-codex.XXXXXX")"
+attempt_stderr="$(mktemp "${TMPDIR:-/tmp}/run-codex.XXXXXX")"
+cleanup() {
+  rm -f "$attempt_output" "$attempt_stderr"
+}
+trap cleanup EXIT
+
+# ---------- 4. Build codex argv ----------
 codex_path="$(resolve_codex_path)"
 if [[ -z "$codex_path" ]]; then
   echo "run-codex: codex CLI not found in PATH" >&2
@@ -602,20 +858,7 @@ if [[ -n "${CODEX_EXTRA_CONFIG:-}" ]]; then
   codex_args+=( "${extra[@]}" )
 fi
 
-if [[ $# -eq 0 && -t 0 ]]; then
-  print_usage >&2
-  exit 1
-fi
-
-# ---------- 4. Buffer stdin so retries can replay it ----------
-stdin_buf=""
-if [[ ! -t 0 ]]; then
-  stdin_buf=$(cat)
-fi
-raw_stdin_buf="$stdin_buf"
-
-# ---------- 4b. Inject common rules into prompt ----------
-RULES_FILE=".vibe/agent/_common-rules.md"
+# ---------- 5. Inject common rules into prompt ----------
 if [[ -n "$stdin_buf" && -f "$RULES_FILE" ]]; then
   rules_content=$(cat "$RULES_FILE")
   if is_windows_host; then
@@ -629,7 +872,7 @@ if [[ -n "$stdin_buf" ]]; then
   stdin_buf="$(inject_referenced_md_context "$raw_stdin_buf" "$stdin_buf")"
 fi
 
-# ---------- 5. Retry loop ----------
+# ---------- 6. Retry loop ----------
 retries="${CODEX_RETRY:-3}"
 attempt=0
 start_ts="$(date +%s)"

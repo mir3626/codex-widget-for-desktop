@@ -138,4 +138,31 @@ describe('vibe-sync-bootstrap', () => {
     assert.match(result.stderr, /requires an initialized vibe-doctor project/);
     assert.match(result.stderr, /Run \/vibe-init first/);
   });
+
+  it('refuses bootstrap when product context is still the not-initialized placeholder', async () => {
+    const localRoot = await makeTempDir('vibe-bootstrap-local-placeholder-');
+    const upstreamRoot = await makeTempDir('vibe-bootstrap-upstream-placeholder-');
+    await writeBootstrapFixture(upstreamRoot, { harnessVersion: '1.5.12' });
+    await mkdir(path.join(localRoot, 'docs', 'context'), { recursive: true });
+    await writeFile(
+      path.join(localRoot, 'docs', 'context', 'product.md'),
+      '# Product context\n\nPROJECT NOT INITIALIZED - run /vibe-init.\n',
+      'utf8',
+    );
+    await writeJson(path.join(localRoot, '.vibe', 'agent', 'sprint-status.json'), {
+      schemaVersion: '0.1',
+      project: { name: 'demo', createdAt: '2026-04-01T00:00:00.000Z' },
+      sprints: [],
+      verificationCommands: [],
+      sprintsSinceLastAudit: 0,
+    });
+
+    const result = spawnSync(process.execPath, [scriptPath, upstreamRoot], {
+      cwd: localRoot,
+      encoding: 'utf8',
+    });
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /requires an initialized vibe-doctor project/);
+  });
 });

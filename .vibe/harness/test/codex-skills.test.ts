@@ -35,7 +35,13 @@ describe('Codex skill parity', () => {
     for (const skillName of skillNames) {
       const wrapper = await readFile(path.join(codexRoot, skillName, 'SKILL.md'), 'utf8');
       assert.match(wrapper, new RegExp(`\\.claude/skills/${skillName}/SKILL\\.md`));
+      assert.match(
+        wrapper,
+        new RegExp(`BEGIN:VIBE-CODEX:SHARDS[\\s\\S]*\\.claude/skills/${skillName}/SKILL\\.md[\\s\\S]*END:VIBE-CODEX:SHARDS`),
+      );
       assert.match(wrapper, /provider-neutral skill runbooks/);
+      assert.match(wrapper, /repository-root path/);
+      assert.doesNotMatch(wrapper, /\.\.\/\.\.\/\.\.\/\.claude\/skills/);
     }
   });
 
@@ -50,11 +56,19 @@ describe('Codex skill parity', () => {
   });
 
   it('documents explicit review signal markers in shared vibe-init guidance', async () => {
-    const shared = await readFile(path.join(process.cwd(), '.claude', 'skills', 'vibe-init', 'SKILL.md'), 'utf8');
+    const sharedPath = path.join(process.cwd(), '.claude', 'skills', 'vibe-init', 'SKILL.md');
+    const shared = await readFile(sharedPath, 'utf8');
+    const shardPaths = Array.from(shared.matchAll(/`(\.claude\/skills\/vibe-init\/phases\/[^`]+\.md)`/g))
+      .map((match) => match[1])
+      .filter((shardPath): shardPath is string => typeof shardPath === 'string');
+    const shardBodies = await Promise.all(
+      shardPaths.map((shardPath) => readFile(path.join(process.cwd(), shardPath), 'utf8')),
+    );
+    const effectiveRunbook = [shared, ...shardBodies].join('\n');
 
-    assert.match(shared, /BEGIN:PROJECT:review-signals/);
-    assert.match(shared, /frontend = true\|false/);
-    assert.match(shared, /bundle and browser-smoke opt-in review seeds/);
+    assert.match(effectiveRunbook, /BEGIN:PROJECT:review-signals/);
+    assert.match(effectiveRunbook, /frontend = true\|false/);
+    assert.match(effectiveRunbook, /bundle and browser-smoke opt-in review seeds/);
   });
 
   it('documents the Codex Orchestrator checkpoint workflow in maintain-context', async () => {
@@ -82,9 +96,17 @@ describe('Codex skill parity', () => {
 
   it('documents the partial-init review exception in Codex vibe-review guidance', async () => {
     const wrapper = await readFile(path.join(process.cwd(), '.codex', 'skills', 'vibe-review', 'SKILL.md'), 'utf8');
-    const shared = await readFile(path.join(process.cwd(), '.claude', 'skills', 'vibe-review', 'SKILL.md'), 'utf8');
+    const sharedPath = path.join(process.cwd(), '.claude', 'skills', 'vibe-review', 'SKILL.md');
+    const shared = await readFile(sharedPath, 'utf8');
+    const shardPaths = Array.from(shared.matchAll(/`(\.claude\/skills\/vibe-review\/sections\/[^`]+\.md)`/g))
+      .map((match) => match[1])
+      .filter((shardPath): shardPath is string => typeof shardPath === 'string');
+    const shardBodies = await Promise.all(
+      shardPaths.map((shardPath) => readFile(path.join(process.cwd(), shardPath), 'utf8')),
+    );
+    const effectiveRunbook = [shared, ...shardBodies].join('\n');
 
     assert.match(wrapper, /partial or uninitialized checkout/);
-    assert.match(shared, /\.vibe\/harness\/scripts\/vibe-review-inputs\.mjs --install/);
+    assert.match(effectiveRunbook, /\.vibe\/harness\/scripts\/vibe-review-inputs\.mjs --install/);
   });
 });

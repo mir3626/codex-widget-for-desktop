@@ -17,6 +17,29 @@ const statusPath = resolve('.vibe/agent/sprint-status.json');
 const handoffPath = resolve('.vibe/agent/handoff.md');
 const sessionLogPath = resolve('.vibe/agent/session-log.md');
 const iterationHistoryPath = resolve('.vibe/agent/iteration-history.json');
+const codexSkillsDir = resolve('.codex/skills');
+const claudeSkillsDir = resolve('.claude/skills');
+const codexWrapperAuditPath = path.join(scriptDir, 'vibe-codex-wrapper-audit.mjs');
+const vibeInitSkillPath = resolve('.claude/skills/vibe-init/SKILL.md');
+const vibeInitPhaseDir = resolve('.claude/skills/vibe-init/phases');
+const vibeInitShardAuditPath = path.join(scriptDir, 'vibe-init-shard-audit.mjs');
+const vibeInterviewSkillPath = resolve('.claude/skills/vibe-interview/SKILL.md');
+const vibeInterviewSectionDir = resolve('.claude/skills/vibe-interview/sections');
+const vibeInterviewShardAuditPath = path.join(scriptDir, 'vibe-interview-shard-audit.mjs');
+const vibeIterateSkillPath = resolve('.claude/skills/vibe-iterate/SKILL.md');
+const vibeIteratePhaseDir = resolve('.claude/skills/vibe-iterate/phases');
+const vibeIterateShardAuditPath = path.join(scriptDir, 'vibe-iterate-shard-audit.mjs');
+const vibeReviewSkillPath = resolve('.claude/skills/vibe-review/SKILL.md');
+const vibeReviewSectionDir = resolve('.claude/skills/vibe-review/sections');
+const vibeReviewShardAuditPath = path.join(scriptDir, 'vibe-review-shard-audit.mjs');
+const vibeSprintModeSkillPath = resolve('.claude/skills/vibe-sprint-mode/SKILL.md');
+const vibeSprintModeCorePresetPath = resolve('.vibe/settings-presets/agent-delegation.json');
+const vibeSprintModeExtendedPresetPath = resolve('.vibe/settings-presets/agent-delegation-extended.json');
+const vibeSprintModeAuditPath = path.join(scriptDir, 'vibe-sprint-mode-audit.mjs');
+const vibeSyncSkillPath = resolve('.claude/skills/vibe-sync/SKILL.md');
+const vibeSyncManifestPath = resolve('.vibe/sync-manifest.json');
+const vibeSyncRuntimePath = resolve('.vibe/harness/src/commands/sync.ts');
+const vibeSyncAuditPath = path.join(scriptDir, 'vibe-sync-audit.mjs');
 
 function record(id, ok, detail, level = 'ok') {
   results.push({ id, ok, detail, level });
@@ -268,6 +291,399 @@ function runStateValidation() {
     const suggestion = typeof err.fixSuggestion === 'string' ? `\n  suggest: ${err.fixSuggestion}` : '';
     record(`state.schema.${file}`, false, `${message}${suggestion}`, 'fail');
   }
+}
+
+function summarizeShardFindings(parsed, fallback) {
+  const findings = Array.isArray(parsed?.findings) ? parsed.findings : [];
+  if (findings.length === 0) {
+    return fallback;
+  }
+
+  const rendered = findings.slice(0, 3).map((finding) => {
+    const id = typeof finding?.id === 'string' ? finding.id : 'finding';
+    const target = typeof finding?.step === 'string'
+      ? ` ${finding.step}`
+      : typeof finding?.step === 'number'
+        ? ` ${finding.step}`
+      : typeof finding?.heading === 'string'
+        ? ` ${finding.heading}`
+        : typeof finding?.phase === 'string'
+          ? ` ${finding.phase}`
+          : typeof finding?.path === 'string'
+            ? ` ${finding.path}`
+            : typeof finding?.signal === 'string'
+              ? ` ${finding.signal}`
+              : '';
+    const detail = typeof finding?.detail === 'string' ? `: ${finding.detail}` : '';
+    return `${id}${target}${detail}`;
+  });
+  const suffix = findings.length > rendered.length ? `; +${findings.length - rendered.length} more` : '';
+  return `${rendered.join('; ')}${suffix}`;
+}
+
+function runVibeInitShardAudit() {
+  const hasSkill = existsSync(vibeInitSkillPath);
+  const hasPhaseDir = existsSync(vibeInitPhaseDir);
+  if (!hasSkill && !hasPhaseDir) {
+    record('vibe-init.shards', true, 'vibe-init skill not present (shard audit skipped)', 'info');
+    return;
+  }
+
+  if (!existsSync(vibeInitShardAuditPath)) {
+    record('vibe-init.shards', false, `missing audit script: ${vibeInitShardAuditPath}`, 'fail');
+    return;
+  }
+
+  const result = spawnSync(
+    process.execPath,
+    [vibeInitShardAuditPath, '--root', process.cwd(), '--format', 'json'],
+    { encoding: 'utf8' },
+  );
+
+  let parsed = null;
+  try {
+    parsed = JSON.parse(result.stdout || '{}');
+  } catch {
+    const detail = result.stderr || result.stdout || result.error?.message || 'vibe-init shard audit failed';
+    record('vibe-init.shards', false, detail, 'fail');
+    return;
+  }
+
+  if (result.status === 0 && parsed?.ok === true) {
+    const mode = typeof parsed.mode === 'string' ? parsed.mode : 'unknown';
+    const steps = Array.isArray(parsed.requiredSteps) ? parsed.requiredSteps.length : 0;
+    const signals = Array.isArray(parsed.criticalSignals) ? parsed.criticalSignals.length : 0;
+    const shards = Array.isArray(parsed.shardPaths) ? parsed.shardPaths.length : 0;
+    record('vibe-init.shards', true, `mode=${mode}; steps=${steps}; signals=${signals}; shards=${shards}`);
+    return;
+  }
+
+  record(
+    'vibe-init.shards',
+    false,
+    summarizeShardFindings(parsed, `vibe-init shard audit failed (rc=${result.status ?? 'n/a'})`),
+    'fail',
+  );
+}
+
+function runCodexWrapperAudit() {
+  const hasArtifacts = existsSync(codexSkillsDir) || existsSync(claudeSkillsDir);
+  if (!hasArtifacts) {
+    record('codex-wrapper.audit', true, 'skill directories not present (audit skipped)', 'info');
+    return;
+  }
+
+  if (!existsSync(codexWrapperAuditPath)) {
+    record('codex-wrapper.audit', false, `missing audit script: ${codexWrapperAuditPath}`, 'fail');
+    return;
+  }
+
+  const result = spawnSync(
+    process.execPath,
+    [codexWrapperAuditPath, '--root', process.cwd(), '--format', 'json'],
+    { encoding: 'utf8' },
+  );
+
+  let parsed = null;
+  try {
+    parsed = JSON.parse(result.stdout || '{}');
+  } catch {
+    const detail = result.stderr || result.stdout || result.error?.message || 'Codex wrapper audit failed';
+    record('codex-wrapper.audit', false, detail, 'fail');
+    return;
+  }
+
+  if (result.status === 0 && parsed?.ok === true) {
+    const claudeSkills = typeof parsed.claudeSkillCount === 'number' ? parsed.claudeSkillCount : 0;
+    const codexSkills = typeof parsed.codexSkillCount === 'number' ? parsed.codexSkillCount : 0;
+    const targets = Array.isArray(parsed.wrapperReports)
+      ? parsed.wrapperReports.reduce((sum, report) => sum + (typeof report?.targetCount === 'number' ? report.targetCount : 0), 0)
+      : 0;
+    record('codex-wrapper.audit', true, `claudeSkills=${claudeSkills}; codexSkills=${codexSkills}; targets=${targets}`);
+    return;
+  }
+
+  record(
+    'codex-wrapper.audit',
+    false,
+    summarizeSyncAuditFindings(parsed, `Codex wrapper audit failed (rc=${result.status ?? 'n/a'})`),
+    'fail',
+  );
+}
+
+function runVibeInterviewShardAudit() {
+  const hasSkill = existsSync(vibeInterviewSkillPath);
+  const hasSectionDir = existsSync(vibeInterviewSectionDir);
+  if (!hasSkill && !hasSectionDir) {
+    record('vibe-interview.shards', true, 'vibe-interview skill not present (shard audit skipped)', 'info');
+    return;
+  }
+
+  if (!existsSync(vibeInterviewShardAuditPath)) {
+    record('vibe-interview.shards', false, `missing audit script: ${vibeInterviewShardAuditPath}`, 'fail');
+    return;
+  }
+
+  const result = spawnSync(
+    process.execPath,
+    [vibeInterviewShardAuditPath, '--root', process.cwd(), '--format', 'json'],
+    { encoding: 'utf8' },
+  );
+
+  let parsed = null;
+  try {
+    parsed = JSON.parse(result.stdout || '{}');
+  } catch {
+    const detail = result.stderr || result.stdout || result.error?.message || 'vibe-interview shard audit failed';
+    record('vibe-interview.shards', false, detail, 'fail');
+    return;
+  }
+
+  if (result.status === 0 && parsed?.ok === true) {
+    const mode = typeof parsed.mode === 'string' ? parsed.mode : 'unknown';
+    const headings = Array.isArray(parsed.requiredHeadings) ? parsed.requiredHeadings.length : 0;
+    const steps = Array.isArray(parsed.requiredInvocationSteps) ? parsed.requiredInvocationSteps.length : 0;
+    const signals = Array.isArray(parsed.criticalSignals) ? parsed.criticalSignals.length : 0;
+    const shards = Array.isArray(parsed.shardPaths) ? parsed.shardPaths.length : 0;
+    record('vibe-interview.shards', true, `mode=${mode}; headings=${headings}; steps=${steps}; signals=${signals}; shards=${shards}`);
+    return;
+  }
+
+  record(
+    'vibe-interview.shards',
+    false,
+    summarizeShardFindings(parsed, `vibe-interview shard audit failed (rc=${result.status ?? 'n/a'})`),
+    'fail',
+  );
+}
+
+function runVibeIterateShardAudit() {
+  const hasSkill = existsSync(vibeIterateSkillPath);
+  const hasPhaseDir = existsSync(vibeIteratePhaseDir);
+  if (!hasSkill && !hasPhaseDir) {
+    record('vibe-iterate.shards', true, 'vibe-iterate skill not present (shard audit skipped)', 'info');
+    return;
+  }
+
+  if (!existsSync(vibeIterateShardAuditPath)) {
+    record('vibe-iterate.shards', false, `missing audit script: ${vibeIterateShardAuditPath}`, 'fail');
+    return;
+  }
+
+  const result = spawnSync(
+    process.execPath,
+    [vibeIterateShardAuditPath, '--root', process.cwd(), '--format', 'json'],
+    { encoding: 'utf8' },
+  );
+
+  let parsed = null;
+  try {
+    parsed = JSON.parse(result.stdout || '{}');
+  } catch {
+    const detail = result.stderr || result.stdout || result.error?.message || 'vibe-iterate shard audit failed';
+    record('vibe-iterate.shards', false, detail, 'fail');
+    return;
+  }
+
+  if (result.status === 0 && parsed?.ok === true) {
+    const mode = typeof parsed.mode === 'string' ? parsed.mode : 'unknown';
+    const phases = Array.isArray(parsed.requiredPhases) ? parsed.requiredPhases.length : 0;
+    const signals = Array.isArray(parsed.criticalSignals) ? parsed.criticalSignals.length : 0;
+    const shards = Array.isArray(parsed.shardPaths) ? parsed.shardPaths.length : 0;
+    record('vibe-iterate.shards', true, `mode=${mode}; phases=${phases}; signals=${signals}; shards=${shards}`);
+    return;
+  }
+
+  record(
+    'vibe-iterate.shards',
+    false,
+    summarizeShardFindings(parsed, `vibe-iterate shard audit failed (rc=${result.status ?? 'n/a'})`),
+    'fail',
+  );
+}
+
+function runVibeReviewShardAudit() {
+  const hasSkill = existsSync(vibeReviewSkillPath);
+  const hasSectionDir = existsSync(vibeReviewSectionDir);
+  if (!hasSkill && !hasSectionDir) {
+    record('vibe-review.shards', true, 'vibe-review skill not present (shard audit skipped)', 'info');
+    return;
+  }
+
+  if (!existsSync(vibeReviewShardAuditPath)) {
+    record('vibe-review.shards', false, `missing audit script: ${vibeReviewShardAuditPath}`, 'fail');
+    return;
+  }
+
+  const result = spawnSync(
+    process.execPath,
+    [vibeReviewShardAuditPath, '--root', process.cwd(), '--format', 'json'],
+    { encoding: 'utf8' },
+  );
+
+  let parsed = null;
+  try {
+    parsed = JSON.parse(result.stdout || '{}');
+  } catch {
+    const detail = result.stderr || result.stdout || result.error?.message || 'vibe-review shard audit failed';
+    record('vibe-review.shards', false, detail, 'fail');
+    return;
+  }
+
+  if (result.status === 0 && parsed?.ok === true) {
+    const mode = typeof parsed.mode === 'string' ? parsed.mode : 'unknown';
+    const headings = Array.isArray(parsed.requiredHeadings) ? parsed.requiredHeadings.length : 0;
+    const signals = Array.isArray(parsed.criticalSignals) ? parsed.criticalSignals.length : 0;
+    const shards = Array.isArray(parsed.shardPaths) ? parsed.shardPaths.length : 0;
+    record('vibe-review.shards', true, `mode=${mode}; headings=${headings}; signals=${signals}; shards=${shards}`);
+    return;
+  }
+
+  record(
+    'vibe-review.shards',
+    false,
+    summarizeShardFindings(parsed, `vibe-review shard audit failed (rc=${result.status ?? 'n/a'})`),
+    'fail',
+  );
+}
+
+function summarizeSprintModeAuditFindings(parsed, fallback) {
+  const findings = Array.isArray(parsed?.findings) ? parsed.findings : [];
+  if (findings.length === 0) {
+    return fallback;
+  }
+
+  const rendered = findings.slice(0, 3).map((finding) => {
+    const id = typeof finding?.id === 'string' ? finding.id : 'finding';
+    const target = typeof finding?.target === 'string'
+      ? ` ${finding.target}`
+      : typeof finding?.path === 'string'
+        ? ` ${finding.path}`
+        : typeof finding?.signal === 'string'
+          ? ` ${finding.signal}`
+          : '';
+    const detail = typeof finding?.detail === 'string' ? `: ${finding.detail}` : '';
+    return `${id}${target}${detail}`;
+  });
+  const suffix = findings.length > rendered.length ? `; +${findings.length - rendered.length} more` : '';
+  return `${rendered.join('; ')}${suffix}`;
+}
+
+function summarizeSyncAuditFindings(parsed, fallback) {
+  const findings = Array.isArray(parsed?.findings) ? parsed.findings : [];
+  if (findings.length === 0) {
+    return fallback;
+  }
+
+  const rendered = findings.slice(0, 3).map((finding) => {
+    const id = typeof finding?.id === 'string' ? finding.id : 'finding';
+    const target = typeof finding?.path === 'string'
+      ? ` ${finding.path}`
+      : typeof finding?.target === 'string'
+        ? ` ${finding.target}`
+        : typeof finding?.signal === 'string'
+          ? ` ${finding.signal}`
+          : '';
+    const detail = typeof finding?.detail === 'string' ? `: ${finding.detail}` : '';
+    return `${id}${target}${detail}`;
+  });
+  const suffix = findings.length > rendered.length ? `; +${findings.length - rendered.length} more` : '';
+  return `${rendered.join('; ')}${suffix}`;
+}
+
+function runVibeSprintModeAudit() {
+  const hasArtifacts =
+    existsSync(vibeSprintModeSkillPath) ||
+    existsSync(vibeSprintModeCorePresetPath) ||
+    existsSync(vibeSprintModeExtendedPresetPath);
+  if (!hasArtifacts) {
+    record('vibe-sprint-mode.audit', true, 'sprint-mode artifacts not present (audit skipped)', 'info');
+    return;
+  }
+
+  if (!existsSync(vibeSprintModeAuditPath)) {
+    record('vibe-sprint-mode.audit', false, `missing audit script: ${vibeSprintModeAuditPath}`, 'fail');
+    return;
+  }
+
+  const result = spawnSync(
+    process.execPath,
+    [vibeSprintModeAuditPath, '--root', process.cwd(), '--format', 'json'],
+    { encoding: 'utf8' },
+  );
+
+  let parsed = null;
+  try {
+    parsed = JSON.parse(result.stdout || '{}');
+  } catch {
+    const detail = result.stderr || result.stdout || result.error?.message || 'vibe-sprint-mode audit failed';
+    record('vibe-sprint-mode.audit', false, detail, 'fail');
+    return;
+  }
+
+  if (result.status === 0 && parsed?.ok === true) {
+    const presets = Array.isArray(parsed.presetReports) ? parsed.presetReports.length : 0;
+    const docSignals = Array.isArray(parsed.docSignals) ? parsed.docSignals.length : 0;
+    const runtimeSignals = Array.isArray(parsed.runtimeSignals) ? parsed.runtimeSignals.length : 0;
+    const denySignals = Array.isArray(parsed.denySignals) ? parsed.denySignals.length : 0;
+    record('vibe-sprint-mode.audit', true, `presets=${presets}; docSignals=${docSignals}; runtimeSignals=${runtimeSignals}; denySignals=${denySignals}`);
+    return;
+  }
+
+  record(
+    'vibe-sprint-mode.audit',
+    false,
+    summarizeSprintModeAuditFindings(parsed, `vibe-sprint-mode audit failed (rc=${result.status ?? 'n/a'})`),
+    'fail',
+  );
+}
+
+function runVibeSyncAudit() {
+  const hasArtifacts =
+    existsSync(vibeSyncSkillPath) ||
+    existsSync(vibeSyncManifestPath) ||
+    existsSync(vibeSyncRuntimePath);
+  if (!hasArtifacts) {
+    record('vibe-sync.audit', true, 'sync artifacts not present (audit skipped)', 'info');
+    return;
+  }
+
+  if (!existsSync(vibeSyncAuditPath)) {
+    record('vibe-sync.audit', false, `missing audit script: ${vibeSyncAuditPath}`, 'fail');
+    return;
+  }
+
+  const result = spawnSync(
+    process.execPath,
+    [vibeSyncAuditPath, '--root', process.cwd(), '--format', 'json'],
+    { encoding: 'utf8' },
+  );
+
+  let parsed = null;
+  try {
+    parsed = JSON.parse(result.stdout || '{}');
+  } catch {
+    const detail = result.stderr || result.stdout || result.error?.message || 'vibe-sync audit failed';
+    record('vibe-sync.audit', false, detail, 'fail');
+    return;
+  }
+
+  if (result.status === 0 && parsed?.ok === true) {
+    const harness = typeof parsed.harnessCount === 'number' ? parsed.harnessCount : 0;
+    const hybrid = typeof parsed.hybridCount === 'number' ? parsed.hybridCount : 0;
+    const project = typeof parsed.projectCount === 'number' ? parsed.projectCount : 0;
+    const skillSignals = Array.isArray(parsed.skillSignals) ? parsed.skillSignals.length : 0;
+    const runtimeSignals = Array.isArray(parsed.runtimeSignals) ? parsed.runtimeSignals.length : 0;
+    record('vibe-sync.audit', true, `harness=${harness}; hybrid=${hybrid}; project=${project}; skillSignals=${skillSignals}; runtimeSignals=${runtimeSignals}`);
+    return;
+  }
+
+  record(
+    'vibe-sync.audit',
+    false,
+    summarizeSyncAuditFindings(parsed, `vibe-sync audit failed (rc=${result.status ?? 'n/a'})`),
+    'fail',
+  );
 }
 
 function parseRoadmapIds(roadmapContent) {
@@ -732,11 +1148,20 @@ const productPath = resolve('docs/context/product.md');
 const hasProduct = existsSync(productPath);
 if (hasProduct) {
   const content = readFileSync(productPath, 'utf8').trim();
-  record(
-    'phase0.product',
-    content.length > 50,
-    content.length > 50 ? 'product.md present and populated' : 'product.md exists but too short (<50 chars)',
-  );
+  const notInitialized = /PROJECT NOT INITIALIZED/im.test(content);
+  if (notInitialized && BOOTSTRAP_MODE) {
+    record('phase0.product', true, 'bootstrap mode - product.md placeholder allowed');
+  } else {
+    record(
+      'phase0.product',
+      content.length > 50 && !notInitialized,
+      notInitialized
+        ? 'product.md is still the template placeholder - run /vibe-init first'
+        : content.length > 50
+          ? 'product.md present and populated'
+          : 'product.md exists but too short (<50 chars)',
+    );
+  }
 } else {
   record('phase0.product', false, 'missing docs/context/product.md - run Phase 0 native interview (vibe-interview.mjs) first');
 }
@@ -769,7 +1194,52 @@ if (existsSync(orchestrationPath)) {
   record('orchestration.doc', true, 'missing (optional shard - v1.1.0+)');
 }
 
-// 9. Planner presence check (non-blocking warn)
+// 9. Codex skill wrapper injection contract audit
+//
+// This protects Codex wrapper paths and explicit shard marker blocks before
+// skill-specific shard audits validate the shared runbooks themselves.
+runCodexWrapperAudit();
+
+// 10. Vibe-init skill phase sharding safety gate
+//
+// This protects the shared /vibe-init runbook from lossy phase sharding. It is
+// skipped only in partial checkouts where the skill itself has not been synced.
+runVibeInitShardAudit();
+
+// 11. Vibe-interview skill section sharding safety gate
+//
+// This protects the shared /vibe-interview Phase 3 runbook from lossy section
+// sharding. It is skipped only in partial checkouts where the skill itself has
+// not been synced.
+runVibeInterviewShardAudit();
+
+// 12. Vibe-iterate skill phase sharding safety gate
+//
+// This protects the shared /vibe-iterate runbook from lossy phase sharding.
+// It is skipped only in partial checkouts where the skill itself has not been
+// synced.
+runVibeIterateShardAudit();
+
+// 13. Vibe-review skill section sharding safety gate
+//
+// This protects the shared /vibe-review runbook from lossy section sharding.
+// It is skipped only in partial checkouts where the skill itself has not been
+// synced.
+runVibeReviewShardAudit();
+
+// 14. Vibe-sprint-mode permission audit
+//
+// This protects autonomous permission presets from drifting into direct
+// destructive allow rules or losing deny guards.
+runVibeSprintModeAudit();
+
+// 15. Vibe-sync manifest/runtime boundary audit
+//
+// This protects downstream sync from drifting into project-owned source,
+// runtime state, product scripts, provider config, or product-wide post-verify.
+runVibeSyncAudit();
+
+// 16. Planner presence check (non-blocking warn)
 //
 // Derives the next pending sprint from sprint-status.json + sprint-roadmap.md.
 // If the next sprint has no corresponding docs/prompts/sprint-<id>-*.md whose

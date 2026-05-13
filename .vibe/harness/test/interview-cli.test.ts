@@ -35,6 +35,7 @@ async function copyRelativeFile(root: string, relativePath: string): Promise<voi
 async function scaffoldInterviewProject(root: string): Promise<void> {
   for (const relativePath of [
     '.vibe/harness/scripts/vibe-interview.mjs',
+    '.vibe/harness/scripts/lib/interview-engine.mjs',
     '.vibe/harness/scripts/vibe-resolve-model.mjs',
     '.claude/skills/vibe-interview/dimensions.json',
     '.claude/skills/vibe-interview/prompts/synthesizer.md',
