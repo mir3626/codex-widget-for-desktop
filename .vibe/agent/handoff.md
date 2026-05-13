@@ -4,6 +4,24 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Local ASR Runtime Candidate Implementation
+
+Implemented the CPU-first local ASR selection path requested after the GPT-Realtime-2/free-tier review.
+
+Implemented:
+
+- Added concrete ASR candidate profiles in `scripts/asr-runtime-candidates.mjs` for `faster-whisper` CPU/GPU, `whisper.cpp`, and Vosk.
+- Added `scripts/asr-sidecar-faster-whisper.py` with CPU default (`large-v3-turbo`, `int8`) and GPU-ready settings (`cuda`, `int8_float16`) behind environment variables.
+- Added `scripts/asr-sidecar-whisper-cpp.mjs` for `whisper-cli` plus ggml model paths, including JSON-output parsing and stdout fallback.
+- Added `scripts/asr-sidecar-vosk.py` for the tiny Korean Vosk fallback path.
+- Added `npm run asr:candidates`, `npm run asr:benchmark`, and `npm run smoke:asr-runtime-candidates`.
+- Added `docs/plans/local-asr-runtime-selection.md` with CPU-only setup, GPU enablement, whisper.cpp/Vosk fallback commands, and acceptance criteria based on workflow success rather than raw WER.
+- Updated product/blocker docs to reflect that runtime candidates are implemented, while final default selection remains dogfood-owned.
+
+Verification passed syntax checks for all new JS/Python scripts, `npm run asr:candidates -- --cpu-only`, `npm run smoke:asr-runtime-candidates`, `npm run smoke:asr-sidecar`, `npm run smoke:vision-context`, `npm run lint`, final `npm run smoke:all`, `git diff --check`, and strict UTF-8/mojibake scans. The current machine has Python 3.12.1, but `faster_whisper` and `vosk` are not installed yet, so real model inference was not run; CPU-only fixture dispatch and benchmark wiring are verified.
+
+Next ASR dogfood step: install `faster-whisper` into `.runtime\asr\faster-whisper`, collect a small Korean command WAV set, then run `npm run asr:benchmark -- --candidate faster-whisper-large-v3-turbo-cpu,faster-whisper-large-v3-cpu --audio <sample.wav> --expected <text> --json`.
+
 ## Latest Update: Non-BLOCKED Browser Action And Vision Follow-ups
 
 Continued the post-cleanup follow-up queue and kept externally blocked items out of scope.

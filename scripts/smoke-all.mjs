@@ -37,6 +37,7 @@ const steps = [
   ["Browser native host", process.execPath, ["scripts/smoke-browser-native-host.mjs"]],
   ["Browser store readiness", process.execPath, ["scripts/smoke-browser-store-readiness.mjs"]],
   ["ASR sidecar", process.execPath, ["scripts/smoke-asr-sidecar.mjs"]],
+  ["ASR runtime candidates", process.execPath, ["scripts/smoke-asr-runtime-candidates.mjs"]],
   ["OCR runtime packaging", process.execPath, ["scripts/smoke-ocr-runtime.mjs"]],
   ["PTY runtime packaging", process.execPath, ["scripts/smoke-pty-runtime.mjs"]],
   ["Screen capture helper", process.execPath, ["scripts/smoke-screen-helper.mjs"]]

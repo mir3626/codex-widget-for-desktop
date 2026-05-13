@@ -15,5 +15,7 @@ This directory now keeps active planning state and historical tombstones.
 - `post-daemon-foundation-refactor-prep.md` defines the next behavior-preserving
   refactor sequence after the daemon capability foundation and Capability Jobs
   panel landed.
+- `local-asr-runtime-selection.md` defines the CPU-first local ASR candidate
+  sidecars and dogfood benchmark path for selecting the first default model.
 - Completed handoff documents that have been consolidated into
   `docs/architecture/` live under `docs/plans/deprecated/`.

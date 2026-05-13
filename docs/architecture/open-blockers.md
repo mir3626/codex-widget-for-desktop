@@ -51,16 +51,22 @@ This file records items that should not be silently downgraded to complete.
 
 ## Vision Context Real Local ASR
 
-- Status: sidecar contract implemented; local model/runtime selection remains
-  environment-owned.
+- Status: local runtime candidate sidecars implemented; final default selection
+  remains dogfood-owned.
 - Current path: mock ASR for deterministic tests plus executable JSON sidecar
   support through `CODEX_WIDGET_ASR_SIDECAR_COMMAND`. `npm run
   smoke:asr-sidecar` now locks the stdin/stdout JSON contract, transcript
   normalization, nonzero-exit handling, invalid JSON handling, and timeout
-  behavior without selecting a production model.
-- Required scope expansion: choose and install the first local ASR runtime/model
-  for dogfood, then provide a sidecar command that reads the documented JSON
-  request from stdin and returns transcript JSON on stdout.
+  behavior without selecting a production model. `scripts/asr-sidecar-faster-whisper.py`,
+  `scripts/asr-sidecar-whisper-cpp.mjs`, and `scripts/asr-sidecar-vosk.py`
+  implement the first candidate runtimes, with `npm run asr:candidates`,
+  `npm run asr:benchmark`, and `npm run smoke:asr-runtime-candidates` covering
+  profile selection and CPU fixture dispatch. The expected first default is
+  `faster-whisper-large-v3-turbo-cpu`, with GPU wiring available through
+  `faster-whisper-large-v3-turbo-gpu`.
+- Required scope expansion: install the chosen local ASR dependencies/models,
+  collect a Korean command audio corpus, and choose the default by workflow
+  success rate, latency, correction rate, memory, and installation friction.
 
 ## Mascot Motion Assets
 
