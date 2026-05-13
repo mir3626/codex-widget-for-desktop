@@ -5,7 +5,6 @@ import {
   stringOrNow
 } from "./normalizers.js";
 import type {
-  MessageSnapshotStatus,
   ModelId,
   ReasoningEffort,
   SessionMessage,

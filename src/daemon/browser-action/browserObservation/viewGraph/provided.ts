@@ -4,7 +4,6 @@ import type {
   BrowserContentList,
   BrowserElement,
   BrowserFormSummary,
-  BrowserObservation,
   BrowserRegionSummary,
   BrowserViewGraph,
   BrowserViewGraphDiagnostics,

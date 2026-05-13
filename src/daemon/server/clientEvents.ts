@@ -1,7 +1,7 @@
 import { WebSocket } from "ws";
 import type { BrowserActionPolicy } from "../browser-action/index.js";
 import type { StorageService } from "../storage/storage.js";
-import type { ExecutionPermissionSummary, ServerEvent, SessionSnapshot } from "../../shared/protocol.js";
+import type { ExecutionPermissionSummary, SessionSnapshot } from "../../shared/protocol.js";
 import { broadcast, send } from "./events.js";
 
 export function sendSessionSnapshot(socket: WebSocket, storage: StorageService): void {

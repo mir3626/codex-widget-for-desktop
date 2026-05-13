@@ -34,7 +34,7 @@ export type SemanticGoldenTraceMetrics = {
   byAdversarialClass: Record<string, { total: number; passed: number; passRate: number }>;
 };
 
-export function createSemanticGoldenTraceSuite(now = new Date("2026-05-08T00:00:05.000Z")): SemanticGoldenTraceCase[] {
+export function createSemanticGoldenTraceSuite(_now = new Date("2026-05-08T00:00:05.000Z")): SemanticGoldenTraceCase[] {
   const concept = createBrowserSemanticFixture();
   const duplicate = createBrowserSemanticFixture({ duplicateLabels: true });
   const stale = createBrowserSemanticFixture({ capturedAt: "2026-05-07T23:59:00.000Z" });

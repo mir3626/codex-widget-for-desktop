@@ -2,7 +2,6 @@ import type { ChildProcess } from "node:child_process";
 import WebSocket from "ws";
 import type { AgentRequest } from "./agent.js";
 import {
-  renderBranchContext,
   type AgentSelection,
   type CodexExecutionContext
 } from "./codexRuntime.js";

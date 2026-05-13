@@ -17,8 +17,6 @@ import type {
   SemanticUnresolvedCase
 } from "./types.js";
 
-type SqlValue = string | number | bigint | null | Uint8Array;
-
 export function createSemanticMemoryStore(options: StoragePathOptions = {}): SemanticMemoryStore {
   const DatabaseSync = loadDatabaseSync();
   const paths = resolveStoragePaths(options);

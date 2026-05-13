@@ -12,10 +12,6 @@ import {
   type ServerEvent,
   type WidgetMode
 } from "../shared/protocol.js";
-import {
-  TERMINAL_MOUSE_DRAG_INTERVAL_MS,
-  VISION_AGENT_STREAM_FRAME_INTERVAL_MS
-} from "./config";
 import type { LogLine } from "./types";
 import { readInitialWidgetMode } from "./utils/storage";
 import { useCapabilityJobsController } from "./hooks/useCapabilityJobsController";
@@ -215,7 +211,6 @@ export function WidgetRuntime() {
     retryAssistantMessage,
     saveDebugLogForAssistantMessage,
     startAsk,
-    stopReadAloud,
     trashSession,
     updateInteractionDraft,
     viewTrashArtifacts

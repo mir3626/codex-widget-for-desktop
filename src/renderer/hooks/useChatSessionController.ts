@@ -17,7 +17,6 @@ import type {
   WidgetMode
 } from "../../shared/protocol.js";
 import {
-  BRANCH_CONTEXT_STORAGE_KEY,
   CHAT_STORAGE_KEY,
   MODEL_STORAGE_KEY,
   REASONING_STORAGE_KEY

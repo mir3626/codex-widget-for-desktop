@@ -9,7 +9,6 @@ import {
   readStorageHealth
 } from "./database.js";
 import {
-  assertPersistableSettingKey,
   readAppSetting,
   readBrowserActionPolicies,
   readExecutionPermissionDecision,
@@ -72,29 +71,9 @@ import {
   updateCapabilityJob
 } from "./capabilityJobs.js";
 import type {
-  AskPersistenceInput,
-  AssistantDeltaInput,
-  AssistantUpdateInput,
-  BranchSessionInput,
-  BrowserActionPolicy,
-  CompleteVisionRecordingInput,
-  ExecutionPermissionDecision,
-  ExecutionPermissionSummary,
-  FileChangeArtifactInput,
   LedgerSnapshot,
-  ProviderSnapshotInput,
-  RuntimeThreadInput,
-  RuntimeThreadProvider,
-  RuntimeThreadState,
-  RuntimeThreadSummary,
-  SessionDefaults,
-  SessionSnapshot,
-  StopVisionStreamInput,
-  StorageHealth,
   StorageService,
   StorageServiceOptions,
-  TextArtifactInput,
-  VisionStreamInput,
 } from "./types.js";
 
 export type {

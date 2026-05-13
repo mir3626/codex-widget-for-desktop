@@ -1,6 +1,5 @@
 import type {
   AxisEvidence,
-  CandidateEvidencePacket,
   MemoryContributionEvidence,
   MemoryReadSet,
   SemanticHypothesis,

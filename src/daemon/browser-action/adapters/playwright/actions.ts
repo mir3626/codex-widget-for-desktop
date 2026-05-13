@@ -6,7 +6,6 @@ export async function executeOnPlaywrightPage(
   page: Page,
   input: BrowserExecuteInput
 ): Promise<{ ok: boolean; error?: string; metadata?: Record<string, unknown> }> {
-  const target = input.target;
   try {
     if (input.action.type === "read") {
       return { ok: true };

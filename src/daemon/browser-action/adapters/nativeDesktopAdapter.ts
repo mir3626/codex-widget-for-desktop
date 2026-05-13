@@ -4,7 +4,6 @@ import { buildBrowserObservation } from "../browserObservation.js";
 import type { BrowserActionAdapter, BrowserActionCapability, BrowserActionExecutionResult, BrowserElementRiskHint, BrowserObservation, BrowserActionSession } from "../types.js";
 import {
   getNativeDesktopHelperAvailability,
-  NATIVE_DESKTOP_HELPER_ENV,
   runNativeDesktopHelper,
   type NativeDesktopHelperSnapshot,
   type NativeDesktopWindow
