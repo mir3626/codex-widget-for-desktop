@@ -4,6 +4,29 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Local ASR Persistent Worker Baseline
+
+Continued the CPU-first ASR plan after GPU validation was deferred.
+
+Implemented:
+
+- Added persistent JSONL worker mode to `scripts/asr-sidecar-faster-whisper.py --worker`, keeping one Python process and one loaded `WhisperModel` alive across requests while preserving the existing single-shot sidecar contract.
+- Added `--persistent` to `scripts/benchmark-asr-candidates.mjs`, including `workerMode`, `coldStart`, `workerPid`, transcript diagnostics, and manifest duration handling.
+- Added `scripts/prepare-asr-human-corpus.mjs` plus `npm run asr:human-corpus` to scaffold ignored local human microphone corpus files under `.runtime/asr/human-mic-corpus/`.
+- Added `scripts/smoke-asr-persistent-worker.mjs`, `npm run smoke:asr-persistent-worker`, and included it in `smoke:all`.
+- Wrote `docs/reports/local-asr-persistent-worker-cpu-benchmark-2026-05-14.md`.
+
+Result:
+
+- Real `faster-whisper-large-v3-turbo-cpu` persistent benchmark on the existing five SAPI samples passed with normalized similarity 1.00.
+- First cold request was 22.65s, including 7.92s model load.
+- Warm persistent requests averaged 12.52s, min 11.04s, max 13.95s.
+- `npm run asr:human-corpus` created the local ignored corpus scaffold. Raw microphone WAV recording and the follow-up human-corpus persistent benchmark are deferred by the 2026-05-14 product-owner decision.
+
+Verification passed JS syntax checks, Python py_compile, `npm run build:daemon`, `npm run smoke:asr-persistent-worker`, `npm run smoke:asr-runtime-candidates`, `npm run smoke:asr-sidecar`, `npm run lint`, `npm run smoke:vision-context`, final `npm run smoke:all`, `git diff --check`, strict UTF-8 decoding, quoted-question mojibake scan, and `npm run vibe:checkpoint`. `git diff --check` emitted only the existing CRLF normalization warning for `.vibe/agent/session-log.md`; `smoke:all` emitted one standard Windows temp cleanup deferred retry.
+
+Next ASR step: no local ASR benchmark is immediately active. Keep `faster-whisper-large-v3-turbo-cpu` plus persistent worker mode as the current default evidence. Human microphone corpus recording/benchmark and GPU validation are both deferred until explicitly resumed.
+
 ## Latest Update: Local ASR GPU Deferred
 
 Recorded the product-owner decision to defer local ASR GPU validation.

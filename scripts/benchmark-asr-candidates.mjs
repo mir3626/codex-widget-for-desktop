@@ -1,7 +1,9 @@
 #!/usr/bin/env node
+import { spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { createInterface } from "node:readline";
 import { SidecarAsrEngine, createMockVadSegments } from "../dist/daemon/transcription/index.js";
 import { listAsrCandidates, resolveAsrCandidate } from "./asr-runtime-candidates.mjs";
 
@@ -16,26 +18,31 @@ const tempRoot = mkdtempSync(path.join(tmpdir(), "codex-widget-asr-benchmark-"))
 try {
   const results = [];
   const samples = options.manifest ? readManifest(options.manifest) : [readSingleSample(options, tempRoot)];
-  for (const sample of samples) {
+  if (options.persistent) {
     for (const candidateId of candidateIds) {
       const candidate = resolveAsrCandidate(candidateId);
-      const result = await runCandidate(candidate, {
-        audioPath: sample.audioPath,
-        language: sample.language ?? options.language,
-        expected: sample.expected,
+      const candidateResults = await runPersistentCandidate(candidate, samples, {
+        language: options.language,
         fixtureText: options.fixtureText
       });
-      results.push({ sampleId: sample.id, expected: sample.expected, ...result });
-      if (!options.json) {
-        console.log(`${sample.id} / ${result.id}: ${result.status} ${result.elapsedMs}ms`);
-        console.log(`  expected: ${sample.expected}`);
-        console.log(`  text: ${result.text}`);
-        if (typeof result.similarity === "number") {
-          console.log(`  similarity: ${result.similarity.toFixed(3)}`);
-        }
-        if (result.error) {
-          console.log(`  error: ${result.error}`);
-        }
+      results.push(...candidateResults);
+      for (const result of candidateResults) {
+        printResult(result);
+      }
+    }
+  } else {
+    for (const sample of samples) {
+      for (const candidateId of candidateIds) {
+        const candidate = resolveAsrCandidate(candidateId);
+        const result = await runCandidate(candidate, {
+          audioPath: sample.audioPath,
+          language: sample.language ?? options.language,
+          expected: sample.expected,
+          fixtureText: options.fixtureText,
+          durationMs: sample.durationMs
+        });
+        results.push({ sampleId: sample.id, expected: sample.expected, ...result });
+        printResult({ sampleId: sample.id, expected: sample.expected, ...result });
       }
     }
   }
@@ -68,6 +75,8 @@ async function runCandidate(candidate, input) {
       model: candidate.model,
       device: candidate.device,
       computeType: candidate.computeType,
+      workerMode: "single-shot",
+      coldStart: true,
       status: "ok",
       elapsedMs: Date.now() - startedAt,
       text: transcript.text,
@@ -81,6 +90,8 @@ async function runCandidate(candidate, input) {
       model: candidate.model,
       device: candidate.device,
       computeType: candidate.computeType,
+      workerMode: "single-shot",
+      coldStart: true,
       status: "failed",
       elapsedMs: Date.now() - startedAt,
       text: "",
@@ -88,6 +99,164 @@ async function runCandidate(candidate, input) {
     };
   } finally {
     restoreEnv(previousEnv);
+  }
+}
+
+async function runPersistentCandidate(candidate, samples, options) {
+  const env = {
+    ...process.env,
+    ...candidate.env,
+    CODEX_WIDGET_ASR_SIDECAR_TIMEOUT_MS: process.env.CODEX_WIDGET_ASR_SIDECAR_TIMEOUT_MS || "600000"
+  };
+  if (options.fixtureText) {
+    env.CODEX_WIDGET_ASR_FIXTURE_TEXT = options.fixtureText;
+  }
+  const command = `${candidate.command} --worker`;
+  const child = spawn(command, {
+    shell: true,
+    stdio: ["pipe", "pipe", "pipe"],
+    windowsHide: true,
+    env
+  });
+  child.stdout.setEncoding("utf8");
+  child.stderr.setEncoding("utf8");
+
+  let stderr = "";
+  let closed = false;
+  let pending = null;
+  const stdout = createInterface({ input: child.stdout, crlfDelay: Infinity });
+  stdout.on("line", (line) => {
+    if (!pending) {
+      return;
+    }
+    const current = pending;
+    pending = null;
+    clearTimeout(current.timer);
+    try {
+      current.resolve(JSON.parse(line));
+    } catch (error) {
+      current.reject(new Error(`ASR worker did not return JSON: ${error instanceof Error ? error.message : String(error)}`));
+    }
+  });
+  child.stderr.on("data", (chunk) => {
+    stderr += chunk;
+  });
+  child.on("close", (code, signal) => {
+    closed = true;
+    if (pending) {
+      const current = pending;
+      pending = null;
+      clearTimeout(current.timer);
+      current.reject(new Error(`ASR worker exited with ${signal ?? code}: ${stderr.slice(0, 4000)}`));
+    }
+  });
+
+  const results = [];
+  try {
+    for (const [index, sample] of samples.entries()) {
+      const startedAt = Date.now();
+      try {
+        const response = await sendWorkerRequest(child, () => closed, setPending, {
+          schemaVersion: "codex-widget-asr-sidecar.v1",
+          requestId: `${candidate.id}:${sample.id}:${index}`,
+          language: sample.language ?? options.language,
+          hints: ["codex-widget", "browser action", "react-router-dom"],
+          segments: createMockVadSegments([{
+            path: sample.audioPath,
+            startMs: 0,
+            endMs: Number(sample.durationMs ?? 1000)
+          }])
+        }, Number(env.CODEX_WIDGET_ASR_SIDECAR_TIMEOUT_MS));
+        if (!response.ok) {
+          throw new Error(`${response.errorType ?? "WorkerError"}: ${response.error ?? "unknown ASR worker error"}`);
+        }
+        const transcript = response.result;
+        results.push({
+          sampleId: sample.id,
+          expected: sample.expected,
+          id: candidate.id,
+          family: candidate.family,
+          model: candidate.model,
+          device: candidate.device,
+          computeType: candidate.computeType,
+          workerMode: "persistent",
+          coldStart: index === 0,
+          workerPid: child.pid,
+          status: "ok",
+          elapsedMs: Date.now() - startedAt,
+          text: String(transcript?.text ?? ""),
+          confidence: typeof transcript?.confidence === "number" ? transcript.confidence : undefined,
+          similarity: sample.expected ? normalizedSimilarity(sample.expected, transcript?.text ?? "") : undefined,
+          diagnostics: transcript?.diagnostics
+        });
+      } catch (error) {
+        results.push({
+          sampleId: sample.id,
+          expected: sample.expected,
+          id: candidate.id,
+          family: candidate.family,
+          model: candidate.model,
+          device: candidate.device,
+          computeType: candidate.computeType,
+          workerMode: "persistent",
+          coldStart: index === 0,
+          workerPid: child.pid,
+          status: "failed",
+          elapsedMs: Date.now() - startedAt,
+          text: "",
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+  } finally {
+    if (!closed) {
+      try {
+        child.stdin.write(`${JSON.stringify({ command: "shutdown", requestId: `${candidate.id}:shutdown` })}\n`);
+        child.stdin.end();
+      } catch {
+        child.kill();
+      }
+    }
+  }
+  return results;
+
+  function setPending(value) {
+    pending = value;
+  }
+}
+
+function sendWorkerRequest(child, isClosed, setPending, request, timeoutMs) {
+  if (isClosed()) {
+    return Promise.reject(new Error("ASR worker is not running."));
+  }
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      child.kill();
+      reject(new Error(`ASR worker timed out after ${timeoutMs}ms.`));
+    }, timeoutMs);
+    setPending({ resolve, reject, timer });
+    child.stdin.write(`${JSON.stringify(request)}\n`, "utf8", (error) => {
+      if (error) {
+        clearTimeout(timer);
+        setPending(null);
+        reject(error);
+      }
+    });
+  });
+}
+
+function printResult(result) {
+  if (options.json) {
+    return;
+  }
+  console.log(`${result.sampleId} / ${result.id}: ${result.status} ${result.elapsedMs}ms ${result.workerMode}`);
+  console.log(`  expected: ${result.expected}`);
+  console.log(`  text: ${result.text}`);
+  if (typeof result.similarity === "number") {
+    console.log(`  similarity: ${result.similarity.toFixed(3)}`);
+  }
+  if (result.error) {
+    console.log(`  error: ${result.error}`);
   }
 }
 
@@ -100,11 +269,12 @@ function printCandidates() {
 function parseArgs(args) {
   const options = {
     candidates: [],
-      audio: "",
+    audio: "",
     manifest: "",
     expected: "",
     language: "ko",
     fixtureText: "",
+    persistent: false,
     json: false,
     list: false
   };
@@ -126,6 +296,8 @@ function parseArgs(args) {
       const value = readPossiblySpacedValue(args, index + 1);
       options.fixtureText = value.text;
       index = value.nextIndex - 1;
+    } else if (arg === "--persistent") {
+      options.persistent = true;
     } else if (arg === "--json") {
       options.json = true;
     } else if (arg === "--list") {
@@ -144,7 +316,8 @@ function readSingleSample(options, tempRoot) {
     id: path.basename(audioPath, path.extname(audioPath)) || "single",
     audioPath,
     expected: options.expected,
-    language: options.language
+    language: options.language,
+    durationMs: 1000
   };
 }
 
@@ -165,7 +338,8 @@ function readManifest(manifestPath) {
       id: row.id ?? `sample-${index + 1}`,
       audioPath,
       expected,
-      language: row.language
+      language: row.language,
+      durationMs: row.durationMs
     };
   });
 }

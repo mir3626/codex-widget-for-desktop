@@ -69,6 +69,43 @@ node scripts/benchmark-asr-candidates.mjs --candidate faster-whisper-large-v3-tu
 First run downloads the selected model unless
 `CODEX_WIDGET_ASR_FASTER_WHISPER_LOCAL_FILES_ONLY=1` is set.
 
+## Human Microphone Corpus
+
+Raw microphone audio stays under ignored `.runtime/` and must not be committed.
+Prepare the local corpus scaffold:
+
+```powershell
+npm run asr:human-corpus
+```
+
+Recording the listed WAV files and running the human-corpus benchmark are
+deferred by the 2026-05-14 product-owner decision. When that work resumes,
+record the WAV files into `.runtime/asr/human-mic-corpus/`, then run the CPU
+default in persistent mode:
+
+```powershell
+$env:CODEX_WIDGET_ASR_PYTHON = "$PWD\.runtime\asr\faster-whisper\Scripts\python.exe"
+$env:CODEX_WIDGET_ASR_FASTER_WHISPER_DOWNLOAD_ROOT = "$PWD\.runtime\asr\models\faster-whisper"
+node scripts/benchmark-asr-candidates.mjs --persistent --candidate faster-whisper-large-v3-turbo-cpu --manifest "$PWD\.runtime\asr\human-mic-corpus\manifest.json" --json
+```
+
+## Persistent Worker Latency
+
+`scripts/asr-sidecar-faster-whisper.py --worker` keeps one Python process and
+one loaded `WhisperModel` alive for newline-delimited JSON requests. The normal
+single-request sidecar contract is unchanged for daemon compatibility.
+
+Use the worker benchmark when measuring UX latency because the earlier CPU
+baseline included process spawn plus model load for every utterance:
+
+```powershell
+node scripts/benchmark-asr-candidates.mjs --persistent --candidate faster-whisper-large-v3-turbo-cpu --manifest "$PWD\.runtime\asr\samples\manifest.json" --json
+```
+
+The first result from each candidate is marked `coldStart: true`; later results
+show warm worker latency. Transcript diagnostics also include `workerMode`,
+`modelLoaded`, and `modelLoadMs`.
+
 ## GPU Enablement (Deferred)
 
 The GPU candidate wiring is already present, but GPU validation is deferred by
@@ -146,7 +183,8 @@ Select the default by:
 
 The expected first default is `faster-whisper-large-v3-turbo-cpu`. Promotion to
 `faster-whisper-large-v3-turbo-gpu` is deferred until GPU validation explicitly
-resumes and CUDA is available and stable.
+resumes and CUDA is available and stable. Persistent worker latency must be
+measured separately for CPU and future GPU candidates.
 
 ## 2026-05-13 CPU Baseline
 
@@ -157,4 +195,21 @@ preserved normalized command slots. GPU probing reached the CUDA boundary on an
 RTX 3060 Ti but failed until `cublas64_12.dll` / CUDA 12 runtime libraries are
 installed and visible on `PATH`. The 2026-05-14 product-owner decision defers
 that DLL install and GPU retest; the next ASR evidence should focus on human
-microphone Korean command samples and persistent-worker latency.
+microphone Korean command samples and persistent-worker latency. The worker
+harness is now implemented with `--persistent`; collect human microphone audio
+before changing the default beyond `large-v3-turbo-cpu`.
+
+Human microphone recording and the follow-up human-corpus persistent benchmark
+were deferred on 2026-05-14. Until that is explicitly resumed, use the SAPI
+persistent worker baseline as the current local evidence and keep
+`large-v3-turbo-cpu` as the default.
+
+## 2026-05-14 Persistent Worker Baseline
+
+`docs/reports/local-asr-persistent-worker-cpu-benchmark-2026-05-14.md` records
+the first persistent worker CPU run. On the same five synthetic Korean SAPI
+samples, `large-v3-turbo-cpu` had a 22.65s cold first request including 7.92s of
+model load, then averaged 12.52s across warm requests with normalized similarity
+1.00. This confirms persistent mode is required for widget dogfood, but human
+microphone samples are still needed before final model selection. That recording
+and benchmark pass is deferred until explicitly resumed.

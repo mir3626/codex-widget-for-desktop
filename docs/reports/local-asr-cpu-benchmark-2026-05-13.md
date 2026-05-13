@@ -51,3 +51,9 @@ dogfood. Next, collect human Korean command WAV samples to validate noise,
 microphone, and natural phrasing behavior, and prototype a persistent ASR
 worker/service path to remove per-request model load latency. GPU testing stays
 deferred until explicitly resumed.
+
+Follow-up: `docs/reports/local-asr-persistent-worker-cpu-benchmark-2026-05-14.md`
+records the first persistent worker CPU run. Warm requests averaged 12.52s on
+the same synthetic SAPI corpus, with the first cold request spending 7.92s on
+model load. Human microphone recording and its persistent benchmark are deferred
+until explicitly resumed.
