@@ -33,6 +33,12 @@ import {
 } from "./presentation.js";
 import { createBrowserActionPromptToolInvocation } from "../../agent-tools/index.js";
 import { summarizeCapabilityTimings } from "../../capability-transaction/index.js";
+import {
+  finalizeEvalRunFromSteps,
+  rollupComputerUseEvalMetrics
+} from "../../computer-use-eval/index.js";
+import { buildPerceptionGraphFromBrowserObservation } from "../../perception-graph/index.js";
+import { recordStructuredFailure } from "../../failure-memory/index.js";
 
 export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput): Promise<boolean> {
   const promptPlan = planBrowserActionFromPrompt({
@@ -79,6 +85,25 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
       utterance: input.message.text
     })
   });
+  const evalRun = input.storage.createComputerUseEvalRun({
+    scenarioId: `browser-action:${promptPlan.id}`,
+    sessionId: input.sessionId,
+    modalities: ["browser"],
+    prompt: input.message.text,
+    scenario: {
+      id: `browser-action:${promptPlan.id}`,
+      title: promptPlan.goal,
+      modalities: ["browser"],
+      source: "prompt",
+      prompt: input.message.text,
+      expectedOutcome: promptPlan.steps.map((step) => step.expected ?? step.action.type),
+      tags: ["browser_action", "prompt"]
+    },
+    metrics: {
+      plannedSteps: promptPlan.steps.length,
+      firstAction: promptPlan.steps[0]?.action.type
+    }
+  });
 
   const firstAction = promptPlan.steps[0]?.action;
   transaction = input.browserActions.markInteractionTiming(transaction.transactionId, "fresh_context_wait_started", "perceiving", {
@@ -93,6 +118,16 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
     routeKey: snapshotResult.context?.routeKey
   }) ?? transaction;
   if (snapshotResult.handled) {
+    input.storage.updateComputerUseEvalRun({
+      id: evalRun.id,
+      status: "completed",
+      taskSuccess: "abstained",
+      failureClass: "restricted_surface",
+      completedAt: new Date().toISOString(),
+      metrics: {
+        handledDuringFreshContext: true
+      }
+    });
     return true;
   }
 
@@ -116,6 +151,35 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
     })) ?? transaction;
   }
   const observed = input.browserActions.observe({ actionSessionId: session.id, snapshot });
+  const perceptionGraph = input.storage.recordPerceptionGraph({
+    graph: buildPerceptionGraphFromBrowserObservation({
+      observation: observed.observation,
+      sessionId: input.sessionId
+    }),
+    sessionId: input.sessionId,
+    source: "browser_action"
+  });
+  input.storage.appendComputerUseEvalStep({
+    runId: evalRun.id,
+    kind: "perception_graph",
+    phase: "perceiving",
+    status: "completed",
+    perceptionGraphId: perceptionGraph.id,
+    input: {
+      observationId: observed.observation.id,
+      url: observed.observation.url,
+      elementCount: observed.observation.elements.length
+    },
+    output: {
+      graphId: perceptionGraph.id,
+      nodeCount: perceptionGraph.nodes.length,
+      edgeCount: perceptionGraph.edges.length,
+      thresholds: perceptionGraph.thresholds
+    },
+    startedAt: observed.observation.capturedAt,
+    completedAt: perceptionGraph.createdAt,
+    elapsedMs: Math.max(0, Date.parse(perceptionGraph.createdAt) - Date.parse(observed.observation.capturedAt))
+  });
   transaction = input.browserActions.markInteractionTiming(transaction.transactionId, "observation_recorded", "framing_intent", {
     url: observed.observation.url,
     title: observed.observation.title,
@@ -191,10 +255,52 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
     });
   }
   const timingSummary = summarizeCapabilityTimings(transaction.timings);
+  input.storage.appendComputerUseEvalStep({
+    runId: evalRun.id,
+    kind: "browser_action_plan",
+    phase: "verifying",
+    status: execution.plan.status,
+    perceptionGraphId: perceptionGraph.id,
+    input: {
+      planId: execution.plan.id,
+      stepCount: execution.plan.steps.length
+    },
+    output: {
+      planStatus: execution.plan.status,
+      resultCount: execution.results.length,
+      latestStatus: execution.results.at(-1)?.status,
+      timingSummary
+    },
+    startedAt: execution.plan.createdAt ?? transaction.capability.createdAt,
+    completedAt: new Date().toISOString(),
+    failureClass: execution.plan.status === "completed" ? "none" : "action_failed"
+  });
+  const completedEval = finalizeEvalRunFromSteps({
+    storage: input.storage,
+    runId: evalRun.id,
+    taskSuccess: execution.plan.status === "completed" ? "passed" : execution.plan.status === "awaiting_approval" ? "unknown" : "failed",
+    failureClass: execution.plan.status === "completed" ? "none" : execution.plan.status === "awaiting_approval" ? "approval_denied" : "action_failed"
+  });
+  if (completedEval.failureClass !== "none" && completedEval.failureClass !== "unknown") {
+    recordStructuredFailure({
+      storage: input.storage,
+      failureClass: completedEval.failureClass,
+      surface: "browser",
+      source: "browser_action_prompt_runner",
+      scenarioId: completedEval.scenarioId,
+      evalRunId: completedEval.id,
+      perceptionGraphId: perceptionGraph.id,
+      badTargetPatterns: execution.results.map((result) => result.target?.label || result.target?.text || result.target?.id).filter((value): value is string => Boolean(value)),
+      recoveryHints: ["refresh_observation", "ask_target_clarification"],
+      ttlMs: 14 * 24 * 60 * 60 * 1000
+    });
+  }
   recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", "Browser Action timing summary", {
     transactionId: transaction.transactionId,
     planStatus: execution.plan.status,
-    timings: timingSummary
+    timings: timingSummary,
+    evalRunId: completedEval.id,
+    evalMetrics: rollupComputerUseEvalMetrics(input.storage.listComputerUseEvalRuns({ scenarioId: completedEval.scenarioId, limit: 50 }))
   });
   broadcast(input.clients, {
     type: "browserAction.diagnostics",

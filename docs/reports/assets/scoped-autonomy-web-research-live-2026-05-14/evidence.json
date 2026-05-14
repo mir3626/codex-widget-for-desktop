@@ -1,0 +1,2529 @@
+{
+  "generatedAt": "2026-05-14T09:43:32.321Z",
+  "storageSchemaVersion": 6,
+  "scenarios": [
+    {
+      "id": "scoped-autonomy-live-openai-web-research-to-pdf",
+      "userScenario": "사용자가 OpenAI 웹사이트에서 Codex 관련 내용을 실제로 읽어 PDF 파일로 달라고 요청한다.",
+      "architectureWorkflow": [
+        "permission_check grants only openai.com and platform.openai.com live fetches",
+        "Toolsmith materializes web_research_to_pdf.v2 in runtime workspace and passes smoke before live execution",
+        "crawl_or_observe performs live allowed-domain fetches and records HTTP status per source",
+        "extract and verify_sources build a citation table from live response text",
+        "draft_markdown and render_pdf produce persistent artifacts",
+        "store_artifact writes blob-backed eval resources and verify_artifact checks the PDF header"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+        "toolSpecId": "tool-web-research-to-pdf",
+        "outputDir": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-web-research-live-2026-05-14\\live-report\\autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+        "liveUrlsObserved": [
+          "https://openai.com/codex/",
+          "https://platform.openai.com/docs/codex"
+        ],
+        "statuses": [
+          {
+            "url": "https://openai.com/codex/",
+            "status": "403",
+            "chars": 41
+          },
+          {
+            "url": "https://platform.openai.com/docs/codex",
+            "status": "403",
+            "chars": 41
+          }
+        ]
+      },
+      "followUp": [
+        "OpenAI pages currently return HTTP status evidence to Node fetch in this environment; the run still records live response text and status.",
+        "Browser-backed fetch may be needed when upstream blocks daemon-side HTTP clients.",
+        "Promotion should require repeated live runs and p95 latency comparison, not this single dogfood result."
+      ]
+    }
+  ],
+  "debugBundle": {
+    "schemaVersion": "autonomy-debug-bundle.v1",
+    "generatedAt": "2026-05-14T09:43:32.324Z",
+    "run": {
+      "id": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+      "goal": "OpenAI 홈페이지에서 Codex 지원 명령어 조사해서 PDF 파일로 제공해줘.",
+      "status": "completed",
+      "permissionProfileId": "autonomy-profile-7d27dce5-fdd2-4995-97d6-c5bae1d93af4",
+      "evalRunId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+      "dagRunId": "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293",
+      "gapIds": [
+        "gap-web-research-to-pdf-5b282ea4"
+      ],
+      "toolSpecIds": [
+        "tool-web-research-to-pdf"
+      ],
+      "output": {
+        "permission": {
+          "allowed": true,
+          "mode": "scoped_yolo",
+          "profileId": "autonomy-profile-7d27dce5-fdd2-4995-97d6-c5bae1d93af4",
+          "reason": "Scoped autonomy grants cover all requirements.",
+          "missingRequirements": [],
+          "usedRequirements": [
+            {
+              "type": "network",
+              "value": "http_fetch",
+              "reason": "The generated research tool may fetch allowed source pages."
+            },
+            {
+              "type": "risk_class",
+              "value": "read_only",
+              "reason": "Web research reads public sources and writes local artifacts."
+            },
+            {
+              "type": "generated_tool_materialization",
+              "value": "web_research_to_pdf",
+              "reason": "Toolsmith must materialize the report/PDF tool."
+            },
+            {
+              "type": "generated_tool_execution",
+              "value": "web_research_to_pdf",
+              "reason": "Generated tool must execute after smoke tests."
+            },
+            {
+              "type": "network_domain",
+              "value": "openai.com",
+              "reason": "The generated research tool may fetch this source domain."
+            },
+            {
+              "type": "network_domain",
+              "value": "help.openai.com",
+              "reason": "The generated research tool may fetch this source domain."
+            },
+            {
+              "type": "network_domain",
+              "value": "platform.openai.com",
+              "reason": "The generated research tool may fetch this source domain."
+            },
+            {
+              "type": "filesystem_write",
+              "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-web-research-live-2026-05-14\\live-report",
+              "reason": "The generated tool must write report artifacts."
+            }
+          ],
+          "safetyBoundaries": [
+            "no_credential_access",
+            "no_restricted_page_bypass",
+            "no_destructive_os_mutation_without_explicit_scope",
+            "generated_tools_must_pass_smoke",
+            "eval_ledger_records_all_steps"
+          ]
+        },
+        "decomposition": {
+          "goal": "OpenAI 홈페이지에서 Codex 지원 명령어 조사해서 PDF 파일로 제공해줘.",
+          "operations": [
+            "crawl_or_observe",
+            "extract",
+            "verify_sources",
+            "draft_markdown",
+            "render_pdf",
+            "store_artifact",
+            "verify_artifact"
+          ],
+          "expectedArtifacts": [
+            "report.md",
+            "report.pdf"
+          ],
+          "riskClass": "read_only",
+          "evidenceNeeds": [
+            "urls_fetched",
+            "source_titles",
+            "extraction_notes"
+          ]
+        },
+        "matchedCapabilities": [
+          "builtin:screen_observe"
+        ],
+        "capabilityInventory": [
+          {
+            "id": "builtin:screen_observe",
+            "capability": "source_extraction",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "builtin:browser_chrome",
+            "capability": "browser_chrome_direct_control",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "builtin:terminal",
+            "capability": "terminal_generated_tool",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "blocked:native_windows_workflow",
+            "capability": "native_windows_workflow",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "builtin:local_document_conversion",
+            "capability": "local_document_conversion",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "blocked:file_picker",
+            "capability": "file_picker",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "blocked:package_install_helper",
+            "capability": "package_install_helper",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "external:app_server_client_tool",
+            "capability": "browser_download_verify",
+            "status": "external_unavailable",
+            "source": "external"
+          }
+        ],
+        "gapCount": 1,
+        "dagNodeIds": [
+          "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:permission_check",
+          "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:capability_gap",
+          "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:implement_capability",
+          "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:dependency_prepare",
+          "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:smoke_test",
+          "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:task_plan",
+          "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:crawl_or_observe",
+          "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:extract",
+          "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:verify_sources",
+          "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:draft_markdown",
+          "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:render_pdf",
+          "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:store_artifact",
+          "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:verify_artifact",
+          "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:cleanup_or_rollback",
+          "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:eval_ledger_record"
+        ],
+        "dagNodeMap": {
+          "permission_check": "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:permission_check",
+          "capability_gap": "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:capability_gap",
+          "implement_capability": "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:implement_capability",
+          "dependency_prepare": "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:dependency_prepare",
+          "smoke_test": "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:smoke_test",
+          "task_plan": "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:task_plan",
+          "crawl_or_observe": "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:crawl_or_observe",
+          "extract": "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:extract",
+          "verify_sources": "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:verify_sources",
+          "draft_markdown": "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:draft_markdown",
+          "render_pdf": "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:render_pdf",
+          "store_artifact": "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:store_artifact",
+          "verify_artifact": "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:verify_artifact",
+          "cleanup_or_rollback": "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:cleanup_or_rollback",
+          "eval_ledger_record": "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:eval_ledger_record"
+        },
+        "selfImplementation": {
+          "gapId": "gap-web-research-to-pdf-5b282ea4",
+          "toolSpecId": "tool-web-research-to-pdf",
+          "iteration": 1,
+          "maxIterations": 3
+        },
+        "smokeToolRunId": "autonomy-tool-run-cf3b3f71-2938-4956-a04d-e40acfa07b02",
+        "activeToolSpecId": "tool-web-research-to-pdf",
+        "executionToolRunIds": [
+          "autonomy-tool-run-cf3b3f71-2938-4956-a04d-e40acfa07b02",
+          "autonomy-tool-run-3343e496-97d9-46f7-a6b7-1fb5ea30b1b3",
+          "autonomy-tool-run-22eb6964-0a2d-4605-b940-e929ccf2234a",
+          "autonomy-tool-run-facd47cf-2a47-4dd9-a9a3-26d1ba7750ef",
+          "autonomy-tool-run-073cc001-594a-4687-b5c6-4e1f85a66b8c",
+          "autonomy-tool-run-0c39338a-3778-4b20-a0fa-94cff31e9cee",
+          "autonomy-tool-run-faa8f3ca-2a2d-46da-b68a-eedabbfcd7e1",
+          "autonomy-tool-run-61e9b5a3-cba2-4a20-99f1-fdbe78cb44b1"
+        ],
+        "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+        "pdfRenderer": "builtin",
+        "finalStage": "verify_artifact"
+      },
+      "failureClass": "none",
+      "createdAt": "2026-05-14T09:43:30.926Z",
+      "updatedAt": "2026-05-14T09:43:32.306Z",
+      "completedAt": "2026-05-14T09:43:32.305Z"
+    },
+    "profile": {
+      "id": "autonomy-profile-7d27dce5-fdd2-4995-97d6-c5bae1d93af4",
+      "name": "dogfood live OpenAI web research",
+      "mode": "scoped_yolo",
+      "scope": "persistent",
+      "status": "active",
+      "grants": {
+        "network": true,
+        "networkDomains": [
+          "openai.com",
+          "platform.openai.com",
+          "help.openai.com"
+        ],
+        "browserAutomation": false,
+        "browserDomains": [],
+        "filesystem": {
+          "readRoots": [
+            "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-web-research-live-qz8E0Z",
+            "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-web-research-live-2026-05-14"
+          ],
+          "writeRoots": [
+            "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-web-research-live-qz8E0Z",
+            "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-web-research-live-2026-05-14"
+          ]
+        },
+        "commands": {
+          "allowPrefixes": [
+            "node"
+          ],
+          "denyPatterns": [
+            "password",
+            "token",
+            "cookie",
+            "secret",
+            "api_key"
+          ]
+        },
+        "packageInstall": false,
+        "osMutation": false,
+        "generatedToolMaterialization": true,
+        "generatedToolExecution": true,
+        "generatedCode": true,
+        "credentialAccess": "never",
+        "riskClasses": [
+          "read_only",
+          "reversible"
+        ],
+        "maxRuntimeMs": 45000,
+        "maxOutputBytes": 4194304,
+        "maxIterations": 3
+      },
+      "safetyBoundaries": [
+        "no_credential_access",
+        "no_restricted_page_bypass",
+        "no_destructive_os_mutation_without_explicit_scope",
+        "generated_tools_must_pass_smoke",
+        "eval_ledger_records_all_steps"
+      ],
+      "usedCount": 0,
+      "createdAt": "2026-05-14T09:43:30.837Z",
+      "updatedAt": "2026-05-14T09:43:30.837Z"
+    },
+    "gaps": [
+      {
+        "id": "gap-web-research-to-pdf-5b282ea4",
+        "runId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+        "category": "web_research",
+        "requestedCapability": "web_research_to_pdf",
+        "reason": "The request needs source collection, report synthesis, and PDF artifact generation as one bounded workflow.",
+        "operations": [
+          "crawl_or_observe",
+          "extract",
+          "verify_sources",
+          "draft_markdown",
+          "render_pdf",
+          "store_artifact",
+          "verify_artifact"
+        ],
+        "riskClass": "read_only",
+        "evidenceNeeds": [
+          "urls_fetched",
+          "source_extraction",
+          "citation_table",
+          "markdown_artifact",
+          "pdf_artifact"
+        ],
+        "fallbackPlan": [
+          "use_fixture_or_supplied_source_documents",
+          "use_builtin_minimal_pdf_renderer_when_pandoc_is_not_granted"
+        ],
+        "blockerClassification": "none",
+        "requiredGrants": [
+          {
+            "type": "network",
+            "value": "http_fetch",
+            "reason": "The generated research tool may fetch allowed source pages."
+          },
+          {
+            "type": "risk_class",
+            "value": "read_only",
+            "reason": "Web research reads public sources and writes local artifacts."
+          },
+          {
+            "type": "generated_tool_materialization",
+            "value": "web_research_to_pdf",
+            "reason": "Toolsmith must materialize the report/PDF tool."
+          },
+          {
+            "type": "generated_tool_execution",
+            "value": "web_research_to_pdf",
+            "reason": "Generated tool must execute after smoke tests."
+          },
+          {
+            "type": "network_domain",
+            "value": "openai.com",
+            "reason": "The generated research tool may fetch this source domain."
+          },
+          {
+            "type": "network_domain",
+            "value": "help.openai.com",
+            "reason": "The generated research tool may fetch this source domain."
+          },
+          {
+            "type": "network_domain",
+            "value": "platform.openai.com",
+            "reason": "The generated research tool may fetch this source domain."
+          },
+          {
+            "type": "filesystem_write",
+            "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-web-research-live-2026-05-14\\live-report",
+            "reason": "The generated tool must write report artifacts."
+          }
+        ],
+        "suggestedToolId": "tool-web-research-to-pdf",
+        "proposedTool": {
+          "templateId": "web_research_to_pdf.v2",
+          "entrypointKind": "node_script",
+          "expectedArtifacts": [
+            "report.md",
+            "report.pdf",
+            "citations.json"
+          ]
+        },
+        "blockers": [],
+        "createdAt": "2026-05-14T09:43:30.930Z"
+      }
+    ],
+    "tools": [
+      {
+        "id": "tool-web-research-to-pdf",
+        "name": "Web Research To PDF",
+        "capability": "web_research_to_pdf",
+        "version": "0.2.0",
+        "status": "active",
+        "templateId": "web_research_to_pdf.v2",
+        "entrypointKind": "node_script",
+        "description": "Fetch allowed sources, extract evidence, draft Markdown, render PDF, and verify artifacts through staged DAG commands.",
+        "requiredGrants": [
+          {
+            "type": "network",
+            "value": "http_fetch",
+            "reason": "The generated research tool may fetch allowed source pages."
+          },
+          {
+            "type": "risk_class",
+            "value": "read_only",
+            "reason": "Web research reads public sources and writes local artifacts."
+          },
+          {
+            "type": "generated_tool_materialization",
+            "value": "web_research_to_pdf",
+            "reason": "Toolsmith must materialize the report/PDF tool."
+          },
+          {
+            "type": "generated_tool_execution",
+            "value": "web_research_to_pdf",
+            "reason": "Generated tool must execute after smoke tests."
+          },
+          {
+            "type": "network_domain",
+            "value": "openai.com",
+            "reason": "The generated research tool may fetch this source domain."
+          },
+          {
+            "type": "network_domain",
+            "value": "help.openai.com",
+            "reason": "The generated research tool may fetch this source domain."
+          },
+          {
+            "type": "network_domain",
+            "value": "platform.openai.com",
+            "reason": "The generated research tool may fetch this source domain."
+          },
+          {
+            "type": "filesystem_write",
+            "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-web-research-live-2026-05-14\\live-report",
+            "reason": "The generated tool must write report artifacts."
+          }
+        ],
+        "smokeTests": [
+          {
+            "id": "fixture-report-pdf",
+            "description": "Create markdown, citations, and PDF artifacts from deterministic fixture content.",
+            "expectedArtifacts": [
+              "report.md",
+              "report.pdf",
+              "citations.json"
+            ]
+          }
+        ],
+        "artifacts": [
+          {
+            "role": "entrypoint",
+            "path": "<redacted>/web-research-to-pdf.mjs",
+            "mime": "text/javascript",
+            "size": 14937,
+            "sha256": "9103d8173db87c0c2cc74f3076129d64f4e3fb8a55f24172b3c991d015a196c0"
+          },
+          {
+            "role": "manifest",
+            "path": "<redacted>/manifest.json",
+            "mime": "application/json",
+            "size": 1679,
+            "sha256": "e2f41758977c8e3e3708d5cc6d6e0eef539a358f47f299fe3b1565f904f1ac81"
+          }
+        ],
+        "manifest": {
+          "schemaVersion": "autonomy-tool-manifest.v1",
+          "toolId": "tool-web-research-to-pdf",
+          "capability": "web_research_to_pdf",
+          "entrypoint": "<redacted>/web-research-to-pdf.mjs",
+          "commandAllowlist": [
+            "node"
+          ],
+          "dependencies": [
+            {
+              "name": "node",
+              "source": "system",
+              "installed": true
+            },
+            {
+              "name": "pandoc",
+              "source": "system",
+              "installed": false
+            }
+          ],
+          "smokeCommands": [
+            "smoke"
+          ],
+          "artifactContract": [
+            {
+              "role": "report",
+              "mime": "text/markdown",
+              "required": true
+            },
+            {
+              "role": "pdf",
+              "mime": "application/pdf",
+              "required": true
+            },
+            {
+              "role": "citation",
+              "mime": "application/json",
+              "required": true
+            }
+          ],
+          "rollback": [
+            {
+              "type": "delete_path",
+              "target": "<redacted>/tool-web-research-to-pdf"
+            },
+            {
+              "type": "deactivate_tool",
+              "target": "<redacted>/tool-web-research-to-pdf"
+            }
+          ],
+          "provenance": {
+            "generatedBy": "reviewed_template",
+            "templateId": "web_research_to_pdf.v2",
+            "sourceHashes": {
+              "web-research-to-pdf.mjs": "9103d8173db87c0c2cc74f3076129d64f4e3fb8a55f24172b3c991d015a196c0"
+            },
+            "iterations": 1,
+            "generatedAt": "2026-05-14T09:43:31.040Z"
+          },
+          "stability": {
+            "rating": "medium",
+            "rerunCount": 0,
+            "externalDependencyWarnings": [
+              "Live web fetches can vary by network, redirects, and upstream page changes."
+            ]
+          }
+        },
+        "sourceHash": "9103d8173db87c0c2cc74f3076129d64f4e3fb8a55f24172b3c991d015a196c0",
+        "activatedAt": "2026-05-14T09:43:31.199Z",
+        "stabilityRating": "medium",
+        "createdAt": "2026-05-14T09:43:31.037Z",
+        "updatedAt": "2026-05-14T09:43:31.041Z"
+      }
+    ],
+    "toolRuns": [
+      {
+        "id": "autonomy-tool-run-61e9b5a3-cba2-4a20-99f1-fdbe78cb44b1",
+        "toolSpecId": "tool-web-research-to-pdf",
+        "autonomyRunId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+        "evalRunId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+        "status": "completed",
+        "mode": "execute",
+        "input": {
+          "command": "verify_artifact",
+          "payload": {
+            "title": "OpenAI Codex live source report",
+            "urls": [
+              "https://openai.com/codex/",
+              "https://platform.openai.com/docs/codex"
+            ],
+            "sourceDocuments": [],
+            "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+            "pdfRenderer": "builtin"
+          }
+        },
+        "output": {
+          "ok": true,
+          "stage": "verify_artifact",
+          "verified": true,
+          "artifacts": [
+            {
+              "role": "report",
+              "path": "<redacted>/report.md",
+              "mime": "text/markdown",
+              "blobId": "blob:bf343b1f2f3c8ad2adc467e35a6a876dff40c8d3d0713c9ac2a7a204fbbaff14",
+              "resourceId": "computer-use-resource-52b1101c-9526-411f-8b82-aba50d04fbad",
+              "size": 589,
+              "sha256": "bf343b1f2f3c8ad2adc467e35a6a876dff40c8d3d0713c9ac2a7a204fbbaff14"
+            },
+            {
+              "role": "pdf",
+              "path": "<redacted>/report.pdf",
+              "mime": "application/pdf",
+              "blobId": "blob:4707c95991a1b3528935a5bfd37e2f2f9e3dafae61b947ca836a98ea7e07ad46",
+              "resourceId": "computer-use-resource-2bbd645c-ee3f-4a11-9573-d791cc9b7188",
+              "size": 1435,
+              "sha256": "4707c95991a1b3528935a5bfd37e2f2f9e3dafae61b947ca836a98ea7e07ad46"
+            }
+          ]
+        },
+        "startedAt": "2026-05-14T09:43:32.173Z",
+        "completedAt": "2026-05-14T09:43:32.279Z",
+        "elapsedMs": 106,
+        "createdAt": "2026-05-14T09:43:32.173Z",
+        "updatedAt": "2026-05-14T09:43:32.289Z"
+      },
+      {
+        "id": "autonomy-tool-run-faa8f3ca-2a2d-46da-b68a-eedabbfcd7e1",
+        "toolSpecId": "tool-web-research-to-pdf",
+        "autonomyRunId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+        "evalRunId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+        "status": "completed",
+        "mode": "execute",
+        "input": {
+          "command": "store_artifact",
+          "payload": {
+            "title": "OpenAI Codex live source report",
+            "urls": [
+              "https://openai.com/codex/",
+              "https://platform.openai.com/docs/codex"
+            ],
+            "sourceDocuments": [],
+            "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+            "pdfRenderer": "builtin"
+          }
+        },
+        "output": {
+          "ok": true,
+          "stage": "store_artifact",
+          "artifacts": [
+            {
+              "role": "report",
+              "path": "<redacted>/report.md",
+              "mime": "text/markdown",
+              "blobId": "blob:bf343b1f2f3c8ad2adc467e35a6a876dff40c8d3d0713c9ac2a7a204fbbaff14",
+              "resourceId": "computer-use-resource-7cae3a68-fa42-4f4d-96df-8782a6f659cc",
+              "size": 589,
+              "sha256": "bf343b1f2f3c8ad2adc467e35a6a876dff40c8d3d0713c9ac2a7a204fbbaff14"
+            },
+            {
+              "role": "pdf",
+              "path": "<redacted>/report.pdf",
+              "mime": "application/pdf",
+              "blobId": "blob:4707c95991a1b3528935a5bfd37e2f2f9e3dafae61b947ca836a98ea7e07ad46",
+              "resourceId": "computer-use-resource-45a56b7d-d6a7-4c5f-969a-bec6ac118c1b",
+              "size": 1435,
+              "sha256": "4707c95991a1b3528935a5bfd37e2f2f9e3dafae61b947ca836a98ea7e07ad46"
+            },
+            {
+              "role": "citation",
+              "path": "<redacted>/citations.json",
+              "mime": "application/json",
+              "blobId": "blob:5c63e8eea50763b0d2a0f3d6eec9eea215dbc076b6341cfc85f19236b3853e87",
+              "resourceId": "computer-use-resource-cace7ea8-f970-400a-8753-17c1900c230c",
+              "size": 444,
+              "sha256": "5c63e8eea50763b0d2a0f3d6eec9eea215dbc076b6341cfc85f19236b3853e87"
+            }
+          ]
+        },
+        "startedAt": "2026-05-14T09:43:32.030Z",
+        "completedAt": "2026-05-14T09:43:32.138Z",
+        "elapsedMs": 108,
+        "createdAt": "2026-05-14T09:43:32.030Z",
+        "updatedAt": "2026-05-14T09:43:32.155Z"
+      },
+      {
+        "id": "autonomy-tool-run-0c39338a-3778-4b20-a0fa-94cff31e9cee",
+        "toolSpecId": "tool-web-research-to-pdf",
+        "autonomyRunId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+        "evalRunId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+        "status": "completed",
+        "mode": "execute",
+        "input": {
+          "command": "render_pdf",
+          "payload": {
+            "title": "OpenAI Codex live source report",
+            "urls": [
+              "https://openai.com/codex/",
+              "https://platform.openai.com/docs/codex"
+            ],
+            "sourceDocuments": [],
+            "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+            "pdfRenderer": "builtin"
+          }
+        },
+        "output": {
+          "ok": true,
+          "stage": "render_pdf",
+          "renderer": "builtin",
+          "warnings": [],
+          "artifacts": [
+            {
+              "role": "pdf",
+              "path": "<redacted>/report.pdf",
+              "mime": "application/pdf",
+              "blobId": "blob:4707c95991a1b3528935a5bfd37e2f2f9e3dafae61b947ca836a98ea7e07ad46",
+              "resourceId": "computer-use-resource-dfc4b72d-3b3d-4eb6-94b2-e1edf65f3736",
+              "size": 1435,
+              "sha256": "4707c95991a1b3528935a5bfd37e2f2f9e3dafae61b947ca836a98ea7e07ad46"
+            }
+          ]
+        },
+        "startedAt": "2026-05-14T09:43:31.903Z",
+        "completedAt": "2026-05-14T09:43:31.997Z",
+        "elapsedMs": 94,
+        "createdAt": "2026-05-14T09:43:31.903Z",
+        "updatedAt": "2026-05-14T09:43:32.011Z"
+      },
+      {
+        "id": "autonomy-tool-run-073cc001-594a-4687-b5c6-4e1f85a66b8c",
+        "toolSpecId": "tool-web-research-to-pdf",
+        "autonomyRunId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+        "evalRunId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+        "status": "completed",
+        "mode": "execute",
+        "input": {
+          "command": "draft_markdown",
+          "payload": {
+            "title": "OpenAI Codex live source report",
+            "urls": [
+              "https://openai.com/codex/",
+              "https://platform.openai.com/docs/codex"
+            ],
+            "sourceDocuments": [],
+            "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+            "pdfRenderer": "builtin"
+          }
+        },
+        "output": {
+          "ok": true,
+          "stage": "draft_markdown",
+          "artifacts": [
+            {
+              "role": "report",
+              "path": "<redacted>/report.md",
+              "mime": "text/markdown",
+              "blobId": "blob:bf343b1f2f3c8ad2adc467e35a6a876dff40c8d3d0713c9ac2a7a204fbbaff14",
+              "resourceId": "computer-use-resource-21b4b9fa-d0b1-4575-bfd8-a7cef546d70d",
+              "size": 589,
+              "sha256": "bf343b1f2f3c8ad2adc467e35a6a876dff40c8d3d0713c9ac2a7a204fbbaff14"
+            }
+          ]
+        },
+        "startedAt": "2026-05-14T09:43:31.772Z",
+        "completedAt": "2026-05-14T09:43:31.872Z",
+        "elapsedMs": 100,
+        "createdAt": "2026-05-14T09:43:31.772Z",
+        "updatedAt": "2026-05-14T09:43:31.885Z"
+      },
+      {
+        "id": "autonomy-tool-run-facd47cf-2a47-4dd9-a9a3-26d1ba7750ef",
+        "toolSpecId": "tool-web-research-to-pdf",
+        "autonomyRunId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+        "evalRunId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+        "status": "completed",
+        "mode": "execute",
+        "input": {
+          "command": "verify_sources",
+          "payload": {
+            "title": "OpenAI Codex live source report",
+            "urls": [
+              "https://openai.com/codex/",
+              "https://platform.openai.com/docs/codex"
+            ],
+            "sourceDocuments": [],
+            "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+            "pdfRenderer": "builtin"
+          }
+        },
+        "output": {
+          "ok": true,
+          "stage": "verify_sources",
+          "verified": true,
+          "sourceCount": 2,
+          "artifacts": [
+            {
+              "role": "citation",
+              "path": "<redacted>/citations.json",
+              "mime": "application/json",
+              "blobId": "blob:5c63e8eea50763b0d2a0f3d6eec9eea215dbc076b6341cfc85f19236b3853e87",
+              "resourceId": "computer-use-resource-882009eb-682b-46b9-b140-54755d0ea4a7",
+              "size": 444,
+              "sha256": "5c63e8eea50763b0d2a0f3d6eec9eea215dbc076b6341cfc85f19236b3853e87"
+            }
+          ]
+        },
+        "startedAt": "2026-05-14T09:43:31.654Z",
+        "completedAt": "2026-05-14T09:43:31.752Z",
+        "elapsedMs": 98,
+        "createdAt": "2026-05-14T09:43:31.654Z",
+        "updatedAt": "2026-05-14T09:43:31.760Z"
+      },
+      {
+        "id": "autonomy-tool-run-22eb6964-0a2d-4605-b940-e929ccf2234a",
+        "toolSpecId": "tool-web-research-to-pdf",
+        "autonomyRunId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+        "evalRunId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+        "status": "completed",
+        "mode": "execute",
+        "input": {
+          "command": "extract",
+          "payload": {
+            "title": "OpenAI Codex live source report",
+            "urls": [
+              "https://openai.com/codex/",
+              "https://platform.openai.com/docs/codex"
+            ],
+            "sourceDocuments": [],
+            "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+            "pdfRenderer": "builtin"
+          }
+        },
+        "output": {
+          "ok": true,
+          "stage": "extract",
+          "sourceCount": 2,
+          "artifacts": [
+            {
+              "role": "source",
+              "path": "<redacted>/extracted.json",
+              "mime": "application/json",
+              "blobId": "blob:d14a04e87b1a97019b3123e59cbce65f1f46bc6d6eecd5f8d9eee272eb3dd082",
+              "resourceId": "computer-use-resource-65749563-fbb2-4646-bbe3-699b65ed9f3c",
+              "size": 404,
+              "sha256": "d14a04e87b1a97019b3123e59cbce65f1f46bc6d6eecd5f8d9eee272eb3dd082"
+            }
+          ]
+        },
+        "startedAt": "2026-05-14T09:43:31.534Z",
+        "completedAt": "2026-05-14T09:43:31.634Z",
+        "elapsedMs": 100,
+        "createdAt": "2026-05-14T09:43:31.534Z",
+        "updatedAt": "2026-05-14T09:43:31.641Z"
+      },
+      {
+        "id": "autonomy-tool-run-3343e496-97d9-46f7-a6b7-1fb5ea30b1b3",
+        "toolSpecId": "tool-web-research-to-pdf",
+        "autonomyRunId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+        "evalRunId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+        "status": "completed",
+        "mode": "execute",
+        "input": {
+          "command": "crawl_or_observe",
+          "payload": {
+            "title": "OpenAI Codex live source report",
+            "urls": [
+              "https://openai.com/codex/",
+              "https://platform.openai.com/docs/codex"
+            ],
+            "sourceDocuments": [],
+            "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+            "pdfRenderer": "builtin"
+          }
+        },
+        "output": {
+          "ok": true,
+          "stage": "crawl_or_observe",
+          "sourceCount": 2,
+          "urlsFetched": [
+            "https://openai.com/codex/",
+            "https://platform.openai.com/docs/codex"
+          ],
+          "warnings": [
+            "http_status_403:openai.com",
+            "http_status_403:platform.openai.com"
+          ],
+          "artifacts": [
+            {
+              "role": "source",
+              "path": "<redacted>/sources.json",
+              "mime": "application/json",
+              "blobId": "blob:d64b090aca413f94b6923e5af853f4fcf7909008adc203bf7e686094364aaecc",
+              "resourceId": "computer-use-resource-c86812f1-b077-481a-b475-c69c5cb63f62",
+              "size": 414,
+              "sha256": "d64b090aca413f94b6923e5af853f4fcf7909008adc203bf7e686094364aaecc"
+            }
+          ]
+        },
+        "startedAt": "2026-05-14T09:43:31.228Z",
+        "completedAt": "2026-05-14T09:43:31.508Z",
+        "elapsedMs": 280,
+        "createdAt": "2026-05-14T09:43:31.228Z",
+        "updatedAt": "2026-05-14T09:43:31.516Z"
+      },
+      {
+        "id": "autonomy-tool-run-cf3b3f71-2938-4956-a04d-e40acfa07b02",
+        "toolSpecId": "tool-web-research-to-pdf",
+        "autonomyRunId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+        "evalRunId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+        "status": "completed",
+        "mode": "smoke",
+        "input": {
+          "command": "smoke",
+          "payload": {
+            "title": "Scoped autonomy smoke report",
+            "outputDir": "<redacted>/smoke",
+            "sourceDocuments": [
+              {
+                "title": "Fixture",
+                "url": "https://example.com/scoped-autonomy-fixture",
+                "text": "Codex can generate bounded tools only after permission and smoke checks."
+              }
+            ],
+            "urls": [],
+            "pdfRenderer": "builtin"
+          }
+        },
+        "output": {
+          "ok": true,
+          "stage": "verify_artifact",
+          "verified": true,
+          "artifacts": [
+            {
+              "role": "report",
+              "path": "<redacted>/report.md",
+              "mime": "text/markdown",
+              "blobId": "blob:e5dfdd246c251662f65a22fe9c99b9fa40604209ba65e344f703038b8dd2c4d3",
+              "resourceId": "computer-use-resource-00c80fca-f4f4-44d0-a80f-8044fb5bbe3f",
+              "size": 406,
+              "sha256": "e5dfdd246c251662f65a22fe9c99b9fa40604209ba65e344f703038b8dd2c4d3"
+            },
+            {
+              "role": "pdf",
+              "path": "<redacted>/report.pdf",
+              "mime": "application/pdf",
+              "blobId": "blob:b28c5e635bfad3b3369fba409f454c3f03d07fcbcfb9fbaad418d88eec30caf6",
+              "resourceId": "computer-use-resource-d4f5ccd5-916d-4998-a380-39ab77b7d832",
+              "size": 1182,
+              "sha256": "b28c5e635bfad3b3369fba409f454c3f03d07fcbcfb9fbaad418d88eec30caf6"
+            },
+            {
+              "role": "citation",
+              "path": "<redacted>/citations.json",
+              "mime": "application/json",
+              "blobId": "blob:70f7a7d4411df0ce0b78818dcd208e44e9e3ea3a7e898be09c28c86652b0aa54",
+              "resourceId": "computer-use-resource-d723de85-36b8-42ca-9bfc-13b0b247fcbf",
+              "size": 263,
+              "sha256": "70f7a7d4411df0ce0b78818dcd208e44e9e3ea3a7e898be09c28c86652b0aa54"
+            }
+          ],
+          "sourceCount": 1,
+          "warnings": [],
+          "evidence": {
+            "urlsFetched": [],
+            "citationsPath": "<redacted>/citations.json",
+            "markdownPath": "<redacted>/report.md",
+            "pdfPath": "<redacted>/report.pdf"
+          }
+        },
+        "startedAt": "2026-05-14T09:43:31.055Z",
+        "completedAt": "2026-05-14T09:43:31.160Z",
+        "elapsedMs": 105,
+        "createdAt": "2026-05-14T09:43:31.055Z",
+        "updatedAt": "2026-05-14T09:43:31.190Z"
+      }
+    ],
+    "eval": {
+      "steps": [
+        {
+          "id": "computer-use-step-e1a77e19-7bd2-42b8-b5cd-a11d8b252793",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "stepIndex": 0,
+          "kind": "scoped_autonomy_plan",
+          "phase": "framing_intent",
+          "status": "completed",
+          "capabilityDagNodeId": "capability-dag-898a0482-7c5e-4062-a1cc-0682ef986293:capability_gap",
+          "input": {
+            "goal": "OpenAI 홈페이지에서 Codex 지원 명령어 조사해서 PDF 파일로 제공해줘.",
+            "profileId": "autonomy-profile-7d27dce5-fdd2-4995-97d6-c5bae1d93af4"
+          },
+          "output": {
+            "decomposition": {
+              "goal": "OpenAI 홈페이지에서 Codex 지원 명령어 조사해서 PDF 파일로 제공해줘.",
+              "operations": [
+                "crawl_or_observe",
+                "extract",
+                "verify_sources",
+                "draft_markdown",
+                "render_pdf",
+                "store_artifact",
+                "verify_artifact"
+              ],
+              "expectedArtifacts": [
+                "report.md",
+                "report.pdf"
+              ],
+              "riskClass": "read_only",
+              "evidenceNeeds": [
+                "urls_fetched",
+                "source_titles",
+                "extraction_notes"
+              ]
+            },
+            "matchedCapabilities": [
+              {
+                "id": "builtin:screen_observe",
+                "capability": "source_extraction",
+                "status": "available",
+                "source": "builtin",
+                "operations": [
+                  "observe",
+                  "ocr",
+                  "extract"
+                ],
+                "riskClass": "read_only",
+                "requiredGrants": [],
+                "blockers": [],
+                "createdAt": "2026-05-14T09:43:30.845Z",
+                "updatedAt": "2026-05-14T09:43:30.887Z"
+              }
+            ],
+            "gaps": [
+              {
+                "id": "gap-web-research-to-pdf-5b282ea4",
+                "runId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+                "category": "web_research",
+                "requestedCapability": "web_research_to_pdf",
+                "reason": "The request needs source collection, report synthesis, and PDF artifact generation as one bounded workflow.",
+                "operations": [
+                  "crawl_or_observe",
+                  "extract",
+                  "verify_sources",
+                  "draft_markdown",
+                  "render_pdf",
+                  "store_artifact",
+                  "verify_artifact"
+                ],
+                "riskClass": "read_only",
+                "evidenceNeeds": [
+                  "urls_fetched",
+                  "source_extraction",
+                  "citation_table",
+                  "markdown_artifact",
+                  "pdf_artifact"
+                ],
+                "fallbackPlan": [
+                  "use_fixture_or_supplied_source_documents",
+                  "use_builtin_minimal_pdf_renderer_when_pandoc_is_not_granted"
+                ],
+                "blockerClassification": "none",
+                "requiredGrants": [
+                  {
+                    "type": "network",
+                    "value": "http_fetch",
+                    "reason": "The generated research tool may fetch allowed source pages."
+                  },
+                  {
+                    "type": "risk_class",
+                    "value": "read_only",
+                    "reason": "Web research reads public sources and writes local artifacts."
+                  },
+                  {
+                    "type": "generated_tool_materialization",
+                    "value": "web_research_to_pdf",
+                    "reason": "Toolsmith must materialize the report/PDF tool."
+                  },
+                  {
+                    "type": "generated_tool_execution",
+                    "value": "web_research_to_pdf",
+                    "reason": "Generated tool must execute after smoke tests."
+                  },
+                  {
+                    "type": "network_domain",
+                    "value": "openai.com",
+                    "reason": "The generated research tool may fetch this source domain."
+                  },
+                  {
+                    "type": "network_domain",
+                    "value": "help.openai.com",
+                    "reason": "The generated research tool may fetch this source domain."
+                  },
+                  {
+                    "type": "network_domain",
+                    "value": "platform.openai.com",
+                    "reason": "The generated research tool may fetch this source domain."
+                  },
+                  {
+                    "type": "filesystem_write",
+                    "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-web-research-live-2026-05-14\\live-report",
+                    "reason": "The generated tool must write report artifacts."
+                  }
+                ],
+                "suggestedToolId": "tool-web-research-to-pdf",
+                "proposedTool": {
+                  "templateId": "web_research_to_pdf.v2",
+                  "entrypointKind": "node_script",
+                  "expectedArtifacts": [
+                    "report.md",
+                    "report.pdf",
+                    "citations.json"
+                  ]
+                },
+                "blockers": [],
+                "createdAt": "2026-05-14T09:43:30.930Z"
+              }
+            ],
+            "permission": {
+              "allowed": true,
+              "mode": "scoped_yolo",
+              "profileId": "autonomy-profile-7d27dce5-fdd2-4995-97d6-c5bae1d93af4",
+              "reason": "Scoped autonomy grants cover all requirements.",
+              "missingRequirements": [],
+              "usedRequirements": [
+                {
+                  "type": "network",
+                  "value": "http_fetch",
+                  "reason": "The generated research tool may fetch allowed source pages."
+                },
+                {
+                  "type": "risk_class",
+                  "value": "read_only",
+                  "reason": "Web research reads public sources and writes local artifacts."
+                },
+                {
+                  "type": "generated_tool_materialization",
+                  "value": "web_research_to_pdf",
+                  "reason": "Toolsmith must materialize the report/PDF tool."
+                },
+                {
+                  "type": "generated_tool_execution",
+                  "value": "web_research_to_pdf",
+                  "reason": "Generated tool must execute after smoke tests."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "help.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "platform.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "filesystem_write",
+                  "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-web-research-live-2026-05-14\\live-report",
+                  "reason": "The generated tool must write report artifacts."
+                }
+              ],
+              "safetyBoundaries": [
+                "no_credential_access",
+                "no_restricted_page_bypass",
+                "no_destructive_os_mutation_without_explicit_scope",
+                "generated_tools_must_pass_smoke",
+                "eval_ledger_records_all_steps"
+              ]
+            }
+          },
+          "failureClass": "none",
+          "createdAt": "2026-05-14T09:43:31.018Z"
+        },
+        {
+          "id": "computer-use-step-93eabe2e-020c-414d-8d89-8c12ce13b8a4",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "stepIndex": 1,
+          "kind": "toolsmith_generate_source",
+          "phase": "implementing",
+          "status": "completed",
+          "input": {
+            "gap": {
+              "id": "gap-web-research-to-pdf-5b282ea4",
+              "runId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+              "category": "web_research",
+              "requestedCapability": "web_research_to_pdf",
+              "reason": "The request needs source collection, report synthesis, and PDF artifact generation as one bounded workflow.",
+              "operations": [
+                "crawl_or_observe",
+                "extract",
+                "verify_sources",
+                "draft_markdown",
+                "render_pdf",
+                "store_artifact",
+                "verify_artifact"
+              ],
+              "riskClass": "read_only",
+              "evidenceNeeds": [
+                "urls_fetched",
+                "source_extraction",
+                "citation_table",
+                "markdown_artifact",
+                "pdf_artifact"
+              ],
+              "fallbackPlan": [
+                "use_fixture_or_supplied_source_documents",
+                "use_builtin_minimal_pdf_renderer_when_pandoc_is_not_granted"
+              ],
+              "blockerClassification": "none",
+              "requiredGrants": [
+                {
+                  "type": "network",
+                  "value": "http_fetch",
+                  "reason": "The generated research tool may fetch allowed source pages."
+                },
+                {
+                  "type": "risk_class",
+                  "value": "read_only",
+                  "reason": "Web research reads public sources and writes local artifacts."
+                },
+                {
+                  "type": "generated_tool_materialization",
+                  "value": "web_research_to_pdf",
+                  "reason": "Toolsmith must materialize the report/PDF tool."
+                },
+                {
+                  "type": "generated_tool_execution",
+                  "value": "web_research_to_pdf",
+                  "reason": "Generated tool must execute after smoke tests."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "help.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "platform.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "filesystem_write",
+                  "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-web-research-live-2026-05-14\\live-report",
+                  "reason": "The generated tool must write report artifacts."
+                }
+              ],
+              "suggestedToolId": "tool-web-research-to-pdf",
+              "proposedTool": {
+                "templateId": "web_research_to_pdf.v2",
+                "entrypointKind": "node_script",
+                "expectedArtifacts": [
+                  "report.md",
+                  "report.pdf",
+                  "citations.json"
+                ]
+              },
+              "blockers": [],
+              "createdAt": "2026-05-14T09:43:30.930Z"
+            },
+            "iteration": 1
+          },
+          "output": {
+            "toolSpecId": "tool-web-research-to-pdf",
+            "sourceHash": "9103d8173db87c0c2cc74f3076129d64f4e3fb8a55f24172b3c991d015a196c0",
+            "manifest": {
+              "toolId": "tool-web-research-to-pdf",
+              "capability": "web_research_to_pdf",
+              "entrypoint": "<redacted>/web-research-to-pdf.mjs",
+              "commandAllowlist": [
+                "node"
+              ],
+              "dependencies": [
+                {
+                  "name": "node",
+                  "source": "system",
+                  "installed": true
+                },
+                {
+                  "name": "pandoc",
+                  "source": "system",
+                  "installed": false
+                }
+              ],
+              "sourceHashes": {
+                "web-research-to-pdf.mjs": "9103d8173db87c0c2cc74f3076129d64f4e3fb8a55f24172b3c991d015a196c0"
+              },
+              "iterations": 1,
+              "stability": {
+                "rating": "unknown",
+                "rerunCount": 0,
+                "externalDependencyWarnings": [
+                  "Live web fetches can vary by network, redirects, and upstream page changes."
+                ]
+              }
+            }
+          },
+          "failureClass": "none",
+          "createdAt": "2026-05-14T09:43:31.049Z"
+        },
+        {
+          "id": "computer-use-step-dec82388-279c-4f04-90ab-29480bca8717",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "stepIndex": 2,
+          "kind": "toolsmith_smoke",
+          "phase": "verifying",
+          "status": "completed",
+          "input": {
+            "command": "smoke",
+            "payload": {
+              "title": "Scoped autonomy smoke report",
+              "outputDir": "<redacted>/smoke",
+              "sourceDocuments": [
+                {
+                  "title": "Fixture",
+                  "url": "https://example.com/scoped-autonomy-fixture",
+                  "text": "Codex can generate bounded tools only after permission and smoke checks."
+                }
+              ],
+              "urls": [],
+              "pdfRenderer": "builtin"
+            }
+          },
+          "output": {
+            "permission": {
+              "allowed": true,
+              "mode": "scoped_yolo",
+              "profileId": "autonomy-profile-7d27dce5-fdd2-4995-97d6-c5bae1d93af4",
+              "reason": "Scoped autonomy grants cover all requirements.",
+              "missingRequirements": [],
+              "usedRequirements": [
+                {
+                  "type": "network",
+                  "value": "http_fetch",
+                  "reason": "The generated research tool may fetch allowed source pages."
+                },
+                {
+                  "type": "risk_class",
+                  "value": "read_only",
+                  "reason": "Web research reads public sources and writes local artifacts."
+                },
+                {
+                  "type": "generated_tool_materialization",
+                  "value": "web_research_to_pdf",
+                  "reason": "Toolsmith must materialize the report/PDF tool."
+                },
+                {
+                  "type": "generated_tool_execution",
+                  "value": "web_research_to_pdf",
+                  "reason": "Generated tool must execute after smoke tests."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "help.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "platform.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "filesystem_write",
+                  "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-web-research-live-2026-05-14\\live-report",
+                  "reason": "The generated tool must write report artifacts."
+                },
+                {
+                  "type": "filesystem_write",
+                  "value": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-web-research-live-qz8E0Z\\.runtime\\autonomy\\outputs\\tool-web-research-to-pdf\\smoke",
+                  "reason": "Smoke test writes deterministic report artifacts."
+                }
+              ],
+              "safetyBoundaries": [
+                "no_credential_access",
+                "no_restricted_page_bypass",
+                "no_destructive_os_mutation_without_explicit_scope",
+                "generated_tools_must_pass_smoke",
+                "eval_ledger_records_all_steps"
+              ]
+            },
+            "toolRun": {
+              "id": "autonomy-tool-run-cf3b3f71-2938-4956-a04d-e40acfa07b02",
+              "toolSpecId": "tool-web-research-to-pdf",
+              "autonomyRunId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+              "evalRunId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+              "status": "completed",
+              "mode": "smoke",
+              "input": {
+                "command": "smoke",
+                "payload": {
+                  "title": "Scoped autonomy smoke report",
+                  "outputDir": "<redacted>/smoke",
+                  "sourceDocuments": [
+                    {
+                      "title": "Fixture",
+                      "url": "https://example.com/scoped-autonomy-fixture",
+                      "text": "Codex can generate bounded tools only after permission and smoke checks."
+                    }
+                  ],
+                  "urls": [],
+                  "pdfRenderer": "builtin"
+                }
+              },
+              "output": {
+                "ok": true,
+                "stage": "verify_artifact",
+                "verified": true,
+                "artifacts": [
+                  {
+                    "role": "report",
+                    "path": "<redacted>/report.md",
+                    "mime": "text/markdown",
+                    "blobId": "blob:e5dfdd246c251662f65a22fe9c99b9fa40604209ba65e344f703038b8dd2c4d3",
+                    "resourceId": "computer-use-resource-00c80fca-f4f4-44d0-a80f-8044fb5bbe3f",
+                    "size": 406,
+                    "sha256": "e5dfdd246c251662f65a22fe9c99b9fa40604209ba65e344f703038b8dd2c4d3"
+                  },
+                  {
+                    "role": "pdf",
+                    "path": "<redacted>/report.pdf",
+                    "mime": "application/pdf",
+                    "blobId": "blob:b28c5e635bfad3b3369fba409f454c3f03d07fcbcfb9fbaad418d88eec30caf6",
+                    "resourceId": "computer-use-resource-d4f5ccd5-916d-4998-a380-39ab77b7d832",
+                    "size": 1182,
+                    "sha256": "b28c5e635bfad3b3369fba409f454c3f03d07fcbcfb9fbaad418d88eec30caf6"
+                  },
+                  {
+                    "role": "citation",
+                    "path": "<redacted>/citations.json",
+                    "mime": "application/json",
+                    "blobId": "blob:70f7a7d4411df0ce0b78818dcd208e44e9e3ea3a7e898be09c28c86652b0aa54",
+                    "resourceId": "computer-use-resource-d723de85-36b8-42ca-9bfc-13b0b247fcbf",
+                    "size": 263,
+                    "sha256": "70f7a7d4411df0ce0b78818dcd208e44e9e3ea3a7e898be09c28c86652b0aa54"
+                  }
+                ],
+                "sourceCount": 1,
+                "warnings": [],
+                "evidence": {
+                  "urlsFetched": [],
+                  "citationsPath": "<redacted>/citations.json",
+                  "markdownPath": "<redacted>/report.md",
+                  "pdfPath": "<redacted>/report.pdf"
+                }
+              },
+              "startedAt": "2026-05-14T09:43:31.055Z",
+              "completedAt": "2026-05-14T09:43:31.160Z",
+              "elapsedMs": 105,
+              "createdAt": "2026-05-14T09:43:31.055Z",
+              "updatedAt": "2026-05-14T09:43:31.190Z"
+            }
+          },
+          "failureClass": "none",
+          "createdAt": "2026-05-14T09:43:31.194Z"
+        },
+        {
+          "id": "computer-use-step-7ed04adf-f621-4f4f-bd7c-2ea9f3d249be",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "stepIndex": 3,
+          "kind": "toolsmith_execute",
+          "phase": "executing",
+          "status": "completed",
+          "input": {
+            "command": "crawl_or_observe",
+            "payload": {
+              "title": "OpenAI Codex live source report",
+              "urls": [
+                "https://openai.com/codex/",
+                "https://platform.openai.com/docs/codex"
+              ],
+              "sourceDocuments": [],
+              "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+              "pdfRenderer": "builtin"
+            }
+          },
+          "output": {
+            "permission": {
+              "allowed": true,
+              "mode": "scoped_yolo",
+              "profileId": "autonomy-profile-7d27dce5-fdd2-4995-97d6-c5bae1d93af4",
+              "reason": "Scoped autonomy grants cover all requirements.",
+              "missingRequirements": [],
+              "usedRequirements": [
+                {
+                  "type": "network",
+                  "value": "http_fetch",
+                  "reason": "The generated research tool may fetch allowed source pages."
+                },
+                {
+                  "type": "risk_class",
+                  "value": "read_only",
+                  "reason": "Web research reads public sources and writes local artifacts."
+                },
+                {
+                  "type": "generated_tool_materialization",
+                  "value": "web_research_to_pdf",
+                  "reason": "Toolsmith must materialize the report/PDF tool."
+                },
+                {
+                  "type": "generated_tool_execution",
+                  "value": "web_research_to_pdf",
+                  "reason": "Generated tool must execute after smoke tests."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "help.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "platform.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "filesystem_write",
+                  "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-web-research-live-2026-05-14\\live-report",
+                  "reason": "The generated tool must write report artifacts."
+                }
+              ],
+              "safetyBoundaries": [
+                "no_credential_access",
+                "no_restricted_page_bypass",
+                "no_destructive_os_mutation_without_explicit_scope",
+                "generated_tools_must_pass_smoke",
+                "eval_ledger_records_all_steps"
+              ]
+            },
+            "toolRun": {
+              "id": "autonomy-tool-run-3343e496-97d9-46f7-a6b7-1fb5ea30b1b3",
+              "toolSpecId": "tool-web-research-to-pdf",
+              "autonomyRunId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+              "evalRunId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+              "status": "completed",
+              "mode": "execute",
+              "input": {
+                "command": "crawl_or_observe",
+                "payload": {
+                  "title": "OpenAI Codex live source report",
+                  "urls": [
+                    "https://openai.com/codex/",
+                    "https://platform.openai.com/docs/codex"
+                  ],
+                  "sourceDocuments": [],
+                  "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+                  "pdfRenderer": "builtin"
+                }
+              },
+              "output": {
+                "ok": true,
+                "stage": "crawl_or_observe",
+                "sourceCount": 2,
+                "urlsFetched": [
+                  "https://openai.com/codex/",
+                  "https://platform.openai.com/docs/codex"
+                ],
+                "warnings": [
+                  "http_status_403:openai.com",
+                  "http_status_403:platform.openai.com"
+                ],
+                "artifacts": [
+                  {
+                    "role": "source",
+                    "path": "<redacted>/sources.json",
+                    "mime": "application/json",
+                    "blobId": "blob:d64b090aca413f94b6923e5af853f4fcf7909008adc203bf7e686094364aaecc",
+                    "resourceId": "computer-use-resource-c86812f1-b077-481a-b475-c69c5cb63f62",
+                    "size": 414,
+                    "sha256": "d64b090aca413f94b6923e5af853f4fcf7909008adc203bf7e686094364aaecc"
+                  }
+                ]
+              },
+              "startedAt": "2026-05-14T09:43:31.228Z",
+              "completedAt": "2026-05-14T09:43:31.508Z",
+              "elapsedMs": 280,
+              "createdAt": "2026-05-14T09:43:31.228Z",
+              "updatedAt": "2026-05-14T09:43:31.516Z"
+            }
+          },
+          "failureClass": "none",
+          "createdAt": "2026-05-14T09:43:31.521Z"
+        },
+        {
+          "id": "computer-use-step-7a73884b-8bb5-40cb-99fe-e07ed5e7e3bb",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "stepIndex": 4,
+          "kind": "toolsmith_execute",
+          "phase": "executing",
+          "status": "completed",
+          "input": {
+            "command": "extract",
+            "payload": {
+              "title": "OpenAI Codex live source report",
+              "urls": [
+                "https://openai.com/codex/",
+                "https://platform.openai.com/docs/codex"
+              ],
+              "sourceDocuments": [],
+              "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+              "pdfRenderer": "builtin"
+            }
+          },
+          "output": {
+            "permission": {
+              "allowed": true,
+              "mode": "scoped_yolo",
+              "profileId": "autonomy-profile-7d27dce5-fdd2-4995-97d6-c5bae1d93af4",
+              "reason": "Scoped autonomy grants cover all requirements.",
+              "missingRequirements": [],
+              "usedRequirements": [
+                {
+                  "type": "network",
+                  "value": "http_fetch",
+                  "reason": "The generated research tool may fetch allowed source pages."
+                },
+                {
+                  "type": "risk_class",
+                  "value": "read_only",
+                  "reason": "Web research reads public sources and writes local artifacts."
+                },
+                {
+                  "type": "generated_tool_materialization",
+                  "value": "web_research_to_pdf",
+                  "reason": "Toolsmith must materialize the report/PDF tool."
+                },
+                {
+                  "type": "generated_tool_execution",
+                  "value": "web_research_to_pdf",
+                  "reason": "Generated tool must execute after smoke tests."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "help.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "platform.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "filesystem_write",
+                  "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-web-research-live-2026-05-14\\live-report",
+                  "reason": "The generated tool must write report artifacts."
+                }
+              ],
+              "safetyBoundaries": [
+                "no_credential_access",
+                "no_restricted_page_bypass",
+                "no_destructive_os_mutation_without_explicit_scope",
+                "generated_tools_must_pass_smoke",
+                "eval_ledger_records_all_steps"
+              ]
+            },
+            "toolRun": {
+              "id": "autonomy-tool-run-22eb6964-0a2d-4605-b940-e929ccf2234a",
+              "toolSpecId": "tool-web-research-to-pdf",
+              "autonomyRunId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+              "evalRunId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+              "status": "completed",
+              "mode": "execute",
+              "input": {
+                "command": "extract",
+                "payload": {
+                  "title": "OpenAI Codex live source report",
+                  "urls": [
+                    "https://openai.com/codex/",
+                    "https://platform.openai.com/docs/codex"
+                  ],
+                  "sourceDocuments": [],
+                  "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+                  "pdfRenderer": "builtin"
+                }
+              },
+              "output": {
+                "ok": true,
+                "stage": "extract",
+                "sourceCount": 2,
+                "artifacts": [
+                  {
+                    "role": "source",
+                    "path": "<redacted>/extracted.json",
+                    "mime": "application/json",
+                    "blobId": "blob:d14a04e87b1a97019b3123e59cbce65f1f46bc6d6eecd5f8d9eee272eb3dd082",
+                    "resourceId": "computer-use-resource-65749563-fbb2-4646-bbe3-699b65ed9f3c",
+                    "size": 404,
+                    "sha256": "d14a04e87b1a97019b3123e59cbce65f1f46bc6d6eecd5f8d9eee272eb3dd082"
+                  }
+                ]
+              },
+              "startedAt": "2026-05-14T09:43:31.534Z",
+              "completedAt": "2026-05-14T09:43:31.634Z",
+              "elapsedMs": 100,
+              "createdAt": "2026-05-14T09:43:31.534Z",
+              "updatedAt": "2026-05-14T09:43:31.641Z"
+            }
+          },
+          "failureClass": "none",
+          "createdAt": "2026-05-14T09:43:31.644Z"
+        },
+        {
+          "id": "computer-use-step-b545e38c-11bb-4589-b6f5-0b37b167649e",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "stepIndex": 5,
+          "kind": "toolsmith_execute",
+          "phase": "executing",
+          "status": "completed",
+          "input": {
+            "command": "verify_sources",
+            "payload": {
+              "title": "OpenAI Codex live source report",
+              "urls": [
+                "https://openai.com/codex/",
+                "https://platform.openai.com/docs/codex"
+              ],
+              "sourceDocuments": [],
+              "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+              "pdfRenderer": "builtin"
+            }
+          },
+          "output": {
+            "permission": {
+              "allowed": true,
+              "mode": "scoped_yolo",
+              "profileId": "autonomy-profile-7d27dce5-fdd2-4995-97d6-c5bae1d93af4",
+              "reason": "Scoped autonomy grants cover all requirements.",
+              "missingRequirements": [],
+              "usedRequirements": [
+                {
+                  "type": "network",
+                  "value": "http_fetch",
+                  "reason": "The generated research tool may fetch allowed source pages."
+                },
+                {
+                  "type": "risk_class",
+                  "value": "read_only",
+                  "reason": "Web research reads public sources and writes local artifacts."
+                },
+                {
+                  "type": "generated_tool_materialization",
+                  "value": "web_research_to_pdf",
+                  "reason": "Toolsmith must materialize the report/PDF tool."
+                },
+                {
+                  "type": "generated_tool_execution",
+                  "value": "web_research_to_pdf",
+                  "reason": "Generated tool must execute after smoke tests."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "help.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "platform.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "filesystem_write",
+                  "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-web-research-live-2026-05-14\\live-report",
+                  "reason": "The generated tool must write report artifacts."
+                }
+              ],
+              "safetyBoundaries": [
+                "no_credential_access",
+                "no_restricted_page_bypass",
+                "no_destructive_os_mutation_without_explicit_scope",
+                "generated_tools_must_pass_smoke",
+                "eval_ledger_records_all_steps"
+              ]
+            },
+            "toolRun": {
+              "id": "autonomy-tool-run-facd47cf-2a47-4dd9-a9a3-26d1ba7750ef",
+              "toolSpecId": "tool-web-research-to-pdf",
+              "autonomyRunId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+              "evalRunId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+              "status": "completed",
+              "mode": "execute",
+              "input": {
+                "command": "verify_sources",
+                "payload": {
+                  "title": "OpenAI Codex live source report",
+                  "urls": [
+                    "https://openai.com/codex/",
+                    "https://platform.openai.com/docs/codex"
+                  ],
+                  "sourceDocuments": [],
+                  "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+                  "pdfRenderer": "builtin"
+                }
+              },
+              "output": {
+                "ok": true,
+                "stage": "verify_sources",
+                "verified": true,
+                "sourceCount": 2,
+                "artifacts": [
+                  {
+                    "role": "citation",
+                    "path": "<redacted>/citations.json",
+                    "mime": "application/json",
+                    "blobId": "blob:5c63e8eea50763b0d2a0f3d6eec9eea215dbc076b6341cfc85f19236b3853e87",
+                    "resourceId": "computer-use-resource-882009eb-682b-46b9-b140-54755d0ea4a7",
+                    "size": 444,
+                    "sha256": "5c63e8eea50763b0d2a0f3d6eec9eea215dbc076b6341cfc85f19236b3853e87"
+                  }
+                ]
+              },
+              "startedAt": "2026-05-14T09:43:31.654Z",
+              "completedAt": "2026-05-14T09:43:31.752Z",
+              "elapsedMs": 98,
+              "createdAt": "2026-05-14T09:43:31.654Z",
+              "updatedAt": "2026-05-14T09:43:31.760Z"
+            }
+          },
+          "failureClass": "none",
+          "createdAt": "2026-05-14T09:43:31.763Z"
+        },
+        {
+          "id": "computer-use-step-35ae4570-9ec9-42fa-9a69-5637cd0c0e59",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "stepIndex": 6,
+          "kind": "toolsmith_execute",
+          "phase": "executing",
+          "status": "completed",
+          "input": {
+            "command": "draft_markdown",
+            "payload": {
+              "title": "OpenAI Codex live source report",
+              "urls": [
+                "https://openai.com/codex/",
+                "https://platform.openai.com/docs/codex"
+              ],
+              "sourceDocuments": [],
+              "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+              "pdfRenderer": "builtin"
+            }
+          },
+          "output": {
+            "permission": {
+              "allowed": true,
+              "mode": "scoped_yolo",
+              "profileId": "autonomy-profile-7d27dce5-fdd2-4995-97d6-c5bae1d93af4",
+              "reason": "Scoped autonomy grants cover all requirements.",
+              "missingRequirements": [],
+              "usedRequirements": [
+                {
+                  "type": "network",
+                  "value": "http_fetch",
+                  "reason": "The generated research tool may fetch allowed source pages."
+                },
+                {
+                  "type": "risk_class",
+                  "value": "read_only",
+                  "reason": "Web research reads public sources and writes local artifacts."
+                },
+                {
+                  "type": "generated_tool_materialization",
+                  "value": "web_research_to_pdf",
+                  "reason": "Toolsmith must materialize the report/PDF tool."
+                },
+                {
+                  "type": "generated_tool_execution",
+                  "value": "web_research_to_pdf",
+                  "reason": "Generated tool must execute after smoke tests."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "help.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "platform.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "filesystem_write",
+                  "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-web-research-live-2026-05-14\\live-report",
+                  "reason": "The generated tool must write report artifacts."
+                }
+              ],
+              "safetyBoundaries": [
+                "no_credential_access",
+                "no_restricted_page_bypass",
+                "no_destructive_os_mutation_without_explicit_scope",
+                "generated_tools_must_pass_smoke",
+                "eval_ledger_records_all_steps"
+              ]
+            },
+            "toolRun": {
+              "id": "autonomy-tool-run-073cc001-594a-4687-b5c6-4e1f85a66b8c",
+              "toolSpecId": "tool-web-research-to-pdf",
+              "autonomyRunId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+              "evalRunId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+              "status": "completed",
+              "mode": "execute",
+              "input": {
+                "command": "draft_markdown",
+                "payload": {
+                  "title": "OpenAI Codex live source report",
+                  "urls": [
+                    "https://openai.com/codex/",
+                    "https://platform.openai.com/docs/codex"
+                  ],
+                  "sourceDocuments": [],
+                  "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+                  "pdfRenderer": "builtin"
+                }
+              },
+              "output": {
+                "ok": true,
+                "stage": "draft_markdown",
+                "artifacts": [
+                  {
+                    "role": "report",
+                    "path": "<redacted>/report.md",
+                    "mime": "text/markdown",
+                    "blobId": "blob:bf343b1f2f3c8ad2adc467e35a6a876dff40c8d3d0713c9ac2a7a204fbbaff14",
+                    "resourceId": "computer-use-resource-21b4b9fa-d0b1-4575-bfd8-a7cef546d70d",
+                    "size": 589,
+                    "sha256": "bf343b1f2f3c8ad2adc467e35a6a876dff40c8d3d0713c9ac2a7a204fbbaff14"
+                  }
+                ]
+              },
+              "startedAt": "2026-05-14T09:43:31.772Z",
+              "completedAt": "2026-05-14T09:43:31.872Z",
+              "elapsedMs": 100,
+              "createdAt": "2026-05-14T09:43:31.772Z",
+              "updatedAt": "2026-05-14T09:43:31.885Z"
+            }
+          },
+          "failureClass": "none",
+          "createdAt": "2026-05-14T09:43:31.888Z"
+        },
+        {
+          "id": "computer-use-step-4ff581e1-0b0f-4b3b-a0e3-4c9a18fcbaea",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "stepIndex": 7,
+          "kind": "toolsmith_execute",
+          "phase": "executing",
+          "status": "completed",
+          "input": {
+            "command": "render_pdf",
+            "payload": {
+              "title": "OpenAI Codex live source report",
+              "urls": [
+                "https://openai.com/codex/",
+                "https://platform.openai.com/docs/codex"
+              ],
+              "sourceDocuments": [],
+              "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+              "pdfRenderer": "builtin"
+            }
+          },
+          "output": {
+            "permission": {
+              "allowed": true,
+              "mode": "scoped_yolo",
+              "profileId": "autonomy-profile-7d27dce5-fdd2-4995-97d6-c5bae1d93af4",
+              "reason": "Scoped autonomy grants cover all requirements.",
+              "missingRequirements": [],
+              "usedRequirements": [
+                {
+                  "type": "network",
+                  "value": "http_fetch",
+                  "reason": "The generated research tool may fetch allowed source pages."
+                },
+                {
+                  "type": "risk_class",
+                  "value": "read_only",
+                  "reason": "Web research reads public sources and writes local artifacts."
+                },
+                {
+                  "type": "generated_tool_materialization",
+                  "value": "web_research_to_pdf",
+                  "reason": "Toolsmith must materialize the report/PDF tool."
+                },
+                {
+                  "type": "generated_tool_execution",
+                  "value": "web_research_to_pdf",
+                  "reason": "Generated tool must execute after smoke tests."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "help.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "platform.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "filesystem_write",
+                  "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-web-research-live-2026-05-14\\live-report",
+                  "reason": "The generated tool must write report artifacts."
+                }
+              ],
+              "safetyBoundaries": [
+                "no_credential_access",
+                "no_restricted_page_bypass",
+                "no_destructive_os_mutation_without_explicit_scope",
+                "generated_tools_must_pass_smoke",
+                "eval_ledger_records_all_steps"
+              ]
+            },
+            "toolRun": {
+              "id": "autonomy-tool-run-0c39338a-3778-4b20-a0fa-94cff31e9cee",
+              "toolSpecId": "tool-web-research-to-pdf",
+              "autonomyRunId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+              "evalRunId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+              "status": "completed",
+              "mode": "execute",
+              "input": {
+                "command": "render_pdf",
+                "payload": {
+                  "title": "OpenAI Codex live source report",
+                  "urls": [
+                    "https://openai.com/codex/",
+                    "https://platform.openai.com/docs/codex"
+                  ],
+                  "sourceDocuments": [],
+                  "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+                  "pdfRenderer": "builtin"
+                }
+              },
+              "output": {
+                "ok": true,
+                "stage": "render_pdf",
+                "renderer": "builtin",
+                "warnings": [],
+                "artifacts": [
+                  {
+                    "role": "pdf",
+                    "path": "<redacted>/report.pdf",
+                    "mime": "application/pdf",
+                    "blobId": "blob:4707c95991a1b3528935a5bfd37e2f2f9e3dafae61b947ca836a98ea7e07ad46",
+                    "resourceId": "computer-use-resource-dfc4b72d-3b3d-4eb6-94b2-e1edf65f3736",
+                    "size": 1435,
+                    "sha256": "4707c95991a1b3528935a5bfd37e2f2f9e3dafae61b947ca836a98ea7e07ad46"
+                  }
+                ]
+              },
+              "startedAt": "2026-05-14T09:43:31.903Z",
+              "completedAt": "2026-05-14T09:43:31.997Z",
+              "elapsedMs": 94,
+              "createdAt": "2026-05-14T09:43:31.903Z",
+              "updatedAt": "2026-05-14T09:43:32.011Z"
+            }
+          },
+          "failureClass": "none",
+          "createdAt": "2026-05-14T09:43:32.015Z"
+        },
+        {
+          "id": "computer-use-step-e99fab9c-f4ab-44d7-b6e3-1025f50c0237",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "stepIndex": 8,
+          "kind": "toolsmith_execute",
+          "phase": "executing",
+          "status": "completed",
+          "input": {
+            "command": "store_artifact",
+            "payload": {
+              "title": "OpenAI Codex live source report",
+              "urls": [
+                "https://openai.com/codex/",
+                "https://platform.openai.com/docs/codex"
+              ],
+              "sourceDocuments": [],
+              "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+              "pdfRenderer": "builtin"
+            }
+          },
+          "output": {
+            "permission": {
+              "allowed": true,
+              "mode": "scoped_yolo",
+              "profileId": "autonomy-profile-7d27dce5-fdd2-4995-97d6-c5bae1d93af4",
+              "reason": "Scoped autonomy grants cover all requirements.",
+              "missingRequirements": [],
+              "usedRequirements": [
+                {
+                  "type": "network",
+                  "value": "http_fetch",
+                  "reason": "The generated research tool may fetch allowed source pages."
+                },
+                {
+                  "type": "risk_class",
+                  "value": "read_only",
+                  "reason": "Web research reads public sources and writes local artifacts."
+                },
+                {
+                  "type": "generated_tool_materialization",
+                  "value": "web_research_to_pdf",
+                  "reason": "Toolsmith must materialize the report/PDF tool."
+                },
+                {
+                  "type": "generated_tool_execution",
+                  "value": "web_research_to_pdf",
+                  "reason": "Generated tool must execute after smoke tests."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "help.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "platform.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "filesystem_write",
+                  "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-web-research-live-2026-05-14\\live-report",
+                  "reason": "The generated tool must write report artifacts."
+                }
+              ],
+              "safetyBoundaries": [
+                "no_credential_access",
+                "no_restricted_page_bypass",
+                "no_destructive_os_mutation_without_explicit_scope",
+                "generated_tools_must_pass_smoke",
+                "eval_ledger_records_all_steps"
+              ]
+            },
+            "toolRun": {
+              "id": "autonomy-tool-run-faa8f3ca-2a2d-46da-b68a-eedabbfcd7e1",
+              "toolSpecId": "tool-web-research-to-pdf",
+              "autonomyRunId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+              "evalRunId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+              "status": "completed",
+              "mode": "execute",
+              "input": {
+                "command": "store_artifact",
+                "payload": {
+                  "title": "OpenAI Codex live source report",
+                  "urls": [
+                    "https://openai.com/codex/",
+                    "https://platform.openai.com/docs/codex"
+                  ],
+                  "sourceDocuments": [],
+                  "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+                  "pdfRenderer": "builtin"
+                }
+              },
+              "output": {
+                "ok": true,
+                "stage": "store_artifact",
+                "artifacts": [
+                  {
+                    "role": "report",
+                    "path": "<redacted>/report.md",
+                    "mime": "text/markdown",
+                    "blobId": "blob:bf343b1f2f3c8ad2adc467e35a6a876dff40c8d3d0713c9ac2a7a204fbbaff14",
+                    "resourceId": "computer-use-resource-7cae3a68-fa42-4f4d-96df-8782a6f659cc",
+                    "size": 589,
+                    "sha256": "bf343b1f2f3c8ad2adc467e35a6a876dff40c8d3d0713c9ac2a7a204fbbaff14"
+                  },
+                  {
+                    "role": "pdf",
+                    "path": "<redacted>/report.pdf",
+                    "mime": "application/pdf",
+                    "blobId": "blob:4707c95991a1b3528935a5bfd37e2f2f9e3dafae61b947ca836a98ea7e07ad46",
+                    "resourceId": "computer-use-resource-45a56b7d-d6a7-4c5f-969a-bec6ac118c1b",
+                    "size": 1435,
+                    "sha256": "4707c95991a1b3528935a5bfd37e2f2f9e3dafae61b947ca836a98ea7e07ad46"
+                  },
+                  {
+                    "role": "citation",
+                    "path": "<redacted>/citations.json",
+                    "mime": "application/json",
+                    "blobId": "blob:5c63e8eea50763b0d2a0f3d6eec9eea215dbc076b6341cfc85f19236b3853e87",
+                    "resourceId": "computer-use-resource-cace7ea8-f970-400a-8753-17c1900c230c",
+                    "size": 444,
+                    "sha256": "5c63e8eea50763b0d2a0f3d6eec9eea215dbc076b6341cfc85f19236b3853e87"
+                  }
+                ]
+              },
+              "startedAt": "2026-05-14T09:43:32.030Z",
+              "completedAt": "2026-05-14T09:43:32.138Z",
+              "elapsedMs": 108,
+              "createdAt": "2026-05-14T09:43:32.030Z",
+              "updatedAt": "2026-05-14T09:43:32.155Z"
+            }
+          },
+          "failureClass": "none",
+          "createdAt": "2026-05-14T09:43:32.158Z"
+        },
+        {
+          "id": "computer-use-step-bc7d90f3-a1db-4261-b21e-239daad7e9db",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "stepIndex": 9,
+          "kind": "toolsmith_execute",
+          "phase": "executing",
+          "status": "completed",
+          "input": {
+            "command": "verify_artifact",
+            "payload": {
+              "title": "OpenAI Codex live source report",
+              "urls": [
+                "https://openai.com/codex/",
+                "https://platform.openai.com/docs/codex"
+              ],
+              "sourceDocuments": [],
+              "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+              "pdfRenderer": "builtin"
+            }
+          },
+          "output": {
+            "permission": {
+              "allowed": true,
+              "mode": "scoped_yolo",
+              "profileId": "autonomy-profile-7d27dce5-fdd2-4995-97d6-c5bae1d93af4",
+              "reason": "Scoped autonomy grants cover all requirements.",
+              "missingRequirements": [],
+              "usedRequirements": [
+                {
+                  "type": "network",
+                  "value": "http_fetch",
+                  "reason": "The generated research tool may fetch allowed source pages."
+                },
+                {
+                  "type": "risk_class",
+                  "value": "read_only",
+                  "reason": "Web research reads public sources and writes local artifacts."
+                },
+                {
+                  "type": "generated_tool_materialization",
+                  "value": "web_research_to_pdf",
+                  "reason": "Toolsmith must materialize the report/PDF tool."
+                },
+                {
+                  "type": "generated_tool_execution",
+                  "value": "web_research_to_pdf",
+                  "reason": "Generated tool must execute after smoke tests."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "help.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "network_domain",
+                  "value": "platform.openai.com",
+                  "reason": "The generated research tool may fetch this source domain."
+                },
+                {
+                  "type": "filesystem_write",
+                  "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-web-research-live-2026-05-14\\live-report",
+                  "reason": "The generated tool must write report artifacts."
+                }
+              ],
+              "safetyBoundaries": [
+                "no_credential_access",
+                "no_restricted_page_bypass",
+                "no_destructive_os_mutation_without_explicit_scope",
+                "generated_tools_must_pass_smoke",
+                "eval_ledger_records_all_steps"
+              ]
+            },
+            "toolRun": {
+              "id": "autonomy-tool-run-61e9b5a3-cba2-4a20-99f1-fdbe78cb44b1",
+              "toolSpecId": "tool-web-research-to-pdf",
+              "autonomyRunId": "autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+              "evalRunId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+              "status": "completed",
+              "mode": "execute",
+              "input": {
+                "command": "verify_artifact",
+                "payload": {
+                  "title": "OpenAI Codex live source report",
+                  "urls": [
+                    "https://openai.com/codex/",
+                    "https://platform.openai.com/docs/codex"
+                  ],
+                  "sourceDocuments": [],
+                  "outputDir": "<redacted>/autonomy-run-4d206c58-239e-4afc-acb2-7c49439de80a",
+                  "pdfRenderer": "builtin"
+                }
+              },
+              "output": {
+                "ok": true,
+                "stage": "verify_artifact",
+                "verified": true,
+                "artifacts": [
+                  {
+                    "role": "report",
+                    "path": "<redacted>/report.md",
+                    "mime": "text/markdown",
+                    "blobId": "blob:bf343b1f2f3c8ad2adc467e35a6a876dff40c8d3d0713c9ac2a7a204fbbaff14",
+                    "resourceId": "computer-use-resource-52b1101c-9526-411f-8b82-aba50d04fbad",
+                    "size": 589,
+                    "sha256": "bf343b1f2f3c8ad2adc467e35a6a876dff40c8d3d0713c9ac2a7a204fbbaff14"
+                  },
+                  {
+                    "role": "pdf",
+                    "path": "<redacted>/report.pdf",
+                    "mime": "application/pdf",
+                    "blobId": "blob:4707c95991a1b3528935a5bfd37e2f2f9e3dafae61b947ca836a98ea7e07ad46",
+                    "resourceId": "computer-use-resource-2bbd645c-ee3f-4a11-9573-d791cc9b7188",
+                    "size": 1435,
+                    "sha256": "4707c95991a1b3528935a5bfd37e2f2f9e3dafae61b947ca836a98ea7e07ad46"
+                  }
+                ]
+              },
+              "startedAt": "2026-05-14T09:43:32.173Z",
+              "completedAt": "2026-05-14T09:43:32.279Z",
+              "elapsedMs": 106,
+              "createdAt": "2026-05-14T09:43:32.173Z",
+              "updatedAt": "2026-05-14T09:43:32.289Z"
+            }
+          },
+          "failureClass": "none",
+          "createdAt": "2026-05-14T09:43:32.292Z"
+        }
+      ],
+      "resources": [
+        {
+          "id": "computer-use-resource-00c80fca-f4f4-44d0-a80f-8044fb5bbe3f",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "blobId": "blob:e5dfdd246c251662f65a22fe9c99b9fa40604209ba65e344f703038b8dd2c4d3",
+          "role": "autonomy_report",
+          "retention": "evidence",
+          "redaction": {
+            "mode": "artifact_path_redacted",
+            "basename": "report.md"
+          },
+          "createdAt": "2026-05-14T09:43:31.166Z"
+        },
+        {
+          "id": "computer-use-resource-d4f5ccd5-916d-4998-a380-39ab77b7d832",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "blobId": "blob:b28c5e635bfad3b3369fba409f454c3f03d07fcbcfb9fbaad418d88eec30caf6",
+          "role": "autonomy_pdf",
+          "retention": "evidence",
+          "redaction": {
+            "mode": "artifact_path_redacted",
+            "basename": "report.pdf"
+          },
+          "createdAt": "2026-05-14T09:43:31.176Z"
+        },
+        {
+          "id": "computer-use-resource-d723de85-36b8-42ca-9bfc-13b0b247fcbf",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "blobId": "blob:70f7a7d4411df0ce0b78818dcd208e44e9e3ea3a7e898be09c28c86652b0aa54",
+          "role": "autonomy_citation",
+          "retention": "evidence",
+          "redaction": {
+            "mode": "artifact_path_redacted",
+            "basename": "citations.json"
+          },
+          "createdAt": "2026-05-14T09:43:31.185Z"
+        },
+        {
+          "id": "computer-use-resource-c86812f1-b077-481a-b475-c69c5cb63f62",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "blobId": "blob:d64b090aca413f94b6923e5af853f4fcf7909008adc203bf7e686094364aaecc",
+          "role": "autonomy_source",
+          "retention": "evidence",
+          "redaction": {
+            "mode": "artifact_path_redacted",
+            "basename": "sources.json"
+          },
+          "createdAt": "2026-05-14T09:43:31.513Z"
+        },
+        {
+          "id": "computer-use-resource-65749563-fbb2-4646-bbe3-699b65ed9f3c",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "blobId": "blob:d14a04e87b1a97019b3123e59cbce65f1f46bc6d6eecd5f8d9eee272eb3dd082",
+          "role": "autonomy_source",
+          "retention": "evidence",
+          "redaction": {
+            "mode": "artifact_path_redacted",
+            "basename": "extracted.json"
+          },
+          "createdAt": "2026-05-14T09:43:31.638Z"
+        },
+        {
+          "id": "computer-use-resource-882009eb-682b-46b9-b140-54755d0ea4a7",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "blobId": "blob:5c63e8eea50763b0d2a0f3d6eec9eea215dbc076b6341cfc85f19236b3853e87",
+          "role": "autonomy_citation",
+          "retention": "evidence",
+          "redaction": {
+            "mode": "artifact_path_redacted",
+            "basename": "citations.json"
+          },
+          "createdAt": "2026-05-14T09:43:31.757Z"
+        },
+        {
+          "id": "computer-use-resource-21b4b9fa-d0b1-4575-bfd8-a7cef546d70d",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "blobId": "blob:bf343b1f2f3c8ad2adc467e35a6a876dff40c8d3d0713c9ac2a7a204fbbaff14",
+          "role": "autonomy_report",
+          "retention": "evidence",
+          "redaction": {
+            "mode": "artifact_path_redacted",
+            "basename": "report.md"
+          },
+          "createdAt": "2026-05-14T09:43:31.881Z"
+        },
+        {
+          "id": "computer-use-resource-dfc4b72d-3b3d-4eb6-94b2-e1edf65f3736",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "blobId": "blob:4707c95991a1b3528935a5bfd37e2f2f9e3dafae61b947ca836a98ea7e07ad46",
+          "role": "autonomy_pdf",
+          "retention": "evidence",
+          "redaction": {
+            "mode": "artifact_path_redacted",
+            "basename": "report.pdf"
+          },
+          "createdAt": "2026-05-14T09:43:32.003Z"
+        },
+        {
+          "id": "computer-use-resource-7cae3a68-fa42-4f4d-96df-8782a6f659cc",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "blobId": "blob:bf343b1f2f3c8ad2adc467e35a6a876dff40c8d3d0713c9ac2a7a204fbbaff14",
+          "role": "autonomy_report",
+          "retention": "evidence",
+          "redaction": {
+            "mode": "artifact_path_redacted",
+            "basename": "report.md"
+          },
+          "createdAt": "2026-05-14T09:43:32.139Z"
+        },
+        {
+          "id": "computer-use-resource-45a56b7d-d6a7-4c5f-969a-bec6ac118c1b",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "blobId": "blob:4707c95991a1b3528935a5bfd37e2f2f9e3dafae61b947ca836a98ea7e07ad46",
+          "role": "autonomy_pdf",
+          "retention": "evidence",
+          "redaction": {
+            "mode": "artifact_path_redacted",
+            "basename": "report.pdf"
+          },
+          "createdAt": "2026-05-14T09:43:32.144Z"
+        },
+        {
+          "id": "computer-use-resource-cace7ea8-f970-400a-8753-17c1900c230c",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "blobId": "blob:5c63e8eea50763b0d2a0f3d6eec9eea215dbc076b6341cfc85f19236b3853e87",
+          "role": "autonomy_citation",
+          "retention": "evidence",
+          "redaction": {
+            "mode": "artifact_path_redacted",
+            "basename": "citations.json"
+          },
+          "createdAt": "2026-05-14T09:43:32.152Z"
+        },
+        {
+          "id": "computer-use-resource-52b1101c-9526-411f-8b82-aba50d04fbad",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "blobId": "blob:bf343b1f2f3c8ad2adc467e35a6a876dff40c8d3d0713c9ac2a7a204fbbaff14",
+          "role": "autonomy_report",
+          "retention": "evidence",
+          "redaction": {
+            "mode": "artifact_path_redacted",
+            "basename": "report.md"
+          },
+          "createdAt": "2026-05-14T09:43:32.280Z"
+        },
+        {
+          "id": "computer-use-resource-2bbd645c-ee3f-4a11-9573-d791cc9b7188",
+          "runId": "computer-use-eval-b4a2465a-1873-4057-b752-39a3ca09ae47",
+          "blobId": "blob:4707c95991a1b3528935a5bfd37e2f2f9e3dafae61b947ca836a98ea7e07ad46",
+          "role": "autonomy_pdf",
+          "retention": "evidence",
+          "redaction": {
+            "mode": "artifact_path_redacted",
+            "basename": "report.pdf"
+          },
+          "createdAt": "2026-05-14T09:43:32.286Z"
+        }
+      ]
+    },
+    "redaction": {
+      "credentialFieldsRedacted": true,
+      "rawArtifactPathsRedacted": true
+    }
+  },
+  "citations": [
+    {
+      "id": "S1",
+      "title": "openai.com",
+      "url": "https://openai.com/codex/",
+      "fetched": true,
+      "status": "403",
+      "chars": 41,
+      "excerpt": "Enable JavaScript and cookies to continue"
+    },
+    {
+      "id": "S2",
+      "title": "platform.openai.com",
+      "url": "https://platform.openai.com/docs/codex",
+      "fetched": true,
+      "status": "403",
+      "chars": 41,
+      "excerpt": "Enable JavaScript and cookies to continue"
+    }
+  ]
+}

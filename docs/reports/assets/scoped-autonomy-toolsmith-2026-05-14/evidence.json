@@ -1,0 +1,852 @@
+{
+  "generatedAt": "2026-05-14T09:43:31.601Z",
+  "storageSchemaVersion": 6,
+  "scenarios": [
+    {
+      "id": "scoped-autonomy-web-research-to-pdf",
+      "userScenario": "사용자가 OpenAI/Codex 관련 내용을 조사해 PDF 파일로 달라고 요청한다.",
+      "architectureWorkflow": [
+        "daemon creates a computer-use eval run and scoped-autonomy run",
+        "gap detector classifies the missing workflow as web_research_to_pdf",
+        "permission evaluator checks generated tool, network domain, and filesystem write grants",
+        "Toolsmith materializes the reviewed web_research_to_pdf Node template in runtime workspace",
+        "smoke test creates fixture markdown/PDF artifacts before real execution",
+        "execution produces report.md/report.pdf and stores artifacts as eval resources",
+        "eval ledger records plan, materialize, smoke, execute, and verification steps"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-b8239a6a-4243-46bd-8fe1-99abe00beec0",
+        "toolSpecId": "tool-web-research-to-pdf",
+        "smokeRunId": "autonomy-tool-run-143dbfb0-385c-41aa-aaca-7e65286d2b57",
+        "executionRunId": "autonomy-tool-run-bac26792-b25c-4831-880d-d2efca50580d",
+        "pdfPath": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-toolsmith-2026-05-14\\generated-report\\report.pdf"
+      },
+      "followUp": [
+        "Current dogfood uses fixture source text for deterministic validation.",
+        "Live crawl promotion needs source extraction, citation verification, and p95 latency measurement."
+      ]
+    },
+    {
+      "id": "scoped-autonomy-missing-execution-grant",
+      "userScenario": "사용자가 사전 권한을 일부만 주고 PDF 조사 작업을 요청한다.",
+      "architectureWorkflow": [
+        "gap detector identifies web_research_to_pdf",
+        "permission evaluator detects missing generated_tool_execution grant",
+        "autonomy run is marked blocked",
+        "no generated tool execution is attempted",
+        "eval ledger records blocked permission evidence"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-4d0bf745-2c7d-430e-8330-4ff7729a4951",
+        "missingRequirements": [
+          {
+            "type": "generated_tool_execution",
+            "value": "web_research_to_pdf",
+            "reason": "Generated tool must execute after smoke tests."
+          },
+          {
+            "type": "network_domain",
+            "value": "help.openai.com",
+            "reason": "The generated research tool may fetch this source domain."
+          },
+          {
+            "type": "network_domain",
+            "value": "platform.openai.com",
+            "reason": "The generated research tool may fetch this source domain."
+          }
+        ]
+      },
+      "followUp": [
+        "Renderer should show the exact missing grant and allow the user to grant a narrower one-time profile."
+      ]
+    },
+    {
+      "id": "scoped-autonomy-native-workflow-blocked",
+      "userScenario": "사용자가 Windows 설정 변경처럼 고위험 native workflow를 요청한다.",
+      "architectureWorkflow": [
+        "gap detector identifies native_windows_workflow",
+        "permission evaluator checks os_mutation and generated helper execution grants",
+        "missing OS mutation permission blocks the run",
+        "blocker is recorded instead of attempting screenshot/OCR workaround"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-eec56d9e-0025-4f6e-a0b1-c84f54e39b73",
+        "missingRequirements": [
+          {
+            "type": "os_mutation",
+            "value": "windows_settings_or_app_surface",
+            "reason": "Windows Settings or app workflow may mutate OS/app state."
+          }
+        ]
+      },
+      "followUp": [
+        "Native Windows workflow remains blocked on signed bounded helper implementation and high-risk dogfood matrix."
+      ]
+    }
+  ],
+  "evalRuns": [
+    {
+      "id": "computer-use-eval-fd452649-17f9-447e-8d66-12b469744cf6",
+      "scenarioId": "scoped-autonomy:c0eb7f78-5a51-4137-9dc5-0538790aeaa4",
+      "taskSuccess": "unknown",
+      "failureClass": "unknown",
+      "status": "running"
+    },
+    {
+      "id": "computer-use-eval-6998e315-b31f-43b1-af05-d178ba366689",
+      "scenarioId": "scoped-autonomy:702e7f51-c44d-4906-8e2c-a04f66dd0d5a",
+      "taskSuccess": "unknown",
+      "failureClass": "unknown",
+      "status": "running"
+    },
+    {
+      "id": "computer-use-eval-35fa86fd-94f6-4cee-b9e1-72cb3450adea",
+      "scenarioId": "scoped-autonomy:d286dc77-85b7-46e8-b094-ffab0dd19d3c",
+      "taskSuccess": "passed",
+      "failureClass": "none",
+      "status": "completed"
+    }
+  ],
+  "autonomyRuns": [
+    {
+      "id": "autonomy-run-eec56d9e-0025-4f6e-a0b1-c84f54e39b73",
+      "goal": "윈도우 설정에서 앱별 권한을 열고 설정을 변경해줘.",
+      "status": "blocked",
+      "permissionProfileId": "autonomy-profile-693df5c3-a8f1-4ded-b41c-f04b38db6dff",
+      "evalRunId": "computer-use-eval-fd452649-17f9-447e-8d66-12b469744cf6",
+      "dagRunId": "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86",
+      "gapIds": [
+        "gap-native-windows-workflow-c3e89041"
+      ],
+      "toolSpecIds": [],
+      "output": {
+        "permission": {
+          "allowed": false,
+          "mode": "scoped_yolo",
+          "profileId": "autonomy-profile-693df5c3-a8f1-4ded-b41c-f04b38db6dff",
+          "reason": "Scoped autonomy profile is missing required grants.",
+          "missingRequirements": [
+            {
+              "type": "os_mutation",
+              "value": "windows_settings_or_app_surface",
+              "reason": "Windows Settings or app workflow may mutate OS/app state."
+            }
+          ],
+          "usedRequirements": [
+            {
+              "type": "risk_class",
+              "value": "high_risk",
+              "reason": "Windows Settings changes are high risk."
+            },
+            {
+              "type": "generated_tool_execution",
+              "value": "native_helper",
+              "reason": "A bounded native helper must be executed."
+            }
+          ],
+          "safetyBoundaries": [
+            "no_credential_access",
+            "no_restricted_page_bypass",
+            "no_destructive_os_mutation_without_explicit_scope",
+            "generated_tools_must_pass_smoke",
+            "eval_ledger_records_all_steps"
+          ]
+        },
+        "decomposition": {
+          "goal": "윈도우 설정에서 앱별 권한을 열고 설정을 변경해줘.",
+          "operations": [
+            "native_windows_observe",
+            "native_windows_action"
+          ],
+          "expectedArtifacts": [],
+          "riskClass": "high_risk",
+          "evidenceNeeds": [
+            "native_helper_scope",
+            "approval_record"
+          ]
+        },
+        "matchedCapabilities": [],
+        "capabilityInventory": [
+          {
+            "id": "builtin:screen_observe",
+            "capability": "source_extraction",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "builtin:browser_chrome",
+            "capability": "browser_chrome_direct_control",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "builtin:terminal",
+            "capability": "terminal_generated_tool",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "blocked:native_windows_workflow",
+            "capability": "native_windows_workflow",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "builtin:local_document_conversion",
+            "capability": "local_document_conversion",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "blocked:file_picker",
+            "capability": "file_picker",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "blocked:package_install_helper",
+            "capability": "package_install_helper",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "external:app_server_client_tool",
+            "capability": "browser_download_verify",
+            "status": "external_unavailable",
+            "source": "external"
+          },
+          {
+            "id": "generated:tool-web-research-to-pdf",
+            "capability": "web_research_to_pdf",
+            "status": "generated",
+            "source": "generated"
+          }
+        ],
+        "gapCount": 1,
+        "dagNodeIds": [
+          "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:permission_check",
+          "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:capability_gap",
+          "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:implement_capability",
+          "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:dependency_prepare",
+          "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:smoke_test",
+          "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:task_plan",
+          "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:crawl_or_observe",
+          "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:extract",
+          "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:verify_sources",
+          "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:draft_markdown",
+          "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:render_pdf",
+          "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:store_artifact",
+          "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:verify_artifact",
+          "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:cleanup_or_rollback",
+          "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:eval_ledger_record"
+        ],
+        "dagNodeMap": {
+          "permission_check": "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:permission_check",
+          "capability_gap": "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:capability_gap",
+          "implement_capability": "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:implement_capability",
+          "dependency_prepare": "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:dependency_prepare",
+          "smoke_test": "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:smoke_test",
+          "task_plan": "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:task_plan",
+          "crawl_or_observe": "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:crawl_or_observe",
+          "extract": "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:extract",
+          "verify_sources": "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:verify_sources",
+          "draft_markdown": "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:draft_markdown",
+          "render_pdf": "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:render_pdf",
+          "store_artifact": "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:store_artifact",
+          "verify_artifact": "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:verify_artifact",
+          "cleanup_or_rollback": "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:cleanup_or_rollback",
+          "eval_ledger_record": "capability-dag-50a02aa0-cbe9-4922-81c4-92326c5a1b86:eval_ledger_record"
+        }
+      },
+      "failureClass": "approval_denied",
+      "createdAt": "2026-05-14T09:43:31.529Z",
+      "updatedAt": "2026-05-14T09:43:31.594Z",
+      "completedAt": "2026-05-14T09:43:31.594Z"
+    },
+    {
+      "id": "autonomy-run-4d0bf745-2c7d-430e-8330-4ff7729a4951",
+      "goal": "OpenAI 홈페이지에서 Codex 지원 명령어 조사해서 PDF 파일로 제공해줘.",
+      "status": "blocked",
+      "permissionProfileId": "autonomy-profile-6641e173-fb68-4729-8de5-399349db2087",
+      "evalRunId": "computer-use-eval-6998e315-b31f-43b1-af05-d178ba366689",
+      "dagRunId": "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac",
+      "gapIds": [
+        "gap-web-research-to-pdf-bde5f2c9"
+      ],
+      "toolSpecIds": [],
+      "output": {
+        "permission": {
+          "allowed": false,
+          "mode": "scoped_yolo",
+          "profileId": "autonomy-profile-6641e173-fb68-4729-8de5-399349db2087",
+          "reason": "Scoped autonomy profile is missing required grants.",
+          "missingRequirements": [
+            {
+              "type": "generated_tool_execution",
+              "value": "web_research_to_pdf",
+              "reason": "Generated tool must execute after smoke tests."
+            },
+            {
+              "type": "network_domain",
+              "value": "help.openai.com",
+              "reason": "The generated research tool may fetch this source domain."
+            },
+            {
+              "type": "network_domain",
+              "value": "platform.openai.com",
+              "reason": "The generated research tool may fetch this source domain."
+            }
+          ],
+          "usedRequirements": [
+            {
+              "type": "network",
+              "value": "http_fetch",
+              "reason": "The generated research tool may fetch allowed source pages."
+            },
+            {
+              "type": "risk_class",
+              "value": "read_only",
+              "reason": "Web research reads public sources and writes local artifacts."
+            },
+            {
+              "type": "generated_tool_materialization",
+              "value": "web_research_to_pdf",
+              "reason": "Toolsmith must materialize the report/PDF tool."
+            },
+            {
+              "type": "network_domain",
+              "value": "openai.com",
+              "reason": "The generated research tool may fetch this source domain."
+            },
+            {
+              "type": "filesystem_write",
+              "value": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-scoped-autonomy-dogfood-4IM346\\exports\\blocked",
+              "reason": "The generated tool must write report artifacts."
+            }
+          ],
+          "safetyBoundaries": [
+            "no_credential_access",
+            "no_restricted_page_bypass",
+            "no_destructive_os_mutation_without_explicit_scope",
+            "generated_tools_must_pass_smoke",
+            "eval_ledger_records_all_steps"
+          ]
+        },
+        "decomposition": {
+          "goal": "OpenAI 홈페이지에서 Codex 지원 명령어 조사해서 PDF 파일로 제공해줘.",
+          "operations": [
+            "crawl_or_observe",
+            "extract",
+            "verify_sources",
+            "draft_markdown",
+            "render_pdf",
+            "store_artifact",
+            "verify_artifact"
+          ],
+          "expectedArtifacts": [
+            "report.md",
+            "report.pdf"
+          ],
+          "riskClass": "read_only",
+          "evidenceNeeds": [
+            "urls_fetched",
+            "source_titles",
+            "extraction_notes"
+          ]
+        },
+        "matchedCapabilities": [
+          "builtin:screen_observe"
+        ],
+        "capabilityInventory": [
+          {
+            "id": "builtin:screen_observe",
+            "capability": "source_extraction",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "builtin:browser_chrome",
+            "capability": "browser_chrome_direct_control",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "builtin:terminal",
+            "capability": "terminal_generated_tool",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "blocked:native_windows_workflow",
+            "capability": "native_windows_workflow",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "builtin:local_document_conversion",
+            "capability": "local_document_conversion",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "blocked:file_picker",
+            "capability": "file_picker",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "blocked:package_install_helper",
+            "capability": "package_install_helper",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "external:app_server_client_tool",
+            "capability": "browser_download_verify",
+            "status": "external_unavailable",
+            "source": "external"
+          },
+          {
+            "id": "generated:tool-web-research-to-pdf",
+            "capability": "web_research_to_pdf",
+            "status": "generated",
+            "source": "generated"
+          }
+        ],
+        "gapCount": 1,
+        "dagNodeIds": [
+          "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:permission_check",
+          "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:capability_gap",
+          "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:implement_capability",
+          "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:dependency_prepare",
+          "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:smoke_test",
+          "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:task_plan",
+          "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:crawl_or_observe",
+          "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:extract",
+          "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:verify_sources",
+          "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:draft_markdown",
+          "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:render_pdf",
+          "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:store_artifact",
+          "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:verify_artifact",
+          "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:cleanup_or_rollback",
+          "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:eval_ledger_record"
+        ],
+        "dagNodeMap": {
+          "permission_check": "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:permission_check",
+          "capability_gap": "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:capability_gap",
+          "implement_capability": "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:implement_capability",
+          "dependency_prepare": "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:dependency_prepare",
+          "smoke_test": "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:smoke_test",
+          "task_plan": "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:task_plan",
+          "crawl_or_observe": "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:crawl_or_observe",
+          "extract": "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:extract",
+          "verify_sources": "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:verify_sources",
+          "draft_markdown": "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:draft_markdown",
+          "render_pdf": "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:render_pdf",
+          "store_artifact": "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:store_artifact",
+          "verify_artifact": "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:verify_artifact",
+          "cleanup_or_rollback": "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:cleanup_or_rollback",
+          "eval_ledger_record": "capability-dag-b4cbd672-b7ec-485b-bb53-b43912b6bcac:eval_ledger_record"
+        }
+      },
+      "failureClass": "approval_denied",
+      "createdAt": "2026-05-14T09:43:31.402Z",
+      "updatedAt": "2026-05-14T09:43:31.457Z",
+      "completedAt": "2026-05-14T09:43:31.456Z"
+    },
+    {
+      "id": "autonomy-run-b8239a6a-4243-46bd-8fe1-99abe00beec0",
+      "goal": "OpenAI 홈페이지에서 Codex 지원 명령어 조사해서 PDF 파일로 제공해줘.",
+      "status": "completed",
+      "permissionProfileId": "autonomy-profile-6fc4e175-c259-4a3f-8c68-9ffd0649f14d",
+      "evalRunId": "computer-use-eval-35fa86fd-94f6-4cee-b9e1-72cb3450adea",
+      "dagRunId": "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695",
+      "gapIds": [
+        "gap-web-research-to-pdf-a9bd06ab"
+      ],
+      "toolSpecIds": [
+        "tool-web-research-to-pdf"
+      ],
+      "output": {
+        "permission": {
+          "allowed": true,
+          "mode": "scoped_yolo",
+          "profileId": "autonomy-profile-6fc4e175-c259-4a3f-8c68-9ffd0649f14d",
+          "reason": "Scoped autonomy grants cover all requirements.",
+          "missingRequirements": [],
+          "usedRequirements": [
+            {
+              "type": "network",
+              "value": "http_fetch",
+              "reason": "The generated research tool may fetch allowed source pages."
+            },
+            {
+              "type": "risk_class",
+              "value": "read_only",
+              "reason": "Web research reads public sources and writes local artifacts."
+            },
+            {
+              "type": "generated_tool_materialization",
+              "value": "web_research_to_pdf",
+              "reason": "Toolsmith must materialize the report/PDF tool."
+            },
+            {
+              "type": "generated_tool_execution",
+              "value": "web_research_to_pdf",
+              "reason": "Generated tool must execute after smoke tests."
+            },
+            {
+              "type": "network_domain",
+              "value": "openai.com",
+              "reason": "The generated research tool may fetch this source domain."
+            },
+            {
+              "type": "network_domain",
+              "value": "help.openai.com",
+              "reason": "The generated research tool may fetch this source domain."
+            },
+            {
+              "type": "network_domain",
+              "value": "platform.openai.com",
+              "reason": "The generated research tool may fetch this source domain."
+            },
+            {
+              "type": "filesystem_write",
+              "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-toolsmith-2026-05-14\\generated-report",
+              "reason": "The generated tool must write report artifacts."
+            }
+          ],
+          "safetyBoundaries": [
+            "no_credential_access",
+            "no_restricted_page_bypass",
+            "no_destructive_os_mutation_without_explicit_scope",
+            "generated_tools_must_pass_smoke",
+            "eval_ledger_records_all_steps"
+          ]
+        },
+        "decomposition": {
+          "goal": "OpenAI 홈페이지에서 Codex 지원 명령어 조사해서 PDF 파일로 제공해줘.",
+          "operations": [
+            "crawl_or_observe",
+            "extract",
+            "verify_sources",
+            "draft_markdown",
+            "render_pdf",
+            "store_artifact",
+            "verify_artifact"
+          ],
+          "expectedArtifacts": [
+            "report.md",
+            "report.pdf"
+          ],
+          "riskClass": "read_only",
+          "evidenceNeeds": [
+            "urls_fetched",
+            "source_titles",
+            "extraction_notes"
+          ]
+        },
+        "matchedCapabilities": [
+          "builtin:screen_observe"
+        ],
+        "capabilityInventory": [
+          {
+            "id": "builtin:screen_observe",
+            "capability": "source_extraction",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "builtin:browser_chrome",
+            "capability": "browser_chrome_direct_control",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "builtin:terminal",
+            "capability": "terminal_generated_tool",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "blocked:native_windows_workflow",
+            "capability": "native_windows_workflow",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "builtin:local_document_conversion",
+            "capability": "local_document_conversion",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "blocked:file_picker",
+            "capability": "file_picker",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "blocked:package_install_helper",
+            "capability": "package_install_helper",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "external:app_server_client_tool",
+            "capability": "browser_download_verify",
+            "status": "external_unavailable",
+            "source": "external"
+          }
+        ],
+        "gapCount": 1,
+        "dagNodeIds": [
+          "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:permission_check",
+          "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:capability_gap",
+          "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:implement_capability",
+          "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:dependency_prepare",
+          "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:smoke_test",
+          "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:task_plan",
+          "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:crawl_or_observe",
+          "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:extract",
+          "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:verify_sources",
+          "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:draft_markdown",
+          "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:render_pdf",
+          "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:store_artifact",
+          "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:verify_artifact",
+          "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:cleanup_or_rollback",
+          "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:eval_ledger_record"
+        ],
+        "dagNodeMap": {
+          "permission_check": "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:permission_check",
+          "capability_gap": "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:capability_gap",
+          "implement_capability": "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:implement_capability",
+          "dependency_prepare": "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:dependency_prepare",
+          "smoke_test": "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:smoke_test",
+          "task_plan": "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:task_plan",
+          "crawl_or_observe": "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:crawl_or_observe",
+          "extract": "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:extract",
+          "verify_sources": "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:verify_sources",
+          "draft_markdown": "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:draft_markdown",
+          "render_pdf": "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:render_pdf",
+          "store_artifact": "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:store_artifact",
+          "verify_artifact": "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:verify_artifact",
+          "cleanup_or_rollback": "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:cleanup_or_rollback",
+          "eval_ledger_record": "capability-dag-c0c133e8-10a6-4852-ae75-a86515c26695:eval_ledger_record"
+        },
+        "materializedToolId": "tool-web-research-to-pdf",
+        "smokeToolRunId": "autonomy-tool-run-143dbfb0-385c-41aa-aaca-7e65286d2b57",
+        "activeToolSpecId": "tool-web-research-to-pdf",
+        "executionToolRunId": "autonomy-tool-run-bac26792-b25c-4831-880d-d2efca50580d",
+        "execution": {
+          "ok": true,
+          "stage": "verify_artifact",
+          "verified": true,
+          "artifacts": [
+            {
+              "role": "report",
+              "path": "<redacted>/report.md",
+              "mime": "text/markdown",
+              "blobId": "blob:6ca2039f86ec8bf8edfb67003d722e8dabc2d33882224976a91e25b69a213460",
+              "resourceId": "computer-use-resource-ba0ac186-5d85-4bba-a9dc-fc3a0c2cc070",
+              "size": 426,
+              "sha256": "6ca2039f86ec8bf8edfb67003d722e8dabc2d33882224976a91e25b69a213460"
+            },
+            {
+              "role": "pdf",
+              "path": "<redacted>/report.pdf",
+              "mime": "application/pdf",
+              "blobId": "blob:672c5a6ba757e7b7fc68f6a0757f3fa401ab53221cd62550b979cd115b171885",
+              "resourceId": "computer-use-resource-dbf1481f-2f4f-44e3-b2bf-79f6b9a0ad23",
+              "size": 1195,
+              "sha256": "672c5a6ba757e7b7fc68f6a0757f3fa401ab53221cd62550b979cd115b171885"
+            },
+            {
+              "role": "citation",
+              "path": "<redacted>/citations.json",
+              "mime": "application/json",
+              "blobId": "blob:500f9f1ed7aa71f4754cd5b3b4e96b3edeebb6aa6d8ea27b1ba2545b93c8cdc6",
+              "resourceId": "computer-use-resource-13d0a7cf-effe-46a5-b8d4-7b90134b5e09",
+              "size": 289,
+              "sha256": "500f9f1ed7aa71f4754cd5b3b4e96b3edeebb6aa6d8ea27b1ba2545b93c8cdc6"
+            }
+          ],
+          "sourceCount": 1,
+          "warnings": [],
+          "evidence": {
+            "urlsFetched": [],
+            "citationsPath": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-toolsmith-2026-05-14\\generated-report\\citations.json",
+            "markdownPath": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-toolsmith-2026-05-14\\generated-report\\report.md",
+            "pdfPath": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-toolsmith-2026-05-14\\generated-report\\report.pdf"
+          }
+        }
+      },
+      "failureClass": "none",
+      "createdAt": "2026-05-14T09:43:30.917Z",
+      "updatedAt": "2026-05-14T09:43:31.328Z",
+      "completedAt": "2026-05-14T09:43:31.328Z"
+    }
+  ],
+  "toolSpecs": [
+    {
+      "id": "tool-web-research-to-pdf",
+      "name": "Web Research To PDF",
+      "capability": "web_research_to_pdf",
+      "version": "0.2.0",
+      "status": "active",
+      "templateId": "web_research_to_pdf.v2",
+      "entrypointKind": "node_script",
+      "description": "Fetch allowed sources, extract evidence, draft Markdown, render PDF, and verify artifacts through staged DAG commands.",
+      "requiredGrants": [
+        {
+          "type": "network",
+          "value": "http_fetch",
+          "reason": "The generated research tool may fetch allowed source pages."
+        },
+        {
+          "type": "risk_class",
+          "value": "read_only",
+          "reason": "Web research reads public sources and writes local artifacts."
+        },
+        {
+          "type": "generated_tool_materialization",
+          "value": "web_research_to_pdf",
+          "reason": "Toolsmith must materialize the report/PDF tool."
+        },
+        {
+          "type": "generated_tool_execution",
+          "value": "web_research_to_pdf",
+          "reason": "Generated tool must execute after smoke tests."
+        },
+        {
+          "type": "network_domain",
+          "value": "openai.com",
+          "reason": "The generated research tool may fetch this source domain."
+        },
+        {
+          "type": "network_domain",
+          "value": "help.openai.com",
+          "reason": "The generated research tool may fetch this source domain."
+        },
+        {
+          "type": "network_domain",
+          "value": "platform.openai.com",
+          "reason": "The generated research tool may fetch this source domain."
+        },
+        {
+          "type": "filesystem_write",
+          "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-toolsmith-2026-05-14\\generated-report",
+          "reason": "The generated tool must write report artifacts."
+        }
+      ],
+      "smokeTests": [
+        {
+          "id": "fixture-report-pdf",
+          "description": "Create markdown, citations, and PDF artifacts from deterministic fixture content.",
+          "expectedArtifacts": [
+            "report.md",
+            "report.pdf",
+            "citations.json"
+          ]
+        }
+      ],
+      "artifacts": [
+        {
+          "role": "entrypoint",
+          "path": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-scoped-autonomy-dogfood-4IM346\\.runtime\\autonomy\\tools\\tool-web-research-to-pdf\\web-research-to-pdf.mjs",
+          "mime": "text/javascript",
+          "size": 14937,
+          "sha256": "9103d8173db87c0c2cc74f3076129d64f4e3fb8a55f24172b3c991d015a196c0"
+        },
+        {
+          "role": "manifest",
+          "path": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-scoped-autonomy-dogfood-4IM346\\.runtime\\autonomy\\tools\\tool-web-research-to-pdf\\manifest.json",
+          "mime": "application/json",
+          "size": 1691,
+          "sha256": "d542399e89be7c78333aabe203701d483eb9b55fd0d52b9e54cbf6eb7f2134a4"
+        }
+      ],
+      "manifest": {
+        "schemaVersion": "autonomy-tool-manifest.v1",
+        "toolId": "tool-web-research-to-pdf",
+        "capability": "web_research_to_pdf",
+        "entrypoint": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-scoped-autonomy-dogfood-4IM346\\.runtime\\autonomy\\tools\\tool-web-research-to-pdf\\web-research-to-pdf.mjs",
+        "commandAllowlist": [
+          "node"
+        ],
+        "dependencies": [
+          {
+            "name": "node",
+            "source": "system",
+            "installed": true
+          },
+          {
+            "name": "pandoc",
+            "source": "system",
+            "installed": false
+          }
+        ],
+        "smokeCommands": [
+          "smoke"
+        ],
+        "artifactContract": [
+          {
+            "role": "report",
+            "mime": "text/markdown",
+            "required": true
+          },
+          {
+            "role": "pdf",
+            "mime": "application/pdf",
+            "required": true
+          },
+          {
+            "role": "citation",
+            "mime": "application/json",
+            "required": true
+          }
+        ],
+        "rollback": [
+          {
+            "type": "delete_path",
+            "target": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-scoped-autonomy-dogfood-4IM346\\.runtime\\autonomy\\tools\\tool-web-research-to-pdf"
+          },
+          {
+            "type": "deactivate_tool",
+            "target": "tool-web-research-to-pdf"
+          }
+        ],
+        "provenance": {
+          "generatedBy": "reviewed_template",
+          "templateId": "web_research_to_pdf.v2",
+          "sourceHashes": {
+            "web-research-to-pdf.mjs": "9103d8173db87c0c2cc74f3076129d64f4e3fb8a55f24172b3c991d015a196c0"
+          },
+          "iterations": 1,
+          "generatedAt": "2026-05-14T09:43:31.018Z"
+        },
+        "stability": {
+          "rating": "medium",
+          "rerunCount": 0,
+          "externalDependencyWarnings": [
+            "Live web fetches can vary by network, redirects, and upstream page changes."
+          ]
+        }
+      },
+      "sourceHash": "9103d8173db87c0c2cc74f3076129d64f4e3fb8a55f24172b3c991d015a196c0",
+      "activatedAt": "2026-05-14T09:43:31.180Z",
+      "stabilityRating": "medium",
+      "createdAt": "2026-05-14T09:43:31.015Z",
+      "updatedAt": "2026-05-14T09:43:31.020Z"
+    }
+  ],
+  "improvementItems": [
+    "Live URL fetch needs source-specific extraction and citation verification before promotion beyond fixture-backed dogfood.",
+    "Renderer needs a permission profile editor and run inspector before non-developer users can safely operate scoped_yolo mode.",
+    "Ad hoc generated code now stays in daemon runtime workspace and still requires smoke-pass activation before use.",
+    "Native Windows workflow Toolsmith templates remain blocked on signed helper scope and dogfood matrix."
+  ]
+}

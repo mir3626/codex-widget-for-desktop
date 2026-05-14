@@ -1,5 +1,6 @@
 export { MockAsrEngine, SidecarAsrEngine } from "./asrEngine.js";
 export { AsrRouter } from "./asrRouter.js";
+export { buildAsrContextualLexicon, decodeAsrCommand } from "./deterministicDecoder.js";
 export { applyLexiconCorrections } from "./correction.js";
 export { scoreActionSlots } from "./confidence.js";
 export { decideClarification } from "./consensus.js";

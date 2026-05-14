@@ -80,6 +80,44 @@ npm run smoke:architecture-foundations
 
 This verifies the shared transaction timing/debug bundle, prepared-context identity, safety decision, and simulated Browser Action tool boundary.
 
+Run this after computer-use eval, ASR decoding, perception graph, ROI cascade,
+failure memory, or capability DAG changes:
+
+```powershell
+npm run smoke:research-performance-architecture
+```
+
+This verifies schema v4, eval ledger storage/rollup, deterministic ASR
+command-slot decoding, perception graph thresholding, ROI/delta cascade
+planning, structured failure memory safety, and DAG capability/eval integration.
+
+Run this after scoped autonomy, permission profile, generated Toolsmith
+template, or missing-capability handling changes:
+
+```powershell
+npm run smoke:scoped-autonomy-toolsmith
+```
+
+This verifies schema v5, scoped autonomy permission profiles, capability gap
+detection, reviewed template materialization, smoke-before-execute gating,
+Markdown/PDF artifact generation, credential redaction, blocked missing-grant
+behavior, and eval ledger/resource recording.
+
+Run this for realistic safe computer-use scenario coverage across Browser,
+Windows, ASR, Vision, Terminal, and cross-app DAG paths:
+
+```powershell
+npm run dogfood:research-computer-use
+npm run dogfood:computer-use-process-30
+npm run dogfood:scoped-autonomy-toolsmith
+```
+
+These write dated scenario catalogs under `docs/dogfood/`, JSON evidence under
+`docs/reports/assets/`, and Markdown reports under `docs/reports/`. The 30-case
+process validation set records passed, blocked, and needs-follow-up outcomes so
+unsupported or unsafe workflows remain visible as product work instead of false
+successes.
+
 Run this after Semantic Interface golden-trace, trace corpus, or deterministic scoring changes:
 
 ```powershell

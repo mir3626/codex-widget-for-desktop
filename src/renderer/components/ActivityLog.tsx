@@ -6,6 +6,7 @@ import { useFloatingSurface } from "../hooks/useFloatingSurface";
 import type { LogLine } from "../types";
 import type { CapabilityJobsUiState } from "../types";
 import { formatActivityTime } from "../utils/format";
+import { AutonomyToolsmithPanel } from "./AutonomyToolsmithPanel";
 import { CapabilityJobsPanel } from "./CapabilityJobsPanel";
 import { ProviderSnapshotRow } from "./ProviderSnapshotRow";
 
@@ -103,6 +104,7 @@ export function ActivityLog({
                 onCancel={onCancelCapabilityJob}
                 onRefresh={onRefreshCapabilityJobs}
               />
+              <AutonomyToolsmithPanel daemonPort={daemonPort} />
               {(ledger?.activities ?? []).slice(0, 12).map((activity) => (
                 <div key={activity.id} className={`activity-detail-row ${activity.level}`}>
                   <span>{formatActivityTime(activity.createdAt)}</span>

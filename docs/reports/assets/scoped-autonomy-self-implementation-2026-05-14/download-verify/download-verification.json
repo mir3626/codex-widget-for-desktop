@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "stage": "download_verify",
+  "exists": true,
+  "size": 26,
+  "sha256": "ddfe7c90ba771188bbf390dace75aa0b3cc124cd34e03c510ee1d4de1ba269fd",
+  "expectedSha256": "",
+  "fileName": "fixture-download.txt"
+}

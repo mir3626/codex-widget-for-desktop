@@ -12,6 +12,7 @@ import type { BrowserExtensionBridgeStore } from "../browser-bridge/store.js";
 import type { HttpRouteContext } from "./context.js";
 import { handleBrowserBridgeRoute } from "./routes/browserBridgeRoutes.js";
 import { handleCapabilityRoute } from "./routes/capabilityRoutes.js";
+import { handleComputerUseEvalRoute } from "./routes/computerUseEvalRoutes.js";
 import { handleOAuthRoute } from "./routes/oauthRoutes.js";
 import { handleProviderSnapshotRoute } from "./routes/providerSnapshotRoutes.js";
 import { handleSemanticMemoryRoute } from "./routes/semanticMemoryRoutes.js";
@@ -25,6 +26,7 @@ type HttpRouteHandler = (
 ) => Promise<boolean>;
 
 const routeHandlers: HttpRouteHandler[] = [
+  handleComputerUseEvalRoute,
   handleCapabilityRoute,
   handleBrowserBridgeRoute,
   handleOAuthRoute,
@@ -91,7 +93,7 @@ export async function handleHttpRequest(
 }
 
 function isCorsRoute(pathname: string): boolean {
-  return isProviderSnapshotPath(pathname) || isBrowserActionPath(pathname) || isSemanticMemoryPath(pathname) || isCapabilityPath(pathname);
+  return isProviderSnapshotPath(pathname) || isBrowserActionPath(pathname) || isSemanticMemoryPath(pathname) || isCapabilityPath(pathname) || isComputerUsePath(pathname);
 }
 
 function isProviderSnapshotPath(pathname: string): boolean {
@@ -108,4 +110,8 @@ function isSemanticMemoryPath(pathname: string): boolean {
 
 function isCapabilityPath(pathname: string): boolean {
   return pathname.startsWith("/capabilities/");
+}
+
+function isComputerUsePath(pathname: string): boolean {
+  return pathname.startsWith("/computer-use/");
 }

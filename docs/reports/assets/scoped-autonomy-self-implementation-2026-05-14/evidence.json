@@ -1,0 +1,1659 @@
+{
+  "generatedAt": "2026-05-14T09:43:33.392Z",
+  "storageSchemaVersion": 6,
+  "scenarios": [
+    {
+      "id": "self-implementation-full-dag-web-pdf",
+      "userScenario": "사용자가 OpenAI/Codex 관련 내용을 조사해 PDF 파일로 달라고 요청한다.",
+      "architectureWorkflow": [
+        "permission_check validates scoped_yolo grants before implementation",
+        "capability_gap decomposes the request into crawl/extract/verify/draft/render/store/verify operations",
+        "implement_capability materializes web_research_to_pdf.v2 under daemon runtime workspace",
+        "first smoke is intentionally failed, then Toolsmith revises generated source and retries",
+        "smoke_test activates the generated tool only after deterministic artifact checks pass",
+        "DAG executes each web/PDF stage as a separate generated-tool command",
+        "eval ledger and debug bundle record source hashes, commands, artifacts, timings, and resources"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-60a564e4-933b-42ab-bd2c-020e9372b9d9",
+        "toolSpecId": "tool-web-research-to-pdf",
+        "outputDir": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-self-implementation-2026-05-14\\full-dag-web-pdf\\autonomy-run-60a564e4-933b-42ab-bd2c-020e9372b9d9",
+        "dagCompleted": 14,
+        "evalStepCount": 12
+      },
+      "followUp": [
+        "Repeat live runs before promoting any latency or stability claim.",
+        "Renderer can now display profile/gaps/DAG/tools but still needs visual polish during real user trials."
+      ]
+    },
+    {
+      "id": "self-implementation-terminal-generated-tool",
+      "userScenario": "사용자가 안전한 로컬 스크립트 도구를 만들어 node 버전을 확인해 달라고 요청한다.",
+      "architectureWorkflow": [
+        "gap detector classifies terminal_generated_tool",
+        "Toolsmith writes a no-shell Node wrapper in runtime workspace",
+        "smoke test writes deterministic stdout artifacts",
+        "execution evaluates command prefix grants before spawning node without shell expansion",
+        "stdout/stderr artifacts and command provenance are recorded"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-15001517-9351-484f-8f6e-4f643440bf97",
+        "toolSpecId": "tool-terminal-generated",
+        "executionRunId": "autonomy-tool-run-69952c2a-ec9d-4e8e-b357-ccfaca33545d",
+        "stdout": "v24.14.1"
+      },
+      "followUp": [
+        "Complex generated scripts should require promotion review before becoming repo source.",
+        "Command splitting intentionally avoids shell features; richer command models need explicit parser tests."
+      ]
+    },
+    {
+      "id": "self-implementation-browser-download-verify",
+      "userScenario": "사용자가 브라우저에서 받은 파일이 실제로 저장됐는지 검증해 달라고 요청한다.",
+      "architectureWorkflow": [
+        "gap detector classifies browser_download_verify",
+        "Toolsmith materializes a bounded local file verifier",
+        "smoke test verifies a deterministic fixture file",
+        "execution checks filesystem_read grant for the supplied path",
+        "file size and SHA-256 evidence are stored as artifact JSON"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-7e4bb058-0de3-43e3-94e5-e74b42b8f73f",
+        "toolSpecId": "tool-browser-download-verify",
+        "executionRunId": "autonomy-tool-run-f3ee50d4-150c-4a7a-b235-829a9e25b4e1",
+        "verificationPath": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-self-implementation-2026-05-14\\download-verify\\download-verification.json"
+      },
+      "followUp": [
+        "Actual browser download shelf observation still requires browser bridge or native helper integration.",
+        "Verifier should later correlate browser download transaction IDs with local files."
+      ]
+    },
+    {
+      "id": "self-implementation-native-windows-blocked",
+      "userScenario": "사용자가 Windows 설정 변경처럼 고위험 native workflow를 요청한다.",
+      "architectureWorkflow": [
+        "gap detector classifies native_windows_workflow",
+        "permission evaluator requires high_risk and os_mutation grants",
+        "run is blocked before materialization or execution",
+        "blocker stays explicit rather than bypassing through OCR or generated code"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-8f158c86-f2ef-4d5b-9f4c-88f302a78c78",
+        "missingRequirements": [
+          {
+            "type": "risk_class",
+            "value": "high_risk",
+            "reason": "Windows Settings changes are high risk."
+          },
+          {
+            "type": "os_mutation",
+            "value": "windows_settings_or_app_surface",
+            "reason": "Windows Settings or app workflow may mutate OS/app state."
+          }
+        ],
+        "blockers": [
+          "signed_native_helper_scope_required"
+        ]
+      },
+      "followUp": [
+        "Unattended high-risk Windows mutation remains blocked by policy.",
+        "Signed bounded helper and release signing hardening are required before resuming this slice."
+      ]
+    }
+  ],
+  "autonomyRuns": [
+    {
+      "id": "autonomy-run-8f158c86-f2ef-4d5b-9f4c-88f302a78c78",
+      "goal": "Windows 설정에서 앱별 권한을 열고 설정을 변경해줘.",
+      "status": "blocked",
+      "permissionProfileId": "autonomy-profile-be42ac3b-4367-4b1c-9f03-ebe54171ea2f",
+      "evalRunId": "computer-use-eval-baab6eb3-d8fb-4476-b594-d20f0b571a7a",
+      "dagRunId": "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597",
+      "gapIds": [
+        "gap-native-windows-workflow-0d65c03e"
+      ],
+      "toolSpecIds": [],
+      "output": {
+        "permission": {
+          "allowed": false,
+          "mode": "scoped_yolo",
+          "profileId": "autonomy-profile-be42ac3b-4367-4b1c-9f03-ebe54171ea2f",
+          "reason": "Scoped autonomy profile is missing required grants.",
+          "missingRequirements": [
+            {
+              "type": "risk_class",
+              "value": "high_risk",
+              "reason": "Windows Settings changes are high risk."
+            },
+            {
+              "type": "os_mutation",
+              "value": "windows_settings_or_app_surface",
+              "reason": "Windows Settings or app workflow may mutate OS/app state."
+            }
+          ],
+          "usedRequirements": [
+            {
+              "type": "generated_tool_execution",
+              "value": "native_helper",
+              "reason": "A bounded native helper must be executed."
+            }
+          ],
+          "safetyBoundaries": [
+            "no_credential_access",
+            "no_restricted_page_bypass",
+            "no_destructive_os_mutation_without_explicit_scope",
+            "generated_tools_must_pass_smoke",
+            "eval_ledger_records_all_steps"
+          ]
+        },
+        "decomposition": {
+          "goal": "Windows 설정에서 앱별 권한을 열고 설정을 변경해줘.",
+          "operations": [
+            "native_windows_observe",
+            "native_windows_action"
+          ],
+          "expectedArtifacts": [],
+          "riskClass": "high_risk",
+          "evidenceNeeds": [
+            "native_helper_scope",
+            "approval_record"
+          ]
+        },
+        "matchedCapabilities": [],
+        "capabilityInventory": [
+          {
+            "id": "builtin:screen_observe",
+            "capability": "source_extraction",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "builtin:browser_chrome",
+            "capability": "browser_chrome_direct_control",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "builtin:terminal",
+            "capability": "terminal_generated_tool",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "blocked:native_windows_workflow",
+            "capability": "native_windows_workflow",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "builtin:local_document_conversion",
+            "capability": "local_document_conversion",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "blocked:file_picker",
+            "capability": "file_picker",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "blocked:package_install_helper",
+            "capability": "package_install_helper",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "external:app_server_client_tool",
+            "capability": "browser_download_verify",
+            "status": "external_unavailable",
+            "source": "external"
+          },
+          {
+            "id": "generated:tool-web-research-to-pdf",
+            "capability": "web_research_to_pdf",
+            "status": "generated",
+            "source": "generated"
+          },
+          {
+            "id": "generated:tool-terminal-generated",
+            "capability": "terminal_generated_tool",
+            "status": "generated",
+            "source": "generated"
+          },
+          {
+            "id": "generated:tool-browser-download-verify",
+            "capability": "browser_download_verify",
+            "status": "generated",
+            "source": "generated"
+          }
+        ],
+        "gapCount": 1,
+        "dagNodeIds": [
+          "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:permission_check",
+          "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:capability_gap",
+          "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:implement_capability",
+          "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:dependency_prepare",
+          "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:smoke_test",
+          "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:task_plan",
+          "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:crawl_or_observe",
+          "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:extract",
+          "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:verify_sources",
+          "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:draft_markdown",
+          "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:render_pdf",
+          "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:store_artifact",
+          "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:verify_artifact",
+          "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:cleanup_or_rollback",
+          "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:eval_ledger_record"
+        ],
+        "dagNodeMap": {
+          "permission_check": "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:permission_check",
+          "capability_gap": "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:capability_gap",
+          "implement_capability": "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:implement_capability",
+          "dependency_prepare": "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:dependency_prepare",
+          "smoke_test": "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:smoke_test",
+          "task_plan": "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:task_plan",
+          "crawl_or_observe": "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:crawl_or_observe",
+          "extract": "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:extract",
+          "verify_sources": "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:verify_sources",
+          "draft_markdown": "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:draft_markdown",
+          "render_pdf": "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:render_pdf",
+          "store_artifact": "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:store_artifact",
+          "verify_artifact": "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:verify_artifact",
+          "cleanup_or_rollback": "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:cleanup_or_rollback",
+          "eval_ledger_record": "capability-dag-779fc3c1-3e18-41fc-bd55-756a07120597:eval_ledger_record"
+        }
+      },
+      "failureClass": "approval_denied",
+      "createdAt": "2026-05-14T09:43:33.334Z",
+      "updatedAt": "2026-05-14T09:43:33.387Z",
+      "completedAt": "2026-05-14T09:43:33.387Z"
+    },
+    {
+      "id": "autonomy-run-7e4bb058-0de3-43e3-94e5-e74b42b8f73f",
+      "goal": "다운로드된 파일이 정상 저장됐는지 size와 hash를 확인해줘.",
+      "status": "completed",
+      "permissionProfileId": "autonomy-profile-b1749e88-c163-4fcf-bb2b-d0f0fa544c81",
+      "evalRunId": "computer-use-eval-03e3e7e0-aa84-42cd-a531-c97f3602ed9d",
+      "dagRunId": "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f",
+      "gapIds": [
+        "gap-browser-download-verify-7b1fca0d",
+        "gap-browser-chrome-direct-control-b89d3d8c"
+      ],
+      "toolSpecIds": [
+        "tool-browser-download-verify"
+      ],
+      "output": {
+        "permission": {
+          "allowed": false,
+          "mode": "scoped_yolo",
+          "profileId": "autonomy-profile-b1749e88-c163-4fcf-bb2b-d0f0fa544c81",
+          "reason": "Scoped autonomy profile is missing required grants.",
+          "missingRequirements": [
+            {
+              "type": "browser_automation",
+              "value": "browser_chrome",
+              "reason": "Browser chrome command execution."
+            },
+            {
+              "type": "risk_class",
+              "value": "side_effect",
+              "reason": "Browser chrome actions can change browser state."
+            },
+            {
+              "type": "browser_domain",
+              "value": "*",
+              "reason": "Browser chrome workflow needs an explicitly bounded active browser surface."
+            }
+          ],
+          "usedRequirements": [
+            {
+              "type": "generated_tool_materialization",
+              "value": "browser_download_verify",
+              "reason": "Toolsmith must materialize the download verifier."
+            },
+            {
+              "type": "generated_tool_execution",
+              "value": "browser_download_verify",
+              "reason": "The generated verifier must execute after smoke tests."
+            },
+            {
+              "type": "risk_class",
+              "value": "read_only",
+              "reason": "Download verification reads local metadata without mutating the file."
+            },
+            {
+              "type": "filesystem_read",
+              "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-self-implementation-2026-05-14",
+              "reason": "The verifier must read the downloaded file path."
+            }
+          ],
+          "safetyBoundaries": [
+            "no_credential_access",
+            "no_restricted_page_bypass",
+            "no_destructive_os_mutation_without_explicit_scope",
+            "generated_tools_must_pass_smoke",
+            "eval_ledger_records_all_steps"
+          ]
+        },
+        "decomposition": {
+          "goal": "다운로드된 파일이 정상 저장됐는지 size와 hash를 확인해줘.",
+          "operations": [
+            "draft_markdown",
+            "render_pdf",
+            "store_artifact",
+            "verify_artifact",
+            "browser_chrome_control",
+            "download_verify"
+          ],
+          "expectedArtifacts": [
+            "report.md",
+            "report.pdf"
+          ],
+          "riskClass": "side_effect",
+          "evidenceNeeds": [
+            "browser_surface",
+            "action_result",
+            "download_path",
+            "file_size",
+            "digest_or_mtime"
+          ]
+        },
+        "matchedCapabilities": [
+          "builtin:browser_chrome"
+        ],
+        "capabilityInventory": [
+          {
+            "id": "builtin:screen_observe",
+            "capability": "source_extraction",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "builtin:browser_chrome",
+            "capability": "browser_chrome_direct_control",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "builtin:terminal",
+            "capability": "terminal_generated_tool",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "blocked:native_windows_workflow",
+            "capability": "native_windows_workflow",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "builtin:local_document_conversion",
+            "capability": "local_document_conversion",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "blocked:file_picker",
+            "capability": "file_picker",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "blocked:package_install_helper",
+            "capability": "package_install_helper",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "external:app_server_client_tool",
+            "capability": "browser_download_verify",
+            "status": "external_unavailable",
+            "source": "external"
+          },
+          {
+            "id": "generated:tool-web-research-to-pdf",
+            "capability": "web_research_to_pdf",
+            "status": "generated",
+            "source": "generated"
+          },
+          {
+            "id": "generated:tool-terminal-generated",
+            "capability": "terminal_generated_tool",
+            "status": "generated",
+            "source": "generated"
+          }
+        ],
+        "gapCount": 2,
+        "dagNodeIds": [
+          "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:permission_check",
+          "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:capability_gap",
+          "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:implement_capability",
+          "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:dependency_prepare",
+          "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:smoke_test",
+          "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:task_plan",
+          "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:crawl_or_observe",
+          "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:extract",
+          "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:verify_sources",
+          "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:draft_markdown",
+          "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:render_pdf",
+          "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:store_artifact",
+          "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:verify_artifact",
+          "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:cleanup_or_rollback",
+          "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:eval_ledger_record"
+        ],
+        "dagNodeMap": {
+          "permission_check": "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:permission_check",
+          "capability_gap": "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:capability_gap",
+          "implement_capability": "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:implement_capability",
+          "dependency_prepare": "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:dependency_prepare",
+          "smoke_test": "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:smoke_test",
+          "task_plan": "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:task_plan",
+          "crawl_or_observe": "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:crawl_or_observe",
+          "extract": "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:extract",
+          "verify_sources": "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:verify_sources",
+          "draft_markdown": "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:draft_markdown",
+          "render_pdf": "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:render_pdf",
+          "store_artifact": "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:store_artifact",
+          "verify_artifact": "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:verify_artifact",
+          "cleanup_or_rollback": "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:cleanup_or_rollback",
+          "eval_ledger_record": "capability-dag-ce3fbcc8-4d49-4910-9414-882bd7bbd78f:eval_ledger_record"
+        },
+        "selfImplementation": {
+          "gapId": "gap-browser-download-verify-7b1fca0d",
+          "toolSpecId": "tool-browser-download-verify",
+          "iteration": 1,
+          "maxIterations": 3
+        },
+        "smokeToolRunId": "autonomy-tool-run-e8f21608-ffd0-43d7-a2ef-646ffb648bba",
+        "activeToolSpecId": "tool-browser-download-verify",
+        "executionToolRunId": "autonomy-tool-run-f3ee50d4-150c-4a7a-b235-829a9e25b4e1",
+        "execution": {
+          "ok": true,
+          "stage": "download_verify",
+          "exists": true,
+          "size": 26,
+          "sha256": "ddfe7c90ba771188bbf390dace75aa0b3cc124cd34e03c510ee1d4de1ba269fd",
+          "expectedSha256": "",
+          "fileName": "fixture-download.txt",
+          "artifacts": [
+            {
+              "role": "download_verification",
+              "path": "<redacted>/download-verification.json",
+              "mime": "application/json",
+              "blobId": "blob:38d1f8a546544ab39ea263a79d0e076510ee41565c3fcd9a637fcd478f63ca03",
+              "resourceId": "computer-use-resource-c9232aef-3458-47eb-ba74-8092330207a2",
+              "size": 220,
+              "sha256": "38d1f8a546544ab39ea263a79d0e076510ee41565c3fcd9a637fcd478f63ca03"
+            }
+          ]
+        }
+      },
+      "failureClass": "none",
+      "createdAt": "2026-05-14T09:43:32.939Z",
+      "updatedAt": "2026-05-14T09:43:33.253Z",
+      "completedAt": "2026-05-14T09:43:33.253Z"
+    },
+    {
+      "id": "autonomy-run-15001517-9351-484f-8f6e-4f643440bf97",
+      "goal": "node --version을 실행하는 안전한 local script 도구 생성해줘.",
+      "status": "completed",
+      "permissionProfileId": "autonomy-profile-e967d268-736e-43de-ac5d-606a4352185f",
+      "evalRunId": "computer-use-eval-363bac24-c415-42bb-9e53-741d84dc0af9",
+      "dagRunId": "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc",
+      "gapIds": [
+        "gap-terminal-generated-tool-e95193e6"
+      ],
+      "toolSpecIds": [
+        "tool-terminal-generated"
+      ],
+      "output": {
+        "permission": {
+          "allowed": true,
+          "mode": "scoped_yolo",
+          "profileId": "autonomy-profile-e967d268-736e-43de-ac5d-606a4352185f",
+          "reason": "Scoped autonomy grants cover all requirements.",
+          "missingRequirements": [],
+          "usedRequirements": [
+            {
+              "type": "command",
+              "value": "node",
+              "reason": "Generated Node tools run through Node."
+            },
+            {
+              "type": "risk_class",
+              "value": "side_effect",
+              "reason": "Terminal actions can affect local state."
+            },
+            {
+              "type": "generated_tool_materialization",
+              "value": "terminal_tool",
+              "reason": "Toolsmith must materialize a generated command wrapper."
+            },
+            {
+              "type": "generated_tool_execution",
+              "value": "terminal_tool",
+              "reason": "The generated wrapper must execute after smoke tests."
+            },
+            {
+              "type": "generated_code",
+              "value": "terminal_tool",
+              "reason": "Ad hoc terminal helper source must be generated."
+            }
+          ],
+          "safetyBoundaries": [
+            "no_credential_access",
+            "no_restricted_page_bypass",
+            "no_destructive_os_mutation_without_explicit_scope",
+            "generated_tools_must_pass_smoke",
+            "eval_ledger_records_all_steps"
+          ]
+        },
+        "decomposition": {
+          "goal": "node --version을 실행하는 안전한 local script 도구 생성해줘.",
+          "operations": [
+            "generate_terminal_tool",
+            "execute_terminal_tool"
+          ],
+          "expectedArtifacts": [],
+          "riskClass": "side_effect",
+          "evidenceNeeds": [
+            "command_allowlist",
+            "stdout_stderr"
+          ]
+        },
+        "matchedCapabilities": [
+          "builtin:terminal"
+        ],
+        "capabilityInventory": [
+          {
+            "id": "builtin:screen_observe",
+            "capability": "source_extraction",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "builtin:browser_chrome",
+            "capability": "browser_chrome_direct_control",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "builtin:terminal",
+            "capability": "terminal_generated_tool",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "blocked:native_windows_workflow",
+            "capability": "native_windows_workflow",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "builtin:local_document_conversion",
+            "capability": "local_document_conversion",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "blocked:file_picker",
+            "capability": "file_picker",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "blocked:package_install_helper",
+            "capability": "package_install_helper",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "external:app_server_client_tool",
+            "capability": "browser_download_verify",
+            "status": "external_unavailable",
+            "source": "external"
+          },
+          {
+            "id": "generated:tool-web-research-to-pdf",
+            "capability": "web_research_to_pdf",
+            "status": "generated",
+            "source": "generated"
+          }
+        ],
+        "gapCount": 1,
+        "dagNodeIds": [
+          "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:permission_check",
+          "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:capability_gap",
+          "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:implement_capability",
+          "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:dependency_prepare",
+          "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:smoke_test",
+          "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:task_plan",
+          "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:crawl_or_observe",
+          "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:extract",
+          "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:verify_sources",
+          "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:draft_markdown",
+          "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:render_pdf",
+          "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:store_artifact",
+          "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:verify_artifact",
+          "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:cleanup_or_rollback",
+          "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:eval_ledger_record"
+        ],
+        "dagNodeMap": {
+          "permission_check": "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:permission_check",
+          "capability_gap": "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:capability_gap",
+          "implement_capability": "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:implement_capability",
+          "dependency_prepare": "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:dependency_prepare",
+          "smoke_test": "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:smoke_test",
+          "task_plan": "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:task_plan",
+          "crawl_or_observe": "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:crawl_or_observe",
+          "extract": "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:extract",
+          "verify_sources": "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:verify_sources",
+          "draft_markdown": "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:draft_markdown",
+          "render_pdf": "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:render_pdf",
+          "store_artifact": "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:store_artifact",
+          "verify_artifact": "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:verify_artifact",
+          "cleanup_or_rollback": "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:cleanup_or_rollback",
+          "eval_ledger_record": "capability-dag-47171da1-bb01-418a-ae44-3524943c2abc:eval_ledger_record"
+        },
+        "selfImplementation": {
+          "gapId": "gap-terminal-generated-tool-e95193e6",
+          "toolSpecId": "tool-terminal-generated",
+          "iteration": 1,
+          "maxIterations": 3
+        },
+        "smokeToolRunId": "autonomy-tool-run-948a5151-8dcb-4335-aa00-11b66e197505",
+        "activeToolSpecId": "tool-terminal-generated",
+        "executionToolRunId": "autonomy-tool-run-69952c2a-ec9d-4e8e-b357-ccfaca33545d",
+        "execution": {
+          "ok": true,
+          "stdout": "v24.14.1\r\n",
+          "stderr": "",
+          "exitCode": 0,
+          "command": "node --version",
+          "artifacts": [
+            {
+              "role": "stdout_json",
+              "path": "<redacted>/stdout.json",
+              "mime": "application/json",
+              "blobId": "blob:bec6be3f4cf4c35c0c7e934b8773b3e483c67c0968719e97ed88bdc33990a433",
+              "resourceId": "computer-use-resource-48f256aa-869c-47a3-b5cc-8fffda15ac47",
+              "size": 108,
+              "sha256": "bec6be3f4cf4c35c0c7e934b8773b3e483c67c0968719e97ed88bdc33990a433"
+            },
+            {
+              "role": "stdout",
+              "path": "<redacted>/stdout.txt",
+              "mime": "text/plain",
+              "blobId": "blob:bbaee59f4c2e17c63d523fae1efcfe19819b7e91a365332fce7d2f7ab2202d16",
+              "resourceId": "computer-use-resource-cd4d21e7-516d-4805-964d-1ed8febc27bc",
+              "size": 10,
+              "sha256": "bbaee59f4c2e17c63d523fae1efcfe19819b7e91a365332fce7d2f7ab2202d16"
+            }
+          ]
+        }
+      },
+      "failureClass": "none",
+      "createdAt": "2026-05-14T09:43:32.480Z",
+      "updatedAt": "2026-05-14T09:43:32.854Z",
+      "completedAt": "2026-05-14T09:43:32.854Z"
+    },
+    {
+      "id": "autonomy-run-60a564e4-933b-42ab-bd2c-020e9372b9d9",
+      "goal": "OpenAI 홈페이지에서 Codex 지원 명령어 조사해서 PDF 파일로 제공해줘.",
+      "status": "completed",
+      "permissionProfileId": "autonomy-profile-cf6eac0d-113b-4ff4-bb21-1ce36025a305",
+      "evalRunId": "computer-use-eval-aba34f6f-be3b-481a-929c-d89c03d12b31",
+      "dagRunId": "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc",
+      "gapIds": [
+        "gap-web-research-to-pdf-0a9f2328"
+      ],
+      "toolSpecIds": [
+        "tool-web-research-to-pdf"
+      ],
+      "output": {
+        "permission": {
+          "allowed": true,
+          "mode": "scoped_yolo",
+          "profileId": "autonomy-profile-cf6eac0d-113b-4ff4-bb21-1ce36025a305",
+          "reason": "Scoped autonomy grants cover all requirements.",
+          "missingRequirements": [],
+          "usedRequirements": [
+            {
+              "type": "network",
+              "value": "http_fetch",
+              "reason": "The generated research tool may fetch allowed source pages."
+            },
+            {
+              "type": "risk_class",
+              "value": "read_only",
+              "reason": "Web research reads public sources and writes local artifacts."
+            },
+            {
+              "type": "generated_tool_materialization",
+              "value": "web_research_to_pdf",
+              "reason": "Toolsmith must materialize the report/PDF tool."
+            },
+            {
+              "type": "generated_tool_execution",
+              "value": "web_research_to_pdf",
+              "reason": "Generated tool must execute after smoke tests."
+            },
+            {
+              "type": "network_domain",
+              "value": "openai.com",
+              "reason": "The generated research tool may fetch this source domain."
+            },
+            {
+              "type": "network_domain",
+              "value": "help.openai.com",
+              "reason": "The generated research tool may fetch this source domain."
+            },
+            {
+              "type": "network_domain",
+              "value": "platform.openai.com",
+              "reason": "The generated research tool may fetch this source domain."
+            },
+            {
+              "type": "filesystem_write",
+              "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-self-implementation-2026-05-14\\full-dag-web-pdf",
+              "reason": "The generated tool must write report artifacts."
+            }
+          ],
+          "safetyBoundaries": [
+            "no_credential_access",
+            "no_restricted_page_bypass",
+            "no_destructive_os_mutation_without_explicit_scope",
+            "generated_tools_must_pass_smoke",
+            "eval_ledger_records_all_steps"
+          ]
+        },
+        "decomposition": {
+          "goal": "OpenAI 홈페이지에서 Codex 지원 명령어 조사해서 PDF 파일로 제공해줘.",
+          "operations": [
+            "crawl_or_observe",
+            "extract",
+            "verify_sources",
+            "draft_markdown",
+            "render_pdf",
+            "store_artifact",
+            "verify_artifact"
+          ],
+          "expectedArtifacts": [
+            "report.md",
+            "report.pdf"
+          ],
+          "riskClass": "read_only",
+          "evidenceNeeds": [
+            "urls_fetched",
+            "source_titles",
+            "extraction_notes"
+          ]
+        },
+        "matchedCapabilities": [
+          "builtin:screen_observe"
+        ],
+        "capabilityInventory": [
+          {
+            "id": "builtin:screen_observe",
+            "capability": "source_extraction",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "builtin:browser_chrome",
+            "capability": "browser_chrome_direct_control",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "builtin:terminal",
+            "capability": "terminal_generated_tool",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "blocked:native_windows_workflow",
+            "capability": "native_windows_workflow",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "builtin:local_document_conversion",
+            "capability": "local_document_conversion",
+            "status": "available",
+            "source": "builtin"
+          },
+          {
+            "id": "blocked:file_picker",
+            "capability": "file_picker",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "blocked:package_install_helper",
+            "capability": "package_install_helper",
+            "status": "blocked",
+            "source": "blocked"
+          },
+          {
+            "id": "external:app_server_client_tool",
+            "capability": "browser_download_verify",
+            "status": "external_unavailable",
+            "source": "external"
+          }
+        ],
+        "gapCount": 1,
+        "dagNodeIds": [
+          "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:permission_check",
+          "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:capability_gap",
+          "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:implement_capability",
+          "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:dependency_prepare",
+          "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:smoke_test",
+          "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:task_plan",
+          "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:crawl_or_observe",
+          "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:extract",
+          "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:verify_sources",
+          "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:draft_markdown",
+          "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:render_pdf",
+          "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:store_artifact",
+          "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:verify_artifact",
+          "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:cleanup_or_rollback",
+          "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:eval_ledger_record"
+        ],
+        "dagNodeMap": {
+          "permission_check": "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:permission_check",
+          "capability_gap": "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:capability_gap",
+          "implement_capability": "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:implement_capability",
+          "dependency_prepare": "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:dependency_prepare",
+          "smoke_test": "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:smoke_test",
+          "task_plan": "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:task_plan",
+          "crawl_or_observe": "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:crawl_or_observe",
+          "extract": "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:extract",
+          "verify_sources": "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:verify_sources",
+          "draft_markdown": "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:draft_markdown",
+          "render_pdf": "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:render_pdf",
+          "store_artifact": "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:store_artifact",
+          "verify_artifact": "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:verify_artifact",
+          "cleanup_or_rollback": "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:cleanup_or_rollback",
+          "eval_ledger_record": "capability-dag-b6c2764d-44c3-4393-94ce-6554024f40cc:eval_ledger_record"
+        },
+        "selfImplementation": {
+          "gapId": "gap-web-research-to-pdf-0a9f2328",
+          "toolSpecId": "tool-web-research-to-pdf",
+          "iteration": 2,
+          "maxIterations": 3
+        },
+        "smokeToolRunId": "autonomy-tool-run-da09889d-0dc6-466e-9ace-7351a1290ff3",
+        "activeToolSpecId": "tool-web-research-to-pdf",
+        "executionToolRunIds": [
+          "autonomy-tool-run-da09889d-0dc6-466e-9ace-7351a1290ff3",
+          "autonomy-tool-run-2ad8a584-4e89-4359-8a29-f4b18200f408",
+          "autonomy-tool-run-02dda4bd-7d63-42ef-8809-de502f5fd528",
+          "autonomy-tool-run-d6e20859-9177-4ef2-816f-bb11d437d699",
+          "autonomy-tool-run-4ff14bf2-2f53-40cc-8e5a-362a4dba4cad",
+          "autonomy-tool-run-403ff91a-38b3-4f05-8f8e-a41e030a3661",
+          "autonomy-tool-run-009e9bf5-17df-4543-b79f-4b9cd7943cf0",
+          "autonomy-tool-run-fe113451-adbe-4dcd-90bd-fed08c4d9d5b"
+        ],
+        "outputDir": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-self-implementation-2026-05-14\\full-dag-web-pdf\\autonomy-run-60a564e4-933b-42ab-bd2c-020e9372b9d9",
+        "pdfRenderer": "builtin",
+        "finalStage": "verify_artifact"
+      },
+      "failureClass": "none",
+      "createdAt": "2026-05-14T09:43:30.917Z",
+      "updatedAt": "2026-05-14T09:43:32.404Z",
+      "completedAt": "2026-05-14T09:43:32.403Z"
+    }
+  ],
+  "tools": [
+    {
+      "id": "tool-browser-download-verify",
+      "name": "Browser Download Verify",
+      "capability": "browser_download_verify",
+      "version": "0.1.0",
+      "status": "active",
+      "templateId": "browser_download_verify.v1",
+      "entrypointKind": "node_script",
+      "description": "Verify a downloaded file exists, meets size constraints, and optionally matches a SHA-256 digest.",
+      "requiredGrants": [
+        {
+          "type": "generated_tool_materialization",
+          "value": "browser_download_verify",
+          "reason": "Toolsmith must materialize the download verifier."
+        },
+        {
+          "type": "generated_tool_execution",
+          "value": "browser_download_verify",
+          "reason": "The generated verifier must execute after smoke tests."
+        },
+        {
+          "type": "risk_class",
+          "value": "read_only",
+          "reason": "Download verification reads local metadata without mutating the file."
+        },
+        {
+          "type": "filesystem_read",
+          "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-self-implementation-2026-05-14",
+          "reason": "The verifier must read the downloaded file path."
+        }
+      ],
+      "smokeTests": [
+        {
+          "id": "download-verify-smoke",
+          "description": "Verify a deterministic fixture download file in the generated workspace.",
+          "expectedArtifacts": [
+            "download-verification.json"
+          ]
+        }
+      ],
+      "artifacts": [
+        {
+          "role": "entrypoint",
+          "path": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-self-implementation-dogfood-tVgE15\\.runtime\\autonomy\\tools\\tool-browser-download-verify\\browser-download-verify.mjs",
+          "mime": "text/javascript",
+          "size": 2420,
+          "sha256": "b1a7a422c974aea124c9da67c262d7b9a8ffa62855b1720b1849a8daa1132f02"
+        },
+        {
+          "role": "manifest",
+          "path": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-self-implementation-dogfood-tVgE15\\.runtime\\autonomy\\tools\\tool-browser-download-verify\\manifest.json",
+          "mime": "application/json",
+          "size": 1386,
+          "sha256": "ee9e2493d1a094da365d9d717821b40aa12d442b615d7a4d1d01fe0c9d2b5ec3"
+        }
+      ],
+      "manifest": {
+        "schemaVersion": "autonomy-tool-manifest.v1",
+        "toolId": "tool-browser-download-verify",
+        "capability": "browser_download_verify",
+        "entrypoint": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-self-implementation-dogfood-tVgE15\\.runtime\\autonomy\\tools\\tool-browser-download-verify\\browser-download-verify.mjs",
+        "commandAllowlist": [
+          "node"
+        ],
+        "dependencies": [
+          {
+            "name": "node",
+            "source": "system",
+            "installed": true
+          }
+        ],
+        "smokeCommands": [
+          "smoke"
+        ],
+        "artifactContract": [
+          {
+            "role": "download_verification",
+            "mime": "application/json",
+            "required": true
+          }
+        ],
+        "rollback": [
+          {
+            "type": "delete_path",
+            "target": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-self-implementation-dogfood-tVgE15\\.runtime\\autonomy\\tools\\tool-browser-download-verify"
+          },
+          {
+            "type": "deactivate_tool",
+            "target": "tool-browser-download-verify"
+          }
+        ],
+        "provenance": {
+          "generatedBy": "reviewed_template",
+          "templateId": "browser_download_verify.v1",
+          "sourceHashes": {
+            "browser-download-verify.mjs": "b1a7a422c974aea124c9da67c262d7b9a8ffa62855b1720b1849a8daa1132f02"
+          },
+          "iterations": 1,
+          "generatedAt": "2026-05-14T09:43:33.014Z"
+        },
+        "stability": {
+          "rating": "medium",
+          "rerunCount": 0,
+          "externalDependencyWarnings": []
+        }
+      },
+      "sourceHash": "b1a7a422c974aea124c9da67c262d7b9a8ffa62855b1720b1849a8daa1132f02",
+      "activatedAt": "2026-05-14T09:43:33.130Z",
+      "stabilityRating": "medium",
+      "createdAt": "2026-05-14T09:43:33.013Z",
+      "updatedAt": "2026-05-14T09:43:33.015Z"
+    },
+    {
+      "id": "tool-terminal-generated",
+      "name": "Terminal Generated Tool",
+      "capability": "terminal_generated_tool",
+      "version": "0.1.0",
+      "status": "active",
+      "templateId": "terminal_generated_tool.v1",
+      "entrypointKind": "node_script",
+      "description": "Execute a narrowly allowed local command without shell expansion and capture stdout/stderr artifacts.",
+      "requiredGrants": [
+        {
+          "type": "generated_tool_materialization",
+          "value": "terminal_tool",
+          "reason": "Toolsmith must materialize a generated command wrapper."
+        },
+        {
+          "type": "generated_tool_execution",
+          "value": "terminal_tool",
+          "reason": "The generated wrapper must execute after smoke tests."
+        },
+        {
+          "type": "generated_code",
+          "value": "terminal_tool",
+          "reason": "Ad hoc terminal helper source must be generated."
+        },
+        {
+          "type": "risk_class",
+          "value": "side_effect",
+          "reason": "Terminal tools can affect local state."
+        }
+      ],
+      "smokeTests": [
+        {
+          "id": "terminal-wrapper-smoke",
+          "description": "Write deterministic stdout artifacts without running an external command.",
+          "expectedArtifacts": [
+            "stdout.json",
+            "stdout.txt"
+          ]
+        }
+      ],
+      "artifacts": [
+        {
+          "role": "entrypoint",
+          "path": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-self-implementation-dogfood-tVgE15\\.runtime\\autonomy\\tools\\tool-terminal-generated\\terminal-generated-tool.mjs",
+          "mime": "text/javascript",
+          "size": 3289,
+          "sha256": "0e2215b639cf88580930a12eb2bead4033fff9777bb1aa69d97eed125bf2f327"
+        },
+        {
+          "role": "manifest",
+          "path": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-self-implementation-dogfood-tVgE15\\.runtime\\autonomy\\tools\\tool-terminal-generated\\manifest.json",
+          "mime": "application/json",
+          "size": 1475,
+          "sha256": "107c831ec9f81960cdebde97640b90d97f03cf720e6085da4791b5628735bd39"
+        }
+      ],
+      "manifest": {
+        "schemaVersion": "autonomy-tool-manifest.v1",
+        "toolId": "tool-terminal-generated",
+        "capability": "terminal_generated_tool",
+        "entrypoint": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-self-implementation-dogfood-tVgE15\\.runtime\\autonomy\\tools\\tool-terminal-generated\\terminal-generated-tool.mjs",
+        "commandAllowlist": [
+          "node",
+          "python",
+          "powershell"
+        ],
+        "dependencies": [
+          {
+            "name": "node",
+            "source": "system",
+            "installed": true
+          }
+        ],
+        "smokeCommands": [
+          "smoke"
+        ],
+        "artifactContract": [
+          {
+            "role": "stdout",
+            "mime": "text/plain",
+            "required": true
+          },
+          {
+            "role": "stdout_json",
+            "mime": "application/json",
+            "required": true
+          }
+        ],
+        "rollback": [
+          {
+            "type": "delete_path",
+            "target": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-self-implementation-dogfood-tVgE15\\.runtime\\autonomy\\tools\\tool-terminal-generated"
+          },
+          {
+            "type": "deactivate_tool",
+            "target": "tool-terminal-generated"
+          }
+        ],
+        "provenance": {
+          "generatedBy": "ad_hoc_generator",
+          "templateId": "terminal_generated_tool.v1",
+          "sourceHashes": {
+            "terminal-generated-tool.mjs": "0e2215b639cf88580930a12eb2bead4033fff9777bb1aa69d97eed125bf2f327"
+          },
+          "iterations": 1,
+          "generatedAt": "2026-05-14T09:43:32.548Z"
+        },
+        "stability": {
+          "rating": "medium",
+          "rerunCount": 0,
+          "externalDependencyWarnings": []
+        }
+      },
+      "sourceHash": "0e2215b639cf88580930a12eb2bead4033fff9777bb1aa69d97eed125bf2f327",
+      "activatedAt": "2026-05-14T09:43:32.685Z",
+      "stabilityRating": "medium",
+      "createdAt": "2026-05-14T09:43:32.547Z",
+      "updatedAt": "2026-05-14T09:43:32.549Z"
+    },
+    {
+      "id": "tool-web-research-to-pdf",
+      "name": "Web Research To PDF",
+      "capability": "web_research_to_pdf",
+      "version": "0.2.0",
+      "status": "active",
+      "templateId": "web_research_to_pdf.v2",
+      "entrypointKind": "node_script",
+      "description": "Fetch allowed sources, extract evidence, draft Markdown, render PDF, and verify artifacts through staged DAG commands.",
+      "requiredGrants": [
+        {
+          "type": "network",
+          "value": "http_fetch",
+          "reason": "The generated research tool may fetch allowed source pages."
+        },
+        {
+          "type": "risk_class",
+          "value": "read_only",
+          "reason": "Web research reads public sources and writes local artifacts."
+        },
+        {
+          "type": "generated_tool_materialization",
+          "value": "web_research_to_pdf",
+          "reason": "Toolsmith must materialize the report/PDF tool."
+        },
+        {
+          "type": "generated_tool_execution",
+          "value": "web_research_to_pdf",
+          "reason": "Generated tool must execute after smoke tests."
+        },
+        {
+          "type": "network_domain",
+          "value": "openai.com",
+          "reason": "The generated research tool may fetch this source domain."
+        },
+        {
+          "type": "network_domain",
+          "value": "help.openai.com",
+          "reason": "The generated research tool may fetch this source domain."
+        },
+        {
+          "type": "network_domain",
+          "value": "platform.openai.com",
+          "reason": "The generated research tool may fetch this source domain."
+        },
+        {
+          "type": "filesystem_write",
+          "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-self-implementation-2026-05-14\\full-dag-web-pdf",
+          "reason": "The generated tool must write report artifacts."
+        }
+      ],
+      "smokeTests": [
+        {
+          "id": "fixture-report-pdf",
+          "description": "Create markdown, citations, and PDF artifacts from deterministic fixture content.",
+          "expectedArtifacts": [
+            "report.md",
+            "report.pdf",
+            "citations.json"
+          ]
+        }
+      ],
+      "artifacts": [
+        {
+          "role": "entrypoint",
+          "path": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-self-implementation-dogfood-tVgE15\\.runtime\\autonomy\\tools\\tool-web-research-to-pdf\\web-research-to-pdf.mjs",
+          "mime": "text/javascript",
+          "size": 14937,
+          "sha256": "9103d8173db87c0c2cc74f3076129d64f4e3fb8a55f24172b3c991d015a196c0"
+        },
+        {
+          "role": "manifest",
+          "path": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-self-implementation-dogfood-tVgE15\\.runtime\\autonomy\\tools\\tool-web-research-to-pdf\\manifest.json",
+          "mime": "application/json",
+          "size": 1699,
+          "sha256": "2da6e387e5b634184868aceb7e926c5667b686b999b9f12590fb8de1160e6760"
+        }
+      ],
+      "manifest": {
+        "schemaVersion": "autonomy-tool-manifest.v1",
+        "toolId": "tool-web-research-to-pdf",
+        "capability": "web_research_to_pdf",
+        "entrypoint": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-self-implementation-dogfood-tVgE15\\.runtime\\autonomy\\tools\\tool-web-research-to-pdf\\web-research-to-pdf.mjs",
+        "commandAllowlist": [
+          "node"
+        ],
+        "dependencies": [
+          {
+            "name": "node",
+            "source": "system",
+            "installed": true
+          },
+          {
+            "name": "pandoc",
+            "source": "system",
+            "installed": false
+          }
+        ],
+        "smokeCommands": [
+          "smoke"
+        ],
+        "artifactContract": [
+          {
+            "role": "report",
+            "mime": "text/markdown",
+            "required": true
+          },
+          {
+            "role": "pdf",
+            "mime": "application/pdf",
+            "required": true
+          },
+          {
+            "role": "citation",
+            "mime": "application/json",
+            "required": true
+          }
+        ],
+        "rollback": [
+          {
+            "type": "delete_path",
+            "target": "C:\\Users\\Tony\\AppData\\Local\\Temp\\codex-widget-self-implementation-dogfood-tVgE15\\.runtime\\autonomy\\tools\\tool-web-research-to-pdf"
+          },
+          {
+            "type": "deactivate_tool",
+            "target": "tool-web-research-to-pdf"
+          }
+        ],
+        "provenance": {
+          "generatedBy": "reviewed_template",
+          "templateId": "web_research_to_pdf.v2",
+          "sourceHashes": {
+            "web-research-to-pdf.mjs": "9103d8173db87c0c2cc74f3076129d64f4e3fb8a55f24172b3c991d015a196c0"
+          },
+          "iterations": 2,
+          "generatedAt": "2026-05-14T09:43:31.161Z"
+        },
+        "stability": {
+          "rating": "medium",
+          "rerunCount": 0,
+          "externalDependencyWarnings": [
+            "Live web fetches can vary by network, redirects, and upstream page changes."
+          ]
+        }
+      },
+      "sourceHash": "9103d8173db87c0c2cc74f3076129d64f4e3fb8a55f24172b3c991d015a196c0",
+      "activatedAt": "2026-05-14T09:43:31.302Z",
+      "stabilityRating": "medium",
+      "createdAt": "2026-05-14T09:43:31.024Z",
+      "updatedAt": "2026-05-14T09:43:31.162Z"
+    }
+  ],
+  "inventory": [
+    {
+      "id": "builtin:screen_observe",
+      "capability": "source_extraction",
+      "status": "available",
+      "source": "builtin",
+      "operations": [
+        "observe",
+        "ocr",
+        "extract"
+      ],
+      "riskClass": "read_only",
+      "requiredGrants": [],
+      "blockers": [],
+      "createdAt": "2026-05-14T09:43:30.841Z",
+      "updatedAt": "2026-05-14T09:43:33.299Z"
+    },
+    {
+      "id": "builtin:browser_chrome",
+      "capability": "browser_chrome_direct_control",
+      "status": "available",
+      "source": "builtin",
+      "operations": [
+        "browser_chrome_control",
+        "bookmark_list",
+        "bookmark_open"
+      ],
+      "riskClass": "side_effect",
+      "requiredGrants": [
+        {
+          "type": "browser_automation",
+          "value": "browser_chrome",
+          "reason": "Browser chrome command execution."
+        },
+        {
+          "type": "risk_class",
+          "value": "side_effect",
+          "reason": "Browser chrome actions can change browser state."
+        }
+      ],
+      "blockers": [],
+      "createdAt": "2026-05-14T09:43:30.841Z",
+      "updatedAt": "2026-05-14T09:43:33.299Z"
+    },
+    {
+      "id": "builtin:terminal",
+      "capability": "terminal_generated_tool",
+      "status": "available",
+      "source": "builtin",
+      "operations": [
+        "execute_terminal_tool",
+        "stdout_stderr"
+      ],
+      "riskClass": "side_effect",
+      "requiredGrants": [
+        {
+          "type": "command",
+          "value": "node",
+          "reason": "Generated Node tools run through Node."
+        },
+        {
+          "type": "risk_class",
+          "value": "side_effect",
+          "reason": "Terminal actions can affect local state."
+        }
+      ],
+      "blockers": [],
+      "createdAt": "2026-05-14T09:43:30.841Z",
+      "updatedAt": "2026-05-14T09:43:33.299Z"
+    },
+    {
+      "id": "blocked:native_windows_workflow",
+      "capability": "native_windows_workflow",
+      "status": "blocked",
+      "source": "blocked",
+      "operations": [
+        "native_windows_action",
+        "windows_settings_mutation"
+      ],
+      "riskClass": "high_risk",
+      "requiredGrants": [
+        {
+          "type": "os_mutation",
+          "value": "windows_settings_or_app_surface",
+          "reason": "Windows Settings mutation."
+        },
+        {
+          "type": "risk_class",
+          "value": "high_risk",
+          "reason": "Windows Settings mutation."
+        }
+      ],
+      "blockers": [
+        "signed_native_helper_scope_required",
+        "high_risk_dogfood_required"
+      ],
+      "createdAt": "2026-05-14T09:43:30.841Z",
+      "updatedAt": "2026-05-14T09:43:33.299Z"
+    },
+    {
+      "id": "builtin:local_document_conversion",
+      "capability": "local_document_conversion",
+      "status": "available",
+      "source": "builtin",
+      "operations": [
+        "draft_markdown",
+        "render_pdf",
+        "verify_artifact"
+      ],
+      "riskClass": "read_only",
+      "requiredGrants": [
+        {
+          "type": "risk_class",
+          "value": "read_only",
+          "reason": "Document conversion reads generated content and writes artifacts."
+        }
+      ],
+      "blockers": [],
+      "createdAt": "2026-05-14T09:43:30.841Z",
+      "updatedAt": "2026-05-14T09:43:33.299Z"
+    },
+    {
+      "id": "blocked:file_picker",
+      "capability": "file_picker",
+      "status": "blocked",
+      "source": "blocked",
+      "operations": [
+        "native_file_picker",
+        "file_selection"
+      ],
+      "riskClass": "side_effect",
+      "requiredGrants": [
+        {
+          "type": "risk_class",
+          "value": "side_effect",
+          "reason": "File picker workflows can select user files."
+        }
+      ],
+      "blockers": [
+        "signed_native_helper_scope_required"
+      ],
+      "createdAt": "2026-05-14T09:43:30.841Z",
+      "updatedAt": "2026-05-14T09:43:33.299Z"
+    },
+    {
+      "id": "blocked:package_install_helper",
+      "capability": "package_install_helper",
+      "status": "blocked",
+      "source": "blocked",
+      "operations": [
+        "package_install",
+        "dependency_prepare"
+      ],
+      "riskClass": "side_effect",
+      "requiredGrants": [
+        {
+          "type": "package_install",
+          "value": "isolated_runtime_workspace",
+          "reason": "Package installation must be explicitly granted and isolated."
+        },
+        {
+          "type": "risk_class",
+          "value": "side_effect",
+          "reason": "Package installation mutates runtime dependencies."
+        }
+      ],
+      "blockers": [
+        "isolated_package_install_runtime_not_promoted"
+      ],
+      "createdAt": "2026-05-14T09:43:30.841Z",
+      "updatedAt": "2026-05-14T09:43:33.299Z"
+    },
+    {
+      "id": "external:app_server_client_tool",
+      "capability": "browser_download_verify",
+      "status": "external_unavailable",
+      "source": "external",
+      "operations": [
+        "download_verify",
+        "browser_downloads"
+      ],
+      "riskClass": "read_only",
+      "requiredGrants": [],
+      "blockers": [
+        "official_app_server_client_tool_contract_required"
+      ],
+      "createdAt": "2026-05-14T09:43:30.841Z",
+      "updatedAt": "2026-05-14T09:43:33.299Z"
+    },
+    {
+      "id": "generated:tool-web-research-to-pdf",
+      "capability": "web_research_to_pdf",
+      "status": "generated",
+      "source": "generated",
+      "operations": [
+        "crawl_or_observe",
+        "extract",
+        "verify_sources",
+        "draft_markdown",
+        "render_pdf",
+        "store_artifact",
+        "verify_artifact"
+      ],
+      "riskClass": "side_effect",
+      "requiredGrants": [
+        {
+          "type": "network",
+          "value": "http_fetch",
+          "reason": "The generated research tool may fetch allowed source pages."
+        },
+        {
+          "type": "risk_class",
+          "value": "read_only",
+          "reason": "Web research reads public sources and writes local artifacts."
+        },
+        {
+          "type": "generated_tool_materialization",
+          "value": "web_research_to_pdf",
+          "reason": "Toolsmith must materialize the report/PDF tool."
+        },
+        {
+          "type": "generated_tool_execution",
+          "value": "web_research_to_pdf",
+          "reason": "Generated tool must execute after smoke tests."
+        },
+        {
+          "type": "network_domain",
+          "value": "openai.com",
+          "reason": "The generated research tool may fetch this source domain."
+        },
+        {
+          "type": "network_domain",
+          "value": "help.openai.com",
+          "reason": "The generated research tool may fetch this source domain."
+        },
+        {
+          "type": "network_domain",
+          "value": "platform.openai.com",
+          "reason": "The generated research tool may fetch this source domain."
+        },
+        {
+          "type": "filesystem_write",
+          "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-self-implementation-2026-05-14\\full-dag-web-pdf",
+          "reason": "The generated tool must write report artifacts."
+        }
+      ],
+      "toolSpecId": "tool-web-research-to-pdf",
+      "blockers": [],
+      "createdAt": "2026-05-14T09:43:31.024Z",
+      "updatedAt": "2026-05-14T09:43:33.299Z"
+    },
+    {
+      "id": "generated:tool-terminal-generated",
+      "capability": "terminal_generated_tool",
+      "status": "generated",
+      "source": "generated",
+      "operations": [
+        "generate_terminal_tool",
+        "execute_terminal_tool"
+      ],
+      "riskClass": "side_effect",
+      "requiredGrants": [
+        {
+          "type": "generated_tool_materialization",
+          "value": "terminal_tool",
+          "reason": "Toolsmith must materialize a generated command wrapper."
+        },
+        {
+          "type": "generated_tool_execution",
+          "value": "terminal_tool",
+          "reason": "The generated wrapper must execute after smoke tests."
+        },
+        {
+          "type": "generated_code",
+          "value": "terminal_tool",
+          "reason": "Ad hoc terminal helper source must be generated."
+        },
+        {
+          "type": "risk_class",
+          "value": "side_effect",
+          "reason": "Terminal tools can affect local state."
+        }
+      ],
+      "toolSpecId": "tool-terminal-generated",
+      "blockers": [],
+      "createdAt": "2026-05-14T09:43:32.547Z",
+      "updatedAt": "2026-05-14T09:43:33.299Z"
+    },
+    {
+      "id": "generated:tool-browser-download-verify",
+      "capability": "browser_download_verify",
+      "status": "generated",
+      "source": "generated",
+      "operations": [
+        "download_verify",
+        "verify_artifact"
+      ],
+      "riskClass": "side_effect",
+      "requiredGrants": [
+        {
+          "type": "generated_tool_materialization",
+          "value": "browser_download_verify",
+          "reason": "Toolsmith must materialize the download verifier."
+        },
+        {
+          "type": "generated_tool_execution",
+          "value": "browser_download_verify",
+          "reason": "The generated verifier must execute after smoke tests."
+        },
+        {
+          "type": "risk_class",
+          "value": "read_only",
+          "reason": "Download verification reads local metadata without mutating the file."
+        },
+        {
+          "type": "filesystem_read",
+          "value": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-self-implementation-2026-05-14",
+          "reason": "The verifier must read the downloaded file path."
+        }
+      ],
+      "toolSpecId": "tool-browser-download-verify",
+      "blockers": [],
+      "createdAt": "2026-05-14T09:43:33.013Z",
+      "updatedAt": "2026-05-14T09:43:33.299Z"
+    }
+  ],
+  "evalRuns": [
+    {
+      "id": "computer-use-eval-baab6eb3-d8fb-4476-b594-d20f0b571a7a",
+      "status": "running",
+      "taskSuccess": "unknown",
+      "failureClass": "unknown"
+    },
+    {
+      "id": "computer-use-eval-03e3e7e0-aa84-42cd-a531-c97f3602ed9d",
+      "status": "completed",
+      "taskSuccess": "passed",
+      "failureClass": "none",
+      "elapsedMs": 316
+    },
+    {
+      "id": "computer-use-eval-363bac24-c415-42bb-9e53-741d84dc0af9",
+      "status": "completed",
+      "taskSuccess": "passed",
+      "failureClass": "none",
+      "elapsedMs": 377
+    },
+    {
+      "id": "computer-use-eval-aba34f6f-be3b-481a-929c-d89c03d12b31",
+      "status": "completed",
+      "taskSuccess": "passed",
+      "failureClass": "none",
+      "elapsedMs": 1494
+    }
+  ],
+  "improvementItems": [
+    "Run-to-run stability is now measurable through rerun manifests, but promotion still needs repeated p95 latency samples.",
+    "Terminal generated tools are intentionally command-prefix bounded; richer scripts should stay in runtime workspace until promoted by explicit user request.",
+    "Download verification works on a supplied path; browser downloads surface integration remains a separate bridge/native-helper concern.",
+    "Native Windows mutation stays blocked until signed helper scope, release signing, and high-risk dogfood gates are complete."
+  ]
+}

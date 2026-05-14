@@ -1,4 +1,5 @@
 import { MockAsrEngine, SidecarAsrEngine } from "./asrEngine.js";
+import { decodeAsrCommand, type AsrDecoderContext } from "./deterministicDecoder.js";
 import type { AsrEngine, AsrEngineInput, Transcript } from "./types.js";
 
 export class AsrRouter {
@@ -11,5 +12,13 @@ export class AsrRouter {
       }
     }
     throw new Error("No ASR engine is available.");
+  }
+
+  async transcribeAndDecode(input: AsrEngineInput & { decoderContext?: AsrDecoderContext }) {
+    const transcript = await this.transcribe(input);
+    return {
+      transcript,
+      decode: decodeAsrCommand(transcript, input.decoderContext ?? { uiLabels: input.hints })
+    };
   }
 }

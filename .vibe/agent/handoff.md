@@ -1899,3 +1899,229 @@ Verification passed `npm run build:daemon`, `npm run build:renderer`, `npm run l
 Runtime state: dev-hot is running. Renderer/Vite listens on `127.0.0.1:5173` (PID `102756`), daemon health is ok on `127.0.0.1:4128` (PID `74232`), and the Tauri widget remains running as PID `121300`. Use `npm run dev` for a full restart if the Tauri shell itself needs to be relaunched.
 
 Pushed refactor commit `592b2ba` (`Refactor capability foundation wiring`) to `origin/main`.
+
+## Latest Update: Research Performance Architecture A-F Implementation
+
+Implemented the full research-driven performance architecture substrate from
+`docs/plans/research-driven-performance-architecture-handoff.md` across
+workstreams A-F.
+
+- Added storage schema v4 and daemon storage APIs for unified computer-use eval
+  runs/steps/resources, perception graphs, structured failure memory, and
+  capability DAG runs/nodes.
+- Added shared research architecture protocol types and HTTP debug/readiness
+  routes under `/computer-use/eval/*`, `/computer-use/perception-graphs`, and
+  `/computer-use/failure-memory`.
+- Added eval import/rollup scripts for Browser Action live corpus, semantic
+  trace corpus, and Windows high-risk dogfood evidence.
+- Added deterministic ASR command decoder with contextual lexicon, Korean/English
+  aliases, command-slot scoring, slot preservation confidence, and
+  side-effect-risk clarification.
+- Added perception graph builders for Browser observations and OCR text, then
+  migrated Browser Action target resolution to graph threshold explanations.
+- Added ROI/delta perception cascade helpers and wired `screen_observe`/`ocr`
+  capabilities to tile hashes, dirty regions, cascade stage summaries, and OCR
+  perception graph recording.
+- Added structured failure memory with bounded calibration hints that never
+  become proof, approval bypass, or task-completion authority.
+- Added incremental capability DAG runtime on top of existing capability jobs,
+  with parallel observe fan-out, local DAG nodes, capability job linkage,
+  cancellation-compatible status, and eval ledger integration.
+- Capability runtime now auto-creates eval runs for generic jobs without an
+  `evalRunId`, records per-event eval steps, finalizes runs on terminal job
+  events, and links capability resources into eval resources.
+- Wrote `docs/architecture/research-performance-architecture.md` and updated
+  architecture/QA/open-blocker docs.
+
+Verification passed `npm run lint`, `npm run build:daemon`,
+`npm run build:web`, `npm run smoke:architecture-foundations`,
+`npm run smoke:capability-runtime`, `npm run smoke:browser-action`,
+`npm run smoke:vision-context`, `npm run smoke:asr-runtime-candidates`,
+`npm run smoke:research-performance-architecture`, final `npm run smoke:all`,
+`git diff --check`, strict UTF-8 decoding for 31 touched files, quoted-question
+mojibake scan, and `.cs` touched-file check. `file` is unavailable in this
+Windows PowerShell environment, so strict .NET UTF-8 decoding was used as the
+encoding fallback. `git diff --check` emitted only the existing CRLF
+normalization warning for `src/daemon/storage/storage.ts`; `smoke:all` emitted
+one standard deferred Windows temp cleanup retry.
+
+Remaining explicit non-completed items: official app-server client-tool
+contract, production signing certificate/service, GPU ASR validation, human
+microphone corpus benchmark, and ASR fine-tuning/LoRA.
+
+## Latest Update: Research Computer-Use Scenario Dogfood
+
+Added and executed a realistic safe computer-use scenario suite to validate the
+research performance architecture against workflow-shaped cases rather than only
+unit-like smoke coverage.
+
+- Added `npm run dogfood:research-computer-use` backed by
+  `scripts/collect-research-computer-use-scenarios.mjs`.
+- Generated `docs/dogfood/research-computer-use-scenarios-2026-05-14.json`.
+- Generated `docs/reports/research-computer-use-scenarios-2026-05-14.md` and
+  JSON evidence under
+  `docs/reports/assets/research-computer-use-scenarios-2026-05-14/evidence.json`.
+- Scenario coverage:
+  - Korean ASR browser search with deterministic command-slot decode,
+    perception graph target explanation, ROI cascade, and approval-gated
+    Browser Action capability.
+  - Browser Chrome bookmark list/open with approval-required side effect.
+  - Windows Settings observation with high-risk Reset target rejection and
+    structured failure memory calibration.
+  - Terminal safe command execution plus credential-like command rejection before
+    persistence.
+  - Cross-app capability DAG with setup, parallel observe/OCR, graph merge, plan,
+    approval, agent-tool action, verification, and eval ledger nodes.
+- Scenario metrics recorded 5/5 passed scenarios, 6 eval runs, all modalities
+  covered (`asr`, `browser`, `cross_app`, `terminal`, `vision`, `windows`),
+  task success rate 1.000, proof rate 1.000, p95 latency 256 ms, and p95
+  perception latency 58 ms.
+- Registered the new dogfood command in
+  `docs/architecture/research-performance-architecture.md` and
+  `docs/context/qa.md`.
+
+Verification passed `npm run dogfood:research-computer-use`, `npm run lint`,
+`npm run smoke:research-performance-architecture`, `npm run smoke:vision-context`,
+final `npm run smoke:all`, `git diff --check`, strict UTF-8 decoding for 38
+touched files, quoted-question mojibake scan, and `.cs` touched-file check.
+Known non-failing noise: Node SQLite experimental warning, unsigned helper notice
+in development mode, existing CRLF normalization warnings, and one standard
+deferred Windows temp cleanup retry.
+
+## Latest Update: 30-Case Computer-Use Process Validation
+
+Added and executed the requested 30-case process validation suite that treats
+each item as a user-facing widget scenario and records the required fields:
+user scenario, architecture workflow, success status, and follow-up work.
+
+- Added `npm run dogfood:computer-use-process-30` backed by
+  `scripts/collect-computer-use-process-validation-30.mjs`.
+- Generated `docs/dogfood/computer-use-process-validation-30-2026-05-14.json`.
+- Generated `docs/reports/computer-use-process-validation-30-2026-05-14.md` and
+  JSON evidence under
+  `docs/reports/assets/computer-use-process-validation-30-2026-05-14/evidence.json`.
+- Results: 30 scenarios recorded, 18 passed, 10 intentionally BLOCKED, 2
+  needs-follow-up, 0 unexpected failures.
+- Coverage includes Browser search/action/bookmark/restricted surfaces,
+  permission/file-picker/download gaps, Windows Settings/app/file-explorer
+  workflows, Vision OCR/ROI/cache/VLM fallback, ASR alias/clarification cases,
+  Terminal approval/credential/cancel cases, cross-app DAG execution, and the
+  app-server custom tool contract blocker.
+- Evidence summary: 40 eval runs, 10 perception graphs, 15 structured failure
+  memory records, 7 eval resources, 1 DAG run, task success rate 0.692, proof
+  rate 0.308, p95 latency 141 ms, and p95 perception latency 40 ms.
+- Separate improvement items found during testing were recorded in the report,
+  including process-validation UI, live trace calibration, print-to-PDF/download
+  verifier, permission/file-picker native helper coverage, reversible Windows
+  workflows, real cascade timing, flakiness classifier, renderer failure-memory
+  visibility, terminal package-manager policy, and official app-server
+  custom-tool integration.
+
+Verification passed `npm run dogfood:computer-use-process-30`, `npm run lint`,
+`npm run smoke:research-performance-architecture`, final `npm run smoke:all`,
+`git diff --check`, strict UTF-8 decoding for 42 touched files, quoted-question
+mojibake scan, and `.cs` touched-file check. Known non-failing noise remains the
+Node SQLite experimental warning, unsigned helper notice in development mode,
+existing CRLF normalization warnings, and one deferred Windows temp cleanup
+retry.
+
+## Latest Update: Scoped Autonomy Toolsmith Foundation
+
+Implemented the permission-scoped self-implementation foundation requested after
+the computer-use process validation exposed missing-capability limits.
+
+- Added `docs/plans/scoped-autonomy-toolsmith-runtime-handoff.md` as the
+  detailed design handoff for Codex-YOLO-like scoped autonomy.
+- Added shared protocol types in `src/shared/protocol/scopedAutonomy.ts`.
+- Added storage schema v5 and storage facade APIs for autonomy permission
+  profiles, autonomy runs, capability gaps, generated tool specs, and generated
+  tool runs.
+- Added `src/daemon/scoped-autonomy/` with permission profile evaluation,
+  credential redaction, deterministic capability-gap detection, and a Toolsmith
+  runtime.
+- Initial Toolsmith support covers reviewed built-in
+  `web_research_to_pdf.v1`: detect the missing workflow, check scoped grants,
+  materialize a Node script in the runtime workspace, require fixture smoke,
+  execute, generate Markdown/PDF artifacts, and link artifacts into the eval
+  ledger.
+- Added `/computer-use/autonomy/*` HTTP routes for profiles, runs, gaps, tool
+  specs, tool runs, and plan/materialize/smoke/execute control.
+- Added `npm run smoke:scoped-autonomy-toolsmith` and
+  `npm run dogfood:scoped-autonomy-toolsmith`.
+- Generated `docs/dogfood/scoped-autonomy-toolsmith-2026-05-14.json`,
+  `docs/reports/scoped-autonomy-toolsmith-2026-05-14.md`, JSON evidence under
+  `docs/reports/assets/scoped-autonomy-toolsmith-2026-05-14/evidence.json`, and
+  persistent generated report artifacts under
+  `docs/reports/assets/scoped-autonomy-toolsmith-2026-05-14/generated-report/`.
+- Updated architecture, QA, README, and open-blocker docs.
+
+Verification passed `npm run lint`, `npm run build:daemon`,
+`npm run smoke:research-performance-architecture`,
+`npm run smoke:scoped-autonomy-toolsmith`,
+`npm run dogfood:scoped-autonomy-toolsmith`, final `npm run smoke:all`,
+`git diff --check`, strict UTF-8 decoding for 57 touched files,
+quoted-question mojibake scan, and `.cs` touched-file check. `git diff --check`
+emitted only known CRLF normalization warnings for `.vibe/agent/session-log.md`
+and `src/daemon/storage/storage.ts`. `smoke:all` ended green with the known
+unsigned development helper notice and one standard Windows temp cleanup retry.
+
+Remaining explicit deferrals: arbitrary generated code synthesis beyond
+reviewed templates, renderer permission-profile UX, live source extraction and
+citation verification for web research, package installation by generated
+tools, unattended Windows settings mutation, credential access, authenticated
+crawling, official app-server client-tool contract, production signing, GPU ASR
+validation, and human microphone corpus benchmark.
+
+## Latest Update: Scoped Autonomy Self-Implementation Runtime
+
+Extended the scoped autonomy foundation into an end-to-end self-implementation
+system for bounded computer-use YOLO behavior.
+
+- Added storage schema v6 for profile scope/use counts, structured gap fields,
+  generated tool manifests/source hashes/stability, rollback data, and daemon
+  capability inventory.
+- Expanded permission profiles with network/browser/generated-code/risk/runtime
+  grants, one-time and persistent profile semantics, and exact missing-grant
+  reporting.
+- Added capability inventory seeding for built-in, generated, blocked, and
+  externally unavailable capabilities, including document conversion, file
+  picker, package-install helper, browser download verification, and native
+  Windows blockers.
+- Replaced monolithic Toolsmith execution with a self-implementation loop:
+  materialize source in daemon runtime workspace, write manifest, run smoke,
+  parse failure, revise within iteration budget, activate after smoke pass, and
+  register the generated capability.
+- Upgraded `web_research_to_pdf` to staged live/fallback execution:
+  crawl_or_observe, extract, verify_sources, draft_markdown, render_pdf,
+  store_artifact, and verify_artifact.
+- Added generated vertical slices for safe terminal local scripts and browser
+  download verification.
+- Added executable autonomy DAG run support, debug bundle export, rerun mode,
+  and rollback cleanup for runtime-generated tools.
+- Added `/computer-use/autonomy` routes for inventory, profile update,
+  self-implement, run-dag, debug bundle, rerun, and rollback.
+- Added renderer Autonomy Toolsmith panel inside Activity details for profiles,
+  runs, gaps, DAG nodes, generated tools, blocked grants, and debug bundle copy.
+- Added `docs/plans/scoped-autonomy-self-implementation-handoff.md`.
+- Added new verification and evidence scripts:
+  `smoke:scoped-autonomy-self-implementation`,
+  `dogfood:scoped-autonomy-self-implementation`, and
+  `dogfood:scoped-autonomy-web-research-live`.
+
+Verification passed `npm run lint`, `npm run build:daemon`, `npm run build:web`,
+`npm run smoke:research-performance-architecture`,
+`npm run smoke:capability-runtime`, `npm run smoke:browser-action`,
+`npm run smoke:vision-context`, `npm run smoke:asr-runtime-candidates`,
+`npm run smoke:scoped-autonomy-toolsmith`,
+`npm run smoke:scoped-autonomy-self-implementation`,
+`npm run dogfood:scoped-autonomy-toolsmith`,
+`npm run dogfood:scoped-autonomy-self-implementation`, and
+`npm run dogfood:scoped-autonomy-web-research-live`, plus final
+`npm run smoke:all`, `git diff --check`, strict UTF-8 decoding,
+quoted-question mojibake scan, and `.cs` touched-file check.
+
+Remaining explicit deferrals: official app-server custom client-tool contract,
+production signing certificate/service, unrestricted credential flows,
+unattended high-risk Windows mutation, authenticated browser profile/cookie
+access, GPU ASR validation, human microphone corpus benchmark, and full package
+install helper promotion beyond blocked inventory classification.

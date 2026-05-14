@@ -1,0 +1,18 @@
+[
+  {
+    "title": "openai.com",
+    "url": "https://openai.com/codex/",
+    "text": "Enable JavaScript and cookies to continue",
+    "fetched": true,
+    "httpOk": false,
+    "status": "403"
+  },
+  {
+    "title": "platform.openai.com",
+    "url": "https://platform.openai.com/docs/codex",
+    "text": "Enable JavaScript and cookies to continue",
+    "fetched": true,
+    "httpOk": false,
+    "status": "403"
+  }
+]

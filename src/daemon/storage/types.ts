@@ -21,7 +21,25 @@ import type {
   WidgetMode,
   CapabilityJobSummary,
   CapabilityLockSummary,
-  CapabilityResourceSummary
+  CapabilityResourceSummary,
+  CapabilityDagNodeSummary,
+  CapabilityDagRunSummary,
+  AutonomyCapabilityGap,
+  AutonomyCapabilityInventoryItem,
+  AutonomyCapabilityStatus,
+  AutonomyGeneratedToolSpec,
+  AutonomyPermissionProfile,
+  AutonomyPermissionProfileStatus,
+  AutonomyRunStatus,
+  AutonomyRunSummary,
+  AutonomyToolRunSummary,
+  ComputerUseEvalResourceSummary,
+  ComputerUseEvalRunSummary,
+  ComputerUseEvalStatus,
+  ComputerUseEvalStepSummary,
+  ComputerUseFailureClass,
+  PerceptionGraphSummary,
+  StructuredFailureMemoryRecord
 } from "../../shared/protocol.js";
 import type {
   CapabilityJobCreateInput,
@@ -30,6 +48,28 @@ import type {
   CapabilityLockAcquireInput,
   CapabilityResourceCreateInput
 } from "./capabilityJobs.js";
+import type {
+  CapabilityDagNodeUpsertInput,
+  CapabilityDagRunCreateInput,
+  CapabilityDagRunUpdateInput,
+  ComputerUseEvalResourceCreateInput,
+  ComputerUseEvalRunCreateInput,
+  ComputerUseEvalRunUpdateInput,
+  ComputerUseEvalStepCreateInput,
+  PerceptionGraphRecordInput,
+  StructuredFailureRecordInput
+} from "./researchArchitecture.js";
+import type {
+  AutonomyCapabilityGapCreateInput,
+  AutonomyGeneratedToolSpecUpsertInput,
+  AutonomyPermissionProfileCreateInput,
+  AutonomyPermissionProfileUpdateInput,
+  AutonomyRunCreateInput,
+  AutonomyRunUpdateInput,
+  AutonomyToolRunCreateInput,
+  AutonomyToolRunUpdateInput,
+  AutonomyCapabilityInventoryUpsertInput
+} from "./scopedAutonomy.js";
 import type { BrowserActionPolicy } from "../browser-action/types.js";
 import type { StoredBlob } from "./blobs.js";
 import type { StoragePathOptions, StoragePaths } from "./paths.js";
@@ -96,6 +136,45 @@ export type StorageService = {
   cleanupEphemeralCapabilityResources: (input?: { completedBefore?: string }) => { resourcesDeleted: number; blobsDeleted: number; bytesDeleted: number };
   reconcileCapabilityJobsOnStartup: () => CapabilityJobSummary[];
   markActiveCapabilityJobsForShutdown: () => CapabilityJobSummary[];
+  createComputerUseEvalRun: (input: ComputerUseEvalRunCreateInput) => ComputerUseEvalRunSummary;
+  readComputerUseEvalRun: (id: string) => ComputerUseEvalRunSummary | null;
+  listComputerUseEvalRuns: (input?: { sessionId?: string; scenarioId?: string; statuses?: ComputerUseEvalStatus[]; limit?: number }) => ComputerUseEvalRunSummary[];
+  updateComputerUseEvalRun: (input: ComputerUseEvalRunUpdateInput) => ComputerUseEvalRunSummary;
+  appendComputerUseEvalStep: (input: ComputerUseEvalStepCreateInput) => ComputerUseEvalStepSummary;
+  listComputerUseEvalSteps: (runId: string) => ComputerUseEvalStepSummary[];
+  createComputerUseEvalResource: (input: ComputerUseEvalResourceCreateInput) => ComputerUseEvalResourceSummary;
+  listComputerUseEvalResources: (runId: string) => ComputerUseEvalResourceSummary[];
+  recordPerceptionGraph: (input: PerceptionGraphRecordInput) => PerceptionGraphSummary;
+  readPerceptionGraph: (id: string) => PerceptionGraphSummary | null;
+  listPerceptionGraphs: (input?: { sessionId?: string; limit?: number }) => PerceptionGraphSummary[];
+  recordStructuredFailureMemory: (input: StructuredFailureRecordInput) => StructuredFailureMemoryRecord;
+  listStructuredFailureMemory: (input?: { failureClass?: ComputerUseFailureClass; surface?: string; includeExpired?: boolean; limit?: number }) => StructuredFailureMemoryRecord[];
+  createCapabilityDagRun: (input: CapabilityDagRunCreateInput) => CapabilityDagRunSummary;
+  updateCapabilityDagRun: (input: CapabilityDagRunUpdateInput) => CapabilityDagRunSummary;
+  readCapabilityDagRun: (id: string) => CapabilityDagRunSummary | null;
+  upsertCapabilityDagNode: (input: CapabilityDagNodeUpsertInput) => CapabilityDagNodeSummary;
+  readCapabilityDagNode: (id: string) => CapabilityDagNodeSummary | null;
+  listCapabilityDagNodes: (dagRunId: string) => CapabilityDagNodeSummary[];
+  createAutonomyPermissionProfile: (input: AutonomyPermissionProfileCreateInput) => AutonomyPermissionProfile;
+  readAutonomyPermissionProfile: (id: string) => AutonomyPermissionProfile | null;
+  listAutonomyPermissionProfiles: (input?: { status?: AutonomyPermissionProfileStatus; limit?: number }) => AutonomyPermissionProfile[];
+  updateAutonomyPermissionProfile: (input: AutonomyPermissionProfileUpdateInput) => AutonomyPermissionProfile;
+  createAutonomyRun: (input: AutonomyRunCreateInput) => AutonomyRunSummary;
+  readAutonomyRun: (id: string) => AutonomyRunSummary | null;
+  listAutonomyRuns: (input?: { sessionId?: string; statuses?: AutonomyRunStatus[]; limit?: number }) => AutonomyRunSummary[];
+  updateAutonomyRun: (input: AutonomyRunUpdateInput) => AutonomyRunSummary;
+  recordAutonomyCapabilityGap: (input: AutonomyCapabilityGapCreateInput) => AutonomyCapabilityGap;
+  listAutonomyCapabilityGaps: (runId: string) => AutonomyCapabilityGap[];
+  upsertAutonomyToolSpec: (input: AutonomyGeneratedToolSpecUpsertInput) => AutonomyGeneratedToolSpec;
+  readAutonomyToolSpec: (id: string) => AutonomyGeneratedToolSpec | null;
+  listAutonomyToolSpecs: (input?: { capability?: string; limit?: number }) => AutonomyGeneratedToolSpec[];
+  createAutonomyToolRun: (input: AutonomyToolRunCreateInput) => AutonomyToolRunSummary;
+  updateAutonomyToolRun: (input: AutonomyToolRunUpdateInput) => AutonomyToolRunSummary;
+  readAutonomyToolRun: (id: string) => AutonomyToolRunSummary | null;
+  listAutonomyToolRuns: (input?: { toolSpecId?: string; autonomyRunId?: string; limit?: number }) => AutonomyToolRunSummary[];
+  upsertAutonomyCapabilityInventory: (input: AutonomyCapabilityInventoryUpsertInput) => AutonomyCapabilityInventoryItem;
+  readAutonomyCapabilityInventoryItem: (id: string) => AutonomyCapabilityInventoryItem | null;
+  listAutonomyCapabilityInventory: (input?: { status?: AutonomyCapabilityStatus; capability?: string; limit?: number }) => AutonomyCapabilityInventoryItem[];
   recordActivity: (input: {
     id: string;
     sessionId?: string | null;
@@ -258,5 +337,18 @@ export type {
   BrowserActionPolicy,
   CapabilityJobSummary,
   CapabilityLockSummary,
-  CapabilityResourceSummary
+  CapabilityResourceSummary,
+  CapabilityDagNodeSummary,
+  CapabilityDagRunSummary,
+  AutonomyCapabilityGap,
+  AutonomyCapabilityInventoryItem,
+  AutonomyGeneratedToolSpec,
+  AutonomyPermissionProfile,
+  AutonomyRunSummary,
+  AutonomyToolRunSummary,
+  ComputerUseEvalResourceSummary,
+  ComputerUseEvalRunSummary,
+  ComputerUseEvalStepSummary,
+  PerceptionGraphSummary,
+  StructuredFailureMemoryRecord
 };

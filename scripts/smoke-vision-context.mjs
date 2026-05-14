@@ -9,6 +9,7 @@ import {
 } from "../dist/daemon/vision-context/index.js";
 import {
   MockAsrEngine,
+  AsrRouter,
   SidecarAsrEngine,
   applyLexiconCorrections,
   buildSessionLexicon,
@@ -172,6 +173,18 @@ try {
   const correction = applyLexiconCorrections(transcript.text, lexicon);
   if (!correction.text.includes("react-router-dom")) {
     throw new Error(`Lexicon correction failed: ${JSON.stringify(correction)}`);
+  }
+  const decodedAsr = await new AsrRouter([new MockAsrEngine([{ text: "검색창에 리액트 라우터 돔 입력하고 검색", confidence: 0.84 }])]).transcribeAndDecode({
+    segments: createMockVadSegments([{ startMs: 0, endMs: 1200 }]),
+    language: "ko",
+    decoderContext: {
+      packageNames: ["react-router-dom"],
+      uiLabels: ["수정"],
+      sideEffectRisk: "side_effect"
+    }
+  });
+  if (!decodedAsr.decode.canonicalText.includes("react-router-dom") || decodedAsr.decode.slots.length === 0) {
+    throw new Error(`Deterministic ASR command decode failed: ${JSON.stringify(decodedAsr.decode)}`);
   }
   const sidecarScript = join(tempDir, "mock-asr-sidecar.mjs");
   writeFileSync(sidecarScript, `

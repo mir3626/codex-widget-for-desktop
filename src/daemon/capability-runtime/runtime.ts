@@ -12,6 +12,11 @@ import { CapabilityResourceManager } from "./resourceManager.js";
 import { decideCapabilitySafety } from "./safety.js";
 import { CapabilityScheduler } from "./scheduler.js";
 import { attachCapabilityVerification, verifyCapabilityHandlerOutput } from "./verification.js";
+import {
+  finalizeEvalRunFromSteps,
+  inferEvalModalitiesFromCapabilityKind,
+  recordCapabilityJobEvalStep
+} from "../computer-use-eval/index.js";
 import type {
   CapabilityHandler,
   CapabilityHandlerOutput,
@@ -90,7 +95,7 @@ export class CapabilityRuntime {
 
   async enqueue(input: CapabilityRuntimeEnqueueInput): Promise<CapabilityJobSummary> {
     const safety = decideCapabilitySafety(input);
-    const persistedInput = sanitizeCapabilityInputForPersistence(input.kind, input.input);
+    const persistedInput = this.attachAutomaticEvalRun(input, sanitizeCapabilityInputForPersistence(input.kind, input.input));
     const job = this.queue.create({
       ...input,
       input: persistedInput,
@@ -327,6 +332,7 @@ export class CapabilityRuntime {
       result.phase ?? (status === "completed" ? "completed" : status),
       result.summary ?? (status === "completed" ? `Capability job completed: ${job.kind}` : result.error ?? `Capability job ${status}`)
     );
+    this.updateDagNodeForCompletedJob(completed, status);
   }
 
   private emitJobEvent(job: CapabilityJobSummary, phase: CapabilityEventPhase, summary: string, detail?: unknown): void {
@@ -358,7 +364,113 @@ export class CapabilityRuntime {
         }
       });
     }
+    recordCapabilityJobEvalStep({
+      storage: this.options.storage,
+      job,
+      phase,
+      summary,
+      detail
+    });
+    this.finalizeEvalRunForFinalJobEvent(job, phase);
     this.emit({ type: "job", job, phase, summary, detail });
+  }
+
+  private attachAutomaticEvalRun(input: CapabilityRuntimeEnqueueInput, persistedInput: unknown): unknown {
+    if (!persistedInput || typeof persistedInput !== "object" || Array.isArray(persistedInput)) {
+      return persistedInput;
+    }
+    const record = persistedInput as Record<string, unknown>;
+    if (typeof record.evalRunId === "string" || record.recordEval === false) {
+      return persistedInput;
+    }
+    const now = new Date().toISOString();
+    const prompt = readFirstString(record, ["prompt", "description", "command", "utterance", "query", "task"]);
+    const run = this.options.storage.createComputerUseEvalRun({
+      scenario: {
+        id: `capability:${input.kind}:${input.transactionId ?? input.id ?? randomUUID()}`,
+        title: `Capability ${input.kind}`,
+        modalities: inferEvalModalitiesFromCapabilityKind(input.kind),
+        source: "capability_runtime",
+        prompt,
+        setup: {
+          requestedBy: input.requestedBy ?? "direct_ui",
+          priority: input.priority ?? "normal",
+          timeoutMs: input.timeoutMs
+        },
+        expectedOutcome: record.expectedOutcome,
+        tags: ["capability_runtime", input.kind],
+        safetyBoundaries: [
+          "approval_required_for_high_risk_actions",
+          "restricted_pages_are_not_bypassed",
+          "credential_like_fields_are_redacted"
+        ]
+      },
+      sessionId: input.sessionId,
+      modalities: inferEvalModalitiesFromCapabilityKind(input.kind),
+      prompt,
+      status: "running",
+      startedAt: now,
+      metrics: {
+        autoRecorded: true,
+        capabilityKind: input.kind
+      }
+    });
+    return { ...record, evalRunId: run.id };
+  }
+
+  private finalizeEvalRunForFinalJobEvent(job: CapabilityJobSummary, phase: CapabilityEventPhase): void {
+    if (!isFinalEvalPhase(phase, job.status)) {
+      return;
+    }
+    const evalRunId = readEvalRunId(job.inputJson);
+    if (!evalRunId || !this.options.storage.readComputerUseEvalRun(evalRunId)) {
+      return;
+    }
+    try {
+      finalizeEvalRunFromSteps({
+        storage: this.options.storage,
+        runId: evalRunId,
+        status: job.status === "cancelled" ? "cancelled" : job.status === "completed" ? "completed" : "failed",
+        taskSuccess: job.status === "completed" ? "passed" : job.status === "cancelled" ? "unknown" : "failed",
+        failureClass: job.status === "completed"
+          ? "none"
+          : job.status === "expired"
+            ? "timeout"
+            : job.lastError?.includes("restricted")
+              ? "restricted_surface"
+              : job.lastError?.includes("approval")
+                ? "approval_denied"
+                : job.lastError?.includes("unsafe")
+                  ? "unsafe_action_rejected"
+                  : "action_failed"
+      });
+    } catch {
+      // Eval recording must not turn a capability result into a runtime failure.
+    }
+  }
+
+  private updateDagNodeForCompletedJob(job: CapabilityJobSummary, status: CapabilityJobStatus): void {
+    const input = job.inputJson && typeof job.inputJson === "object" ? job.inputJson as Record<string, unknown> : {};
+    const dagNodeId = typeof input.dagNodeId === "string" ? input.dagNodeId : undefined;
+    const dagRunId = typeof input.dagRunId === "string" ? input.dagRunId : undefined;
+    if (!dagNodeId || !dagRunId) {
+      return;
+    }
+    const existing = this.options.storage.readCapabilityDagNode(dagNodeId);
+    if (!existing) {
+      return;
+    }
+    const completedAt = job.completedAt ?? new Date().toISOString();
+    this.options.storage.upsertCapabilityDagNode({
+      ...existing,
+      status: status === "completed" ? "completed" : status === "cancelled" ? "cancelled" : "failed",
+      capabilityJobId: job.id,
+      output: job.outputJson,
+      resourceUsage: { outputBlobIds: job.outputBlobIds },
+      completedAt,
+      elapsedMs: existing.startedAt ? Math.max(0, Date.parse(completedAt) - Date.parse(existing.startedAt)) : undefined,
+      lastError: job.lastError
+    });
   }
 
   private emit(event: CapabilityRuntimeEvent): void {
@@ -420,6 +532,25 @@ function isFinalStatus(status: CapabilityJobStatus): boolean {
 
 function isLedgerActivityPhase(phase: CapabilityEventPhase): boolean {
   return phase === "completed" || phase === "failed" || phase === "cancelled" || phase === "expired" || phase === "blocked";
+}
+
+function isFinalEvalPhase(phase: CapabilityEventPhase, status: CapabilityJobStatus): boolean {
+  return (phase === "completed" || phase === "failed" || phase === "cancelled" || phase === "expired") && isFinalStatus(status);
+}
+
+function readEvalRunId(input: unknown): string | undefined {
+  const record = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {};
+  return typeof record.evalRunId === "string" ? record.evalRunId : undefined;
+}
+
+function readFirstString(record: Record<string, unknown>, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.slice(0, 500);
+    }
+  }
+  return undefined;
 }
 
 function compareDispatchPriority(left: CapabilityJobSummary, right: CapabilityJobSummary): number {

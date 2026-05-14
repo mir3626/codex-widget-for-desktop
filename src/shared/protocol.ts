@@ -9,3 +9,5 @@ export * from "./protocol/runtime.js";
 export * from "./protocol/server.js";
 export * from "./protocol/session.js";
 export * from "./protocol/vision.js";
+export * from "./protocol/researchArchitecture.js";
+export * from "./protocol/scopedAutonomy.js";

@@ -1,0 +1,107 @@
+{
+  "generatedAt": "2026-05-14T09:43:33.392Z",
+  "scenarios": [
+    {
+      "id": "self-implementation-full-dag-web-pdf",
+      "userScenario": "사용자가 OpenAI/Codex 관련 내용을 조사해 PDF 파일로 달라고 요청한다.",
+      "architectureWorkflow": [
+        "permission_check validates scoped_yolo grants before implementation",
+        "capability_gap decomposes the request into crawl/extract/verify/draft/render/store/verify operations",
+        "implement_capability materializes web_research_to_pdf.v2 under daemon runtime workspace",
+        "first smoke is intentionally failed, then Toolsmith revises generated source and retries",
+        "smoke_test activates the generated tool only after deterministic artifact checks pass",
+        "DAG executes each web/PDF stage as a separate generated-tool command",
+        "eval ledger and debug bundle record source hashes, commands, artifacts, timings, and resources"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-60a564e4-933b-42ab-bd2c-020e9372b9d9",
+        "toolSpecId": "tool-web-research-to-pdf",
+        "outputDir": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-self-implementation-2026-05-14\\full-dag-web-pdf\\autonomy-run-60a564e4-933b-42ab-bd2c-020e9372b9d9",
+        "dagCompleted": 14,
+        "evalStepCount": 12
+      },
+      "followUp": [
+        "Repeat live runs before promoting any latency or stability claim.",
+        "Renderer can now display profile/gaps/DAG/tools but still needs visual polish during real user trials."
+      ]
+    },
+    {
+      "id": "self-implementation-terminal-generated-tool",
+      "userScenario": "사용자가 안전한 로컬 스크립트 도구를 만들어 node 버전을 확인해 달라고 요청한다.",
+      "architectureWorkflow": [
+        "gap detector classifies terminal_generated_tool",
+        "Toolsmith writes a no-shell Node wrapper in runtime workspace",
+        "smoke test writes deterministic stdout artifacts",
+        "execution evaluates command prefix grants before spawning node without shell expansion",
+        "stdout/stderr artifacts and command provenance are recorded"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-15001517-9351-484f-8f6e-4f643440bf97",
+        "toolSpecId": "tool-terminal-generated",
+        "executionRunId": "autonomy-tool-run-69952c2a-ec9d-4e8e-b357-ccfaca33545d",
+        "stdout": "v24.14.1"
+      },
+      "followUp": [
+        "Complex generated scripts should require promotion review before becoming repo source.",
+        "Command splitting intentionally avoids shell features; richer command models need explicit parser tests."
+      ]
+    },
+    {
+      "id": "self-implementation-browser-download-verify",
+      "userScenario": "사용자가 브라우저에서 받은 파일이 실제로 저장됐는지 검증해 달라고 요청한다.",
+      "architectureWorkflow": [
+        "gap detector classifies browser_download_verify",
+        "Toolsmith materializes a bounded local file verifier",
+        "smoke test verifies a deterministic fixture file",
+        "execution checks filesystem_read grant for the supplied path",
+        "file size and SHA-256 evidence are stored as artifact JSON"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-7e4bb058-0de3-43e3-94e5-e74b42b8f73f",
+        "toolSpecId": "tool-browser-download-verify",
+        "executionRunId": "autonomy-tool-run-f3ee50d4-150c-4a7a-b235-829a9e25b4e1",
+        "verificationPath": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\scoped-autonomy-self-implementation-2026-05-14\\download-verify\\download-verification.json"
+      },
+      "followUp": [
+        "Actual browser download shelf observation still requires browser bridge or native helper integration.",
+        "Verifier should later correlate browser download transaction IDs with local files."
+      ]
+    },
+    {
+      "id": "self-implementation-native-windows-blocked",
+      "userScenario": "사용자가 Windows 설정 변경처럼 고위험 native workflow를 요청한다.",
+      "architectureWorkflow": [
+        "gap detector classifies native_windows_workflow",
+        "permission evaluator requires high_risk and os_mutation grants",
+        "run is blocked before materialization or execution",
+        "blocker stays explicit rather than bypassing through OCR or generated code"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-8f158c86-f2ef-4d5b-9f4c-88f302a78c78",
+        "missingRequirements": [
+          {
+            "type": "risk_class",
+            "value": "high_risk",
+            "reason": "Windows Settings changes are high risk."
+          },
+          {
+            "type": "os_mutation",
+            "value": "windows_settings_or_app_surface",
+            "reason": "Windows Settings or app workflow may mutate OS/app state."
+          }
+        ],
+        "blockers": [
+          "signed_native_helper_scope_required"
+        ]
+      },
+      "followUp": [
+        "Unattended high-risk Windows mutation remains blocked by policy.",
+        "Signed bounded helper and release signing hardening are required before resuming this slice."
+      ]
+    }
+  ]
+}

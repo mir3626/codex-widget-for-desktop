@@ -52,7 +52,9 @@ This file records items that should not be silently downgraded to complete.
 ## Vision Context Real Local ASR
 
 - Status: local runtime candidate sidecars implemented; final default selection
-  remains dogfood-owned.
+  remains dogfood-owned. The research architecture deterministic decoder is
+  implemented on top of the current transcript contract, but production model
+  promotion still requires human corpus evidence.
 - Current path: mock ASR for deterministic tests plus executable JSON sidecar
   support through `CODEX_WIDGET_ASR_SIDECAR_COMMAND`. `npm run
   smoke:asr-sidecar` now locks the stdin/stdout JSON contract, transcript
@@ -67,6 +69,33 @@ This file records items that should not be silently downgraded to complete.
 - Required scope expansion: install the chosen local ASR dependencies/models,
   collect a Korean command audio corpus, and choose the default by workflow
   success rate, latency, correction rate, memory, and installation friction.
+
+## Research Architecture External Deferrals
+
+- Status: implementation substrate complete; external or dogfood-owned items are
+  still not complete.
+- Current path: `docs/architecture/research-performance-architecture.md`
+  defines the implemented eval ledger, deterministic ASR decoder, perception
+  graph, ROI cascade, structured failure memory, and capability DAG scheduler.
+- Required scope expansion: official app-server client-tool contract,
+  production signing certificate/service, GPU ASR validation, human microphone
+  corpus benchmark, and ASR fine-tuning/LoRA all remain deferred or externally
+  blocked and must not be marked complete by architecture smoke success alone.
+
+## Scoped Autonomy Toolsmith
+
+- Status: foundation implemented for reviewed built-in templates. The daemon can
+  store scoped permission profiles, detect missing capability gaps, materialize
+  the initial `web_research_to_pdf` template into the runtime workspace, require
+  smoke success, execute it, and link Markdown/PDF artifacts into eval evidence.
+- Current path: `src/daemon/scoped-autonomy/`,
+  `src/shared/protocol/scopedAutonomy.ts`, storage schema v5, and
+  `npm run smoke:scoped-autonomy-toolsmith`.
+- Required scope expansion: arbitrary generated code synthesis, package
+  installation by generated tools, unattended Windows settings mutation, live
+  authenticated crawling, credential access, and renderer permission-profile UX
+  remain blocked or deferred until sandboxing, signing, review, and user-facing
+  grant controls are stronger.
 
 ## Mascot Motion Assets
 

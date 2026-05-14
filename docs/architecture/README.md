@@ -21,6 +21,13 @@ is defined here.
   memory boundary.
 - `surface-control.md` defines the long-term shared control model for Browser,
   Vision, Terminal, Workspace, and bounded Desktop automation.
+- `research-performance-architecture.md` defines the implemented eval ledger,
+  ASR deterministic decoder, perception graph, ROI cascade, structured failure
+  memory, and capability DAG scheduler architecture.
+- `../plans/scoped-autonomy-toolsmith-runtime-handoff.md` defines the
+  permission-scoped Toolsmith path for missing capability detection, reviewed
+  generated tool materialization, smoke-before-execute gating, and eval-backed
+  artifact production.
 - `renderer-boundary.md` defines the renderer's UI-only role and the remaining
   decomposition target.
 - `testing-observability.md` defines test tiers, live evidence policy, timing,
@@ -53,3 +60,7 @@ Browser Action is the most complete implementation of this loop today. Vision
 Context already has the prepared-context side through TaskCapsules. Terminal and
 future Windows desktop control should use the same transaction, safety,
 observability, and memory foundations instead of growing parallel ad hoc paths.
+The research performance architecture is now the shared measurement and
+calibration layer for those surfaces. Scoped autonomy builds on that substrate
+by letting the daemon implement a missing workflow only inside a pre-granted
+permission profile and only after the generated tool passes smoke tests.

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "S1",
+    "title": "openai.com",
+    "url": "https://openai.com/codex/",
+    "fetched": true,
+    "status": "403",
+    "chars": 41,
+    "excerpt": "Enable JavaScript and cookies to continue"
+  },
+  {
+    "id": "S2",
+    "title": "platform.openai.com",
+    "url": "https://platform.openai.com/docs/codex",
+    "fetched": true,
+    "status": "403",
+    "chars": 41,
+    "excerpt": "Enable JavaScript and cookies to continue"
+  }
+]

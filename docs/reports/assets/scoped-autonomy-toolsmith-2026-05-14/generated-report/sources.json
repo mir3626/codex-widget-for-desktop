@@ -1,0 +1,9 @@
+[
+  {
+    "title": "OpenAI Codex fixture",
+    "url": "https://openai.com/codex",
+    "text": "Codex supports repository-aware command execution, code edits, tests, summaries, and handoff reporting.",
+    "fetched": false,
+    "status": "fixture"
+  }
+]

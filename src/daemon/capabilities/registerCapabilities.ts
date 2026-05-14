@@ -4,6 +4,8 @@ import { runNativeDesktopHelper } from "../browser-action/adapters/nativeDesktop
 import type { BrowserAction, BrowserActionSource, BrowserElement } from "../browser-action/types.js";
 import { BrowserChromeCommandBridge, readBrowserChromeCommand } from "../browser-chrome/index.js";
 import type { CapabilityResourceManagerLike, CapabilityRuntime } from "../capability-runtime/index.js";
+import { computeTileHashes, diffTileHashes, planPerceptionCascade } from "../perception-cascade/index.js";
+import { buildPerceptionGraphFromOcr } from "../perception-graph/index.js";
 import { captureScreenSnapshot, resolveBundledOcrCommand } from "../providers/screenCaptureProvider.js";
 
 export function registerDaemonCapabilities(input: {
@@ -15,16 +17,32 @@ export function registerDaemonCapabilities(input: {
 
   capabilityRuntime.register("screen_observe", async ({ job }) => {
     const jobInput = job.inputJson && typeof job.inputJson === "object"
-      ? job.inputJson as { description?: string; crop?: unknown; timeoutMs?: number }
+      ? job.inputJson as Record<string, unknown>
       : {};
     const capture = await captureScreenSnapshot({
       daemonPort: getDaemonPort(),
-      description: jobInput.description,
+      description: typeof jobInput.description === "string" ? jobInput.description : undefined,
       crop: jobInput.crop && typeof jobInput.crop === "object" ? jobInput.crop as never : undefined,
-      timeoutMs: jobInput.timeoutMs
+      timeoutMs: typeof jobInput.timeoutMs === "number" ? jobInput.timeoutMs : undefined
+    });
+    const captureRecord = readJsonRecord(capture.output);
+    const imageData = typeof captureRecord.imageDataUrl === "string" ? captureRecord.imageDataUrl : capture.output;
+    const width = readNumber(captureRecord.viewport, "width", 1280);
+    const height = readNumber(captureRecord.viewport, "height", 720);
+    const tileHashes = imageData
+      ? computeTileHashes({ bytes: imageData, width, height, tileSize: readNumber(jobInput, "tileSize", 128) })
+      : [];
+    const previousTiles = Array.isArray(jobInput.previousTileHashes) ? jobInput.previousTileHashes as ReturnType<typeof computeTileHashes> : undefined;
+    const dirtyRegions = diffTileHashes(previousTiles, tileHashes);
+    const cascadeStages = planPerceptionCascade({
+      cachedGraphConfidence: typeof jobInput.cachedGraphConfidence === "number" ? jobInput.cachedGraphConfidence : undefined,
+      domOrUiaConfidence: typeof jobInput.domOrUiaConfidence === "number" ? jobInput.domOrUiaConfidence : undefined,
+      dirtyRegions,
+      requiresText: Boolean(jobInput.requiresText),
+      requiresVisualParser: Boolean(jobInput.requiresVisualParser)
     });
     return {
-      output: { ok: true, output: capture.output },
+      output: { ok: true, output: capture.output, tileHashes, dirtyRegions, cascadeStages },
       summary: "Screen observe capability completed."
     };
   });
@@ -77,7 +95,7 @@ export function registerDaemonCapabilities(input: {
         };
   });
 
-  capabilityRuntime.register("ocr", async ({ job, helpers, resources, signal }) => {
+  capabilityRuntime.register("ocr", async ({ job, helpers, resources, signal, storage }) => {
     const jobInput = job.inputJson && typeof job.inputJson === "object" ? job.inputJson as Record<string, unknown> : {};
     const inlineText = typeof jobInput.text === "string" ? jobInput.text : "";
     if (inlineText) {
@@ -118,10 +136,30 @@ export function registerDaemonCapabilities(input: {
         source: "helper"
       }
     });
+    const graph = buildPerceptionGraphFromOcr({
+      sessionId: job.sessionId,
+      text,
+      source: "ocr_capability"
+    });
+    const recordedGraph = storage.recordPerceptionGraph({
+      graph,
+      sessionId: job.sessionId,
+      source: "ocr_capability"
+    });
     return {
       output: {
         ...output,
-        ...stored
+        ...stored,
+        perceptionGraph: {
+          id: recordedGraph.id,
+          nodeCount: recordedGraph.nodes.length,
+          edgeCount: recordedGraph.edges.length
+        },
+        cascadeStages: planPerceptionCascade({
+          dirtyRegions: [],
+          requiresText: true,
+          domOrUiaConfidence: 0
+        })
       },
       outputBlobIds: stored.fullTextBlobId ? [stored.fullTextBlobId] : undefined,
       summary: "OCR capability completed through helper supervision."
@@ -180,6 +218,21 @@ export function registerDaemonCapabilities(input: {
       summary: `Agent tool capability boundary completed: ${jobInput.toolId}`
     };
   });
+}
+
+function readNumber(value: unknown, key: string, fallback: number): number {
+  const record = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const number = Number(record[key]);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function readJsonRecord(value: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : {};
+  } catch {
+    return {};
+  }
 }
 
 function normalizeBrowserActionSource(input: unknown): BrowserActionSource {

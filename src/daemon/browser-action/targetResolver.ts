@@ -15,6 +15,10 @@ import {
   resolveSemanticContentTarget
 } from "./targetResolver/semanticContentTarget.js";
 import { chooseResolution } from "./targetResolver/resolutionChooser.js";
+import {
+  buildPerceptionGraphFromBrowserObservation,
+  explainPerceptionTarget
+} from "../perception-graph/index.js";
 
 export function resolveTarget(input: {
   graph: ElementGraph;
@@ -62,5 +66,43 @@ export function resolveTarget(input: {
         memoryReadSet: input.memoryReadSet
       })
     : undefined;
-  return chooseResolution({ lexical, semantic });
+  const selected = chooseResolution({ lexical, semantic });
+  if (!input.observation) {
+    return selected;
+  }
+  const perceptionGraph = buildPerceptionGraphFromBrowserObservation({ observation: input.observation });
+  const explanation = explainPerceptionTarget({
+    graph: perceptionGraph,
+    nodeId: selected.primary?.id,
+    risk: classifyTargetResolutionRisk(input.action)
+  });
+  return {
+    ...selected,
+    confidence: explanation.allowed ? Math.max(selected.confidence, explanation.confidence) : Math.min(selected.confidence, explanation.confidence),
+    reason: `${selected.reason} PerceptionGraph: ${explanation.reason}`,
+    semantic: {
+      outcome: explanation.allowed ? selected.semantic?.outcome ?? "act" : "abstain",
+      selectedElementId: selected.primary?.id,
+      rankedElementIds: [selected.primary?.id, ...selected.alternatives.map((element) => element.id)].filter((id): id is string => Boolean(id)),
+      trace: {
+        ...(selected.semantic?.trace && typeof selected.semantic.trace === "object" ? selected.semantic.trace as Record<string, unknown> : {}),
+        perceptionGraphId: perceptionGraph.id,
+        perceptionExplanation: explanation,
+        evidenceNodeCount: perceptionGraph.nodes.length
+      }
+    }
+  };
+}
+
+function classifyTargetResolutionRisk(action: BrowserAction | undefined) {
+  if (!action || action.type === "read" || action.type === "screenshot") {
+    return "read_only" as const;
+  }
+  if (action.type === "scroll" || action.type === "back" || action.type === "forward" || action.type === "reload") {
+    return "reversible" as const;
+  }
+  if (action.type === "evaluate") {
+    return "high_risk" as const;
+  }
+  return "side_effect" as const;
 }
