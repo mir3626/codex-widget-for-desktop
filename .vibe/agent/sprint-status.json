@@ -243,13 +243,14 @@
     }
   ],
   "handoff": {
-    "currentSprintId": "iter-26-complete",
-    "lastActionSummary": "Implemented the Rust native Browser Action desktop helper hardening track. Added providers/browser-native-desktop-helper-rs, build/sign/signature scripts, native helper smokes, daemon discovery priority env -> bundled Rust exe -> PowerShell fallback, and Tauri resource registration for dist/browser-native-desktop-helper. Authenticode signing remains BLOCKED on a certificate or CI signing service.",
+    "currentSprintId": "scoped-autonomy-self-implementation-complete",
+    "lastActionSummary": "Implemented the research-driven computer-use architecture and complete scoped autonomy self-implementation runtime. Added unified eval/perception/failure/DAG foundations, deterministic ASR decoder, scoped autonomy schema v5/v6, permission profiles, capability inventory, Toolsmith retry loop, staged autonomy DAG execution, live web research/PDF, terminal generated tool, browser download verifier, renderer Autonomy Toolsmith panel, dogfood evidence, and verification scripts.",
     "openIssues": [
       "Reload the unpacked Browser Bridge extension before manual live-site retesting so Chrome/Edge uses the updated popup/service-worker files.",
-      "Browser Action app-server client tool remains BLOCKED on an official custom client-tool contract; daemon simulated runtime stays the safe fallback.",
-      "Semantic Memory is advisory only and cannot bypass freshness, safety, visibility, approval, or current view evidence.",
-      "Authenticode production signing for the Rust helper remains BLOCKED until a code-signing certificate or CI signing service is provided."
+      "Official app-server custom client-tool contract remains BLOCKED externally.",
+      "Production signing certificate/service remains BLOCKED externally.",
+      "Unattended high-risk Windows mutation, unrestricted credential flows, and authenticated browser profile/cookie access remain blocked by policy.",
+      "GPU ASR validation and human microphone corpus benchmark remain deferred by product-owner decision."
     ],
     "orchestratorContextBudget": "medium",
     "preferencesActive": [
@@ -258,11 +259,11 @@
       "daemon-owned session architecture"
     ],
     "handoffDocPath": ".vibe/agent/handoff.md",
-    "updatedAt": "2026-05-12T05:30:00.000+09:00"
+    "updatedAt": "2026-05-14T18:45:12.301+09:00"
   },
   "pendingRisks": [],
   "lastSprintScope": [],
   "lastSprintScopeGlob": [],
   "sprintsSinceLastAudit": 0,
-  "stateUpdatedAt": "2026-05-12T05:30:00.000+09:00"
+  "stateUpdatedAt": "2026-05-14T18:45:12.301+09:00"
 }
