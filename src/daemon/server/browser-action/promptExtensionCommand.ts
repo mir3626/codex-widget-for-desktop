@@ -22,6 +22,11 @@ import {
   recordBrowserActionCapabilityCommandQueued,
   recordBrowserActionCapabilityResult
 } from "./capabilityMirror.js";
+import {
+  recordPromptBrowserActionEvalCheckpoint,
+  recordPromptBrowserActionTimingSummary,
+  type BrowserActionPromptEvalContext
+} from "./promptEvalLedger.js";
 import { summarizeBrowserActionPlan } from "./presentation.js";
 import type { BrowserActionPromptInput } from "./promptTypes.js";
 
@@ -29,6 +34,7 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
   plan: BrowserActionPlan;
   results: BrowserActionResult[];
   command: BrowserQueuedCommand;
+  evalContext?: BrowserActionPromptEvalContext;
 }): Promise<boolean> {
   const transactionId = detail.results.at(-1)?.transaction?.transactionId;
   input.browserActions.markInteractionTiming(transactionId, "extension_command_wait_started", "executing", {
@@ -66,7 +72,8 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
         clients: input.clients,
         result: failedResult,
         requestId: detail.command.requestId,
-        sessionId: input.sessionId
+        sessionId: input.sessionId,
+        evalRunId: detail.evalContext?.evalRunId
       });
     } else {
       detail.plan.status = "failed";
@@ -84,6 +91,7 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
       results,
       runtimeSummary: "Prompt Browser Action failed because the extension did not pick up the command in time"
     });
+    recordPromptFinalEval(input, detail.evalContext, detail.plan, results, transactionId);
     return true;
   }
 
@@ -97,6 +105,7 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
     storage: input.storage,
     clients: input.clients,
     sessionId: input.sessionId,
+    evalRunId: detail.evalContext?.evalRunId,
     waiters: input.browserActionCommandWaiters
   });
   if (continued.approval) {
@@ -106,6 +115,7 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
       requestId: continued.approval.id,
       actionSessionId: continued.approval.actionSessionId,
       sessionId: input.sessionId,
+      evalRunId: detail.evalContext?.evalRunId,
       action: continued.approval.action,
       result: continued.results.at(-1),
       approvalId: continued.approval.id
@@ -123,12 +133,14 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
       clients: input.clients,
       command: continued.pendingCommand,
       sessionId: input.sessionId,
+      evalRunId: detail.evalContext?.evalRunId,
       result: continued.results.at(-1)
     });
     return handlePromptExtensionCommand(input, {
       plan: continued.plan,
       results: continued.results,
-      command: continued.pendingCommand
+      command: continued.pendingCommand,
+      evalContext: detail.evalContext
     });
   }
   completePromptWithResult(input, {
@@ -142,8 +154,42 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
       storage: input.storage,
       clients: input.clients,
       result: latestResult,
-      sessionId: input.sessionId
+      sessionId: input.sessionId,
+      evalRunId: detail.evalContext?.evalRunId
     });
   }
+  recordPromptFinalEval(input, detail.evalContext, continued.plan, continued.results, transactionId);
   return true;
+}
+
+function recordPromptFinalEval(
+  input: BrowserActionPromptInput,
+  evalContext: BrowserActionPromptEvalContext | undefined,
+  plan: BrowserActionPlan,
+  results: BrowserActionResult[],
+  transactionId: string | undefined
+): void {
+  if (!evalContext) {
+    return;
+  }
+  const timingSource = input.browserActions.getInteraction(transactionId ?? evalContext.transactionId);
+  const completedEval = recordPromptBrowserActionEvalCheckpoint({
+    storage: input.storage,
+    sessionId: input.sessionId,
+    context: evalContext,
+    plan,
+    results,
+    timingSource,
+    terminal: true
+  });
+  if (completedEval) {
+    recordPromptBrowserActionTimingSummary({
+      storage: input.storage,
+      sessionId: input.sessionId,
+      context: evalContext,
+      plan,
+      timingSource,
+      completedEval
+    });
+  }
 }

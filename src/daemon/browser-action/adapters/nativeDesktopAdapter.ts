@@ -4,7 +4,10 @@ import { buildBrowserObservation } from "../browserObservation.js";
 import type { BrowserActionAdapter, BrowserActionCapability, BrowserActionExecutionResult, BrowserElementRiskHint, BrowserObservation, BrowserActionSession } from "../types.js";
 import {
   getNativeDesktopHelperAvailability,
+  getNativeDesktopHelperReleaseReadiness,
+  readNativeDesktopHelperCapabilityManifest,
   runNativeDesktopHelper,
+  type NativeDesktopHelperCapabilityManifest,
   type NativeDesktopHelperSnapshot,
   type NativeDesktopWindow
 } from "./nativeDesktop/helperClient.js";
@@ -12,7 +15,9 @@ import {
 const execFileAsync = promisify(execFile);
 const ENABLE_ENV = "CODEX_WIDGET_BROWSER_ACTION_NATIVE_DESKTOP";
 const BASE_CAPABILITIES: BrowserActionCapability[] = ["tab_control", "hotkey"];
-const HELPER_CAPABILITIES: BrowserActionCapability[] = ["click", "type", "select", "scroll", "navigate", "screenshot", "tab_control", "hotkey"];
+const HELPER_CAPABILITIES: BrowserActionCapability[] = ["click", "type", "select", "scroll", "navigate", "tab_control", "hotkey"];
+const HELPER_UNSUPPORTED_CAPABILITIES: BrowserActionCapability[] = ["screenshot"];
+const HELPER_V2_DISABLED_PROBE_COMMANDS = ["capture_screenshot", "file_picker_select", "browser_permission_popup_click"] as const;
 const HELPER_BLOCKED = {
   item: "Windows UI Automation executable Browser Action fallback",
   reason: "This repo now has a bounded Rust UI Automation helper and a PowerShell fallback helper, but production signing remains blocked until an Authenticode certificate or CI signing service is provided.",
@@ -58,6 +63,7 @@ export const nativeDesktopAdapter: BrowserActionAdapter = {
       };
     }
     const helper = getNativeDesktopHelperAvailability();
+    const releaseReadiness = await getNativeDesktopHelperReleaseReadiness();
     const helperStatus =
       helper.configured && helper.exists
         ? await runNativeDesktopHelper({
@@ -72,6 +78,31 @@ export const nativeDesktopAdapter: BrowserActionAdapter = {
             metadata: { helperStatusError: true }
           }))
         : undefined;
+    const helperWatchPreflight =
+      helper.configured && helper.exists
+        ? await runNativeDesktopHelper({
+            schemaVersion: "browser-native-desktop-helper.v1",
+            requestId: "native-desktop-watch-preflight",
+            command: "watch_preflight",
+            timeoutMs: 5_000,
+            session: pickSession(input.session),
+            watchPreflight: {
+              monitorMs: 50,
+              sampleIntervalMs: 10,
+              idleThresholdMs: 750,
+              requireNoUserInput: true,
+              requireActiveWindowStable: true
+            }
+          }).catch((error): import("./nativeDesktop/helperClient.js").NativeDesktopHelperResponse => ({
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+            metadata: { helperWatchPreflightError: true }
+          }))
+        : undefined;
+    const helperV2DisabledContracts = helper.configured && helper.exists
+      ? await probeHelperV2DisabledContracts(input.session)
+      : undefined;
+    const capabilityManifest = readNativeDesktopHelperCapabilityManifest(helperStatus?.metadata);
     const windows =
       helperStatus?.ok && helperStatus.observation?.windows
         ? helperStatus.observation.windows
@@ -99,6 +130,17 @@ export const nativeDesktopAdapter: BrowserActionAdapter = {
               metadata: helperStatus.metadata
             }
           : undefined,
+        helperWatchPreflight: helperWatchPreflight
+          ? {
+              ok: helperWatchPreflight.ok,
+              error: helperWatchPreflight.error,
+              metadata: helperWatchPreflight.metadata
+            }
+          : undefined,
+        helperV2DisabledContracts,
+        helperCapabilities: buildHelperCapabilityDiagnostics(helper.configured && helper.exists, capabilityManifest),
+        releaseReadiness,
+        helperV2Boundary: buildHelperV2Boundary(capabilityManifest, releaseReadiness.releaseReady, helperWatchPreflight?.metadata, helperV2DisabledContracts),
         blocked: HELPER_BLOCKED
       }
     };
@@ -124,6 +166,19 @@ export const nativeDesktopAdapter: BrowserActionAdapter = {
     if (input.action.type === "read") {
       const after = await nativeDesktopAdapter.observe({ session: input.session });
       return { requestId: "native-desktop", adapterId: "native-desktop", ok: true, after };
+    }
+    if (input.action.type === "screenshot") {
+      return {
+        requestId: "native-desktop",
+        adapterId: "native-desktop",
+        ok: false,
+        error: "Native desktop helper v1 does not support screenshot execution; route screenshot requests through screen_observe, Playwright, or CDP.",
+        metadata: {
+          helperConfigured: getNativeDesktopHelperAvailability().configured,
+          unsupportedCapability: "screenshot",
+          fallbackCapabilities: ["screen_observe", "playwright_screenshot", "cdp_screenshot"]
+        }
+      };
     }
     const helper = getNativeDesktopHelperAvailability();
     if (helper.configured && helper.exists) {
@@ -175,6 +230,109 @@ function pickSession(session: BrowserActionSession): Pick<BrowserActionSession, 
     mode: session.mode,
     source: session.source
   };
+}
+
+function buildHelperCapabilityDiagnostics(helperConfigured: boolean, manifest?: NativeDesktopHelperCapabilityManifest): Record<string, unknown> {
+  return {
+    advertised: helperConfigured ? HELPER_CAPABILITIES : BASE_CAPABILITIES,
+    explicitlyUnsupported: HELPER_UNSUPPORTED_CAPABILITIES,
+    manifestSchemaVersion: manifest?.schemaVersion,
+    manifestCommandCount: manifest?.commands.length ?? 0,
+    supportedCommands: manifest?.commands.filter((command) => command.supported).map((command) => command.name) ?? [],
+    blockedV2Commands: manifest?.commands
+      .filter((command) => !command.supported && command.status.includes("helper_v2"))
+      .map((command) => command.name) ?? [],
+    manifest,
+    note: "The v1 Windows browser-window helper does not support screenshot execution; use screen observe, Playwright, or CDP screenshot paths instead."
+  };
+}
+
+async function probeHelperV2DisabledContracts(session: BrowserActionSession): Promise<Record<string, unknown>> {
+  const results = await Promise.all(HELPER_V2_DISABLED_PROBE_COMMANDS.map(async (command) => {
+    const response = await runNativeDesktopHelper({
+      schemaVersion: "browser-native-desktop-helper.v1",
+      requestId: `native-desktop-disabled-${command}`,
+      command,
+      timeoutMs: 5_000,
+      session: pickSession(session)
+    }).catch((error): import("./nativeDesktop/helperClient.js").NativeDesktopHelperResponse => ({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+      metadata: { helperV2DisabledProbeError: true, command }
+    }));
+    const metadata = response.metadata ?? {};
+    return {
+      command,
+      ok: response.ok === false && String(response.error ?? "").includes("disabled"),
+      schemaVersion: typeof metadata.schemaVersion === "string" ? metadata.schemaVersion : undefined,
+      actualInputSent: metadata.actualInputSent === true,
+      signedHelperV2Available: metadata.signedHelperV2Available === true,
+      releaseGate: typeof metadata.releaseGate === "string" ? metadata.releaseGate : undefined,
+      localFilePathDisclosed: metadata.localFilePathDisclosed === true,
+      nativePopupClick: metadata.nativePopupClick === true,
+      permissionChanged: metadata.permissionChanged === true,
+      screenshotCaptured: metadata.screenshotCaptured === true,
+      rawScreenshotStored: metadata.rawScreenshotStored === true,
+      error: response.error
+    };
+  }));
+  return {
+    schemaVersion: "browser-native-desktop-helper-v2-disabled-contract-probe.v1",
+    probedCommands: results.map((result) => result.command),
+    contractCount: results.length,
+    allDisabled: results.every((result) => result.ok === true && result.schemaVersion === "browser-native-desktop-helper-v2-disabled-command.v1"),
+    anyInputSent: results.some((result) => result.actualInputSent === true),
+    anyPathDisclosed: results.some((result) => result.localFilePathDisclosed === true),
+    anyPermissionMutated: results.some((result) => result.permissionChanged === true),
+    anyScreenshotCaptured: results.some((result) => result.screenshotCaptured === true || result.rawScreenshotStored === true),
+    results
+  };
+}
+
+function buildHelperV2Boundary(
+  manifest: NativeDesktopHelperCapabilityManifest | undefined,
+  releaseReady: boolean,
+  watchPreflightMetadata?: Record<string, unknown>,
+  disabledContracts?: Record<string, unknown>
+): Record<string, unknown> {
+  const blockedCommands = manifest?.commands
+    .filter((command) => !command.supported && command.status.includes("helper_v2"))
+    .map((command) => ({
+      name: command.name,
+      requiresForeground: command.requiresForeground,
+      requiresApproval: command.requiresApproval,
+      redactionBehavior: command.redactionBehavior,
+      maxTimeoutMs: command.maxTimeoutMs,
+      status: command.status
+    })) ?? [];
+  return {
+    status: !manifest || blockedCommands.length > 0 || !releaseReady ? "blocked_until_signed_helper_v2" : "available",
+    releaseReady,
+    manifestPresent: Boolean(manifest),
+    helperSideWatchPreflightPresent: Boolean(watchPreflightMetadata?.watchPreflight),
+    helperSideContinuousMonitorPresent: readNestedBoolean(watchPreflightMetadata, ["helperSideGuards", "monitor", "enabled"]) === true,
+    helperSideWatchPreflightActualInputSent: watchPreflightMetadata?.actualInputSent === true,
+    disabledCommandContractsPresent: disabledContracts?.allDisabled === true,
+    disabledCommandContractCount: typeof disabledContracts?.contractCount === "number" ? disabledContracts.contractCount : 0,
+    disabledCommandContractsActualInputSent: disabledContracts?.anyInputSent === true,
+    disabledCommandContractsPathDisclosed: disabledContracts?.anyPathDisclosed === true,
+    disabledCommandContractsPermissionMutated: disabledContracts?.anyPermissionMutated === true,
+    disabledCommandContractsScreenshotCaptured: disabledContracts?.anyScreenshotCaptured === true,
+    guardedCommands: blockedCommands,
+    nativeInputEnabled: false,
+    actualInputSentForGuardedCommands: false
+  };
+}
+
+function readNestedBoolean(record: Record<string, unknown> | undefined, path: string[]): boolean | undefined {
+  let cursor: unknown = record;
+  for (const key of path) {
+    if (!cursor || typeof cursor !== "object" || Array.isArray(cursor)) {
+      return undefined;
+    }
+    cursor = (cursor as Record<string, unknown>)[key];
+  }
+  return typeof cursor === "boolean" ? cursor : undefined;
 }
 
 function buildObservationFromWindows(session: BrowserActionSession, windows: NativeDesktopWindow[]): BrowserObservation {

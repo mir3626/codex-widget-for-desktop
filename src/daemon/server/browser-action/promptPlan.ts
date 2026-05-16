@@ -46,6 +46,7 @@ export async function continuePromptBrowserActionPlan(input: {
   storage: StorageService;
   clients: Set<WebSocket>;
   sessionId: string;
+  evalRunId?: string;
   waiters: Map<string, BrowserActionCommandWaiter>;
 }): Promise<{
   plan: BrowserActionPlan;
@@ -116,6 +117,7 @@ export async function continuePromptBrowserActionPlan(input: {
         clients: input.clients,
         command: execution.command,
         sessionId: input.sessionId,
+        evalRunId: input.evalRunId,
         result: execution.result
       });
       input.browserActions.markInteractionTiming(execution.result.transaction?.transactionId, "extension_followup_wait_started", "executing", {
@@ -159,7 +161,8 @@ export async function continuePromptBrowserActionPlan(input: {
             clients: input.clients,
             result: failedResult,
             requestId: execution.command.requestId,
-            sessionId: input.sessionId
+            sessionId: input.sessionId,
+            evalRunId: input.evalRunId
           });
         } else {
           nextStep.status = "failed";
@@ -184,7 +187,8 @@ export async function continuePromptBrowserActionPlan(input: {
         clients: input.clients,
         result: commandResult,
         requestId: execution.command.requestId,
-        sessionId: input.sessionId
+        sessionId: input.sessionId,
+        evalRunId: input.evalRunId
       });
       snapshot = await refreshPromptBrowserActionSnapshotAfterCommand({
         actionSessionId: plan.actionSessionId,

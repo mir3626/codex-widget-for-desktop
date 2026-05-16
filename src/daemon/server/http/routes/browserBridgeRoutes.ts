@@ -177,13 +177,31 @@ export async function handleBrowserBridgeRoute(
       const payload = JSON.parse(await readRequestBody(request, 512 * 1024)) as BrowserActionExecutionResult;
       const completed = browserActions.completeExtensionCommand(payload);
       recordBrowserActionAudit(storage, completed.audit);
-      recordBrowserActionCapabilityResult({
+      const capabilityJob = recordBrowserActionCapabilityResult({
         storage,
         clients,
         result: completed.result,
         requestId: payload.requestId,
         sessionId: resolveClientSessionId(storage, completed.session.sessionId)
       });
+      context.computerSessionRuntime.recordBrowserActionResultObservation({
+        result: completed.result,
+        capabilityJobId: capabilityJob.id,
+        dagNodeId: readDagNodeId(capabilityJob.inputJson)
+      });
+      try {
+        await context.computerSessionRuntime.continueBrowserActionPromptByCapabilityJob(`browser-action:${payload.requestId}`);
+      } catch (error) {
+        broadcast(clients, {
+          type: "browserAction.progress",
+          actionSessionId: completed.session.id,
+          status: "computer_session_prompt_continuation_failed",
+          detail: {
+            requestId: payload.requestId,
+            error: error instanceof Error ? error.message : "unknown_error"
+          }
+        });
+      }
       resolveBrowserActionCommandWaiter(browserActionCommandWaiters, payload.requestId, completed.result);
       broadcast(clients, {
         type: "browserAction.result",
@@ -233,6 +251,11 @@ export async function handleBrowserBridgeRoute(
   }
 
   return false;
+}
+
+function readDagNodeId(input: unknown): string | undefined {
+  const record = input && typeof input === "object" ? input as Record<string, unknown> : {};
+  return typeof record.dagNodeId === "string" ? record.dagNodeId : undefined;
 }
 
 function scheduleBackgroundPerceptionObserve(input: {

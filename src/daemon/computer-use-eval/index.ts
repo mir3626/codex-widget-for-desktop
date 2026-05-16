@@ -8,6 +8,7 @@ import type {
   ComputerUseTaskSuccess
 } from "../../shared/protocol.js";
 import type { StorageService } from "../storage/storage.js";
+export { auditComputerUseVerifier } from "./verifierAudit.js";
 
 export function inferEvalModalitiesFromCapabilityKind(kind: CapabilityJobSummary["kind"]): ComputerUseEvalModality[] {
   if (kind === "browser_action" || kind === "browser_chrome") return ["browser"];
@@ -82,6 +83,7 @@ export function finalizeEvalRunFromSteps(input: {
   const blocked = steps.some((step) => step.failureClass === "restricted_surface" || step.failureClass === "external_blocker");
   const taskSuccess = input.taskSuccess ?? (failed ? "failed" : blocked ? "blocked" : "passed");
   const failureClass = input.failureClass ?? firstFailureClass(steps.map((step) => step.failureClass)) ?? (failed ? "unknown" : "none");
+  const actionCount = steps.reduce((sum, step) => sum + readEvalStepActionCount(step), 0);
   return input.storage.updateComputerUseEvalRun({
     id: input.runId,
     status: input.status ?? (taskSuccess === "failed" ? "failed" : "completed"),
@@ -91,7 +93,7 @@ export function finalizeEvalRunFromSteps(input: {
     metrics: {
       ...run.metrics,
       steps: steps.length,
-      actionCount: steps.filter((step) => step.kind.includes("capability:")).length,
+      actionCount,
       proofRecorded: steps.some((step) => String(step.phase).includes("verif") || hasVerification(step.output)),
       clarificationCount: steps.filter((step) => step.phase === "clarifying").length
     }
@@ -177,6 +179,17 @@ function firstFailureClass(classes: Array<ComputerUseFailureClass | undefined>):
 
 function hasVerification(value: unknown): boolean {
   return Boolean(JSON.stringify(value ?? {}).includes("verification"));
+}
+
+function readEvalStepActionCount(step: { kind: string; output?: unknown }): number {
+  if (step.output && typeof step.output === "object" && !Array.isArray(step.output)) {
+    const record = step.output as Record<string, unknown>;
+    const explicitCount = Number(record.actionCount ?? record.succeededActionCount);
+    if (Number.isFinite(explicitCount) && explicitCount > 0) {
+      return Math.floor(explicitCount);
+    }
+  }
+  return step.kind.includes("capability:") ? 1 : 0;
 }
 
 function isFinalCapabilityPhase(phase: string): boolean {

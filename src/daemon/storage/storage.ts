@@ -49,6 +49,7 @@ import {
 } from "./artifacts.js";
 import {
   insertBlob,
+  readBlob,
   writeBlob
 } from "./blobs.js";
 import {
@@ -91,6 +92,11 @@ import {
   updateComputerUseEvalRun,
   upsertCapabilityDagNode
 } from "./researchArchitecture.js";
+import {
+  listComputerUseSessionSnapshots,
+  readComputerUseSessionSnapshot,
+  upsertComputerUseSessionSnapshot
+} from "./computerUseSessions.js";
 import {
   createAutonomyPermissionProfile,
   createAutonomyRun,
@@ -194,6 +200,7 @@ export function createStorageService(options: StorageServiceOptions = {}): Stora
       insertBlob(database, blob);
       return blob;
     },
+    readBlob: (id) => readBlob(database, id),
     createCapabilityJob: (input) => createCapabilityJob(database, input),
     readCapabilityJob: (id) => readCapabilityJob(database, id),
     listCapabilityJobs: (input = {}) => listCapabilityJobs(database, input),
@@ -226,6 +233,9 @@ export function createStorageService(options: StorageServiceOptions = {}): Stora
     upsertCapabilityDagNode: (input) => upsertCapabilityDagNode(database, input),
     readCapabilityDagNode: (id) => readCapabilityDagNode(database, id),
     listCapabilityDagNodes: (dagRunId) => listCapabilityDagNodes(database, dagRunId),
+    upsertComputerUseSessionSnapshot: (input) => upsertComputerUseSessionSnapshot(database, input),
+    readComputerUseSessionSnapshot: (sessionId) => readComputerUseSessionSnapshot(database, sessionId),
+    listComputerUseSessionSnapshots: (input = {}) => listComputerUseSessionSnapshots(database, input),
     createAutonomyPermissionProfile: (input) => createAutonomyPermissionProfile(database, input),
     readAutonomyPermissionProfile: (id) => readAutonomyPermissionProfile(database, id),
     listAutonomyPermissionProfiles: (input = {}) => listAutonomyPermissionProfiles(database, input),

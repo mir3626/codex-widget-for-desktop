@@ -92,7 +92,7 @@ export function isRequirementAllowed(grants: AutonomyPermissionGrants, requireme
     case "command":
       return isCommandAllowed(grants, requirement.value);
     case "package_install":
-      return grants.packageInstall;
+      return grants.packageInstall && isPackageInstallAllowed(grants, requirement.value);
     case "os_mutation":
       return grants.osMutation;
     case "generated_tool_materialization":
@@ -148,6 +148,32 @@ function isCommandAllowed(grants: AutonomyPermissionGrants, command: string): bo
     return false;
   }
   return grants.commands.allowPrefixes.some((prefix) => normalized.toLowerCase().startsWith(prefix.trim().toLowerCase()));
+}
+
+function isPackageInstallAllowed(grants: AutonomyPermissionGrants, value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized || normalized === "isolated_runtime_workspace" || normalized.startsWith("file:")) {
+    return true;
+  }
+  const allowlist = Array.isArray(grants.packageAllowlist) && grants.packageAllowlist.length ? grants.packageAllowlist : ["file:*"];
+  return allowlist.some((pattern) => matchesPackagePattern(pattern, normalized));
+}
+
+function matchesPackagePattern(pattern: string, value: string): boolean {
+  const normalizedPattern = pattern.trim().toLowerCase();
+  if (!normalizedPattern) {
+    return false;
+  }
+  if (normalizedPattern === "*" || normalizedPattern === value) {
+    return true;
+  }
+  if (normalizedPattern.endsWith("*")) {
+    return value.startsWith(normalizedPattern.slice(0, -1));
+  }
+  if (!normalizedPattern.includes("@") && value.startsWith(`${normalizedPattern}@`)) {
+    return true;
+  }
+  return false;
 }
 
 function isWithinRoot(value: string, root: string): boolean {

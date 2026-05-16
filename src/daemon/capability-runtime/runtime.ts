@@ -33,6 +33,7 @@ export class CapabilityRuntime {
   private readonly helpers = new CapabilityHelperSupervisor();
   private readonly handlers = new Map<CapabilityJobKind, CapabilityHandler>();
   private readonly activeRuns = new Map<string, Promise<void>>();
+  private readonly transientInputs = new Map<string, unknown>();
   private dispatchTimer: NodeJS.Timeout | undefined;
   private shuttingDown = false;
 
@@ -69,6 +70,7 @@ export class CapabilityRuntime {
   markShutdown(): CapabilityJobSummary[] {
     this.shuttingDown = true;
     this.cancellations.cancelAll("daemon_shutdown");
+    this.transientInputs.clear();
     const jobs = this.options.storage.markActiveCapabilityJobsForShutdown();
     for (const job of jobs) {
       this.emit({
@@ -102,6 +104,9 @@ export class CapabilityRuntime {
       leaseId: input.leaseId ?? input.lockKey,
       approvalId: safety.approvalId ?? input.approvalId
     });
+    if (requiresTransientCapabilityInput(input.kind, input.input)) {
+      this.transientInputs.set(job.id, input.input);
+    }
     this.emitJobEvent(job, "queued", `Capability job queued: ${job.kind}`, { safety: safety.reason });
     if (safety.requiresApproval) {
       const waiting = this.options.storage.updateCapabilityJob({
@@ -136,6 +141,7 @@ export class CapabilityRuntime {
         completedAt: new Date().toISOString(),
         lastError: "approval_deadline_expired"
       });
+      this.transientInputs.delete(expired.id);
       this.emitJobEvent(expired, "expired", "Capability approval expired before execution.");
       return expired;
     }
@@ -173,6 +179,7 @@ export class CapabilityRuntime {
       detail: { previousStatus: job.status }
     });
     this.options.storage.releaseCapabilityLock({ jobId: cancelled.id });
+    this.transientInputs.delete(cancelled.id);
     this.emitJobEvent(cancelled, "cancelled", `Capability job cancelled: ${reason}`);
     return cancelled;
   }
@@ -199,6 +206,7 @@ export class CapabilityRuntime {
         completedAt: new Date().toISOString(),
         lastError: "deadline_expired"
       });
+      this.transientInputs.delete(expired.id);
       this.emitJobEvent(expired, "expired", "Capability job expired before execution.");
       return;
     }
@@ -210,6 +218,7 @@ export class CapabilityRuntime {
         completedAt: new Date().toISOString(),
         lastError: leaseDecision.reason
       });
+      this.transientInputs.delete(failed.id);
       this.emitJobEvent(failed, leaseDecision.status === "expired" ? "expired" : "failed", leaseDecision.reason, leaseDecision.detail);
       return;
     }
@@ -254,15 +263,16 @@ export class CapabilityRuntime {
       });
       this.emitJobEvent(job, "executing", `Capability job running: ${job.kind}`);
       const handler = this.handlers.get(job.kind);
+      const handlerJob = this.withTransientInput(job);
       const result = handler
         ? await handler({
-            job,
+            job: handlerJob,
             signal: controller.signal,
             storage: this.options.storage,
             resources: this.resources,
             helpers: this.helpers
           })
-        : await defaultHandler(job);
+        : await defaultHandler(handlerJob);
       if (this.shuttingDown) {
         return;
       }
@@ -295,11 +305,22 @@ export class CapabilityRuntime {
       this.resources.releaseJob(job.id);
       this.emitJobEvent(failed, controller.signal.aborted ? "cancelled" : "failed", message);
     } finally {
+      this.transientInputs.delete(job.id);
       this.options.storage.releaseCapabilityLock({ jobId: job.id });
       this.scheduler.finish(job.id);
       this.cancellations.complete(job.id);
       this.scheduleQueueDispatch();
     }
+  }
+
+  private withTransientInput(job: CapabilityJobSummary): CapabilityJobSummary {
+    if (!this.transientInputs.has(job.id)) {
+      return job;
+    }
+    return {
+      ...job,
+      inputJson: this.transientInputs.get(job.id)
+    };
   }
 
   private finishJob(job: CapabilityJobSummary, result: CapabilityHandlerOutput): void {
@@ -471,6 +492,73 @@ export class CapabilityRuntime {
       elapsedMs: existing.startedAt ? Math.max(0, Date.parse(completedAt) - Date.parse(existing.startedAt)) : undefined,
       lastError: job.lastError
     });
+    this.upsertOperationFollowupDagNodes({
+      dagRunId,
+      dagNodeId,
+      capabilityJobId: job.id,
+      status,
+      completedAt,
+      outputJson: job.outputJson,
+      lastError: job.lastError
+    });
+  }
+
+  private upsertOperationFollowupDagNodes(input: {
+    dagRunId: string;
+    dagNodeId: string;
+    capabilityJobId: string;
+    status: CapabilityJobStatus;
+    completedAt: string;
+    outputJson?: unknown;
+    lastError?: string;
+  }): void {
+    const verificationStatus = input.status === "completed"
+      ? "completed"
+      : input.status === "cancelled"
+        ? "cancelled"
+        : "failed";
+    const verificationNodeId = `${input.dagNodeId}:verification`;
+    this.options.storage.upsertCapabilityDagNode({
+      id: verificationNodeId,
+      dagRunId: input.dagRunId,
+      kind: "verification",
+      status: verificationStatus,
+      capabilityJobId: input.capabilityJobId,
+      dependsOn: [input.dagNodeId],
+      input: {
+        capabilityJobId: input.capabilityJobId,
+        actionNodeId: input.dagNodeId
+      },
+      output: {
+        jobStatus: input.status,
+        verification: readCapabilityVerification(input.outputJson),
+        lastError: input.lastError
+      },
+      startedAt: input.completedAt,
+      completedAt: input.completedAt,
+      elapsedMs: 0,
+      lastError: input.lastError
+    });
+    this.options.storage.upsertCapabilityDagNode({
+      id: `${input.dagNodeId}:eval_ledger`,
+      dagRunId: input.dagRunId,
+      kind: "eval_ledger",
+      status: verificationStatus,
+      capabilityJobId: input.capabilityJobId,
+      dependsOn: [verificationNodeId],
+      input: {
+        capabilityJobId: input.capabilityJobId,
+        verificationNodeId
+      },
+      output: {
+        recorded: true,
+        jobStatus: input.status
+      },
+      startedAt: input.completedAt,
+      completedAt: input.completedAt,
+      elapsedMs: 0,
+      lastError: input.lastError
+    });
   }
 
   private emit(event: CapabilityRuntimeEvent): void {
@@ -536,6 +624,11 @@ function isLedgerActivityPhase(phase: CapabilityEventPhase): boolean {
 
 function isFinalEvalPhase(phase: CapabilityEventPhase, status: CapabilityJobStatus): boolean {
   return (phase === "completed" || phase === "failed" || phase === "cancelled" || phase === "expired") && isFinalStatus(status);
+}
+
+function readCapabilityVerification(outputJson: unknown): unknown {
+  const record = outputJson && typeof outputJson === "object" ? outputJson as Record<string, unknown> : {};
+  return record.capabilityVerification ?? record.verification;
 }
 
 function readEvalRunId(input: unknown): string | undefined {
@@ -636,7 +729,105 @@ function sanitizeCapabilityInputForPersistence(kind: CapabilityJobKind, input: u
       throw new Error("Refusing to persist or execute a terminal capability command containing credential-like text.");
     }
   }
+  if (kind === "browser_chrome" && isFileUploadBrowserChromeInput(input)) {
+    return redactFileUploadCapabilityInput(input);
+  }
+  if (kind === "browser_chrome" && isPermissionBrowserChromeInput(input)) {
+    return redactPermissionCapabilityInput(input);
+  }
   return redactSensitiveCapabilityValue(input);
+}
+
+function requiresTransientCapabilityInput(kind: CapabilityJobKind, input: unknown): boolean {
+  return kind === "browser_chrome" && (
+    (isFileUploadBrowserChromeInput(input) && containsFileUploadPaths(input)) ||
+    (isPermissionBrowserChromeInput(input) && containsPermissionUrl(input))
+  );
+}
+
+function isFileUploadBrowserChromeInput(input: unknown): boolean {
+  if (!input || typeof input !== "object") {
+    return false;
+  }
+  const command = (input as Record<string, unknown>).command;
+  return typeof command === "string" && command.startsWith("file_upload.");
+}
+
+function isPermissionBrowserChromeInput(input: unknown): boolean {
+  if (!input || typeof input !== "object") {
+    return false;
+  }
+  const command = (input as Record<string, unknown>).command;
+  return typeof command === "string" && command.startsWith("permission.");
+}
+
+function containsFileUploadPaths(input: unknown): boolean {
+  if (!input || typeof input !== "object") {
+    return false;
+  }
+  const record = input as Record<string, unknown>;
+  return Array.isArray(record.approvedFilePaths) || Array.isArray(record.files);
+}
+
+function containsPermissionUrl(input: unknown): boolean {
+  if (!input || typeof input !== "object") {
+    return false;
+  }
+  const record = input as Record<string, unknown>;
+  return typeof record.url === "string" || typeof record.primaryUrl === "string";
+}
+
+function redactFileUploadCapabilityInput(input: unknown): unknown {
+  const record = input && typeof input === "object" ? input as Record<string, unknown> : {};
+  const output = redactSensitiveCapabilityValue(record) as Record<string, unknown>;
+  if (Array.isArray(record.approvedFilePaths)) {
+    output.approvedFilePaths = record.approvedFilePaths.slice(0, 50).map(redactLocalPathForPersistence);
+  }
+  if (Array.isArray(record.files)) {
+    output.files = record.files.slice(0, 50).map(redactLocalPathForPersistence);
+  }
+  return output;
+}
+
+function redactPermissionCapabilityInput(input: unknown): unknown {
+  const record = input && typeof input === "object" ? input as Record<string, unknown> : {};
+  const output = redactSensitiveCapabilityValue(record) as Record<string, unknown>;
+  for (const key of ["url", "primaryUrl"]) {
+    if (typeof record[key] === "string") {
+      output[key] = redactUrlPathForPersistence(record[key]);
+    }
+  }
+  return output;
+}
+
+function redactLocalPathForPersistence(value: unknown): unknown {
+  if (typeof value !== "string") {
+    return "[redacted]";
+  }
+  const parts = value.split(/[\\/]/).filter(Boolean);
+  return {
+    basename: parts[parts.length - 1]?.slice(0, 180) || "[redacted]",
+    pathRedacted: true
+  };
+}
+
+function redactUrlPathForPersistence(value: unknown): unknown {
+  if (typeof value !== "string") {
+    return "[redacted]";
+  }
+  try {
+    const url = new URL(value);
+    return {
+      origin: url.origin,
+      url: `${url.origin}/[redacted]`,
+      pathRedacted: true
+    };
+  } catch {
+    return {
+      url: "[redacted]",
+      pathRedacted: true
+    };
+  }
 }
 
 function redactSensitiveCapabilityValue(value: unknown, key = ""): unknown {

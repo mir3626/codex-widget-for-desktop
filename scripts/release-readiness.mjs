@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync, writeFileSync, mkdirSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { probeBrowserNativeDesktopHelperContract } from "./lib/browser-native-desktop-helper-contract.mjs";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
@@ -26,6 +27,7 @@ const deferredGatesPath = resolve(
 const checks = [];
 const blockers = [];
 const deferredGates = readDeferredGates(deferredGatesPath);
+const nativeHelperPath = join(root, "dist", "browser-native-desktop-helper", "browser-native-desktop-helper.exe");
 
 runCheck("browser-store-readiness", process.execPath, ["scripts/smoke-browser-store-readiness.mjs"]);
 runCheck("browser-store-submission-packet", process.execPath, ["scripts/prepare-browser-store-submission.mjs"]);
@@ -47,12 +49,26 @@ const artifacts = [
   {
     id: "browser-extension-zip",
     path: join(root, "dist", "providers", `codex-widget-dom-extension-${version}.zip`)
+  },
+  {
+    id: "browser-native-desktop-helper",
+    path: nativeHelperPath
   }
 ];
 
 for (const artifact of artifacts) {
   assertFileCheck(artifact.id, artifact.path);
 }
+
+const nativeHelperContract = probeBrowserNativeDesktopHelperContract({ helperPath: nativeHelperPath });
+recordNativeHelperContractCheck(nativeHelperContract);
+
+const nativeHelperSigning = readNativeHelperSigningGate(nativeHelperPath);
+manualGate(
+  "browser-native-helper-signing",
+  nativeHelperSigning.valid,
+  nativeHelperSigning.reason
+);
 
 const soakReport = readJsonReport(reportPath, "release-soak-report");
 if (soakReport) {
@@ -80,7 +96,9 @@ const summary = {
   strictManualGates,
   minSoakMs,
   multiHourSoakMs,
-  deferredGatesPath,
+  deferredGatesPath: displayPath(deferredGatesPath),
+  pathsRedacted: true,
+  nativeHelperContract,
   checks,
   blockers,
   status: automatedFailed ? "fail" : manualBlocked ? "manual-blocked" : deferred ? "deferred" : "pass"
@@ -118,7 +136,7 @@ function runCheck(id, command, args) {
     checks.push({
       id,
       status: "fail",
-      detail: [result.stdout, result.stderr].filter(Boolean).join("\n").trim()
+      detail: sanitizeDetail([result.stdout, result.stderr].filter(Boolean).join("\n").trim())
     });
     return;
   }
@@ -126,13 +144,13 @@ function runCheck(id, command, args) {
   checks.push({
     id,
     status: "pass",
-    detail: result.stdout.trim().split(/\r?\n/).at(-1) ?? ""
+    detail: sanitizeDetail(result.stdout.trim().split(/\r?\n/).at(-1) ?? "")
   });
 }
 
 function assertFileCheck(id, path) {
   if (!existsSync(path)) {
-    checks.push({ id, status: "fail", detail: `missing ${path}` });
+    checks.push({ id, status: "fail", detail: `missing ${displayPath(path)}` });
     return;
   }
 
@@ -140,13 +158,39 @@ function assertFileCheck(id, path) {
   checks.push({
     id,
     status: size > 0 ? "pass" : "fail",
-    detail: `${path} (${formatBytes(size)})`
+    detail: `${displayPath(path)} (${formatBytes(size)})`
+  });
+}
+
+function recordNativeHelperContractCheck(contract) {
+  const status = contract.status === "pass" ? "pass" : "fail";
+  const manifest = contract.evidence?.statusManifest;
+  const watch = contract.evidence?.watchPreflight;
+  const monitor = contract.evidence?.monitoredWatchPreflight;
+  const executor = contract.evidence?.foregroundWatchExecutor;
+  const disabledHelperV2Commands = Array.isArray(contract.evidence?.disabledHelperV2Commands)
+    ? contract.evidence.disabledHelperV2Commands.length
+    : 0;
+  const detail = status === "pass"
+    ? [
+        `helper=${contract.helper?.basename ?? "unknown"}`,
+        `manifest=${manifest?.schemaVersion ?? "missing"}`,
+        `watch=${watch?.schemaVersion ?? "missing"}`,
+        `monitorSamples=${monitor?.monitorSampleCount ?? 0}`,
+        `executorEnabled=${executor?.enabled === true ? "true" : "false"}`,
+        `disabledV2Commands=${disabledHelperV2Commands}`
+      ].join(" ")
+    : `blockers=${(contract.blockers ?? []).join(",") || "unknown"}`;
+  checks.push({
+    id: "browser-native-helper-contract",
+    status,
+    detail
   });
 }
 
 function readJsonReport(path, id) {
   if (!existsSync(path)) {
-    checks.push({ id, status: "fail", detail: `missing ${path}` });
+    checks.push({ id, status: "fail", detail: `missing ${displayPath(path)}` });
     return null;
   }
 
@@ -200,7 +244,7 @@ function assertSoakReport(report, path) {
     id: "release-soak-report",
     status: failures.length === 0 ? "pass" : "fail",
     detail: failures.length === 0
-      ? `${path} duration=${Math.round(durationMs / 1000)}s samples=${runtimeSamples} pongs=${pongCount} workingSet=${endWorkingSetMb}MB`
+      ? `${displayPath(path)} duration=${Math.round(durationMs / 1000)}s samples=${runtimeSamples} pongs=${pongCount} workingSet=${endWorkingSetMb}MB`
       : failures.join("; ")
   });
 }
@@ -272,7 +316,7 @@ function readDeferredGates(path) {
     checks.push({
       id: "deferred-gates",
       status: "pass",
-      detail: `${path} gates=${entries.size}`
+      detail: `${displayPath(path)} gates=${entries.size}`
     });
     return entries;
   } catch (error) {
@@ -319,7 +363,7 @@ function readBrowserStoreSubmissionConfirmation(path) {
       id: "browser-store-submission-report",
       status: failures.length === 0 ? "pass" : "fail",
       detail: failures.length === 0
-        ? `${path} store=${report.store} submittedAt=${report.submittedAt}`
+        ? `${displayPath(path)} store=${report.store} submittedAt=${report.submittedAt}`
         : failures.join("; ")
     });
 
@@ -336,6 +380,75 @@ function readBrowserStoreSubmissionConfirmation(path) {
   }
 }
 
+function readNativeHelperSigningGate(helperPath) {
+  if (process.platform !== "win32") {
+    const reason = "Native helper signing must be verified on Windows release infrastructure.";
+    checks.push({ id: "browser-native-helper-signature", status: "manual", detail: reason });
+    return { valid: false, reason };
+  }
+  if (!existsSync(helperPath)) {
+    const reason = `Native helper is missing: ${displayPath(helperPath)}`;
+    checks.push({ id: "browser-native-helper-signature", status: "fail", detail: reason });
+    return { valid: false, reason };
+  }
+
+  const command = [
+    "$ErrorActionPreference = 'Continue'",
+    "$sig = Get-AuthenticodeSignature -LiteralPath $env:CODEX_WIDGET_HELPER_PATH",
+    "[pscustomobject]@{ Status = [string]$sig.Status; StatusMessage = [string]$sig.StatusMessage; SignerCertificate = if ($sig.SignerCertificate) { $sig.SignerCertificate.Subject } else { $null } } | ConvertTo-Json -Compress"
+  ].join("; ");
+  const result = runPowerShellSignatureCheck(command, helperPath);
+  if (result.status !== 0 || !result.stdout.trim()) {
+    const reason = "Native helper signature status is unavailable.";
+    checks.push({
+      id: "browser-native-helper-signature",
+      status: "fail",
+      detail: sanitizeDetail([reason, result.stderr].filter(Boolean).join(" "))
+    });
+    return { valid: false, reason };
+  }
+
+  try {
+    const signature = JSON.parse(result.stdout.trim());
+    const detail = sanitizeDetail(`${signature.Status || "Unavailable"} ${signature.StatusMessage || ""}`.trim());
+    const valid = signature.Status === "Valid";
+    checks.push({
+      id: "browser-native-helper-signature",
+      status: valid ? "pass" : "manual",
+      detail: valid
+        ? `valid ${signature.SignerCertificate || "signature"}`
+        : `unsigned or invalid helper: ${detail || "no Authenticode status"}`
+    });
+    return valid
+      ? { valid: true, reason: "Native helper signature is valid." }
+      : { valid: false, reason: `Native helper must be Authenticode signed before release readiness can pass. Current status: ${detail || "unavailable"}.` };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "invalid signature JSON";
+    checks.push({ id: "browser-native-helper-signature", status: "fail", detail: reason });
+    return { valid: false, reason };
+  }
+}
+
+function runPowerShellSignatureCheck(command, helperPath) {
+  const env = {
+    ...process.env,
+    CODEX_WIDGET_HELPER_PATH: helperPath
+  };
+  const pwsh = spawnSync("pwsh.exe", ["-NoProfile", "-Command", command], {
+    encoding: "utf8",
+    env,
+    windowsHide: true
+  });
+  if (!pwsh.error && pwsh.status === 0 && pwsh.stdout.trim()) {
+    return pwsh;
+  }
+  return spawnSync("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command], {
+    encoding: "utf8",
+    env,
+    windowsHide: true
+  });
+}
+
 function normalizePositiveNumber(value, fallback) {
   const normalized = Number(value);
   return Number.isFinite(normalized) && normalized > 0 ? Math.floor(normalized) : fallback;
@@ -346,4 +459,23 @@ function formatBytes(bytes) {
     return `${Math.round(bytes / 1024)} KB`;
   }
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function displayPath(path) {
+  const rel = relative(root, path);
+  if (rel && !rel.startsWith("..") && !isAbsolute(rel)) {
+    return rel || ".";
+  }
+  return sanitizeDetail(path);
+}
+
+function sanitizeDetail(value) {
+  if (!value) {
+    return "";
+  }
+  const rootBackslash = root;
+  const rootSlash = root.replaceAll("\\", "/");
+  return String(value)
+    .replaceAll(rootBackslash, "<repo>")
+    .replaceAll(rootSlash, "<repo>");
 }

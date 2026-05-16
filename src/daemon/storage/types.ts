@@ -38,6 +38,12 @@ import type {
   ComputerUseEvalStatus,
   ComputerUseEvalStepSummary,
   ComputerUseFailureClass,
+  ComputerSessionActionFeedbackSummary,
+  ComputerSessionObservationSummary,
+  ComputerSessionPromptRunSummary,
+  ComputerSessionRollbackActionSummary,
+  ComputerSessionSummary,
+  NormalizedComputerActionBatch,
   PerceptionGraphSummary,
   StructuredFailureMemoryRecord
 } from "../../shared/protocol.js";
@@ -123,6 +129,7 @@ export type StorageService = {
   stopVisionStream: (input: StopVisionStreamInput) => VisionStreamSummary;
   completeVisionRecording: (input: CompleteVisionRecordingInput) => VisionStreamSummary;
   writeBlob: (input: { bytes: Buffer; mime: string; displayName: string }) => StoredBlob;
+  readBlob: (id: string) => StoredBlob | null;
   createCapabilityJob: (input: CapabilityJobCreateInput) => CapabilityJobSummary;
   readCapabilityJob: (id: string) => CapabilityJobSummary | null;
   listCapabilityJobs: (input?: { sessionId?: string; statuses?: CapabilityJobSummary["status"][]; limit?: number }) => CapabilityJobSummary[];
@@ -155,6 +162,9 @@ export type StorageService = {
   upsertCapabilityDagNode: (input: CapabilityDagNodeUpsertInput) => CapabilityDagNodeSummary;
   readCapabilityDagNode: (id: string) => CapabilityDagNodeSummary | null;
   listCapabilityDagNodes: (dagRunId: string) => CapabilityDagNodeSummary[];
+  upsertComputerUseSessionSnapshot: (input: ComputerUseSessionSnapshotInput) => ComputerUseSessionSnapshot;
+  readComputerUseSessionSnapshot: (sessionId: string) => ComputerUseSessionSnapshot | null;
+  listComputerUseSessionSnapshots: (input?: { states?: ComputerSessionSummary["state"][]; profileId?: string; limit?: number }) => ComputerUseSessionSnapshot[];
   createAutonomyPermissionProfile: (input: AutonomyPermissionProfileCreateInput) => AutonomyPermissionProfile;
   readAutonomyPermissionProfile: (id: string) => AutonomyPermissionProfile | null;
   listAutonomyPermissionProfiles: (input?: { status?: AutonomyPermissionProfileStatus; limit?: number }) => AutonomyPermissionProfile[];
@@ -187,6 +197,25 @@ export type StorageService = {
 };
 
 export type StorageServiceOptions = StoragePathOptions;
+
+export type ComputerUseSessionSnapshotInput = {
+  summary: ComputerSessionSummary;
+  observations?: ComputerSessionObservationSummary[];
+  actionFeedbacks?: ComputerSessionActionFeedbackSummary[];
+  actionBatches?: NormalizedComputerActionBatch[];
+  promptRuns?: ComputerSessionPromptRunSummary[];
+  rollbackActions?: ComputerSessionRollbackActionSummary[];
+  safetyDecisions?: unknown[];
+  verifierResults?: unknown[];
+  recoveryAttempts?: number;
+  screenTileCache?: unknown;
+};
+
+export type ComputerUseSessionSnapshot = Required<Omit<ComputerUseSessionSnapshotInput, "screenTileCache">> & {
+  screenTileCache?: unknown;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type SessionDefaults = {
   title?: string;

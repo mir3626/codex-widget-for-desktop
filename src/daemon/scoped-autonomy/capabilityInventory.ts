@@ -54,7 +54,9 @@ function inventoryItemFromTool(tool: AutonomyGeneratedToolSpec, now: string): Au
     status: "generated",
     source: "generated",
     operations: inferOperationsForCapability(tool.capability),
-    riskClass: manifest?.stability.externalDependencyWarnings.some((warning) => /mutation|credential/i.test(warning)) ? "high_risk" : "side_effect",
+    riskClass: manifest?.stability.externalDependencyWarnings.some((warning) => /mutation|credential/i.test(warning))
+      ? "high_risk"
+      : generatedRiskClassForCapability(tool.capability),
     requiredGrants: tool.requiredGrants,
     toolSpecId: tool.id,
     blockers: [],
@@ -190,7 +192,17 @@ function inferOperationsForCapability(capability: string): string[] {
   if (capability === "terminal_generated_tool") {
     return ["generate_terminal_tool", "execute_terminal_tool"];
   }
+  if (capability === "local_document_conversion") {
+    return ["draft_markdown", "render_pdf", "store_artifact", "verify_artifact"];
+  }
   return [capability];
+}
+
+function generatedRiskClassForCapability(capability: string): AutonomyCapabilityInventoryItem["riskClass"] {
+  if (capability === "web_research_to_pdf" || capability === "browser_download_verify" || capability === "local_document_conversion") {
+    return "read_only";
+  }
+  return "side_effect";
 }
 
 export function requiredGrantsForCommand(command: string): AutonomyPermissionRequirement[] {

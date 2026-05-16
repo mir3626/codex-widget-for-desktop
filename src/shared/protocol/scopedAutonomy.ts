@@ -27,6 +27,7 @@ export type AutonomyPermissionGrants = {
     denyPatterns: string[];
   };
   packageInstall: boolean;
+  packageAllowlist: string[];
   osMutation: boolean;
   generatedToolMaterialization: boolean;
   generatedToolExecution: boolean;

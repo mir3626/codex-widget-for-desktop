@@ -1,0 +1,35 @@
+{
+  "id": "browser-chrome-public-extension-debugger-print-pdf-1",
+  "command": "debugger.print_to_pdf",
+  "userScenario": "User asks the widget to print a public unauthenticated browser tab to PDF through the Browser Bridge debugger adapter while keeping arbitrary CDP evaluation unavailable.",
+  "architectureWorkflow": [
+    "Playwright launches Chromium with the real unpacked Browser Bridge extension.",
+    "Computer Session queues the high-risk fixed debugger.print_to_pdf command.",
+    "One-time approval releases only the bounded Browser Chrome command.",
+    "The extension attaches Chrome debugger to the allowed public page tab and calls Page.printToPDF.",
+    "The result stores byte length and hash only; raw PDF bytes are omitted from the report.",
+    "The daemon records capability job, DAG verification, eval-ledger, redaction, and cleanup evidence."
+  ],
+  "success": true,
+  "status": "passed",
+  "result": {
+    "elapsedMs": 1213,
+    "p95LatencyMs": 1213,
+    "sourceHost": "example.com",
+    "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+    "verifierNodeCount": 1,
+    "evalLedgerNodeCount": 2,
+    "cleanupReconciled": true,
+    "redaction": {
+      "localPathPolicy": "path_redacted",
+      "urls": "public_url_hash_only",
+      "rawPdfBytesInReport": false,
+      "arbitraryCdpEvalAllowed": false,
+      "credentials": "not_used"
+    },
+    "byteLength": 19425,
+    "dataOmitted": true,
+    "pdfSha256": "212f9a37d97fd0cdff80e46a0bda285c94adfc8db5d3fd53d0edbae621ef086f"
+  },
+  "improvementAndFollowUp": "This proves the real extension debugger fixed-command path on a repeated public unauthenticated page."
+}

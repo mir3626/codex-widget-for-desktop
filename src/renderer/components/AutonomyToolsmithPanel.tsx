@@ -1,4 +1,4 @@
-import { Bot, Clipboard, FileCheck, Play, RefreshCw, Save, ShieldCheck, Wrench } from "lucide-react";
+import { Bot, Clipboard, FileCheck, Play, RefreshCw, RotateCcw, Save, ShieldCheck, Undo2, Wrench } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type {
   AutonomyCapabilityGap,
@@ -61,6 +61,16 @@ export function AutonomyToolsmithPanel({ daemonPort }: AutonomyToolsmithPanelPro
     const missing = Array.isArray(permission.missingRequirements) ? permission.missingRequirements : [];
     return missing.filter(isPermissionRequirement);
   }, [selectedRun]);
+  const rerunnableToolRun = useMemo(() => {
+    const toolRuns = runDetail?.toolRuns ?? [];
+    for (let index = toolRuns.length - 1; index >= 0; index -= 1) {
+      const toolRun = toolRuns[index];
+      if (toolRun.status === "completed" && toolRun.mode === "execute") {
+        return toolRun;
+      }
+    }
+    return null;
+  }, [runDetail]);
 
   useEffect(() => {
     void refresh();
@@ -145,6 +155,7 @@ export function AutonomyToolsmithPanel({ daemonPort }: AutonomyToolsmithPanelPro
         filesystem: { readRoots: [], writeRoots: [] },
         commands: { allowPrefixes: ["node"], denyPatterns: [] },
         packageInstall: false,
+        packageAllowlist: ["file:*"],
         osMutation: false,
         generatedToolMaterialization: true,
         generatedToolExecution: true,
@@ -220,9 +231,41 @@ export function AutonomyToolsmithPanel({ daemonPort }: AutonomyToolsmithPanelPro
     setMessage("Debug bundle copied");
   }
 
+  async function rerunSelectedToolRun() {
+    if (!rerunnableToolRun) {
+      return;
+    }
+    setStatus("loading");
+    const response = await postJson<{ ok: boolean; toolRun?: AutonomyToolRunSummary; error?: string }>(daemonPort, "/computer-use/autonomy/rerun", {
+      toolRunId: rerunnableToolRun.id
+    });
+    setMessage(`Rerun ${response.toolRun?.status ?? "submitted"} for ${shortId(rerunnableToolRun.id)}`);
+    setStatus("idle");
+    await refresh();
+  }
+
+  async function rollbackSelectedRun() {
+    if (!selectedRun) {
+      return;
+    }
+    setStatus("loading");
+    const response = await postJson<{ ok: boolean; toolRun?: AutonomyToolRunSummary; error?: string }>(daemonPort, "/computer-use/autonomy/rollback", {
+      autonomyRunId: selectedRun.id,
+      includeUserArtifacts: false
+    });
+    setMessage(`Rollback ${response.toolRun?.status ?? "submitted"} for ${shortId(selectedRun.id)}`);
+    setStatus("idle");
+    await refresh();
+  }
+
   const dagNodes = runDetail?.dagNodes ?? [];
   const toolRuns = runDetail?.toolRuns ?? [];
   const gaps = runDetail?.gaps ?? [];
+  const selectedRunTools = selectedRun
+    ? tools.filter((tool) => selectedRun.toolSpecIds.includes(tool.id))
+    : [];
+  const runEvidence = summarizeToolsmithRunEvidence(selectedRunTools, toolRuns);
+  const rerunHistory = summarizeRerunHistory(toolRuns);
 
   return (
     <section className="autonomy-panel" aria-label="Autonomy Toolsmith">
@@ -238,6 +281,12 @@ export function AutonomyToolsmithPanel({ daemonPort }: AutonomyToolsmithPanelPro
           </button>
           <button type="button" aria-label="Copy autonomy debug bundle" data-tooltip="Copy debug bundle" disabled={!selectedRun} onClick={() => void copyDebugBundle()}>
             <Clipboard size={12} />
+          </button>
+          <button type="button" aria-label="Rerun selected autonomy tool run" data-tooltip="Rerun last tool" disabled={!rerunnableToolRun || status === "loading"} onClick={() => void rerunSelectedToolRun()}>
+            <RotateCcw size={12} />
+          </button>
+          <button type="button" aria-label="Rollback selected autonomy run" data-tooltip="Rollback run" disabled={!selectedRun || status === "loading"} onClick={() => void rollbackSelectedRun()}>
+            <Undo2 size={12} />
           </button>
           <button type="button" aria-label="Refresh autonomy state" data-tooltip="Refresh autonomy" onClick={() => void refresh()}>
             <RefreshCw size={12} />
@@ -300,11 +349,61 @@ export function AutonomyToolsmithPanel({ daemonPort }: AutonomyToolsmithPanelPro
         </div>
       </div>
 
+      {selectedRun ? (
+        <div className="autonomy-evidence-grid">
+          <div className="autonomy-evidence-card">
+            <span className={`capability-status ${runEvidence.stabilityTone}`}>{runEvidence.stability}</span>
+            <strong>Stability</strong>
+            <small>{runEvidence.rerunSummary}</small>
+          </div>
+          <div className="autonomy-evidence-card">
+            <span className={`capability-status ${runEvidence.rollbackTone}`}>{runEvidence.rollbackStatus}</span>
+            <strong>Rollback</strong>
+            <small>{runEvidence.rollbackSummary}</small>
+          </div>
+          <div className="autonomy-evidence-card">
+            <span className="capability-status active">{runEvidence.dependencyCount}</span>
+            <strong>Dependencies</strong>
+            <small>{runEvidence.dependencySummary}</small>
+          </div>
+          <div className="autonomy-evidence-card">
+            <span className={`capability-status ${runEvidence.dependencyPolicyTone}`}>{runEvidence.dependencyPolicyStatus}</span>
+            <strong>Package policy</strong>
+            <small>{runEvidence.dependencyPolicySummary}</small>
+          </div>
+          <div className="autonomy-evidence-card">
+            <span className="capability-status active">{runEvidence.artifactContractCount}</span>
+            <strong>Artifact contract</strong>
+            <small>{runEvidence.artifactSummary}</small>
+          </div>
+        </div>
+      ) : null}
+
+      {rerunHistory.length ? (
+        <div className="autonomy-rerun-history" aria-label="Toolsmith rerun comparison history">
+          <div className="computer-use-section-title">
+            <RotateCcw size={11} />
+            <strong>Rerun history</strong>
+          </div>
+          {rerunHistory.slice(0, 6).map((item) => (
+            <div key={item.id} className="autonomy-rerun-row">
+              <span className={`capability-status ${item.tone}`}>{item.verdict}</span>
+              <div>
+                <strong>{item.summary}</strong>
+                <small>{item.detail}</small>
+              </div>
+              <small>{formatActivityTime(item.timestamp)}</small>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {latestMissingGrants.length ? (
         <div className="autonomy-blocked-grants">
           {latestMissingGrants.slice(0, 5).map((grant, index) => (
-            <span key={`${grant.type}-${grant.value}-${index}`}>{grant.type}: {grant.value}</span>
+            <span key={`${grant.type}-${grant.value}-${index}`} title={grant.reason}>{grant.type}: {grant.value}</span>
           ))}
+          {latestMissingGrants.length > 5 ? <span>+{latestMissingGrants.length - 5} more</span> : null}
         </div>
       ) : null}
 
@@ -377,6 +476,7 @@ function grantsFromMissingRequirements(requirements: AutonomyPermissionRequireme
     filesystem: { readRoots: [] as string[], writeRoots: [] as string[] },
     commands: { allowPrefixes: [] as string[], denyPatterns: [] as string[] },
     packageInstall: false,
+    packageAllowlist: ["file:*"] as string[],
     osMutation: false,
     generatedToolMaterialization: false,
     generatedToolExecution: false,
@@ -395,7 +495,12 @@ function grantsFromMissingRequirements(requirements: AutonomyPermissionRequireme
     if (requirement.type === "filesystem_read") grants.filesystem.readRoots.push(requirement.value);
     if (requirement.type === "filesystem_write") grants.filesystem.writeRoots.push(requirement.value);
     if (requirement.type === "command") grants.commands.allowPrefixes.push(requirement.value);
-    if (requirement.type === "package_install") grants.packageInstall = true;
+    if (requirement.type === "package_install") {
+      grants.packageInstall = true;
+      if (requirement.value.startsWith("npm:") || requirement.value.startsWith("file:")) {
+        grants.packageAllowlist.push(requirement.value);
+      }
+    }
     if (requirement.type === "os_mutation") grants.osMutation = true;
     if (requirement.type === "generated_tool_materialization") grants.generatedToolMaterialization = true;
     if (requirement.type === "generated_tool_execution") grants.generatedToolExecution = true;
@@ -407,6 +512,7 @@ function grantsFromMissingRequirements(requirements: AutonomyPermissionRequireme
   grants.filesystem.readRoots = [...new Set(grants.filesystem.readRoots)];
   grants.filesystem.writeRoots = [...new Set(grants.filesystem.writeRoots)];
   grants.commands.allowPrefixes = [...new Set(grants.commands.allowPrefixes)];
+  grants.packageAllowlist = [...new Set(grants.packageAllowlist)];
   grants.riskClasses = [...new Set(grants.riskClasses.length ? grants.riskClasses : ["read_only"])];
   return grants;
 }
@@ -420,6 +526,176 @@ function statusTone(status: string): string {
   if (status === "failed" || status === "blocked" || status === "smoke_failed") return "error";
   if (status === "cancelled" || status === "skipped") return "warn";
   return "active";
+}
+
+function summarizeToolsmithRunEvidence(
+  tools: AutonomyGeneratedToolSpec[],
+  toolRuns: AutonomyToolRunSummary[]
+): {
+  stability: string;
+  stabilityTone: string;
+  rerunSummary: string;
+  rollbackStatus: string;
+  rollbackTone: string;
+  rollbackSummary: string;
+  dependencyCount: number;
+  dependencySummary: string;
+  dependencyPolicyStatus: string;
+  dependencyPolicyTone: string;
+  dependencyPolicySummary: string;
+  artifactContractCount: number;
+  artifactSummary: string;
+} {
+  const stabilityRatings = tools
+    .map((tool) => tool.manifest?.stability.rating ?? tool.stabilityRating)
+    .filter(Boolean)
+    .map(String);
+  const stability = stabilityRatings.length ? [...new Set(stabilityRatings)].join("+") : "unknown";
+  const manifestRerunCount = tools.reduce((sum, tool) => sum + (tool.manifest?.stability.rerunCount ?? 0), 0);
+  const latestRerunStatusValue = tools
+    .map((tool) => tool.manifest?.stability.lastRerunStatus)
+    .find(Boolean);
+  const latestRerunStatus = latestRerunStatusValue ? String(latestRerunStatusValue) : undefined;
+  const rerunRuns = toolRuns.filter((run) => run.mode === "rerun");
+  const latestRerun = rerunRuns[0];
+  const latestRerunOutput = readRecord(latestRerun?.output);
+  const latestComparison = readRecord(latestRerunOutput.rerunComparison);
+  const artifactComparison = readRecord(latestComparison.artifactComparison);
+  const changedArtifacts = Array.isArray(artifactComparison.changed) ? artifactComparison.changed.length : 0;
+  const missingArtifacts = Array.isArray(artifactComparison.missing) ? artifactComparison.missing.length : 0;
+  const addedArtifacts = Array.isArray(artifactComparison.added) ? artifactComparison.added.length : 0;
+  const artifactDelta = changedArtifacts + missingArtifacts + addedArtifacts;
+  const rerunSummary = [
+    `${manifestRerunCount || rerunRuns.length} reruns`,
+    latestRerunStatus ? `last ${latestRerunStatus}` : latestRerun ? `last ${latestRerun.status}` : "no comparison",
+    latestComparison.schemaVersion === "toolsmith-rerun-comparison.v1" ? `artifact delta ${artifactDelta}` : undefined,
+    tools.length ? `${tools.length} tools` : "no tool"
+  ].filter((part): part is string => Boolean(part)).join(" · ");
+
+  const rollbackRuns = toolRuns.filter((run) => run.mode === "rollback");
+  const latestRollback = rollbackRuns[0];
+  const latestRollbackOutput = readRecord(latestRollback?.output);
+  const deleted = Array.isArray(latestRollbackOutput.deleted) ? latestRollbackOutput.deleted.length : 0;
+  const skipped = Array.isArray(latestRollbackOutput.skipped) ? latestRollbackOutput.skipped.length : 0;
+  const rollbackActions = tools.flatMap((tool) => tool.manifest?.rollback ?? []);
+  const rollbackStatus = latestRollback?.status ?? (rollbackActions.length ? "planned" : "none");
+  const rollbackSummary = latestRollback
+    ? `${deleted} deleted · ${skipped} skipped · ${shortId(latestRollback.id)}`
+    : `${rollbackActions.length} actions · safe cleanup first`;
+
+  const dependencies = tools.flatMap((tool) => tool.manifest?.dependencies ?? []);
+  const dependencySummary = dependencies.length
+    ? summarizeDependencySources(dependencies)
+    : "no manifest dependency evidence";
+  const dependencyPrepareRun = toolRuns.find((run) => run.mode === "dependency_prepare");
+  const dependencyPolicy = readRecord(readRecord(dependencyPrepareRun?.output).policyReview);
+  const installIsolation = readRecord(dependencyPolicy.installIsolation);
+  const dependencyPolicyStatus = typeof dependencyPolicy.reviewOutcome === "string"
+    ? dependencyPolicy.reviewOutcome === "passed_local_or_allowlisted_dependency_policy"
+      ? "passed"
+      : "review"
+    : dependencyPolicy.schemaVersion === "toolsmith-dependency-policy-review.v1"
+      ? "pending"
+      : "none";
+  const dependencyPolicySummary = dependencyPolicy.schemaVersion === "toolsmith-dependency-policy-review.v1"
+    ? [
+      `local ${Number(dependencyPolicy.localFilePackageCount ?? 0)}`,
+      `external ${Number(dependencyPolicy.externalRegistryPackageCount ?? 0)}`,
+      installIsolation.ignoreScripts === true ? "scripts off" : "scripts unknown",
+      dependencyPolicy.lockfileProvenancePresent === true ? "lock proven" : dependencyPolicy.lockfileRequired === true ? "lock pending" : undefined
+    ].filter((part): part is string => Boolean(part)).join(" · ")
+    : "no policy review";
+  const artifactContracts = tools.flatMap((tool) => tool.manifest?.artifactContract ?? []);
+  const artifactSummary = artifactContracts.length
+    ? `${artifactContracts.filter((artifact) => artifact.required).length} required · ${artifactContracts.map((artifact) => artifact.role).slice(0, 3).join(", ")}`
+    : "no contract";
+
+  return {
+    stability,
+    stabilityTone: stability === "high" || stability === "medium" ? "ok" : stability === "low" ? "error" : "warn",
+    rerunSummary,
+    rollbackStatus,
+    rollbackTone: statusTone(rollbackStatus),
+    rollbackSummary,
+    dependencyCount: dependencies.length,
+    dependencySummary,
+    dependencyPolicyStatus,
+    dependencyPolicyTone: dependencyPolicyStatus === "passed" ? "ok" : dependencyPolicyStatus === "none" ? "warn" : "active",
+    dependencyPolicySummary,
+    artifactContractCount: artifactContracts.length,
+    artifactSummary
+  };
+}
+
+type RerunHistoryItem = {
+  id: string;
+  verdict: string;
+  tone: string;
+  summary: string;
+  detail: string;
+  timestamp: string;
+};
+
+function summarizeRerunHistory(toolRuns: AutonomyToolRunSummary[]): RerunHistoryItem[] {
+  return toolRuns
+    .filter((run) => run.mode === "rerun")
+    .map((run) => {
+      const output = readRecord(run.output);
+      const comparison = readRecord(output.rerunComparison);
+      const artifactComparison = readRecord(comparison.artifactComparison);
+      const matched = comparison.schemaVersion === "toolsmith-rerun-comparison.v1"
+        ? comparison.matched === true && run.status === "completed"
+        : run.status === "completed";
+      const changed = readArrayLength(artifactComparison.changed);
+      const missing = readArrayLength(artifactComparison.missing);
+      const added = readArrayLength(artifactComparison.added);
+      const leftCount = typeof artifactComparison.leftCount === "number" ? artifactComparison.leftCount : undefined;
+      const rightCount = typeof artifactComparison.rightCount === "number" ? artifactComparison.rightCount : undefined;
+      const scalarMatched = comparison.scalarMatched === true;
+      const artifactMatched = artifactComparison.matched === true;
+      const verdict = run.status !== "completed"
+        ? run.status
+        : matched
+          ? "matched"
+          : "changed";
+      const summary = comparison.schemaVersion === "toolsmith-rerun-comparison.v1"
+        ? `scalar ${scalarMatched ? "matched" : "changed"} · artifacts ${artifactMatched ? "matched" : "changed"}`
+        : "comparison unavailable";
+      const detail = [
+        `${changed} changed`,
+        `${missing} missing`,
+        `${added} added`,
+        leftCount !== undefined && rightCount !== undefined ? `${leftCount}/${rightCount} artifacts` : undefined,
+        run.elapsedMs ? `${run.elapsedMs}ms` : undefined,
+        shortId(run.id)
+      ].filter((part): part is string => Boolean(part)).join(" · ");
+      return {
+        id: run.id,
+        verdict,
+        tone: matched ? "ok" : run.status === "completed" ? "warn" : statusTone(run.status),
+        summary,
+        detail,
+        timestamp: run.completedAt ?? run.updatedAt ?? run.createdAt
+      };
+    });
+}
+
+function summarizeDependencySources(dependencies: NonNullable<AutonomyGeneratedToolSpec["manifest"]>["dependencies"]): string {
+  const counts = new Map<string, number>();
+  for (const dependency of dependencies) {
+    counts.set(dependency.source, (counts.get(dependency.source) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([source, count]) => `${source}:${count}`)
+    .join(" · ");
+}
+
+function readArrayLength(value: unknown): number {
+  return Array.isArray(value) ? value.length : 0;
+}
+
+function readRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
 function shortId(value: string): string {

@@ -82,7 +82,175 @@ try {
   assertEqual(stored.job.status, "completed", "stored create status");
   assertEqual(stored.job.outputJson?.output?.bookmark?.id, "smoke-bookmark", "stored create output");
   assertEqual(stored.job.outputJson?.capabilityVerification?.status, "passed", "stored create verification status");
+  assertEqual(stored.job.outputJson?.capabilityVerification?.class, "browser_chrome_effect", "stored create verification class");
   assertEqual(stored.diagnostics?.kind, "browser_chrome", "stored create diagnostics kind");
+
+  send({
+    type: "capability.start",
+    requestId: "browser-chrome-tab-groups",
+    job: {
+      id: "browser-chrome-tab-groups-job",
+      kind: "browser_chrome",
+      priority: "interactive",
+      requestedBy: "direct_ui",
+      input: { command: "tab_group.list" },
+      timeoutMs: 10_000
+    }
+  });
+  await waitFor((event) => event.type === "capability.job" && event.jobId === "browser-chrome-tab-groups-job" && event.status === "running", "tab group list running");
+  const tabGroupCommand = await pollBrowserBridgeCommand();
+  assertEqual(tabGroupCommand?.command, "tab_group.list", "tab group list command");
+  await postBrowserChromeResult(tabGroupCommand.requestId, {
+    groups: [{ id: 10, title: "Codex Run", color: "green", collapsed: false, tabIds: [1] }]
+  }, { verification: "tab_groups_read" });
+  await waitFor((event) => event.type === "capability.job" && event.jobId === "browser-chrome-tab-groups-job" && event.status === "completed", "tab group list completed");
+
+  await expectApprovalThenComplete({
+    requestId: "browser-chrome-tab-group-claim",
+    jobId: "browser-chrome-tab-group-claim-job",
+    input: { command: "tab_group.claim", tabIds: [1], runId: "run-smoke", threadId: "thread-smoke", color: "green" },
+    expectedCommand: "tab_group.claim",
+    output: {
+      group: { id: 10, title: "Codex run-smoke", color: "green", collapsed: false, tabIds: [1] },
+      claim: { owner: "run-smoke", runId: "run-smoke", threadId: "thread-smoke" }
+    },
+    metadata: { verification: "tab_group_claimed", groupId: 10, owner: "run-smoke" }
+  });
+
+  send({
+    type: "capability.start",
+    requestId: "browser-chrome-download-verify",
+    job: {
+      id: "browser-chrome-download-verify-job",
+      kind: "browser_chrome",
+      priority: "interactive",
+      requestedBy: "direct_ui",
+      input: { command: "download.verify", id: 7, expectedState: "complete" },
+      timeoutMs: 10_000
+    }
+  });
+  await waitFor((event) => event.type === "capability.job" && event.jobId === "browser-chrome-download-verify-job" && event.status === "running", "download verify running");
+  const downloadVerifyCommand = await pollBrowserBridgeCommand();
+  assertEqual(downloadVerifyCommand?.command, "download.verify", "download verify command");
+  await postBrowserChromeResult(downloadVerifyCommand.requestId, {
+    verified: true,
+    downloads: [{ id: 7, url: "https://example.test/report.pdf", filename: "report.pdf", filenameRedacted: true, state: "complete" }],
+    expectedState: "complete"
+  }, { verification: "download_verified" });
+  await waitFor((event) => event.type === "capability.job" && event.jobId === "browser-chrome-download-verify-job" && event.status === "completed", "download verify completed");
+
+  await expectApprovalThenComplete({
+    requestId: "browser-chrome-download-start",
+    jobId: "browser-chrome-download-start-job",
+    input: { command: "download.start", url: "https://example.test/report.pdf", filename: "codex/report.pdf" },
+    expectedCommand: "download.start",
+    output: { download: { id: 7, url: "https://example.test/report.pdf", filename: "report.pdf", filenameRedacted: true, state: "in_progress" } },
+    metadata: { verification: "download_started", downloadId: 7 }
+  });
+
+  const historyJob = await expectApprovalThenComplete({
+    requestId: "browser-chrome-history-search",
+    jobId: "browser-chrome-history-search-job",
+    input: { command: "history.search", text: "openai", maxResults: 5 },
+    expectedCommand: "history.search",
+    output: {
+      items: [{ id: "1", title: "OpenAI", origin: "https://openai.com", url: "https://openai.com/[redacted]", pathRedacted: true }],
+      redaction: "url_path_redacted"
+    },
+    metadata: { verification: "history_search_redacted", risk: "high", approval: "one_time" }
+  });
+  assertEqual(historyJob.job.outputJson?.metadata?.risk, "high", "history risk metadata");
+  assertEqual(historyJob.job.outputJson?.output?.items?.[0]?.pathRedacted, true, "history path redacted");
+
+  await expectApprovalThenComplete({
+    requestId: "browser-chrome-debugger-inspect",
+    jobId: "browser-chrome-debugger-inspect-job",
+    input: { command: "debugger.inspect" },
+    expectedCommand: "debugger.inspect",
+    output: { inspection: { title: "Example", readyState: "complete", inputCount: 1 } },
+    metadata: { verification: "debugger_inspected", risk: "high", approval: "one_time" }
+  });
+
+  await expectApprovalThenComplete({
+    requestId: "browser-chrome-debugger-screenshot",
+    jobId: "browser-chrome-debugger-screenshot-job",
+    input: { command: "debugger.screenshot" },
+    expectedCommand: "debugger.screenshot",
+    output: { screenshot: { format: "png", byteLength: 1024, sha256: "png123", dataOmitted: true } },
+    metadata: { verification: "debugger_screenshot_captured", risk: "high", approval: "one_time" }
+  });
+
+  await expectApprovalThenComplete({
+    requestId: "browser-chrome-debugger-print-pdf",
+    jobId: "browser-chrome-debugger-print-pdf-job",
+    input: { command: "debugger.print_to_pdf", printBackground: true },
+    expectedCommand: "debugger.print_to_pdf",
+    output: { pdf: { format: "pdf", byteLength: 1024, sha256: "abc123", dataOmitted: true } },
+    metadata: { verification: "debugger_pdf_printed", risk: "high", approval: "one_time" }
+  });
+
+  send({
+    type: "capability.start",
+    requestId: "browser-chrome-permission-get",
+    job: {
+      id: "browser-chrome-permission-get-job",
+      kind: "browser_chrome",
+      priority: "interactive",
+      requestedBy: "direct_ui",
+      input: { command: "permission.get", type: "camera", url: "https://example.test/camera" },
+      timeoutMs: 10_000
+    }
+  });
+  await waitFor((event) => event.type === "capability.job" && event.jobId === "browser-chrome-permission-get-job" && event.status === "running", "permission get running");
+  const permissionGetCommand = await pollBrowserBridgeCommand();
+  assertEqual(permissionGetCommand?.command, "permission.get", "permission get command");
+  await postBrowserChromeResult(permissionGetCommand.requestId, {
+    permission: { type: "camera", origin: "https://example.test", primaryPattern: "https://example.test/*", setting: "ask", pathRedacted: true }
+  }, { verification: "browser_permission_read", risk: "read_only", popupWorkflow: "content_settings_api", nativePopupClick: false });
+  await waitFor((event) => event.type === "capability.job" && event.jobId === "browser-chrome-permission-get-job" && event.status === "completed", "permission get completed");
+
+  const permissionSetJob = await expectApprovalThenComplete({
+    requestId: "browser-chrome-permission-set",
+    jobId: "browser-chrome-permission-set-job",
+    input: { command: "permission.set", type: "camera", url: "https://example.test/camera", setting: "allow" },
+    expectedCommand: "permission.set",
+    output: {
+      permission: { type: "camera", origin: "https://example.test", primaryPattern: "https://example.test/*", requestedSetting: "allow", verifiedSetting: "allow", pathRedacted: true }
+    },
+    metadata: { verification: "browser_permission_setting_applied", risk: "high", approval: "one_time", popupWorkflow: "content_settings_api", nativePopupClick: false }
+  });
+  assertEqual(permissionSetJob.job.outputJson?.output?.permission?.pathRedacted, true, "permission output path redacted");
+  assertEqual(permissionSetJob.job.inputJson?.url?.pathRedacted, true, "permission input path redacted");
+
+  const uploadSetFilesJob = await expectApprovalThenComplete({
+    requestId: "browser-chrome-file-upload-set-files",
+    jobId: "browser-chrome-file-upload-set-files-job",
+    input: { command: "file_upload.set_files", selector: "input[type='file']", approvedFilePaths: ["C:\\Users\\Tony\\Documents\\example.pdf"] },
+    expectedCommand: "file_upload.set_files",
+    output: {
+      status: "files_selected",
+      selector: "input[type='file']",
+      inputIndex: 0,
+      files: [{ basename: "example.pdf", pathRedacted: true }]
+    },
+    metadata: { verification: "file_upload_files_selected", risk: "high", approval: "one_time", fileCount: 1 }
+  });
+  assertEqual(uploadSetFilesJob.job.inputJson?.approvedFilePaths?.[0]?.pathRedacted, true, "file upload persisted path redacted");
+  assertEqual(uploadSetFilesJob.job.outputJson?.output?.files?.[0]?.pathRedacted, true, "file upload output path redacted");
+
+  const uploadBlockedJob = await expectApprovalThenComplete({
+    requestId: "browser-chrome-file-upload-blocked",
+    jobId: "browser-chrome-file-upload-blocked-job",
+    input: { command: "file_upload.blocked" },
+    expectedCommand: "file_upload.blocked",
+    output: {
+      status: "blocked",
+      blocker: "file_upload_requires_explicit_file_grant_and_native_picker",
+      reason: "Local file selection requires explicit grants."
+    },
+    metadata: { verification: "file_upload_blocked_by_policy", safetyBoundary: "local_file_disclosure" }
+  });
+  assertEqual(uploadBlockedJob.job.status, "completed", "file upload blocked is completed with explanation");
 
   console.log(`browser chrome capability smoke ok on port ${daemon.port}`);
 } finally {
@@ -123,6 +291,29 @@ async function fetchCapabilityJob(jobId) {
     throw new Error(`Capability job GET failed (${response.status}).`);
   }
   return await response.json();
+}
+
+async function expectApprovalThenComplete(input) {
+  send({
+    type: "capability.start",
+    requestId: input.requestId,
+    job: {
+      id: input.jobId,
+      kind: "browser_chrome",
+      priority: "interactive",
+      requestedBy: "direct_ui",
+      input: input.input,
+      timeoutMs: 10_000
+    }
+  });
+  await waitFor((event) => event.type === "capability.job" && event.jobId === input.jobId && event.status === "awaiting_approval", `${input.expectedCommand} awaiting approval`);
+  send({ type: "capability.approve", requestId: `approve-${input.jobId}`, jobId: input.jobId });
+  await waitFor((event) => event.type === "capability.job" && event.jobId === input.jobId && event.status === "running", `${input.expectedCommand} running`);
+  const command = await pollBrowserBridgeCommand();
+  assertEqual(command?.command, input.expectedCommand, `${input.expectedCommand} command`);
+  await postBrowserChromeResult(command.requestId, input.output, input.metadata);
+  await waitFor((event) => event.type === "capability.job" && event.jobId === input.jobId && event.status === "completed", `${input.expectedCommand} completed`);
+  return await fetchCapabilityJob(input.jobId);
 }
 
 function send(message) {

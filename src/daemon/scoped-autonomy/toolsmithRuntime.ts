@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
@@ -66,6 +66,15 @@ export type ScopedAutonomyDagInput = ScopedAutonomyPlanInput & {
   title?: string;
   urls?: string[];
   sourceDocuments?: Array<{ title?: string; url?: string; text: string }>;
+  markdown?: string;
+  markdownPath?: string;
+  sourcePath?: string;
+  browserFallbackDocuments?: Array<{
+    title?: string;
+    url: string;
+    text?: string;
+    capture?: Record<string, unknown>;
+  }>;
   forceFirstSmokeFailure?: boolean;
 };
 
@@ -98,14 +107,15 @@ export class ScopedAutonomyRuntime {
       : this.storage.listAutonomyPermissionProfiles({ status: "active", limit: 1 })[0] ?? null;
     const decomposition = decomposeAutonomyRequest(input.goal);
     const inventory = listEffectiveAutonomyCapabilities(this.storage);
+    const requestedCapability = requestedCapabilityForDecomposition(decomposition);
     const matchedCapability = matchCapabilityForOperations({
       inventory,
-      capability: "unknown",
+      capability: requestedCapability,
       operations: decomposition.operations
     });
     const matchedCapabilities = matchedCapability ? [matchedCapability] : [];
     const availableCapabilities = input.availableCapabilities ?? inventory
-      .filter((item) => item.status === "generated" || (item.status === "available" && item.capability !== "terminal_generated_tool"))
+      .filter((item) => item.status === "generated" || (item.status === "available" && item.capability !== "terminal_generated_tool" && item.capability !== "local_document_conversion"))
       .map((item) => item.capability);
     const evalRun = this.storage.createComputerUseEvalRun({
       scenario: {
@@ -383,6 +393,22 @@ export class ScopedAutonomyRuntime {
     return toolRun;
   }
 
+  prepareToolDependencies(input: {
+    autonomyRunId: string;
+    toolSpecId: string;
+    outputDir: string;
+    pdfRenderer?: "builtin" | "pandoc";
+  }): AutonomyToolRunSummary {
+    const run = this.requireRun(input.autonomyRunId);
+    const spec = this.requireSpec(input.toolSpecId);
+    return this.prepareDependencies({
+      run,
+      spec,
+      outputDir: input.outputDir,
+      pdfRenderer: input.pdfRenderer ?? this.choosePdfRenderer(run)
+    });
+  }
+
   async execute(input: {
     autonomyRunId: string;
     toolSpecId: string;
@@ -390,6 +416,9 @@ export class ScopedAutonomyRuntime {
       title?: string;
       urls?: string[];
       sourceDocuments?: Array<{ title?: string; url?: string; text: string }>;
+      markdown?: string;
+      markdownPath?: string;
+      sourcePath?: string;
       outputDir?: string;
       command?: string;
       filePath?: string;
@@ -493,6 +522,10 @@ export class ScopedAutonomyRuntime {
       title: input.title ?? run.goal,
       urls: input.urls ?? inferDefaultUrls(run.goal),
       sourceDocuments: input.sourceDocuments ?? [],
+      markdown: input.markdown,
+      markdownPath: input.markdownPath,
+      sourcePath: input.sourcePath,
+      browserFallbackDocuments: input.browserFallbackDocuments ?? [],
       outputDir,
       pdfRenderer
     });
@@ -500,18 +533,45 @@ export class ScopedAutonomyRuntime {
       pdfRenderer,
       outputDir,
       commandGrants: this.readProfile(run)?.grants.commands.allowPrefixes ?? []
+    }, "running");
+    const dependencyRun = this.prepareDependencies({
+      run,
+      spec,
+      outputDir,
+      pdfRenderer
     });
+    toolRuns.push(dependencyRun);
+    await this.completeDagNode(this.requireRun(run.id), nodeMap.dependency_prepare, {
+      pdfRenderer,
+      outputDir,
+      toolRunId: dependencyRun.id,
+      output: redactPaths(dependencyRun.output)
+    }, dependencyRun.status === "completed" ? "completed" : "failed", dependencyRun.lastError ?? undefined);
+    if (dependencyRun.status !== "completed") {
+      const failedRun = this.failAutonomyRun(run.id, "Dependency preparation failed for generated tool.", dependencyRun.status === "blocked" ? "approval_denied" : "action_failed");
+      await this.completeDagNode(failedRun, nodeMap.cleanup_or_rollback, { reason: "dependency_prepare_failed", toolRunId: dependencyRun.id }, "completed");
+      return { run: failedRun, plan, spec, toolRuns, debugBundle: this.createDebugBundle(failedRun.id) };
+    }
     await this.completeDagNode(run, nodeMap.smoke_test, {
       toolSpecId: spec.id,
       alreadyPassed: true,
       status: spec.status
     });
     await this.completeDagNode(run, nodeMap.task_plan, {
-      stages: AUTONOMY_EXECUTION_STAGES,
+      stages: executionStagesForSpec(spec),
       artifactContract: spec.manifest?.artifactContract ?? []
     });
 
-    for (const stage of AUTONOMY_EXECUTION_STAGES) {
+    const executionStages = executionStagesForSpec(spec);
+    for (const skippedStage of AUTONOMY_EXECUTION_STAGES.filter((stage) => !executionStages.includes(stage))) {
+      await this.completeDagNode(this.requireRun(run.id), nodeMap[skippedStage], {
+        skipped: true,
+        reason: "stage_not_required_for_capability",
+        capability: spec.capability
+      }, "skipped");
+    }
+
+    for (const stage of executionStages) {
       const toolRun = await this.executeStage({
         run: this.requireRun(run.id),
         spec,
@@ -541,7 +601,7 @@ export class ScopedAutonomyRuntime {
         executionToolRunIds: toolRuns.map((toolRun) => toolRun.id),
         outputDir,
         pdfRenderer,
-        finalStage: AUTONOMY_EXECUTION_STAGES[AUTONOMY_EXECUTION_STAGES.length - 1]
+        finalStage: executionStages[executionStages.length - 1]
       },
       failureClass: "none",
       completedAt: new Date().toISOString()
@@ -555,7 +615,7 @@ export class ScopedAutonomyRuntime {
         completedAt: new Date().toISOString(),
         metrics: {
           scopedAutonomyDag: true,
-          stageCount: AUTONOMY_EXECUTION_STAGES.length,
+          stageCount: executionStages.length,
           toolRunCount: toolRuns.length
         }
       });
@@ -627,10 +687,17 @@ export class ScopedAutonomyRuntime {
       input: payload,
       additionalRequirements: requirementsFromRequest(payload)
     });
-    const matched = compareStableOutput(original.output, rerun.output);
+    const comparison = compareStableOutput(original.output, rerun.output);
+    const rerunWithComparison = this.storage.updateAutonomyToolRun({
+      id: rerun.id,
+      output: {
+        ...asRecord(rerun.output),
+        rerunComparison: comparison
+      }
+    });
     const manifest = updateManifestStability(spec.manifest, {
-      rating: matched && rerun.status === "completed" ? "high" : "low",
-      lastRerunStatus: rerun.status !== "completed" ? "failed" : matched ? "matched" : "changed",
+      rating: comparison.matched && rerun.status === "completed" ? "high" : "low",
+      lastRerunStatus: rerun.status !== "completed" ? "failed" : comparison.matched ? "matched" : "changed",
       rerunCount: (spec.manifest?.stability.rerunCount ?? 0) + 1
     });
     this.storage.upsertAutonomyToolSpec({
@@ -638,7 +705,15 @@ export class ScopedAutonomyRuntime {
       manifest,
       stabilityRating: manifest?.stability.rating ?? spec.stabilityRating
     });
-    return rerun;
+    this.recordEvalStep(run, {
+      kind: "toolsmith_rerun_comparison",
+      phase: "verifying",
+      status: comparison.matched && rerun.status === "completed" ? "completed" : "failed",
+      input: { originalToolRunId: original.id, rerunToolRunId: rerun.id },
+      output: comparison,
+      failureClass: comparison.matched && rerun.status === "completed" ? "none" : "action_failed"
+    });
+    return rerunWithComparison;
   }
 
   rollbackRun(input: { autonomyRunId: string; includeUserArtifacts?: boolean }): AutonomyToolRunSummary {
@@ -726,6 +801,77 @@ export class ScopedAutonomyRuntime {
     return toolRun;
   }
 
+  private prepareDependencies(input: {
+    run: AutonomyRunSummary;
+    spec: AutonomyGeneratedToolSpec;
+    outputDir: string;
+    pdfRenderer: string;
+  }): AutonomyToolRunSummary {
+    const profile = this.readProfile(input.run);
+    const workspace = join(this.toolDirectory(input.spec.id), "dependencies");
+    const requirements = dependencyPreparationRequirements(input.spec, workspace);
+    const permission = evaluateAutonomyPermission({ profile, requirements });
+    const policyReview = buildDependencyPolicyReview(input.spec.manifest, workspace);
+    const startedAt = new Date().toISOString();
+    const created = this.storage.createAutonomyToolRun({
+      toolSpecId: input.spec.id,
+      autonomyRunId: input.run.id,
+      evalRunId: input.run.evalRunId,
+      mode: "dependency_prepare",
+      status: permission.allowed ? "running" : "blocked",
+      input: {
+        manifest: summarizeManifest(input.spec.manifest),
+        workspace: redactPath(workspace),
+        outputDir: redactPath(input.outputDir),
+        pdfRenderer: input.pdfRenderer
+      },
+      startedAt: permission.allowed ? startedAt : undefined
+    });
+    if (!permission.allowed) {
+      const blocked = this.storage.updateAutonomyToolRun({
+        id: created.id,
+        status: "blocked",
+        output: { permission: redactPaths(permission), workspace: redactPath(workspace), policyReview },
+        completedAt: new Date().toISOString(),
+        lastError: permission.reason
+      });
+      this.recordEvalStep(input.run, {
+        kind: "toolsmith_dependency_prepare",
+        phase: "blocked",
+        status: "blocked",
+        input: { toolSpecId: input.spec.id, workspace: redactPath(workspace) },
+        output: { permission: redactPaths(permission), policyReview },
+        failureClass: "approval_denied"
+      });
+      return blocked;
+    }
+
+    const result = prepareDependencyWorkspace({
+      workspace,
+      manifest: input.spec.manifest,
+      pdfRenderer: input.pdfRenderer,
+      policyReview
+    });
+    const completedAt = new Date().toISOString();
+    const completed = this.storage.updateAutonomyToolRun({
+      id: created.id,
+      status: result.ok ? "completed" : "failed",
+      output: redactPaths(result),
+      completedAt,
+      elapsedMs: Math.max(0, Date.parse(completedAt) - Date.parse(startedAt)),
+      lastError: result.ok ? null : String(result.error ?? "dependency_prepare_failed")
+    });
+    this.recordEvalStep(input.run, {
+      kind: "toolsmith_dependency_prepare",
+      phase: "verifying",
+      status: completed.status === "completed" ? "completed" : "failed",
+      input: { toolSpecId: input.spec.id, workspace: redactPath(workspace) },
+      output: { permission: redactPaths(permission), dependencyRun: redactToolRun(completed) },
+      failureClass: completed.status === "completed" ? "none" : "action_failed"
+    });
+    return completed;
+  }
+
   private async executeGeneratedTool(input: {
     run: AutonomyRunSummary;
     spec: AutonomyGeneratedToolSpec;
@@ -757,7 +903,7 @@ export class ScopedAutonomyRuntime {
       const blocked = this.storage.updateAutonomyToolRun({
         id: created.id,
         status: "blocked",
-        output: { permission },
+        output: { permission: redactPaths(permission) },
         completedAt: new Date().toISOString(),
         lastError: permission.reason
       });
@@ -766,7 +912,7 @@ export class ScopedAutonomyRuntime {
         phase: "blocked",
         status: "blocked",
         input: { command: toolCommand, payload: sanitizeAutonomyInput(input.input) },
-        output: { permission },
+        output: { permission: redactPaths(permission) },
         failureClass: "approval_denied"
       });
       return blocked;
@@ -782,13 +928,16 @@ export class ScopedAutonomyRuntime {
       });
     }
     const startedAt = created.startedAt ?? new Date().toISOString();
+    const dependencyWorkspace = dependencyWorkspaceForSpec(input.spec, this.toolDirectory(input.spec.id));
     try {
       const result = await runNodeTool({
         entrypoint,
+        dependencyWorkspace,
         request: {
           command: toolCommand,
           input: input.input,
           allowedDomains: profile?.grants.networkDomains ?? [],
+          allowedBrowserDomains: profile?.grants.browserDomains ?? [],
           allowedCommandPrefixes: profile?.grants.commands.allowPrefixes ?? [],
           deniedCommandPatterns: profile?.grants.commands.denyPatterns ?? [],
           maxOutputBytes: profile?.grants.maxOutputBytes ?? 2 * 1024 * 1024
@@ -812,7 +961,7 @@ export class ScopedAutonomyRuntime {
         phase: input.mode === "smoke" ? "verifying" : input.mode === "rerun" ? "verifying" : "executing",
         status: completed.status === "completed" ? "completed" : "failed",
         input: { command: toolCommand, payload: sanitizeAutonomyInput(input.input) },
-        output: { permission, toolRun: redactToolRun(completed) },
+        output: { permission: redactPaths(permission), toolRun: redactToolRun(completed) },
         failureClass: completed.status === "completed" ? "none" : "action_failed"
       });
       return completed;
@@ -1118,6 +1267,13 @@ export class ScopedAutonomyRuntime {
         return spec;
       }
     }
+    for (const item of plan.matchedCapabilities) {
+      const spec = this.storage.listAutonomyToolSpecs({ capability: item.capability, limit: 5 })
+        .find(isExecutableSpec);
+      if (spec) {
+        return spec;
+      }
+    }
     const webTool = this.storage.listAutonomyToolSpecs({ capability: "web_research_to_pdf", limit: 5 })
       .find(isExecutableSpec);
     return webTool;
@@ -1175,6 +1331,36 @@ const AUTONOMY_EXECUTION_STAGES = [
   "store_artifact",
   "verify_artifact"
 ] as const;
+
+function executionStagesForSpec(spec: AutonomyGeneratedToolSpec): Array<typeof AUTONOMY_EXECUTION_STAGES[number]> {
+  if (spec.capability === "local_document_conversion") {
+    return ["draft_markdown", "render_pdf", "store_artifact", "verify_artifact"];
+  }
+  return [...AUTONOMY_EXECUTION_STAGES];
+}
+
+function requestedCapabilityForDecomposition(decomposition: AutonomyRequestDecomposition): string {
+  const operations = new Set(decomposition.operations);
+  if (operations.has("download_verify")) {
+    return "browser_download_verify";
+  }
+  if (operations.has("generate_terminal_tool") || operations.has("execute_terminal_tool")) {
+    return "terminal_generated_tool";
+  }
+  if (operations.has("browser_chrome_control")) {
+    return "browser_chrome_direct_control";
+  }
+  if (operations.has("native_windows_action") || operations.has("native_windows_observe")) {
+    return "native_windows_workflow";
+  }
+  if (operations.has("render_pdf") && operations.has("draft_markdown") && !operations.has("crawl_or_observe") && !operations.has("extract")) {
+    return "local_document_conversion";
+  }
+  if (operations.has("render_pdf") && (operations.has("crawl_or_observe") || operations.has("extract"))) {
+    return "web_research_to_pdf";
+  }
+  return "unknown";
+}
 
 function createToolSpecForGap(gap: AutonomyCapabilityGap): AutonomyGeneratedToolSpec {
   const now = new Date().toISOString();
@@ -1240,6 +1426,29 @@ function createToolSpecForGap(gap: AutonomyCapabilityGap): AutonomyGeneratedTool
           id: "download-verify-smoke",
           description: "Verify a deterministic fixture download file in the generated workspace.",
           expectedArtifacts: ["download-verification.json"]
+        }
+      ],
+      artifacts: [],
+      createdAt: now,
+      updatedAt: now
+    };
+  }
+  if (gap.requestedCapability === "local_document_conversion") {
+    return {
+      id: gap.suggestedToolId ?? `tool-local-document-conversion-${randomUUID().slice(0, 8)}`,
+      name: "Local Document Conversion",
+      capability: "local_document_conversion",
+      version: "0.1.0",
+      status: "proposed",
+      templateId: "local_document_conversion.v1",
+      entrypointKind: "node_script",
+      description: "Convert supplied Markdown or text into Markdown/PDF artifacts through a bounded local converter.",
+      requiredGrants: gap.requiredGrants,
+      smokeTests: [
+        {
+          id: "local-document-conversion-smoke",
+          description: "Convert deterministic Markdown fixture content into report.md and report.pdf.",
+          expectedArtifacts: ["report.md", "report.pdf"]
         }
       ],
       artifacts: [],
@@ -1360,6 +1569,18 @@ function createSmokeInput(spec: AutonomyGeneratedToolSpec, outputDir: string): R
   if (spec.capability === "terminal_generated_tool") {
     return { outputDir, message: "terminal generated tool smoke" };
   }
+  if (spec.capability === "local_document_conversion") {
+    return {
+      title: "Local document conversion smoke",
+      outputDir,
+      markdown: [
+        "# Local document conversion smoke",
+        "",
+        "This fixture proves Toolsmith can convert supplied Markdown into Markdown and PDF artifacts."
+      ].join("\n"),
+      pdfRenderer: "builtin"
+    };
+  }
   return {
     title: "Scoped autonomy smoke report",
     outputDir,
@@ -1396,6 +1617,11 @@ function requirementsFromRequest(input: unknown): AutonomyPermissionRequirement[
   if (typeof record.filePath === "string") {
     requirements.push({ type: "filesystem_read", value: record.filePath, reason: "Generated verifier reads this local artifact." });
   }
+  for (const key of ["markdownPath", "sourcePath"]) {
+    if (typeof record[key] === "string") {
+      requirements.push({ type: "filesystem_read", value: record[key], reason: "Generated converter reads this local source document." });
+    }
+  }
   return requirements;
 }
 
@@ -1428,7 +1654,8 @@ function isUnsupportedSpec(spec: AutonomyGeneratedToolSpec): boolean {
 function canImplementGap(gap: AutonomyCapabilityGap): boolean {
   return gap.requestedCapability === "web_research_to_pdf"
     || gap.requestedCapability === "terminal_generated_tool"
-    || gap.requestedCapability === "browser_download_verify";
+    || gap.requestedCapability === "browser_download_verify"
+    || gap.requestedCapability === "local_document_conversion";
 }
 
 function isExternalOrUnsupportedGap(gap: AutonomyCapabilityGap): boolean {
@@ -1530,7 +1757,12 @@ function createManifest(
         { role: "stdout", mime: "text/plain", required: true },
         { role: "stdout_json", mime: "application/json", required: true }
       ]
-      : [
+      : spec.capability === "local_document_conversion"
+        ? [
+          { role: "report", mime: "text/markdown", required: true },
+          { role: "pdf", mime: "application/pdf", required: true }
+        ]
+        : [
         { role: "report", mime: "text/markdown", required: true },
         { role: "pdf", mime: "application/pdf", required: true },
         { role: "citation", mime: "application/json", required: true }
@@ -1543,7 +1775,7 @@ function createManifest(
     commandAllowlist,
     dependencies: [
       { name: "node", source: "system", installed: true },
-      ...(spec.capability === "web_research_to_pdf"
+      ...(spec.capability === "web_research_to_pdf" || spec.capability === "local_document_conversion"
         ? [{ name: "pandoc", source: "system" as const, installed: false }]
         : [])
     ],
@@ -1565,9 +1797,298 @@ function createManifest(
       rerunCount: 0,
       externalDependencyWarnings: spec.capability === "web_research_to_pdf"
         ? ["Live web fetches can vary by network, redirects, and upstream page changes."]
+        : spec.capability === "local_document_conversion"
+          ? ["Pandoc output can vary by local installation when the pandoc renderer is selected."]
         : []
     }
   };
+}
+
+function dependencyPreparationRequirements(
+  spec: AutonomyGeneratedToolSpec,
+  workspace: string
+): AutonomyPermissionRequirement[] {
+  const manifest = spec.manifest;
+  if (!manifest) {
+    return [];
+  }
+  const requirements: AutonomyPermissionRequirement[] = [];
+  const installableDependencies = manifest.dependencies.filter((dependency) =>
+    (dependency.source === "npm" || dependency.source === "pip") &&
+    dependency.installed !== true
+  );
+  if (installableDependencies.length > 0) {
+    requirements.push(
+      { type: "package_install", value: "isolated_runtime_workspace", reason: "Generated tool dependency installation must be explicitly granted." },
+      { type: "filesystem_write", value: workspace, reason: "Generated tool dependencies must be installed only in an isolated runtime workspace." },
+      { type: "risk_class", value: "side_effect", reason: "Dependency installation mutates the isolated runtime workspace." }
+    );
+  }
+  if (installableDependencies.some((dependency) => dependency.source === "npm")) {
+    requirements.push({ type: "command", value: "npm", reason: "npm is required to prepare generated tool dependencies." });
+  }
+  for (const dependency of installableDependencies.filter((dependency) => dependency.source === "npm" && !isLocalNpmDependency(dependency.version))) {
+    requirements.push({
+      type: "package_install",
+      value: npmPackageRequirementValue(dependency.name, dependency.version),
+      reason: "External npm package installation requires an exact package allowlist grant."
+    });
+  }
+  if (installableDependencies.some((dependency) => dependency.source === "pip")) {
+    requirements.push({ type: "command", value: "python", reason: "python/pip is required to prepare generated tool dependencies." });
+  }
+  return uniqueRequirements(requirements);
+}
+
+function prepareDependencyWorkspace(input: {
+  workspace: string;
+  manifest?: AutonomyGeneratedToolManifest;
+  pdfRenderer: string;
+  policyReview?: Record<string, unknown>;
+}): Record<string, unknown> {
+  const manifest = input.manifest;
+  const dependencies = manifest?.dependencies ?? [];
+  const warnings: string[] = [];
+  const prepared: Array<Record<string, unknown>> = [];
+  const lockfiles: Array<Record<string, unknown>> = [];
+  const installedPackages: Array<Record<string, unknown>> = [];
+  const npmDependencies = dependencies.filter((dependency) => dependency.source === "npm" && dependency.installed !== true);
+  const pipDependencies = dependencies.filter((dependency) => dependency.source === "pip" && dependency.installed !== true);
+
+  for (const dependency of dependencies) {
+    prepared.push({
+      name: dependency.name,
+      version: dependency.version,
+      source: dependency.source,
+      declaredInstalled: dependency.installed,
+      prepared: dependency.installed === true || dependency.source === "builtin" || dependency.source === "none" || dependency.source === "system",
+      note: dependency.source === "system"
+        ? systemDependencyNote(dependency.name, input.pdfRenderer)
+        : undefined
+    });
+  }
+
+  if (pipDependencies.length > 0) {
+    return {
+      ok: false,
+      error: "pip_dependency_prepare_not_supported_yet",
+      workspace: redactPath(input.workspace),
+      dependencies: prepared,
+      policyReview: input.policyReview,
+      warnings: ["pip_dependency_prepare_blocked_until_virtualenv_policy_exists"]
+    };
+  }
+
+  if (npmDependencies.length > 0) {
+    mkdirSync(input.workspace, { recursive: true });
+    const packageJsonPath = join(input.workspace, "package.json");
+    const packageJson = {
+      private: true,
+      name: "codex-widget-generated-tool-dependencies",
+      version: "0.0.0",
+      dependencies: Object.fromEntries(npmDependencies.map((dependency) => [
+        dependency.name,
+        dependency.version ?? "latest"
+      ]))
+    };
+    writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`, "utf8");
+    const installArgs = [
+      "install",
+      "--ignore-scripts",
+      "--no-audit",
+      "--no-fund",
+      "--prefix",
+      input.workspace
+    ];
+    const npm = npmSpawnCommand(installArgs);
+    const install = spawnSync(npm.command, npm.args, {
+      encoding: "utf8",
+      shell: false,
+      timeout: 120_000,
+      windowsHide: true
+    });
+    if (install.status !== 0) {
+      return {
+        ok: false,
+        error: "npm_dependency_prepare_failed",
+        workspace: redactPath(input.workspace),
+        dependencies: prepared,
+        policyReview: input.policyReview,
+        stderr: String(install.stderr || install.error?.message || "").slice(0, 2000),
+        warnings
+      };
+    }
+    for (const dependency of npmDependencies) {
+      const packageJsonFile = join(input.workspace, "node_modules", ...dependency.name.split("/"), "package.json");
+      if (!existsSync(packageJsonFile)) {
+        warnings.push(`npm_dependency_package_json_missing:${dependency.name}`);
+        continue;
+      }
+      const bytes = readFileSync(packageJsonFile);
+      let installedVersion: unknown = dependency.version;
+      try {
+        installedVersion = asRecord(JSON.parse(bytes.toString("utf8"))).version ?? dependency.version;
+      } catch {
+        warnings.push(`npm_dependency_package_json_parse_failed:${dependency.name}`);
+      }
+      installedPackages.push({
+        name: dependency.name,
+        version: installedVersion,
+        source: "npm",
+        packageJson: {
+          path: redactPath(packageJsonFile),
+          size: bytes.byteLength,
+          sha256: sha256Bytes(bytes)
+        }
+      });
+    }
+    for (const lockfile of ["package.json", "package-lock.json"]) {
+      const path = join(input.workspace, lockfile);
+      if (!existsSync(path)) {
+        continue;
+      }
+      const bytes = readFileSync(path);
+      lockfiles.push({
+        path: redactPath(path),
+        basename: lockfile,
+        size: bytes.byteLength,
+        sha256: sha256Bytes(bytes)
+      });
+    }
+  }
+
+  if (dependencies.some((dependency) => dependency.name === "pandoc" && dependency.source === "system") && input.pdfRenderer !== "pandoc") {
+    warnings.push("pandoc_not_required_builtin_pdf_renderer_selected");
+  }
+
+  return {
+    ok: true,
+    schemaVersion: "toolsmith-dependency-prepare.v1",
+    workspace: redactPath(input.workspace),
+    packageInstallPerformed: npmDependencies.length > 0,
+    dependencies: prepared,
+    installedPackages,
+    lockfiles,
+    policyReview: finalizeDependencyPolicyReview(input.policyReview, {
+      lockfiles,
+      installedPackages
+    }),
+    warnings
+  };
+}
+
+function buildDependencyPolicyReview(
+  manifest: AutonomyGeneratedToolManifest | undefined,
+  workspace: string
+): Record<string, unknown> {
+  const dependencies = manifest?.dependencies ?? [];
+  const dependencyReviews = dependencies.map((dependency) => {
+    const installable = (dependency.source === "npm" || dependency.source === "pip") && dependency.installed !== true;
+    const localFilePackage = dependency.source === "npm" && installable && isLocalNpmDependency(dependency.version);
+    const externalRegistryPackage = dependency.source === "npm" && installable && !localFilePackage;
+    const unsupportedPipPackage = dependency.source === "pip" && installable;
+    return {
+      name: dependency.name,
+      source: dependency.source,
+      version: redactPathLikeString(dependency.version ?? ""),
+      installable,
+      localFilePackage,
+      externalRegistryPackage,
+      unsupportedPipPackage,
+      packageRequirement: externalRegistryPackage
+        ? npmPackageRequirementValue(dependency.name, dependency.version)
+        : localFilePackage
+          ? "file:*"
+          : undefined,
+      policy: unsupportedPipPackage
+        ? "blocked_until_virtualenv_policy_exists"
+        : externalRegistryPackage
+          ? "exact_package_allowlist_required"
+          : localFilePackage
+            ? "local_file_package_allowed_by_default_policy"
+            : "no_install_required"
+    };
+  });
+  const installableNpmCount = dependencyReviews.filter((dependency) => dependency.source === "npm" && dependency.installable === true).length;
+  const externalRegistryPackageCount = dependencyReviews.filter((dependency) => dependency.externalRegistryPackage === true).length;
+  const localFilePackageCount = dependencyReviews.filter((dependency) => dependency.localFilePackage === true).length;
+  const unsupportedPipPackageCount = dependencyReviews.filter((dependency) => dependency.unsupportedPipPackage === true).length;
+  return {
+    schemaVersion: "toolsmith-dependency-policy-review.v1",
+    workspace: redactPath(workspace),
+    installIsolation: {
+      prefix: redactPath(workspace),
+      ignoreScripts: true,
+      noAudit: true,
+      noFund: true,
+      shell: false,
+      timeoutMs: 120_000
+    },
+    dependencies: dependencyReviews,
+    packageAllowlistPolicy: {
+      defaultLocalFilePattern: "file:*",
+      externalRequirementFormat: "npm:name@version",
+      exactExternalAllowlistRequired: true
+    },
+    externalRegistryPackageCount,
+    localFilePackageCount,
+    unsupportedPipPackageCount,
+    lockfileRequired: installableNpmCount > 0,
+    installedPackageProvenanceRequired: installableNpmCount > 0,
+    promotionBoundary: externalRegistryPackageCount > 0
+      ? "external_registry_package_requires_reviewed_allowlist_and_lockfile_policy"
+      : "local_file_dependency_fixture_only"
+  };
+}
+
+function finalizeDependencyPolicyReview(
+  policyReview: Record<string, unknown> | undefined,
+  input: {
+    lockfiles: Array<Record<string, unknown>>;
+    installedPackages: Array<Record<string, unknown>>;
+  }
+): Record<string, unknown> | undefined {
+  if (!policyReview) {
+    return undefined;
+  }
+  const lockfileProvenancePresent = input.lockfiles.some((lockfile) =>
+    lockfile.basename === "package-lock.json" && typeof lockfile.sha256 === "string"
+  );
+  const installedPackageProvenancePresent = input.installedPackages.every((dependency) =>
+    typeof asRecord(dependency.packageJson).sha256 === "string"
+  );
+  return {
+    ...policyReview,
+    lockfileProvenancePresent,
+    installedPackageProvenancePresent,
+    reviewOutcome: lockfileProvenancePresent && installedPackageProvenancePresent
+      ? "passed_local_or_allowlisted_dependency_policy"
+      : "dependency_policy_provenance_incomplete"
+  };
+}
+
+function isLocalNpmDependency(version: string | undefined): boolean {
+  return typeof version === "string" && version.trim().toLowerCase().startsWith("file:");
+}
+
+function npmPackageRequirementValue(name: string, version: string | undefined): string {
+  const normalizedVersion = version?.trim() || "latest";
+  return `npm:${name}@${normalizedVersion}`;
+}
+
+function systemDependencyNote(name: string, pdfRenderer: string): string {
+  if (name === "pandoc") {
+    return pdfRenderer === "pandoc"
+      ? "pandoc may be used when command grants and local installation allow it"
+      : "builtin PDF renderer selected; pandoc remains optional";
+  }
+  return "system dependency is not installed by Toolsmith";
+}
+
+function npmSpawnCommand(args: string[]): { command: string; args: string[] } {
+  return process.platform === "win32"
+    ? { command: "cmd.exe", args: ["/d", "/s", "/c", "npm.cmd", ...args] }
+    : { command: "npm", args };
 }
 
 function sourceForSpec(spec: AutonomyGeneratedToolSpec, forceSmokeFailure?: boolean): string {
@@ -1580,6 +2101,9 @@ function sourceForSpec(spec: AutonomyGeneratedToolSpec, forceSmokeFailure?: bool
   if (spec.capability === "browser_download_verify") {
     return BROWSER_DOWNLOAD_VERIFY_TOOL;
   }
+  if (spec.capability === "local_document_conversion") {
+    return LOCAL_DOCUMENT_CONVERSION_TOOL;
+  }
   return WEB_RESEARCH_TO_PDF_TOOL;
 }
 
@@ -1589,6 +2113,9 @@ function entrypointNameForSpec(spec: AutonomyGeneratedToolSpec): string {
   }
   if (spec.capability === "browser_download_verify") {
     return "browser-download-verify.mjs";
+  }
+  if (spec.capability === "local_document_conversion") {
+    return "local-document-conversion.mjs";
   }
   return "web-research-to-pdf.mjs";
 }
@@ -1644,6 +2171,9 @@ function redactToolRun(run: AutonomyToolRunSummary): AutonomyToolRunSummary {
 }
 
 function redactPaths(value: unknown): unknown {
+  if (typeof value === "string") {
+    return redactPathLikeString(value);
+  }
   if (Array.isArray(value)) {
     return value.map(redactPaths);
   }
@@ -1661,6 +2191,17 @@ function redactPaths(value: unknown): unknown {
   return output;
 }
 
+function redactPathLikeString(value: string): string {
+  const normalized = value.replace(/\\/g, "/");
+  if (/^file:(\/\/\/)?[A-Za-z]:\//i.test(normalized)) {
+    return `file:<redacted>/${basename(normalized)}`;
+  }
+  if (/^[A-Za-z]:\//.test(normalized) || normalized.startsWith("/")) {
+    return redactPath(normalized);
+  }
+  return value;
+}
+
 function redactPath(path: string): string {
   if (!path) {
     return path;
@@ -1668,13 +2209,47 @@ function redactPath(path: string): string {
   return `<redacted>/${basename(path)}`;
 }
 
-function compareStableOutput(left: unknown, right: unknown): boolean {
-  const leftRecord = asRecord(left);
-  const rightRecord = asRecord(right);
-  return JSON.stringify(stableFingerprint(leftRecord)) === JSON.stringify(stableFingerprint(rightRecord));
+function dependencyWorkspaceForSpec(spec: AutonomyGeneratedToolSpec, toolDirectory: string): string | undefined {
+  const dependencies = spec.manifest?.dependencies ?? [];
+  const needsRuntimeWorkspace = dependencies.some((dependency) =>
+    (dependency.source === "npm" || dependency.source === "pip") && dependency.installed !== true
+  );
+  const workspace = join(toolDirectory, "dependencies");
+  return needsRuntimeWorkspace && existsSync(workspace) ? workspace : undefined;
 }
 
-function stableFingerprint(value: Record<string, unknown>): Record<string, unknown> {
+function compareStableOutput(left: unknown, right: unknown): Record<string, unknown> & { matched: boolean } {
+  const leftRecord = asRecord(left);
+  const rightRecord = asRecord(right);
+  const leftFingerprint = stableFingerprint(leftRecord);
+  const rightFingerprint = stableFingerprint(rightRecord);
+  const artifactComparison = compareArtifactFingerprints(leftFingerprint.artifacts, rightFingerprint.artifacts);
+  const scalarMatched = JSON.stringify({ ...leftFingerprint, artifacts: [] }) === JSON.stringify({ ...rightFingerprint, artifacts: [] });
+  const matched = scalarMatched && artifactComparison.matched;
+  return {
+    schemaVersion: "toolsmith-rerun-comparison.v1",
+    matched,
+    scalarMatched,
+    artifactComparison,
+    left: leftFingerprint,
+    right: rightFingerprint
+  };
+}
+
+type StableOutputFingerprint = {
+  ok: unknown;
+  stage: unknown;
+  sourceCount: unknown;
+  verified: unknown;
+  artifacts: Array<{
+    role: unknown;
+    mime: unknown;
+    size: unknown;
+    sha256: unknown;
+  }>;
+};
+
+function stableFingerprint(value: Record<string, unknown>): StableOutputFingerprint {
   const artifacts = Array.isArray(value.artifacts)
     ? value.artifacts.map((artifact) => {
       const record = asRecord(artifact);
@@ -1695,6 +2270,44 @@ function stableFingerprint(value: Record<string, unknown>): Record<string, unkno
   };
 }
 
+function compareArtifactFingerprints(
+  leftArtifacts: StableOutputFingerprint["artifacts"],
+  rightArtifacts: StableOutputFingerprint["artifacts"]
+): Record<string, unknown> & { matched: boolean } {
+  const left = new Map(leftArtifacts.map((artifact, index) => [artifactKey(artifact, index), artifact]));
+  const right = new Map(rightArtifacts.map((artifact, index) => [artifactKey(artifact, index), artifact]));
+  const changed: string[] = [];
+  const missing: string[] = [];
+  const added: string[] = [];
+  for (const [key, leftArtifact] of left.entries()) {
+    const rightArtifact = right.get(key);
+    if (!rightArtifact) {
+      missing.push(key);
+      continue;
+    }
+    if (JSON.stringify(leftArtifact) !== JSON.stringify(rightArtifact)) {
+      changed.push(key);
+    }
+  }
+  for (const key of right.keys()) {
+    if (!left.has(key)) {
+      added.push(key);
+    }
+  }
+  return {
+    matched: changed.length === 0 && missing.length === 0 && added.length === 0,
+    leftCount: leftArtifacts.length,
+    rightCount: rightArtifacts.length,
+    changed,
+    missing,
+    added
+  };
+}
+
+function artifactKey(artifact: StableOutputFingerprint["artifacts"][number], index: number): string {
+  return [artifact.role, artifact.mime, index].filter((part) => part !== undefined && part !== null && part !== "").join(":") || `artifact:${index}`;
+}
+
 function sha256Bytes(bytes: Buffer): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
@@ -1709,6 +2322,7 @@ function slugify(value: string): string {
 
 async function runNodeTool(input: {
   entrypoint: string;
+  dependencyWorkspace?: string;
   request: unknown;
   timeoutMs: number;
   maxOutputBytes: number;
@@ -1716,6 +2330,12 @@ async function runNodeTool(input: {
   return new Promise((resolvePromise) => {
     const child = spawn(process.execPath, [input.entrypoint], {
       stdio: ["pipe", "pipe", "pipe"],
+      env: input.dependencyWorkspace
+        ? {
+          ...process.env,
+          CODEX_WIDGET_TOOL_DEPENDENCY_ROOT: input.dependencyWorkspace
+        }
+        : process.env,
       windowsHide: true
     });
     const stdout: Buffer[] = [];
@@ -1797,19 +2417,20 @@ process.stdin.on("end", async () => {
     const command = typeof request.command === "string" ? request.command : "execute";
     const input = request.input && typeof request.input === "object" ? request.input : {};
     const allowedDomains = Array.isArray(request.allowedDomains) ? request.allowedDomains.filter((value) => typeof value === "string") : [];
+    const allowedBrowserDomains = Array.isArray(request.allowedBrowserDomains) ? request.allowedBrowserDomains.filter((value) => typeof value === "string") : allowedDomains;
     const allowedCommandPrefixes = Array.isArray(request.allowedCommandPrefixes) ? request.allowedCommandPrefixes.filter((value) => typeof value === "string") : [];
     const outputDir = readOutputDir(input);
     mkdirSync(outputDir, { recursive: true });
     if (command === "smoke") {
-      await runAll({ ...input, outputDir, pdfRenderer: "builtin" }, allowedDomains, allowedCommandPrefixes);
+      await runAll({ ...input, outputDir, pdfRenderer: "builtin" }, allowedDomains, allowedBrowserDomains, allowedCommandPrefixes);
       return;
     }
     if (command === "execute") {
-      await runAll(input, allowedDomains, allowedCommandPrefixes);
+      await runAll(input, allowedDomains, allowedBrowserDomains, allowedCommandPrefixes);
       return;
     }
     if (command === "crawl_or_observe") {
-      writeJson(await crawlOrObserve(input, allowedDomains));
+      writeJson(await crawlOrObserve(input, allowedDomains, allowedBrowserDomains));
       return;
     }
     if (command === "extract") {
@@ -1843,8 +2464,8 @@ process.stdin.on("end", async () => {
   }
 });
 
-async function runAll(input, allowedDomains, allowedCommandPrefixes) {
-  const crawl = await crawlOrObserve(input, allowedDomains);
+async function runAll(input, allowedDomains, allowedBrowserDomains, allowedCommandPrefixes) {
+  const crawl = await crawlOrObserve(input, allowedDomains, allowedBrowserDomains);
   if (!crawl.ok) return writeJson(crawl);
   const extracted = await extract(input);
   if (!extracted.ok) return writeJson(extracted);
@@ -1864,6 +2485,7 @@ async function runAll(input, allowedDomains, allowedCommandPrefixes) {
     warnings: [...(crawl.warnings || []), ...(pdf.warnings || [])],
     evidence: {
       urlsFetched: crawl.urlsFetched,
+      browserFallbackUrls: crawl.browserFallbackUrls,
       citationsPath: join(readOutputDir(input), "citations.json"),
       markdownPath: join(readOutputDir(input), "report.md"),
       pdfPath: join(readOutputDir(input), "report.pdf")
@@ -1871,11 +2493,12 @@ async function runAll(input, allowedDomains, allowedCommandPrefixes) {
   });
 }
 
-async function crawlOrObserve(input, allowedDomains) {
+async function crawlOrObserve(input, allowedDomains, allowedBrowserDomains) {
   const outputDir = readOutputDir(input);
   const sourcesPath = join(outputDir, "sources.json");
   const docs = [];
   const warnings = [];
+  const browserFallbacks = normalizeBrowserFallbackDocuments(input.browserFallbackDocuments);
   const fixtureDocs = Array.isArray(input.sourceDocuments) ? input.sourceDocuments : [];
   for (let index = 0; index < fixtureDocs.length; index += 1) {
     const doc = fixtureDocs[index];
@@ -1892,9 +2515,19 @@ async function crawlOrObserve(input, allowedDomains) {
   const urls = Array.isArray(input.urls) ? input.urls.filter((value) => typeof value === "string") : [];
   for (const url of urls.slice(0, 8)) {
     const host = readHost(url);
-    if (!host || !allowedDomains.some((pattern) => matchesDomainGrant(pattern, host))) {
+    const networkAllowed = Boolean(host && allowedDomains.some((pattern) => matchesDomainGrant(pattern, host)));
+    const browserAllowed = Boolean(host && allowedBrowserDomains.some((pattern) => matchesDomainGrant(pattern, host)));
+    if (!host || (!networkAllowed && !browserAllowed)) {
       warnings.push("skipped_ungranted_domain:" + (host || url));
       docs.push({ title: host || url, url, text: "Skipped: domain is not in the permission profile.", fetched: false, status: "blocked_domain" });
+      continue;
+    }
+    if (!networkAllowed && browserAllowed) {
+      if (appendBrowserFallback(docs, warnings, browserFallbacks, url, host, "network_grant_missing")) {
+        continue;
+      }
+      warnings.push("browser_fallback_missing:" + host);
+      docs.push({ title: host, url, text: "Browser fallback required but no capture was supplied.", fetched: false, status: "browser_fallback_missing" });
       continue;
     }
     try {
@@ -1902,6 +2535,9 @@ async function crawlOrObserve(input, allowedDomains) {
       const html = await response.text();
       if (!response.ok) {
         warnings.push("http_status_" + response.status + ":" + host);
+        if (browserAllowed && appendBrowserFallback(docs, warnings, browserFallbacks, url, host, "http_status_" + response.status)) {
+          continue;
+        }
       }
       docs.push({
         title: extractTitle(html) || host,
@@ -1913,6 +2549,9 @@ async function crawlOrObserve(input, allowedDomains) {
       });
     } catch (error) {
       warnings.push("fetch_failed:" + host + ":" + readError(error));
+      if (browserAllowed && appendBrowserFallback(docs, warnings, browserFallbacks, url, host, "fetch_failed")) {
+        continue;
+      }
       docs.push({ title: host, url, text: "Fetch failed: " + readError(error), fetched: false, status: "fetch_failed" });
     }
   }
@@ -1925,9 +2564,86 @@ async function crawlOrObserve(input, allowedDomains) {
     stage: "crawl_or_observe",
     sourceCount: docs.length,
     urlsFetched: docs.filter((doc) => doc.fetched).map((doc) => doc.url),
+    browserFallbackUrls: docs.filter((doc) => doc.status === "browser_fallback").map((doc) => doc.url),
     warnings,
     artifacts: [{ role: "source", path: sourcesPath, mime: "application/json" }]
   };
+}
+
+function normalizeBrowserFallbackDocuments(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((item) => item && typeof item === "object" ? item : null)
+    .filter(Boolean)
+    .map((item) => {
+      const url = typeof item.url === "string" ? item.url.trim() : "";
+      const capture = item.capture && typeof item.capture === "object" ? item.capture : {};
+      const captureText = typeof capture.text === "string" ? capture.text : "";
+      const text = typeof item.text === "string" && item.text.trim() ? item.text : captureText;
+      return {
+        title: typeof item.title === "string" && item.title.trim()
+          ? item.title.trim()
+          : typeof capture.title === "string" && capture.title.trim()
+            ? capture.title.trim()
+            : readHost(url) || "Browser fallback source",
+        url,
+        text,
+        capture
+      };
+    })
+    .filter((item) => item.url && (String(item.text || "").trim() || Object.keys(item.capture || {}).length > 0));
+}
+
+function appendBrowserFallback(docs, warnings, fallbacks, url, host, reason) {
+  const fallback = fallbacks.find((item) => normalizeComparableUrl(item.url) === normalizeComparableUrl(url));
+  if (!fallback) {
+    return false;
+  }
+  const capture = fallback.capture || {};
+  const text = String(fallback.text || "").trim() || [
+    "Browser capture fallback was supplied for " + url + ".",
+    typeof capture.pdfSha256 === "string" ? "PDF SHA-256: " + capture.pdfSha256 : "",
+    typeof capture.pdfByteLength === "number" ? "PDF bytes: " + capture.pdfByteLength : "",
+    typeof capture.command === "string" ? "Capture command: " + capture.command : ""
+  ].filter(Boolean).join("\n");
+  docs.push({
+    title: fallback.title || host,
+    url,
+    text,
+    fetched: false,
+    status: "browser_fallback",
+    browserFallback: true,
+    fallbackReason: reason,
+    capture: sanitizeCaptureMetadata(capture)
+  });
+  warnings.push("browser_fallback_used:" + host + ":" + reason);
+  return true;
+}
+
+function sanitizeCaptureMetadata(value) {
+  const output = {};
+  for (const [key, entry] of Object.entries(value || {}).slice(0, 20)) {
+    if (/data|base64|html|screenshot|audio|raw/i.test(key)) {
+      output[key] = "[omitted]";
+    } else if (typeof entry === "string") {
+      output[key] = entry.slice(0, 500);
+    } else if (typeof entry === "number" || typeof entry === "boolean") {
+      output[key] = entry;
+    }
+  }
+  return output;
+}
+
+function normalizeComparableUrl(value) {
+  try {
+    const parsed = new URL(value);
+    parsed.hash = "";
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return String(value || "").trim().replace(/\/$/, "");
+  }
 }
 
 async function extract(input) {
@@ -1941,6 +2657,9 @@ async function extract(input) {
     url: source.url || "",
     fetched: Boolean(source.fetched),
     status: source.status || "unknown",
+    browserFallback: Boolean(source.browserFallback),
+    fallbackReason: source.fallbackReason || "",
+    capture: source.capture || {},
     text: String(source.text || "").replace(/\s+/g, " ").trim().slice(0, 6000)
   }));
   writeJsonFile(extractedPath, extracted);
@@ -1961,6 +2680,8 @@ async function verifySources(input) {
     url: source.url,
     fetched: source.fetched,
     status: source.status,
+    browserFallback: Boolean(source.browserFallback),
+    fallbackReason: source.fallbackReason || "",
     chars: String(source.text || "").length,
     excerpt: String(source.text || "").slice(0, 240)
   }));
@@ -1994,6 +2715,9 @@ async function draftMarkdown(input) {
     lines.push("### " + source.id + " - " + source.title);
     if (source.url) {
       lines.push("", "Source: " + source.url);
+    }
+    if (source.browserFallback) {
+      lines.push("", "Browser fallback: " + (source.fallbackReason || "direct_fetch_unavailable"));
     }
     lines.push("", source.text.slice(0, 4000), "");
   }
@@ -2176,6 +2900,265 @@ function readJsonFile(path, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function readError(error) {
+  return error && error.message ? error.message : String(error);
+}
+
+function writeJson(payload) {
+  process.stdout.write(JSON.stringify(payload));
+}
+`;
+
+const LOCAL_DOCUMENT_CONVERSION_TOOL = String.raw`
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, join } from "node:path";
+import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
+
+let stdin = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => {
+  stdin += chunk;
+});
+process.stdin.on("end", () => {
+  try {
+    const request = JSON.parse(stdin || "{}");
+    const command = typeof request.command === "string" ? request.command : "execute";
+    const input = request.input && typeof request.input === "object" ? request.input : {};
+    const allowedCommandPrefixes = Array.isArray(request.allowedCommandPrefixes) ? request.allowedCommandPrefixes.filter((value) => typeof value === "string") : [];
+    const outputDir = readOutputDir(input);
+    mkdirSync(outputDir, { recursive: true });
+    if (command === "smoke") {
+      runAll({
+        ...input,
+        outputDir,
+        title: input.title || "Local document conversion smoke",
+        markdown: input.markdown || "# Local document conversion smoke\n\nThis smoke fixture must become Markdown and PDF artifacts.",
+        pdfRenderer: "builtin"
+      }, allowedCommandPrefixes);
+      return;
+    }
+    if (command === "execute") {
+      runAll(input, allowedCommandPrefixes);
+      return;
+    }
+    if (command === "draft_markdown") {
+      writeJson(draftMarkdown(input));
+      return;
+    }
+    if (command === "render_pdf") {
+      writeJson(renderPdfStage(input, allowedCommandPrefixes));
+      return;
+    }
+    if (command === "store_artifact") {
+      writeJson(storeArtifact(input));
+      return;
+    }
+    if (command === "verify_artifact") {
+      writeJson(verifyArtifact(input));
+      return;
+    }
+    throw new Error("unknown_command:" + command);
+  } catch (error) {
+    writeJson({ ok: false, error: readError(error) });
+    process.exitCode = 1;
+  }
+});
+
+function runAll(input, allowedCommandPrefixes) {
+  const markdown = draftMarkdown(input);
+  if (!markdown.ok) return writeJson(markdown);
+  const pdf = renderPdfStage(input, allowedCommandPrefixes);
+  if (!pdf.ok) return writeJson(pdf);
+  const stored = storeArtifact(input);
+  if (!stored.ok) return writeJson(stored);
+  const verified = verifyArtifact(input);
+  writeJson({
+    ...verified,
+    artifacts: stored.artifacts,
+    warnings: pdf.warnings || [],
+    evidence: {
+      source: readSourceEvidence(input),
+      markdownPath: join(readOutputDir(input), "report.md"),
+      pdfPath: join(readOutputDir(input), "report.pdf")
+    }
+  });
+}
+
+function draftMarkdown(input) {
+  const outputDir = readOutputDir(input);
+  const title = typeof input.title === "string" && input.title.trim() ? input.title.trim() : "Local document conversion";
+  const source = readSourceContent(input);
+  if (!source.text.trim()) {
+    return { ok: false, stage: "draft_markdown", error: "empty_source_document" };
+  }
+  const markdown = source.looksLikeMarkdown
+    ? source.text
+    : ["# " + title, "", source.text].join("\n");
+  const markdownPath = join(outputDir, "report.md");
+  writeFileSync(markdownPath, normalizeMarkdown(markdown, title), "utf8");
+  return {
+    ok: true,
+    stage: "draft_markdown",
+    sourceKind: source.kind,
+    sourceName: source.name,
+    sourceSha256: source.sha256,
+    artifacts: [{ role: "report", path: markdownPath, mime: "text/markdown" }]
+  };
+}
+
+function renderPdfStage(input, allowedCommandPrefixes) {
+  const outputDir = readOutputDir(input);
+  const markdownPath = join(outputDir, "report.md");
+  const pdfPath = join(outputDir, "report.pdf");
+  const title = typeof input.title === "string" && input.title.trim() ? input.title.trim() : "Local document conversion";
+  const warnings = [];
+  if (input.pdfRenderer === "pandoc" && isCommandAllowed("pandoc", allowedCommandPrefixes) && existsSync(markdownPath)) {
+    const result = spawnSync("pandoc", [markdownPath, "-o", pdfPath], { encoding: "utf8", shell: false, timeout: 30000 });
+    if (result.status === 0 && existsSync(pdfPath)) {
+      return {
+        ok: true,
+        stage: "render_pdf",
+        renderer: "pandoc",
+        warnings,
+        artifacts: [{ role: "pdf", path: pdfPath, mime: "application/pdf" }]
+      };
+    }
+    warnings.push("pandoc_failed_or_missing:" + (result.stderr || result.error?.message || "unknown"));
+  }
+  const markdown = existsSync(markdownPath) ? readFileSync(markdownPath, "utf8") : title;
+  writeFileSync(pdfPath, renderMinimalPdf(title, markdown));
+  return {
+    ok: true,
+    stage: "render_pdf",
+    renderer: "builtin",
+    warnings,
+    artifacts: [{ role: "pdf", path: pdfPath, mime: "application/pdf" }]
+  };
+}
+
+function storeArtifact(input) {
+  const outputDir = readOutputDir(input);
+  const artifactDefs = [
+    { role: "report", path: join(outputDir, "report.md"), mime: "text/markdown" },
+    { role: "pdf", path: join(outputDir, "report.pdf"), mime: "application/pdf" }
+  ].filter((artifact) => existsSync(artifact.path));
+  return {
+    ok: artifactDefs.length === 2,
+    stage: "store_artifact",
+    artifacts: artifactDefs
+  };
+}
+
+function verifyArtifact(input) {
+  const outputDir = readOutputDir(input);
+  const markdownPath = join(outputDir, "report.md");
+  const pdfPath = join(outputDir, "report.pdf");
+  const markdownOk = existsSync(markdownPath) && readFileSync(markdownPath).byteLength > 20;
+  const pdfOk = existsSync(pdfPath) && readFileSync(pdfPath).subarray(0, 5).toString("ascii") === "%PDF-";
+  return {
+    ok: markdownOk && pdfOk,
+    stage: "verify_artifact",
+    verified: markdownOk && pdfOk,
+    artifacts: [
+      ...(markdownOk ? [{ role: "report", path: markdownPath, mime: "text/markdown" }] : []),
+      ...(pdfOk ? [{ role: "pdf", path: pdfPath, mime: "application/pdf" }] : [])
+    ]
+  };
+}
+
+function readSourceContent(input) {
+  if (typeof input.markdown === "string" && input.markdown.trim()) {
+    return sourceRecord("inline_markdown", "inline.md", input.markdown, true);
+  }
+  const path = typeof input.markdownPath === "string" && input.markdownPath
+    ? input.markdownPath
+    : typeof input.sourcePath === "string" && input.sourcePath
+      ? input.sourcePath
+      : "";
+  if (path && existsSync(path)) {
+    const text = readFileSync(path, "utf8");
+    return sourceRecord("local_file", basename(path), text, /\.m(?:d|arkdown)$/i.test(path) || /^#\s+/m.test(text));
+  }
+  const docs = Array.isArray(input.sourceDocuments) ? input.sourceDocuments : [];
+  const first = docs.find((doc) => doc && typeof doc.text === "string" && doc.text.trim());
+  if (first) {
+    return sourceRecord("source_document", typeof first.title === "string" ? first.title : "source-document.md", first.text, /^#\s+/m.test(first.text));
+  }
+  return sourceRecord("empty", "", "", false);
+}
+
+function sourceRecord(kind, name, text, looksLikeMarkdown) {
+  return {
+    kind,
+    name,
+    text: String(text || ""),
+    looksLikeMarkdown,
+    sha256: createHash("sha256").update(String(text || "")).digest("hex")
+  };
+}
+
+function readSourceEvidence(input) {
+  const source = readSourceContent(input);
+  return {
+    kind: source.kind,
+    name: source.name,
+    sha256: source.sha256,
+    chars: source.text.length,
+    pathRedacted: Boolean(input.markdownPath || input.sourcePath)
+  };
+}
+
+function normalizeMarkdown(markdown, title) {
+  const text = String(markdown || "").replace(/\r\n/g, "\n").trim();
+  if (/^#\s+/m.test(text)) {
+    return text + "\n";
+  }
+  return "# " + title + "\n\n" + text + "\n";
+}
+
+function readOutputDir(input) {
+  return typeof input.outputDir === "string" && input.outputDir ? input.outputDir : process.cwd();
+}
+
+function renderMinimalPdf(title, markdown) {
+  const text = [title, "", markdown].join("\n");
+  const safeLines = text
+    .replace(/[^\x20-\x7E\n]/g, '?')
+    .split("\n")
+    .slice(0, 52)
+    .map((line) => line.slice(0, 88));
+  const content = "BT /F1 10 Tf 50 760 Td " + safeLines.map((line, index) => {
+    const escaped = line.replace(/[()\\]/g, "\\$&");
+    return (index === 0 ? "" : "T* ") + "(" + escaped + ") Tj";
+  }).join(" ") + " ET";
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    "<< /Length " + Buffer.byteLength(content, "ascii") + " >>\nstream\n" + content + "\nendstream"
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  for (let i = 0; i < objects.length; i += 1) {
+    offsets.push(Buffer.byteLength(pdf, "ascii"));
+    pdf += (i + 1) + " 0 obj\n" + objects[i] + "\nendobj\n";
+  }
+  const xref = Buffer.byteLength(pdf, "ascii");
+  pdf += "xref\n0 " + (objects.length + 1) + "\n0000000000 65535 f \n";
+  for (let i = 1; i < offsets.length; i += 1) {
+    pdf += String(offsets[i]).padStart(10, "0") + " 00000 n \n";
+  }
+  pdf += "trailer\n<< /Size " + (objects.length + 1) + " /Root 1 0 R >>\nstartxref\n" + xref + "\n%%EOF\n";
+  return Buffer.from(pdf, "ascii");
+}
+
+function isCommandAllowed(command, prefixes) {
+  const normalized = String(command || "").trim().toLowerCase();
+  return prefixes.some((prefix) => normalized === String(prefix).trim().toLowerCase() || normalized.startsWith(String(prefix).trim().toLowerCase() + " "));
 }
 
 function readError(error) {

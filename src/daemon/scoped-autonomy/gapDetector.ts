@@ -16,7 +16,7 @@ export function decomposeAutonomyRequest(goal: string): AutonomyRequestDecomposi
     operations.push("crawl_or_observe", "extract", "verify_sources");
     evidenceNeeds.push("urls_fetched", "source_titles", "extraction_notes");
   }
-  if (/(pdf|report|문서|보고서|파일)/i.test(normalized)) {
+  if (/(pdf|report|markdown|md|convert|conversion|문서|보고서|파일|변환)/i.test(normalized)) {
     operations.push("draft_markdown", "render_pdf", "store_artifact", "verify_artifact");
     expectedArtifacts.push("report.md", "report.pdf");
   }
@@ -110,6 +110,38 @@ export function detectAutonomyCapabilityGaps(input: {
         templateId: "browser_download_verify.v1",
         entrypointKind: "node_script",
         expectedArtifacts: ["download-verification.json"]
+      },
+      blockers: [],
+      createdAt
+    }));
+  }
+
+  if (needsLocalDocumentConversion(normalized) && !available.has("local_document_conversion")) {
+    const requiredGrants: AutonomyPermissionRequirement[] = [
+      { type: "generated_tool_materialization", value: "local_document_conversion", reason: "Toolsmith must materialize the document converter." },
+      { type: "generated_tool_execution", value: "local_document_conversion", reason: "The generated converter must execute after smoke tests." },
+      { type: "risk_class", value: "read_only", reason: "Local document conversion reads supplied content and writes local artifacts." }
+    ];
+    if (input.outputRoot) {
+      requiredGrants.push({ type: "filesystem_write", value: input.outputRoot, reason: "The generated converter must write Markdown/PDF artifacts." });
+    }
+    gaps.push(createGap({
+      id: "gap-local-document-conversion",
+      runId: input.runId,
+      category: "document_conversion",
+      requestedCapability: "local_document_conversion",
+      reason: "The request needs a bounded local Markdown/text-to-PDF conversion workflow without web research.",
+      operations: ["draft_markdown", "render_pdf", "store_artifact", "verify_artifact"],
+      riskClass: "read_only",
+      evidenceNeeds: ["source_content_hash", "markdown_artifact", "pdf_artifact", "artifact_verifier"],
+      fallbackPlan: ["use_builtin_minimal_pdf_renderer_when_pandoc_is_not_granted", "block_if_source_path_is_outside_read_roots"],
+      blockerClassification: "none",
+      requiredGrants,
+      suggestedToolId: "tool-local-document-conversion",
+      proposedTool: {
+        templateId: "local_document_conversion.v1",
+        entrypointKind: "node_script",
+        expectedArtifacts: ["report.md", "report.pdf"]
       },
       blockers: [],
       createdAt
@@ -275,6 +307,12 @@ function inferDomains(goal: string): string[] {
 function needsWebResearchToPdf(goal: string): boolean {
   return /(pdf|report|문서|보고서|파일)/i.test(goal)
     && /(research|crawl|search|homepage|website|docs|조사|검색|홈페이지|문서화|정리)/i.test(goal);
+}
+
+function needsLocalDocumentConversion(goal: string): boolean {
+  return !needsWebResearchToPdf(goal)
+    && /(pdf|markdown|md|document|convert|conversion|문서|보고서|파일|변환)/i.test(goal)
+    && /(pdf|convert|conversion|render|export|markdown|md|문서|파일|변환|저장)/i.test(goal);
 }
 
 function needsBrowserChromeDirectControl(goal: string): boolean {

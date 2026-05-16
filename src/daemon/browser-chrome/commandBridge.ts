@@ -5,7 +5,29 @@ export type BrowserChromeCommandName =
   | "bookmark.create"
   | "bookmark.update"
   | "bookmark.remove"
-  | "bookmark.open";
+  | "bookmark.open"
+  | "tab_group.list"
+  | "tab_group.create"
+  | "tab_group.claim"
+  | "tab_group.update"
+  | "tab_group.release"
+  | "download.search"
+  | "download.observe"
+  | "download.verify"
+  | "download.start"
+  | "download.cancel"
+  | "download.erase"
+  | "history.search"
+  | "history.open"
+  | "debugger.inspect"
+  | "debugger.screenshot"
+  | "debugger.print_to_pdf"
+  | "permission.get"
+  | "permission.set"
+  | "file_upload.inspect"
+  | "file_upload.set_files"
+  | "file_upload.clear"
+  | "file_upload.blocked";
 
 export type BrowserChromeBridgeCommand = {
   kind: "browser_chrome";
@@ -159,7 +181,29 @@ function isBrowserChromeCommandName(value: unknown): value is BrowserChromeComma
     value === "bookmark.create" ||
     value === "bookmark.update" ||
     value === "bookmark.remove" ||
-    value === "bookmark.open";
+    value === "bookmark.open" ||
+    value === "tab_group.list" ||
+    value === "tab_group.create" ||
+    value === "tab_group.claim" ||
+    value === "tab_group.update" ||
+    value === "tab_group.release" ||
+    value === "download.search" ||
+    value === "download.observe" ||
+    value === "download.verify" ||
+    value === "download.start" ||
+    value === "download.cancel" ||
+    value === "download.erase" ||
+    value === "history.search" ||
+    value === "history.open" ||
+    value === "debugger.inspect" ||
+    value === "debugger.screenshot" ||
+    value === "debugger.print_to_pdf" ||
+    value === "permission.get" ||
+    value === "permission.set" ||
+    value === "file_upload.inspect" ||
+    value === "file_upload.set_files" ||
+    value === "file_upload.clear" ||
+    value === "file_upload.blocked";
 }
 
 function sanitizeBrowserChromePayload(payload: Record<string, unknown>): Record<string, unknown> {

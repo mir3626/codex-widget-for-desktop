@@ -8,6 +8,7 @@ import type { CapabilityJobsUiState } from "../types";
 import { formatActivityTime } from "../utils/format";
 import { AutonomyToolsmithPanel } from "./AutonomyToolsmithPanel";
 import { CapabilityJobsPanel } from "./CapabilityJobsPanel";
+import { ComputerUseSessionsPanel } from "./ComputerUseSessionsPanel";
 import { ProviderSnapshotRow } from "./ProviderSnapshotRow";
 
 type ActivityLogProps = {
@@ -17,6 +18,7 @@ type ActivityLogProps = {
   activityBadgeCount: number;
   ledger: LedgerSnapshot | null;
   capabilityJobs: CapabilityJobsUiState;
+  computerUseRefreshSignal: number;
   daemonPort: string;
   providerSnapshots: ProviderSnapshotSummary[];
   onApproveCapabilityJob: (jobId: string) => void;
@@ -33,6 +35,7 @@ export function ActivityLog({
   activityBadgeCount,
   ledger,
   capabilityJobs,
+  computerUseRefreshSignal,
   daemonPort,
   providerSnapshots,
   onApproveCapabilityJob,
@@ -105,6 +108,12 @@ export function ActivityLog({
                 onRefresh={onRefreshCapabilityJobs}
               />
               <AutonomyToolsmithPanel daemonPort={daemonPort} />
+              <ComputerUseSessionsPanel
+                daemonPort={daemonPort}
+                refreshSignal={computerUseRefreshSignal}
+                onApproveCapabilityJob={onApproveCapabilityJob}
+                onCancelCapabilityJob={onCancelCapabilityJob}
+              />
               {(ledger?.activities ?? []).slice(0, 12).map((activity) => (
                 <div key={activity.id} className={`activity-detail-row ${activity.level}`}>
                   <span>{formatActivityTime(activity.createdAt)}</span>

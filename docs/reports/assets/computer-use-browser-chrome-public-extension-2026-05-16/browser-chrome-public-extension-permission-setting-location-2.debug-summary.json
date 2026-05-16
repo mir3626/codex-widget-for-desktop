@@ -1,0 +1,44 @@
+{
+  "id": "browser-chrome-public-extension-permission-setting-location-2",
+  "command": "permission.get+set+rollback",
+  "userScenario": "User asks the widget to inspect the location site permission, apply a bounded one-time setting change, and roll it back on a dogfood-owned browser profile.",
+  "architectureWorkflow": [
+    "Playwright launches Chromium with a fresh temporary profile and the real unpacked Browser Bridge extension.",
+    "Computer Session reads the current site permission through permission.get without native browser chrome clicks.",
+    "Computer Session queues high-risk permission.set for only the public page origin and requires one-time approval.",
+    "The extension uses Chrome contentSettings to apply the bounded location setting, then Computer Session verifies it with permission.get.",
+    "Computer Session queues a second one-time permission.set to restore the initial setting and verifies rollback.",
+    "The dogfood evidence stores only host, setting values, approval metadata, popup-click=false proof, DAG/eval proof, and cleanup proof."
+  ],
+  "success": true,
+  "status": "passed",
+  "result": {
+    "elapsedMs": 2862,
+    "p95LatencyMs": 2862,
+    "sourceHost": "example.com",
+    "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+    "verifierNodeCount": 4,
+    "evalLedgerNodeCount": 5,
+    "cleanupReconciled": true,
+    "redaction": {
+      "sitePermission": "host_only_no_path",
+      "rollback": "restored_to_initial_setting",
+      "browserProfile": "dogfood_fresh_profile_only",
+      "urls": "public_url_hash_only",
+      "credentials": "not_used"
+    },
+    "approval": "one_time",
+    "risk": "high",
+    "permissionType": "location",
+    "permissionHost": "example.com",
+    "permissionPattern": "host_scoped_wildcard",
+    "initialSetting": "ask",
+    "appliedSetting": "block",
+    "verifiedAfterSet": "block",
+    "rollbackSetting": "ask",
+    "verifiedAfterRollback": "ask",
+    "nativePopupClick": false,
+    "popupWorkflow": "content_settings_api"
+  },
+  "improvementAndFollowUp": "This proves location site permission mutation can use the Chrome contentSettings API with one-time approval, bounded origin scope, and rollback proof instead of coordinate-clicking browser chrome."
+}

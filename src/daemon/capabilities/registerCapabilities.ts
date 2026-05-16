@@ -15,6 +15,75 @@ export function registerDaemonCapabilities(input: {
 }): void {
   const { capabilityRuntime, browserChromeCommands, getDaemonPort } = input;
 
+  capabilityRuntime.register("browser_action", async ({ job }) => {
+    const jobInput = job.inputJson && typeof job.inputJson === "object"
+      ? job.inputJson as Record<string, unknown>
+      : {};
+    const action = readBrowserAction(jobInput.action ?? jobInput.browserAction);
+    if (action.type === "read" || action.type === "screenshot") {
+      return {
+        output: {
+          ok: true,
+          status: "observed",
+          action,
+          mode: "computer_session_capability_handler",
+          verification: {
+            status: "passed",
+            reason: "Read-only Browser Action capability was accepted by the daemon handler."
+          },
+          metadata: {
+            executor: "daemon_browser_action_handler",
+            effect: "read_only"
+          }
+        },
+        summary: "Browser Action read-only capability completed."
+      };
+    }
+    const executionResult = jobInput.executionResult && typeof jobInput.executionResult === "object"
+      ? jobInput.executionResult as Record<string, unknown>
+      : undefined;
+    if (executionResult) {
+      return {
+        output: {
+          ok: executionResult.ok !== false,
+          status: executionResult.ok === false ? "failed" : "executed",
+          action,
+          result: executionResult,
+          verification: executionResult.verification && typeof executionResult.verification === "object"
+            ? executionResult.verification
+            : {
+                status: executionResult.ok === false ? "failed" : "passed",
+                reason: "Browser Action execution result was supplied by a bound executor."
+              },
+          metadata: {
+            executor: "bound_browser_action_executor",
+            effect: "caller_supplied_execution_result"
+          }
+        },
+        status: executionResult.ok === false ? "failed" : "completed",
+        summary: "Browser Action capability completed from bound executor result.",
+        error: executionResult.ok === false ? String(executionResult.error ?? "Browser Action executor reported failure.") : undefined
+      };
+    }
+    return {
+      status: "failed",
+      output: {
+        ok: false,
+        status: "blocked",
+        action,
+        verification: {
+          status: "failed",
+          reason: "Browser Action side-effect execution is not yet bound to the Computer Session executor."
+        },
+        metadata: {
+          executor: "unbound",
+          failureClass: "binding"
+        }
+      },
+      error: "browser_action_executor_not_bound"
+    };
+  });
+
   capabilityRuntime.register("screen_observe", async ({ job }) => {
     const jobInput = job.inputJson && typeof job.inputJson === "object"
       ? job.inputJson as Record<string, unknown>

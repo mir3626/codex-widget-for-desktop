@@ -1,0 +1,32 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 1784 >>
+stream
+BT /F1 10 Tf 50 760 Td (Computer Use OpenAI Codex live source report) Tj T* () Tj T* (# Computer Use OpenAI Codex live source report) Tj T* () Tj T* (## Summary) Tj T* () Tj T* (- CLI ? Codex | OpenAI Developers \(https://help.openai.com/en/articles/11096431-openai-c) Tj T* (- Web ? Codex | OpenAI Developers \(https://platform.openai.com/docs/codex/overview\)) Tj T* (- Docs MCP | OpenAI Developers \(https://platform.openai.com/docs/docs-mcp\)) Tj T* () Tj T* (## Citations) Tj T* () Tj T* (| ID | Title | URL | Status |) Tj T* (| --- | --- | --- | --- |) Tj T* (| S1 | CLI ? Codex \\| OpenAI Developers | https://help.openai.com/en/articles/11096431-o) Tj T* (| S2 | Web ? Codex \\| OpenAI Developers | https://platform.openai.com/docs/codex/overvie) Tj T* (| S3 | Docs MCP \\| OpenAI Developers | https://platform.openai.com/docs/docs-mcp | brows) Tj T* () Tj T* (## Source Notes) Tj T* () Tj T* (### S1 - CLI ? Codex | OpenAI Developers) Tj T* () Tj T* (Source: https://help.openai.com/en/articles/11096431-openai-codex-ci-getting-started) Tj T* () Tj T* (Browser fallback: http_status_403) Tj T* () Tj T* (Home API Codex ChatGPT Resources Start searching API Dashboard Getting Started Overview ) Tj T* () Tj T* (### S2 - Web ? Codex | OpenAI Developers) Tj T* () Tj T* (Source: https://platform.openai.com/docs/codex/overview) Tj T* () Tj T* (Browser fallback: http_status_403) Tj T* () Tj T* (Home API Codex ChatGPT Resources Start searching API Dashboard Getting Started Overview ) Tj T* () Tj T* (### S3 - Docs MCP | OpenAI Developers) Tj T* () Tj T* (Source: https://platform.openai.com/docs/docs-mcp) Tj T* () Tj T* (Browser fallback: http_status_403) Tj T* () Tj T* (Home API Codex ChatGPT Resources Start searching API Dashboard Home OpenAI Developers pl) Tj T* () Tj ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+2147
+%%EOF

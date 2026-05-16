@@ -1,0 +1,287 @@
+{
+  "schemaVersion": "computer-use-browser-prompt-live-dogfood.v1",
+  "generatedAt": "2026-05-15T22:13:31.475Z",
+  "date": "2026-05-16",
+  "runId": "computer-use-browser-prompt-live-20260516-071322",
+  "metrics": {
+    "scenarioCount": 4,
+    "successCount": 4,
+    "livePublicSite": true,
+    "fixtureBacked": false,
+    "directComputerSessionPromptRoute": true,
+    "intentClassCount": 4,
+    "sourceHostCount": 3,
+    "sourceHosts": [
+      "example.com",
+      "wikipedia.org",
+      "iana.org"
+    ],
+    "p50LatencyMs": 2004,
+    "p95LatencyMs": 3045,
+    "elapsedMs": 8829
+  },
+  "scenarios": [
+    {
+      "id": "computer-session-browser-live-read-example",
+      "intentClass": "read_current_page",
+      "sourceHost": "example.com",
+      "userScenario": "사용자가 위젯 Computer Use 세션에서 공개 웹페이지(example.com)의 현재 페이지 내용을 읽어 달라고 요청한다.",
+      "architectureWorkflow": [
+        "renderer-equivalent request creates an isolated_browser Computer Session for a public website",
+        "ComputerSessionRuntime selects the isolated browser surface and creates an eval run plus capability DAG skeleton",
+        "the /browser-action-prompt route deterministically decomposes the Korean or direct user prompt into a Browser Action prompt plan",
+        "each prompt step is executed through the parent Computer Session operation path against a real public URL",
+        "the Playwright Browser Action adapter captures pre-action and post-action DOM observations without storing raw DOM or screenshots in the report",
+        "Computer Session records action feedback, perception graph evidence where a side-effect target exists, verifier output, follow-up verification nodes, and eval-ledger nodes",
+        "the debug bundle exports prompt runs, capability jobs, DAG nodes, observations, action feedback, eval resources, verifier audit, and rollback cleanup"
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "sessionId": "99650a0d-e0f6-4424-8163-9e73c15c4a15",
+        "evalRunId": "computer-use-eval-cd118fe2-b47f-4804-9e05-8d5e1deb2075",
+        "dagRunId": "capability-dag-25c952a5-9f89-4600-9961-4f027fe4e2eb",
+        "promptRunId": "browser-prompt-run:10b0db56-3e12-4758-95fb-46b841560b8c",
+        "promptRunStatus": "completed",
+        "stepCount": 1,
+        "completedStepCount": 1,
+        "actionTypes": [
+          "read"
+        ],
+        "elapsedMs": 1265,
+        "p50LatencyMs": 1265,
+        "p95LatencyMs": 1265,
+        "sourceUrl": "https://example.com/",
+        "finalUrl": "https://example.com/",
+        "sourceHost": "example.com",
+        "finalHost": "example.com",
+        "urlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+        "capabilityJobCount": 1,
+        "completedCapabilityJobCount": 1,
+        "dagNodeCount": 8,
+        "verificationNodeCount": 1,
+        "evalLedgerNodeCount": 2,
+        "observationCount": 3,
+        "browserDomObservationCount": 2,
+        "perceptionGraphCount": 2,
+        "actionFeedbackCount": 1,
+        "verifierResultCount": 2,
+        "promptPlanEvalStepCount": 1,
+        "promptStepEvalStepCount": 1,
+        "actionRoutes": [
+          {
+            "executionMode": "dom_playwright_locator",
+            "preferenceRank": 2,
+            "visualFallbackUsed": false
+          }
+        ],
+        "cleanupRollbackCompleted": true,
+        "redaction": {
+          "rawScreenshots": "not_embedded",
+          "rawDom": "not_embedded",
+          "credentials": "not_used",
+          "urls": "public_url_metadata_only"
+        }
+      },
+      "improvementAndFollowUp": "성공. 이 케이스는 public-site live evidence이며, 승격에는 같은 intent class의 반복 sample과 p95/safety regression 검사가 필요하다."
+    },
+    {
+      "id": "computer-session-browser-live-search-wikipedia",
+      "intentClass": "search_form_fill_submit",
+      "sourceHost": "wikipedia.org",
+      "userScenario": "사용자가 위젯 Computer Use 세션에서 Wikipedia 검색창에 Codex CLI를 입력하고 검색 버튼을 눌러 달라고 요청한다.",
+      "architectureWorkflow": [
+        "renderer-equivalent request creates an isolated_browser Computer Session for a public website",
+        "ComputerSessionRuntime selects the isolated browser surface and creates an eval run plus capability DAG skeleton",
+        "the /browser-action-prompt route deterministically decomposes the Korean or direct user prompt into a Browser Action prompt plan",
+        "each prompt step is executed through the parent Computer Session operation path against a real public URL",
+        "the Playwright Browser Action adapter captures pre-action and post-action DOM observations without storing raw DOM or screenshots in the report",
+        "Computer Session records action feedback, perception graph evidence where a side-effect target exists, verifier output, follow-up verification nodes, and eval-ledger nodes",
+        "the debug bundle exports prompt runs, capability jobs, DAG nodes, observations, action feedback, eval resources, verifier audit, and rollback cleanup"
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "sessionId": "94bf6eb4-0848-42bc-ab9a-6a93011fbadf",
+        "evalRunId": "computer-use-eval-b6134752-b144-4b69-b245-471e8df8595c",
+        "dagRunId": "capability-dag-572557ec-59e1-4875-b546-ef6a1d92c7f4",
+        "promptRunId": "browser-prompt-run:5cc0c760-17f1-4087-a8a2-d37291ef5845",
+        "promptRunStatus": "completed",
+        "stepCount": 2,
+        "completedStepCount": 2,
+        "actionTypes": [
+          "type",
+          "click"
+        ],
+        "elapsedMs": 3045,
+        "p50LatencyMs": 3045,
+        "p95LatencyMs": 3045,
+        "sourceUrl": "https://www.wikipedia.org/",
+        "finalUrl": "https://ko.wikipedia.org/w/index.php?title=%ED%8A%B9%EC%88%98:%EA%B2%80%EC%83%89&go=Go&search=Codex+CLI",
+        "sourceHost": "wikipedia.org",
+        "finalHost": "ko.wikipedia.org",
+        "urlHash": "86b2af9baea59f99898f3de8541a030369bebd31e1509a3569b0ae38ac01d16f",
+        "capabilityJobCount": 2,
+        "completedCapabilityJobCount": 2,
+        "dagNodeCount": 11,
+        "verificationNodeCount": 2,
+        "evalLedgerNodeCount": 3,
+        "observationCount": 5,
+        "browserDomObservationCount": 4,
+        "perceptionGraphCount": 3,
+        "actionFeedbackCount": 2,
+        "verifierResultCount": 3,
+        "promptPlanEvalStepCount": 1,
+        "promptStepEvalStepCount": 2,
+        "actionRoutes": [
+          {
+            "executionMode": "dom_playwright_locator",
+            "preferenceRank": 2,
+            "visualFallbackUsed": false
+          },
+          {
+            "executionMode": "dom_playwright_locator",
+            "preferenceRank": 2,
+            "visualFallbackUsed": false
+          }
+        ],
+        "cleanupRollbackCompleted": true,
+        "redaction": {
+          "rawScreenshots": "not_embedded",
+          "rawDom": "not_embedded",
+          "credentials": "not_used",
+          "urls": "public_url_metadata_only"
+        }
+      },
+      "improvementAndFollowUp": "성공. 이 케이스는 public-site live evidence이며, 승격에는 같은 intent class의 반복 sample과 p95/safety regression 검사가 필요하다."
+    },
+    {
+      "id": "computer-session-browser-live-click-example-link",
+      "intentClass": "representative_content_selection",
+      "sourceHost": "example.com",
+      "userScenario": "사용자가 위젯 Computer Use 세션에서 공개 웹페이지(example.com)의 More information 링크를 열어 달라고 요청한다.",
+      "architectureWorkflow": [
+        "renderer-equivalent request creates an isolated_browser Computer Session for a public website",
+        "ComputerSessionRuntime selects the isolated browser surface and creates an eval run plus capability DAG skeleton",
+        "the /browser-action-prompt route deterministically decomposes the Korean or direct user prompt into a Browser Action prompt plan",
+        "each prompt step is executed through the parent Computer Session operation path against a real public URL",
+        "the Playwright Browser Action adapter captures pre-action and post-action DOM observations without storing raw DOM or screenshots in the report",
+        "Computer Session records action feedback, perception graph evidence where a side-effect target exists, verifier output, follow-up verification nodes, and eval-ledger nodes",
+        "the debug bundle exports prompt runs, capability jobs, DAG nodes, observations, action feedback, eval resources, verifier audit, and rollback cleanup"
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "sessionId": "5bac54fa-67a5-4969-911e-858bd1aee0e0",
+        "evalRunId": "computer-use-eval-a4ba061d-eaed-4648-83be-f91cba7d4982",
+        "dagRunId": "capability-dag-26918f2a-6ded-4d06-9c65-84fd62298f9e",
+        "promptRunId": "browser-prompt-run:303ba874-16e5-45c6-b2e4-09dfdd5f753c",
+        "promptRunStatus": "completed",
+        "stepCount": 1,
+        "completedStepCount": 1,
+        "actionTypes": [
+          "click"
+        ],
+        "elapsedMs": 2317,
+        "p50LatencyMs": 2317,
+        "p95LatencyMs": 2317,
+        "sourceUrl": "https://example.com/",
+        "finalUrl": "https://www.iana.org/help/example-domains",
+        "sourceHost": "example.com",
+        "finalHost": "www.iana.org",
+        "urlHash": "7630c14a6e2b99f60f929f47c0d0c1e6d432d468c8db37ce6131ae31d18229c2",
+        "capabilityJobCount": 1,
+        "completedCapabilityJobCount": 1,
+        "dagNodeCount": 8,
+        "verificationNodeCount": 1,
+        "evalLedgerNodeCount": 2,
+        "observationCount": 3,
+        "browserDomObservationCount": 2,
+        "perceptionGraphCount": 1,
+        "actionFeedbackCount": 1,
+        "verifierResultCount": 2,
+        "promptPlanEvalStepCount": 1,
+        "promptStepEvalStepCount": 1,
+        "actionRoutes": [
+          {
+            "executionMode": "dom_playwright_locator",
+            "preferenceRank": 2,
+            "visualFallbackUsed": false
+          }
+        ],
+        "cleanupRollbackCompleted": true,
+        "redaction": {
+          "rawScreenshots": "not_embedded",
+          "rawDom": "not_embedded",
+          "credentials": "not_used",
+          "urls": "public_url_metadata_only"
+        }
+      },
+      "improvementAndFollowUp": "성공. 이 케이스는 public-site live evidence이며, 승격에는 같은 intent class의 반복 sample과 p95/safety regression 검사가 필요하다."
+    },
+    {
+      "id": "computer-session-browser-live-navigate-iana",
+      "intentClass": "navigation",
+      "sourceHost": "iana.org",
+      "userScenario": "사용자가 위젯 Computer Use 세션에서 공개 IANA reserved domains 문서로 이동해 달라고 요청한다.",
+      "architectureWorkflow": [
+        "renderer-equivalent request creates an isolated_browser Computer Session for a public website",
+        "ComputerSessionRuntime selects the isolated browser surface and creates an eval run plus capability DAG skeleton",
+        "the /browser-action-prompt route deterministically decomposes the Korean or direct user prompt into a Browser Action prompt plan",
+        "each prompt step is executed through the parent Computer Session operation path against a real public URL",
+        "the Playwright Browser Action adapter captures pre-action and post-action DOM observations without storing raw DOM or screenshots in the report",
+        "Computer Session records action feedback, perception graph evidence where a side-effect target exists, verifier output, follow-up verification nodes, and eval-ledger nodes",
+        "the debug bundle exports prompt runs, capability jobs, DAG nodes, observations, action feedback, eval resources, verifier audit, and rollback cleanup"
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "sessionId": "0995d425-29b1-496d-9cdc-22ec3cce9ff7",
+        "evalRunId": "computer-use-eval-7907159f-ee64-4e99-9c66-0275146dd6f5",
+        "dagRunId": "capability-dag-ae005b52-26ef-408b-aa95-ebb35336ef89",
+        "promptRunId": "browser-prompt-run:22186e7d-5ba2-4838-8395-c449f7c860d2",
+        "promptRunStatus": "completed",
+        "stepCount": 1,
+        "completedStepCount": 1,
+        "actionTypes": [
+          "navigate"
+        ],
+        "elapsedMs": 2004,
+        "p50LatencyMs": 2004,
+        "p95LatencyMs": 2004,
+        "sourceUrl": "https://example.com/",
+        "finalUrl": "https://www.iana.org/domains/reserved",
+        "sourceHost": "iana.org",
+        "finalHost": "www.iana.org",
+        "urlHash": "a32f3bb71f3e05ea897135aaafc9b7fa8e9c37ab01713727ddd2345c11551748",
+        "capabilityJobCount": 1,
+        "completedCapabilityJobCount": 1,
+        "dagNodeCount": 8,
+        "verificationNodeCount": 1,
+        "evalLedgerNodeCount": 2,
+        "observationCount": 3,
+        "browserDomObservationCount": 2,
+        "perceptionGraphCount": 2,
+        "actionFeedbackCount": 1,
+        "verifierResultCount": 2,
+        "promptPlanEvalStepCount": 1,
+        "promptStepEvalStepCount": 1,
+        "actionRoutes": [
+          {
+            "executionMode": "dom_playwright_locator",
+            "preferenceRank": 2,
+            "visualFallbackUsed": false
+          }
+        ],
+        "cleanupRollbackCompleted": true,
+        "redaction": {
+          "rawScreenshots": "not_embedded",
+          "rawDom": "not_embedded",
+          "credentials": "not_used",
+          "urls": "public_url_metadata_only"
+        }
+      },
+      "improvementAndFollowUp": "성공. 이 케이스는 public-site live evidence이며, 승격에는 같은 intent class의 반복 sample과 p95/safety regression 검사가 필요하다."
+    }
+  ]
+}

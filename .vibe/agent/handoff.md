@@ -4,6 +4,1111 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Dirty Worktree Review Hardening Handoff
+
+The current dirty worktree implements the Windows Codex Computer Use parity
+track to the local guarded boundary, but the review found several hardening
+items that should be addressed before push/release. Do not revert unrelated
+dirty files; continue from the existing worktree and fix the listed risks.
+
+Review baseline before this handoff:
+
+- Dirty worktree size at review time: 174 changed/untracked entries.
+- Tracked diff at review time: 70 files, about 12,483 insertions and 200
+  deletions.
+- Prior verification had passed: `npm run lint`, `npm run smoke:all`,
+  `npm run gate:computer-use-promotion`, `npm run audit:computer-use-parity`,
+  `git diff --check` with known CRLF normalization warnings, UTF scan clean,
+  and no `.cs` files touched.
+- Latest parity audit remained `implemented_with_guarded_boundaries`,
+  `passed=61`, `guarded=7`, `blocked=0`, `missing=0`.
+- Latest 30-case process validation remained `passed=21`, `blocked=9`,
+  `needsFollowup=0`, `unexpectedFailures=0`.
+
+Resume-critical findings and implementation order:
+
+1. Harden daemon local trust boundary.
+   - Files to start with:
+     - `src/daemon/server/http.ts`
+     - `src/daemon/server/http/routes/browserBridgeRoutes.ts`
+     - `src/daemon/server/http/routes/computerUseSessionRoutes.ts`
+     - `src/daemon/server/ws/capabilityMessages.ts`
+     - `src/daemon/capability-runtime/safety.ts`
+   - Issue: global `Access-Control-Allow-Origin: *` and unauthenticated
+     Browser Bridge, Computer Use session, rollback/debug bundle, and capability
+     WS surfaces are now too open for high-risk browser chrome/debugger/tool
+     workflows.
+   - Required fix: add a daemon session token or bridge nonce and require it on
+     `/computer-use/*`, `/browser-action/extension/*`, and capability WS
+     messages. Restrict CORS to trusted renderer/Tauri and extension origins.
+     Strip or ignore externally supplied `requireApproval: false`; replace it
+     with an internal preapproval proof object that cannot be client-forged.
+   - Tests to add/update: unauth cross-origin HTTP requests fail; extension
+     poll/result/ack without nonce fails; raw capability WS start cannot bypass
+     approval by setting `requireApproval:false`.
+
+2. Sandbox Toolsmith generated tools.
+   - File to start with: `src/daemon/scoped-autonomy/toolsmithRuntime.ts`.
+   - Issue: generated tools currently spawn via `process.execPath` while
+     inheriting the full daemon `process.env` and parent cwd.
+   - Required fix: run tools with a scrubbed environment allowlist, set `cwd` to
+     the generated-tool runtime workspace, and block access to repo cwd or
+     unapproved paths. Prefer Node permission flags when available or a bounded
+     runner wrapper if needed. Never pass API keys, OAuth tokens, browser
+     profile secrets, or unrelated daemon env into generated code.
+   - Tests to add/update: generated tool cannot read `OPENAI_API_KEY` or other
+     secret env vars, cannot write repo cwd, and cannot read outside approved
+     input/output roots.
+
+3. Sanitize Browser Chrome debugger output before persistence/debug export.
+   - Files to start with:
+     - `providers/browser-dom-extension/bridge/browser-chrome.js`
+     - `src/daemon/capabilities/registerCapabilities.ts`
+     - `src/daemon/capability-runtime/runtime.ts`
+     - `src/daemon/computer-use/sessionRuntime.ts`
+   - Issue: debugger actions can return `bodyTextPreview`, screenshot
+     `dataUrl`, and PDF `dataBase64`; capability output and Computer Use debug
+     bundles can persist these raw values.
+   - Required fix: remove raw page text/binary values from persisted outputs.
+     Use hashes, lengths, redacted previews, or blob-backed resources with
+     retention metadata. Add a Browser Chrome output sanitizer and apply it to
+     capability job output and debug bundles.
+   - Tests to add/update: persisted capability output and debug bundle contain
+     no `dataUrl`, no `dataBase64`, and no raw `bodyTextPreview`.
+
+4. Bound browser permission mutation and record rollback proof.
+   - File to start with:
+     `providers/browser-dom-extension/bridge/browser-chrome.js`.
+   - Issue: content setting mutation accepts broad patterns such as
+     `https://*/*` and verifies post-state without capturing the previous
+     setting as rollback evidence.
+   - Required fix: default allowed pattern must match the approved origin
+     exactly, for example `${new URL(primaryUrl).origin}/*`. Reject wildcard
+     patterns unless a future explicit high-risk wildcard grant exists. Capture
+     `previousSetting` before mutation and emit rollback command/evidence.
+   - Tests to add/update: wildcard pattern blocks; origin-scoped pattern
+     passes; rollback restores previous setting and records proof.
+
+5. Fail closed on malformed Browser Chrome commands.
+   - Files to start with:
+     - `src/daemon/browser-chrome/commandBridge.ts`
+     - `src/daemon/capability-runtime/safety.ts`
+   - Issue: missing/unknown commands degrade to `bookmark.list`, which can hide
+     planner/runtime bugs and read bookmark data for the wrong request.
+   - Required fix: unknown or missing command must return an explicit invalid
+     command error. Safety evaluation must not treat malformed browser_chrome
+     input as read-only.
+   - Tests to add/update: unsupported command and missing command fail/blocked
+     with no bookmark list result.
+
+6. Move high-risk extension permissions out of required manifest permissions
+   where Chrome supports optional permissions.
+   - File to start with: `providers/browser-dom-extension/manifest.json`.
+   - Issue: `bookmarks`, `contentSettings`, `debugger`, `downloads`, `history`,
+     and `tabGroups` are required at install time. Daemon-side approval limits
+     command execution, but required extension permissions widen install-time
+     blast radius and store review risk.
+   - Required fix: move high-risk permissions supported by Chrome to
+     `optional_permissions`, request them per bounded run/profile, and surface
+     missing permission UX in popup/widget.
+   - Tests to add/update: browser store readiness audit fails required
+     high-risk permissions unless explicitly justified.
+
+7. Redact local absolute paths from new report ledgers.
+   - Files to inspect:
+     - `docs/reports/assets/*-runs.jsonl`
+     - `docs/plans/windows-codex-computer-use-parity/09-approved-execution-handoff/06-resume-maintenance.md`
+     - `.vibe/agent/handoff.md`
+   - Issue: new report JSONL files include local `C:/Users/...` paths. This
+     conflicts with repo-relative/redacted evidence policy.
+   - Required fix: update collectors to store repo-relative paths using
+     `path.relative(repoRoot, value).replace(/\\/g, "/")`, regenerate affected
+     JSONL/report assets, and add an audit check for `C:\Users` and `C:/Users`
+     in new report assets. Old deprecated docs can be handled as a separate
+     cleanup if needed.
+
+Recommended verification after the hardening fixes:
+
+- `npm run build:daemon`
+- `npm run build:renderer`
+- `npm run lint`
+- Focused smokes for each changed boundary, including new unauth/nonce,
+  generated-tool sandbox, browser_chrome sanitizer, permission rollback, and
+  invalid-command smokes.
+- `npm run smoke:browser-extension`
+- `npm run smoke:browser-store-readiness`
+- `npm run smoke:scoped-autonomy-self-implementation`
+- `npm run smoke:computer-use-session`
+- `npm run smoke:computer-use-debug-bundle`
+- `npm run smoke:all`
+- `npm run gate:computer-use-promotion`
+- `npm run audit:computer-use-parity`
+- `git diff --check`
+- UTF-8/mojibake scan for touched files.
+- `.cs` BOM check only if `.cs` files are touched.
+
+Do not mark these hardening items as complete merely because existing parity
+tests pass. Existing tests prove feature breadth; the review findings are
+trust-boundary and retention-policy issues that need explicit negative tests.
+
+## Latest Update: Parity Closure Status Ledger Sync
+
+Synchronized the context-loss handoff status after the final process validation
+refresh. The resume-critical ledger now states that Windows Codex Computer Use
+parity is implemented to the current local boundary with explicit guarded
+external blockers, rather than an open local implementation gap.
+
+Changed:
+
+- `docs/plans/windows-codex-computer-use-parity/09-approved-execution-handoff/07-current-status-ledger.md`
+- `docs/plans/windows-codex-computer-use-parity/08-implementation-resumption-handoff.md`
+
+Closure interpretation:
+
+- Latest audit remains `implemented_with_guarded_boundaries`, with `passed=61`,
+  `guarded=7`, `blocked=0`, and `missing=0`.
+- The global implementation goal can be considered locally satisfied only while
+  the verification boundary still passes and guarded items remain documented as
+  external blockers.
+- Guarded native/release items are not completed native execution:
+  foreground input, native file picker selection, browser permission popup
+  native clicks, production signing, unrestricted credential flow,
+  authenticated browser profile/cookie default access, real VM/RDP/sandbox
+  backend, GPU ASR validation, and human microphone ASR corpus benchmark remain
+  explicit future work.
+
+## Latest Update: Process Validation PDF/Download/VLM Refresh
+
+Continued the Windows Codex Computer Use parity implementation by refreshing
+the 30-case user-like process validation matrix against the current
+Toolsmith/PDF, Browser Chrome download-verification, and metadata-only Vision
+VLM fallback capabilities.
+
+Changed:
+
+- `scripts/collect-computer-use-process-validation-30.mjs`
+- `docs/dogfood/computer-use-process-validation-30-2026-05-16.json`
+- `docs/reports/computer-use-process-validation-30-2026-05-16.md`
+- `docs/reports/assets/computer-use-process-validation-30-2026-05-16/evidence.json`
+- `docs/reports/computer-use-promotion-gate-2026-05-16.md`
+- `docs/reports/assets/computer-use-promotion-gate-2026-05-16/evidence.json`
+- `docs/reports/windows-codex-computer-use-parity-audit-2026-05-16.md`
+- `docs/reports/assets/windows-codex-computer-use-parity-audit-2026-05-16/evidence.json`
+- Windows parity checklist/status/resumption shards.
+
+Behavior:
+
+- The `browser.google.codex-cli.install.save-pdf` scenario is no longer a
+  stale blocked placeholder. It now executes a bounded Toolsmith
+  `web_research_to_pdf` fixture path, records source URL hashes, writes
+  Markdown/PDF capability resources, links them into the eval ledger as
+  `user_saved` artifacts, and verifies the artifact contract.
+- The `browser.download.pdf.verify-file` scenario now executes Browser Chrome
+  `download.verify`, stores a `download_verified_file` capability resource, and
+  links basename/hash-only file proof into the eval ledger.
+- The `vision.complex-chart.vlm-fallback` scenario now records a
+  confidence-gated cascade fallback, invokes a bounded metadata-only
+  `vision_vlm_fallback` capability, stores `vlm_fallback_summary` evidence, and
+  avoids raw screenshot retention.
+- The refreshed 30-case report now records `passed=21`, `blocked=9`,
+  `needsFollowup=0`, `unexpectedFailures=0`, task success rate `0.786`, proof
+  rate `0.405`, p95 latency `108 ms`, and p95 perception latency `40 ms`.
+- `gate:computer-use-promotion` still passes as `promotable`; fixture success
+  remains non-promoting without the existing repeated live gates.
+- `audit:computer-use-parity` remains `implemented_with_guarded_boundaries`
+  with `passed=61`, `guarded=7`, `missing=0`.
+
+Focused verification passed:
+
+- `node --check scripts/collect-computer-use-process-validation-30.mjs`
+- `npm run dogfood:computer-use-process-30`
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:computer-use-promotion-gate-route`
+- `npm run audit:computer-use-parity`
+- `npm run lint`
+- `npm run smoke:all` (rerun with a longer timeout; final run passed after the
+  VLM fallback fixture refresh)
+- `git diff --check` with only known CRLF normalization warnings
+- UTF/mojibake scan over 263 dirty/new text files: bad UTF-8 0, mojibake 0
+- `.cs` touched files: 0
+
+Next safe work: continue with additional live Browser Action recovery
+calibration or signed-helper-v2 design prep. Native permission-popup clicks,
+native file picker selection, and foreground input remain blocked until signed
+helper v2 exists.
+
+## Latest Update: Toolsmith Local Document Conversion Slice
+
+Continued the Windows Codex Computer Use parity implementation through the
+Toolsmith document-conversion slice.
+
+Changed:
+
+- `src/daemon/scoped-autonomy/gapDetector.ts`
+- `src/daemon/scoped-autonomy/capabilityInventory.ts`
+- `src/daemon/scoped-autonomy/toolsmithRuntime.ts`
+- `scripts/smoke-scoped-autonomy-self-implementation.mjs`
+- `scripts/collect-scoped-autonomy-self-implementation-dogfood.mjs`
+- `scripts/gate-computer-use-promotion.mjs`
+- `scripts/audit-windows-codex-computer-use-parity.mjs`
+- Windows parity checklist/status/resumption shards.
+
+Behavior:
+
+- `local_document_conversion.v1` is now a dedicated Toolsmith template for
+  supplied Markdown/text-to-PDF conversion, rather than an alias of
+  `web_research_to_pdf`.
+- The gap detector classifies conversion-only requests as
+  `local_document_conversion` when no web research/crawl intent is present.
+- The generated converter materializes under the daemon runtime workspace,
+  passes smoke before activation, reads only inline Markdown or explicitly
+  granted local source paths, and writes `report.md` plus `report.pdf`.
+- The scoped autonomy DAG now chooses capability-specific execution stages.
+  Local conversion skips `crawl_or_observe`, `extract`, and `verify_sources`,
+  then runs `draft_markdown`, `render_pdf`, `store_artifact`, and
+  `verify_artifact` with normal permission/eval/resource recording.
+- Tool output records source SHA-256, Markdown/PDF artifacts, blob-backed eval
+  resources, and `toolsmith-rerun-comparison.v1` stability evidence.
+- `dogfood:scoped-autonomy-self-implementation` now includes
+  `local_document_conversion` alongside `web_research_to_pdf`,
+  `terminal_generated_tool`, and `browser_download_verify`; the promotion gate
+  requires all four fixture generated-tool classes for
+  `scoped_autonomy_self_implementation_breadth`.
+- `dogfood:scoped-autonomy-generated-tool-live-breadth` now also includes two
+  `local_document_conversion` local-live runs against approved Markdown source
+  files. The live breadth gate requires all four generated-tool classes,
+  `local_document_conversion_live_verified`, sixteen latest execute/rerun
+  samples, and eight successful scenarios.
+
+Focused verification passed:
+
+- `node --check scripts/collect-scoped-autonomy-self-implementation-dogfood.mjs`
+- `node --check scripts/smoke-scoped-autonomy-self-implementation.mjs`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `npm run build:daemon`
+- `npm run smoke:scoped-autonomy-self-implementation`
+- `npm run dogfood:scoped-autonomy-self-implementation`
+- `npm run dogfood:scoped-autonomy-generated-tool-live-breadth`
+- `npm run smoke:scoped-autonomy-generated-tool-live-breadth`
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:computer-use-promotion-gate-route`
+- `npm run build:renderer`
+- `npm run smoke:renderer-computer-use-browser-chrome-evidence`
+- `npm run audit:computer-use-parity` (`implemented_with_guarded_boundaries`,
+  passed=61, guarded=7, missing=0)
+- `npm run lint`
+- `npm run smoke:all`
+- `git diff --check` with only the known CRLF normalization warnings
+- UTF/mojibake scan over 264 dirty/new text files: bad UTF-8 0, mojibake 0
+- `.cs` touched files: 0
+
+Next safe work: continue with the next guarded parity slice. Toolsmith
+generated-tool breadth now covers web/PDF, local document conversion, terminal,
+and download verification in both fixture and live/local-live evidence. Broader
+ad hoc tool variety and external package promotion still need separate use-case
+driven dogfood.
+
+## Latest Update: Helper V2 Disabled Command Contracts
+
+Continued the Windows Codex Computer Use parity implementation through signed
+helper v2 preparation without enabling native input.
+
+Changed:
+
+- `providers/browser-native-desktop-helper-rs/src/main.rs`
+- `src/daemon/browser-action/adapters/nativeDesktop/helperClient.ts`
+- `scripts/lib/browser-native-desktop-helper-contract.mjs`
+- `scripts/smoke-browser-native-desktop-helper-native.mjs`
+- `scripts/smoke-browser-native-desktop-helper-signing-readiness.mjs`
+- `scripts/release-readiness.mjs`
+- `scripts/gate-computer-use-promotion.mjs`
+- `scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `src/renderer/components/ComputerUseSessionsPanel.tsx`
+- `scripts/smoke-renderer-computer-use-browser-chrome-evidence.mjs`
+- Windows parity native/helper handoff shards.
+
+Behavior:
+
+- The Rust helper now accepts selected helper-v2-only commands as explicit
+  disabled contracts instead of vague unsupported errors:
+  `capture_screenshot`, `file_picker_select`,
+  `browser_permission_popup_click`, `clipboard_set_scoped`, and
+  `menu_command`.
+- Those commands return
+  `browser-native-desktop-helper-v2-disabled-command.v1` with
+  `enabled=false`, `supported=false`, `dryRunOnly=true`,
+  `actualInputSent=false`, `signedHelperV2Available=false`, and
+  `releaseGate=browser-native-helper-signing`.
+- Command-specific evidence proves no local path disclosure/file selection, no
+  permission popup native click/mutation, no screenshot capture/raw storage, no
+  clipboard content logging/mutation, and no menu command dispatch.
+- Release readiness now probes these disabled helper-v2 contracts and reports
+  `disabledV2Commands=5` under `browser-native-helper-contract`.
+- Daemon native adapter status diagnostics now probe a bounded helper-v2
+  disabled-command subset and expose `helperV2DisabledContracts` plus
+  `helperV2Boundary.disabledCommandContractsPresent`, so live adapter status
+  shows the same fail-closed boundary as release readiness.
+- The Computer Use promotion gate now requires
+  `helper_v2_disabled_command_contracts_present` under
+  `windows_native_watch_boundary`.
+- The renderer Native boundary proof panel now shows `Helper v2: disabled (5)`.
+
+Focused verification passed:
+
+- `node --check scripts/lib/browser-native-desktop-helper-contract.mjs`
+- `node --check scripts/smoke-browser-native-desktop-helper-native.mjs`
+- `node --check scripts/smoke-browser-native-desktop-helper-signing-readiness.mjs`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `node --check scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `node --check scripts/smoke-renderer-computer-use-browser-chrome-evidence.mjs`
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `npm run build:browser-native-desktop-helper`
+- `npm run smoke:browser-native-desktop-helper-native`
+- `npm run smoke:browser-native-desktop-helper:signing-readiness`
+- `npm run release:readiness` (status remains deferred only for manual gates)
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:computer-use-promotion-gate-route`
+- `npm run build:renderer`
+- `npm run smoke:renderer-computer-use-browser-chrome-evidence`
+- `npm run audit:computer-use-parity` (`implemented_with_guarded_boundaries`,
+  passed=60, guarded=7, missing=0)
+
+Native foreground input, native file picker selection, permission popup native
+clicking, and production helper signing remain guarded blockers.
+
+## Latest Update: Terminal Bounded Output And Parity Audit Refresh
+
+Continued the Windows Codex Computer Use parity implementation through the
+terminal safety/evidence slice.
+
+Changed:
+
+- `src/daemon/computer-use/sessionRuntime.ts`
+- `scripts/smoke-computer-use-terminal-parity.mjs`
+- `scripts/audit-windows-codex-computer-use-parity.mjs`
+- `src/renderer/components/ComputerUseSessionsPanel.tsx`
+- `scripts/smoke-renderer-computer-use-browser-chrome-evidence.mjs`
+- Windows parity checklist/status/resumption shards.
+
+Behavior:
+
+- Terminal Computer Session debug bundles export bounded output metadata only:
+  stdout/stderr length, SHA-256, credential-redacted preview, truncation flags,
+  helper byte limits, and `terminal_helper_bounded_output` resource-limit
+  evidence.
+- Raw terminal stdout/stderr and raw helper truncation internals are removed
+  from debug-bundle capability-job output.
+- Terminal output-root delta manifests remain path-redacted and blob-backed,
+  with created-file rollback candidates behind explicit delete confirmation.
+- Terminal permission evaluation blocks unquoted shell control operators before
+  command allow-prefix approval, preventing chained-command bypasses.
+- The renderer Computer Use panel shows a compact "Terminal artifact deltas"
+  proof section with create/modify/delete counts, rollback-candidate count,
+  resource roles, and sanitized rollback-path status.
+
+Verification passed:
+
+- `node --check scripts/smoke-computer-use-terminal-parity.mjs`
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `npm run build:daemon`
+- `npm run smoke:computer-use-terminal-parity`
+- `npm run smoke:computer-use-session-http`
+- `npm run smoke:renderer-computer-use-browser-chrome-evidence`
+- `npm run lint`
+- `npm run audit:computer-use-parity` (`implemented_with_guarded_boundaries`,
+  passed=59, guarded=6, missing=0)
+- `npm run smoke:all`
+- `git diff --check` with only the known CRLF normalization warnings
+
+Known non-failing output remains the unsigned browser-native helper development
+allowance and occasional Windows temp cleanup deferred retry. No `.cs` files
+were touched.
+
+## Latest Update: Toolsmith Self-Implementation Breadth Gate
+
+Continued the Windows Codex Computer Use parity implementation through the
+Toolsmith breadth slice.
+
+Changed:
+
+- `scripts/collect-scoped-autonomy-self-implementation-dogfood.mjs`
+- `scripts/gate-computer-use-promotion.mjs`
+- `scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `scripts/audit-windows-codex-computer-use-parity.mjs`
+- Windows parity handoff/checklist shards.
+
+Behavior:
+
+- `dogfood:scoped-autonomy-self-implementation` now emits
+  `scoped-autonomy-self-implementation-dogfood.v1` evidence for three
+  generated tool classes: `web_research_to_pdf`,
+  `terminal_generated_tool`, and `browser_download_verify`.
+- The dogfood forces an initial web/PDF smoke failure, proves source revision,
+  activates generated tools only after smoke passes, and verifies a high-risk
+  `native_windows_workflow` request remains blocked before materialization.
+- All three generated tool classes now run rerun stability checks and record
+  matched `toolsmith-rerun-comparison.v1` scalar/artifact evidence.
+- Dogfood evidence is redacted to repo-relative or `<redacted>` paths and
+  asserts zero absolute local path leaks before writing reports.
+- `gate:computer-use-promotion` now includes
+  `scoped_autonomy_self_implementation_breadth` as a passed but non-promoting
+  fixture breadth gate. It still requires repeated live generated-tool samples
+  before promotion.
+- The promotion gate route smoke and parity audit now assert this new gate.
+- The Computer Use Promotion gate renderer now has a dedicated "Toolsmith
+  breadth proof" panel showing scenario count, generated class count, rerun
+  match count, path redaction, high-risk native blocking, and fixture-only
+  promotion guard.
+
+Focused verification passed:
+
+- `node --check scripts/collect-scoped-autonomy-self-implementation-dogfood.mjs`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `node --check scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `npm run dogfood:scoped-autonomy-self-implementation`
+- `npm run smoke:scoped-autonomy-self-implementation`
+- `npm run smoke:scoped-autonomy-npm-dependency-prepare`
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:computer-use-promotion-gate-route`
+- `npm run build:renderer`
+- `npm run smoke:renderer-computer-use-browser-chrome-evidence`
+- `npm run audit:computer-use-parity` (`implemented_with_guarded_boundaries`,
+  passed=46, guarded=6, missing=0)
+- `npm run smoke:all`
+- `git diff --check` with only the known CRLF normalization warnings
+- UTF-8/mojibake scan over 215 text files: bad UTF-8 0, suspicious
+  question-mark string literal hits 0
+- `.cs` touched files: 0
+- absolute path scan over
+  `docs/reports/assets/scoped-autonomy-self-implementation-2026-05-16/evidence.json`
+
+## Latest Update: Parity Handoff Root Index And Shared Executor Evidence
+
+Continued the Windows Codex Computer Use parity implementation and hardened the
+handoff path for context-loss recovery.
+
+Changed:
+
+- Added `docs/plans/windows-codex-computer-use-parity/README.md` as the root
+  index shard for the full parity migration.
+- Updated the top-level parity handoff, overview, approved execution pack,
+  macOS parity pack, resumption shard, status ledger, and plans README to point
+  future agents at the new index first.
+- Kept the latest native helper/session runtime invariant explicit:
+  Rust helper, release-readiness probe, promotion gate, renderer proof, and
+  Computer Session blocked `visual_desktop_action` evidence must all expose the
+  same disabled `foregroundWatchExecutor` contract with
+  `actualInputSent: false`.
+- Updated the current status ledger to record the latest audit state:
+  `implemented_with_guarded_boundaries`, passed=44, guarded=6, missing=0.
+
+Verification passed:
+
+- `node --check scripts/smoke-computer-use-native-watch-boundary.mjs`
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `npm run build:daemon`
+- `npm run smoke:computer-use-native-watch-boundary`
+- `npm run audit:computer-use-parity`
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:all`
+- `git diff --check` with only the known CRLF normalization warnings
+- UTF-8/mojibake scan over 204 modified/untracked text files: bad UTF-8 0,
+  suspicious question-mark string literal hits 0
+- `.cs` touched files: 0
+
+Next safe work remains bounded Browser Chrome public dogfood, broader
+Toolsmith generated-tool breadth, or signed helper v2 preparation without
+enabling foreground input until signing/watch-mode/release gates are real.
+
+## Latest Update: Renderer Browser Chrome Evidence UX
+
+Continued the Windows Codex Computer Use parity implementation through the
+Browser Chrome Deep Action Hardening slice.
+
+Changed:
+
+- `src/renderer/components/ComputerUseSessionsPanel.tsx`
+- `scripts/smoke-renderer-computer-use-browser-chrome-evidence.mjs`
+- `scripts/gate-computer-use-promotion.mjs`
+- `scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `package.json`
+- `scripts/smoke-all.mjs`
+- Windows parity handoff/checklist shards.
+
+Behavior:
+
+- Computer Use Activity details now include a Browser Chrome evidence section.
+- The section summarizes Browser Chrome capability jobs and linked observations
+  with command, status, risk class, verifier label, redaction summary, and
+  resource roles.
+- Download verification exposes `download_verified_file` evidence with
+  basename-only local path redaction.
+- History, debugger, permission, and file-upload rows expose minimized/redacted
+  proof instead of raw browser-private content or full local paths.
+- Added `smoke:renderer-computer-use-browser-chrome-evidence` and wired it into
+  `smoke:all`.
+- Added `browser_chrome_deep_action_evidence_ux` to
+  `gate:computer-use-promotion` as a passed but non-promoting renderer evidence
+  UX gate; route smoke asserts it.
+
+Focused verification passed:
+
+- `node --check scripts/smoke-renderer-computer-use-browser-chrome-evidence.mjs`
+- `npm run build:renderer`
+- `npm run smoke:renderer-computer-use-browser-chrome-evidence`
+
+## Latest Update: Native Helper Contract Release Readiness
+
+Added an automated release-readiness probe for the built Rust browser native
+desktop helper:
+
+- New `scripts/lib/browser-native-desktop-helper-contract.mjs` runs the built
+  helper with `status`, default `watch_preflight`, and monitored
+  `watch_preflight` requests.
+- The probe writes
+  `browser-native-desktop-helper-contract-readiness.v1` evidence with helper
+  basename/hash, manifest schema, supported current-v1 commands, blocked
+  helper-v2 commands, watch-preflight schema, helper-side guard schema,
+  monitor sample count/parameters, and `actualInputSent: false`.
+- `release-readiness.mjs` now embeds that redacted contract report and adds a
+  `browser-native-helper-contract` automated check before the separate
+  `browser-native-helper-signing` manual/deferred gate.
+- `release-readiness.mjs` also redacts its own check details with repo-relative
+  paths or `<repo>` placeholders; the latest generated
+  `dist/reports/release-readiness-latest.json` contains no `C:\Users` or
+  `C:/Users` absolute workspace paths.
+- `smoke-browser-native-desktop-helper-signing-readiness.mjs` now verifies the
+  contract probe, including no absolute repository path in the helper contract
+  report, before exercising the signing dry-run deferral/strict-block cases.
+- `audit:computer-use-parity` now includes
+  `native:helper-contract-release-readiness`; latest audit reports
+  `implemented_with_guarded_boundaries`, passed=44, guarded=6, missing=0.
+
+Verification passed:
+
+- `node --check scripts/lib/browser-native-desktop-helper-contract.mjs`
+- `node --check scripts/release-readiness.mjs`
+- `node --check scripts/smoke-browser-native-desktop-helper-signing-readiness.mjs`
+- `npm run build:browser-native-desktop-helper`
+- `npm run smoke:browser-native-desktop-helper:signing-readiness`
+- `npm run audit:computer-use-parity`
+- `npm run build`
+- `npm run release:readiness` (default status: `deferred`; all automated
+  checks pass)
+- `node scripts/release-readiness.mjs --require-manual-gates` fails as
+  expected on `browser-native-helper-signing` and `browser-store-submission`
+- `Select-String dist/reports/release-readiness-latest.json` for `C:\Users` /
+  `C:/Users` returned no matches after the final default readiness run
+- `npm run lint`
+- `git diff --check` (only existing CRLF warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`)
+- `npm run smoke:all`
+
+Remaining external release blockers are unchanged: production Authenticode
+certificate/CI signing service and actual browser-store submission. Unsigned
+native helpers remain development-only.
+
+## Latest Update: Disabled Foreground Watch Executor Contract
+
+Added a non-executing helper-v2 command shape for future foreground watch
+execution without enabling native input:
+
+- Rust helper now accepts `foreground_watch_execute` and always returns
+  `ok: false` with
+  `browser-native-desktop-helper-foreground-watch-executor.v1` metadata.
+- The response records `enabled: false`, `supported: false`, `dryRunOnly:
+  true`, `signedHelperV2Available: false`, `releaseGate:
+  browser-native-helper-signing`, required preconditions, and
+  `actualInputSent: false`.
+- The capability manifest lists `foreground_watch_execute` as a helper-v2
+  command with `supported: false` and
+  `disabled_until_signed_helper_v2_and_release_gate`.
+- The release helper contract probe now calls this disabled command and records
+  `foregroundWatchExecutor` evidence in
+  `browser-native-desktop-helper-contract-readiness.v1`.
+- `npm run release:readiness` summarizes the proof with
+  `executorEnabled=false` while keeping the separate signing/manual gate
+  deferred.
+- `gate:computer-use-promotion` now requires
+  `foreground_watch_executor_disabled_contract_present` and
+  `native_helper_release_readiness_paths_redacted` for
+  `windows_native_watch_boundary`.
+- `ComputerUseSessionsPanel` surfaces this in the Native boundary proof panel
+  as `Executor: disabled`, covered by
+  `smoke:renderer-computer-use-browser-chrome-evidence`.
+
+Focused verification passed:
+
+- `cargo fmt --manifest-path providers/browser-native-desktop-helper-rs/Cargo.toml --check`
+- `cargo check --manifest-path providers/browser-native-desktop-helper-rs/Cargo.toml`
+- `npm run build:daemon`
+- `npm run build:browser-native-desktop-helper`
+- `npm run smoke:browser-native-desktop-helper-native`
+- `npm run smoke:browser-native-desktop-helper:signing-readiness`
+- `npm run release:readiness`
+- `Select-String dist/reports/release-readiness-latest.json` for `C:\Users` /
+  `C:/Users` returned no matches
+- `npm run smoke:browser-action:native`
+- `npm run lint`
+- `npm run audit:computer-use-parity`
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:computer-use-promotion-gate-route`
+- `npm run smoke:renderer-computer-use-browser-chrome-evidence`
+- `npm run smoke:all`
+
+This is still not foreground native input support. It is a disabled-by-default
+contract and release evidence path for future signed helper v2 work.
+
+## Latest Update: Helper-Side Observe-Only Watch Preflight
+
+Added the first helper-side watch-mode preflight evidence path without enabling
+native input:
+
+- Rust helper command set now includes `watch_preflight`.
+- The helper uses UIA focused-window/process evidence plus Win32
+  `GetLastInputInfo` age to produce `foreground-watch-preflight.v1` metadata.
+- The helper also emits
+  `browser-native-desktop-helper-watch-preflight-guards.v1` with active-window,
+  target identity, process allowlist, and last-input evidence.
+- The default command is single-sample observe-only:
+  `actualInputSent: false`, `continuousMonitoring: false`, and foreground
+  input remains blocked.
+- `watch_preflight` also accepts bounded dry-run monitor options through
+  `watchPreflight.monitorMs`; it samples last-input tick changes and focused
+  process drift, records sample count/abort reason, and still sends no input.
+- The native helper capability manifest lists `watch_preflight` as
+  `current_v1_observe_only`.
+- Daemon native adapter status runs the helper preflight and exposes it as
+  `helperWatchPreflight`, plus
+  `helperV2Boundary.helperSideWatchPreflightPresent` and
+  `helperSideContinuousMonitorPresent`.
+- Parity audit now requires `watch_preflight`, `helperSideGuards`, and
+  `helperSideWatchPreflightPresent` markers inside the native helper-v2
+  manifest check.
+
+Focused verification passed:
+
+- `cargo check --manifest-path providers/browser-native-desktop-helper-rs/Cargo.toml`
+- `npm run build:daemon`
+- `npm run smoke:browser-native-desktop-helper-native`
+- `npm run smoke:browser-action:native`
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `npm run audit:computer-use-parity`
+- `npm run lint`
+- `npm run smoke:all`
+
+This still does not satisfy signed helper v2. Continuous countdown/execution
+monitoring, mouse drift, keyboard focus drift, input cancellation, and
+Authenticode signing remain blockers before real foreground input can be
+enabled.
+
+## Latest Update: Native Helper v2 Capability Manifest
+
+Added machine-readable native helper capability discovery without enabling any
+new native input:
+
+- Rust helper `status` now emits
+  `browser-native-desktop-helper-capability-manifest.v2` in metadata.
+- The manifest separates current v1 browser-window commands from
+  signed-helper-v2-only commands.
+- Current v1 commands include status/UIA observe/read/click/type/select/check/
+  scroll/navigate/back/forward/reload/hotkey.
+- Guarded helper-v2 commands remain `supported: false` with
+  `blocked_until_signed_helper_v2`; this includes screenshot capture,
+  foreground movement/drag/key input, scoped clipboard, native file-picker
+  selection, menu command execution, and browser permission-popup native click.
+- Daemon native adapter diagnostics now parse and expose the manifest under
+  `helperCapabilities`, plus `helperV2Boundary` with
+  `nativeInputEnabled: false` and
+  `actualInputSentForGuardedCommands: false`.
+
+Focused verification passed:
+
+- `node --check scripts/smoke-browser-action-native.mjs`
+- `node --check scripts/smoke-browser-native-desktop-helper-native.mjs`
+- `cargo check --manifest-path providers/browser-native-desktop-helper-rs/Cargo.toml`
+- `npm run build:daemon`
+- `npm run build:browser-native-desktop-helper`
+- `npm run smoke:browser-native-desktop-helper-native`
+- `npm run smoke:browser-action:native`
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `npm run audit:computer-use-parity` (`passed=42`, `guarded=4`,
+  `missing=0`)
+
+Next native slice should still not implement foreground/file-picker/permission
+popup input until signed helper v2, countdown/input-collision guards, and
+release-gate proof exist.
+
+## Latest Update: Foreground Watch Preflight Contract
+
+Hardened the signed-helper-v2 preflight boundary without enabling native input:
+
+- Added shared `ForegroundWatchPreflightState` and
+  `ForegroundWatchPreflightInput` types in
+  `src/shared/protocol/computerUse.ts`.
+- `visual_desktop_action.watchPreflight` now uses the shared protocol contract
+  instead of a plain `Record<string, unknown>`.
+- Runtime preconditions now include target identity assertion, surface lock,
+  and timeout guard in addition to one-time approval, visible countdown,
+  active-window assertion, process allowlist, idle/user-input guard,
+  before/after evidence, verifier/rollback proof, and signed helper v2.
+- Native-watch smoke now proves missing identity/lock/timeout guards are
+  reported and active-window drift aborts with
+  `foreground_watch_active_window_drift_abort` before any `desktop_action` job
+  or native input.
+- Promotion gate now reports
+  `foreground_watch_preflight_contract_present`,
+  `foreground_watch_active_window_drift_abort_guard_present`, and
+  `foreground_watch_active_window_drift_abort_smoke_present`.
+- Parity audit now checks the preflight contract and reports
+  `passed=43`, `guarded=6`, `missing=0`.
+- Renderer native boundary proof now shows `Preflight typed` and
+  `Drift proved` from daemon promotion-gate metrics.
+
+Focused verification passed:
+
+- `node --check scripts/smoke-computer-use-native-watch-boundary.mjs`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `npm run build:daemon`
+- `npm run smoke:computer-use-native-watch-boundary`
+- `npm run gate:computer-use-promotion`
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `npm run audit:computer-use-parity`
+- `npm run smoke:computer-use-promotion-gate-route`
+- `node --check scripts/smoke-renderer-computer-use-browser-chrome-evidence.mjs`
+- `npm run build:renderer`
+- `npm run smoke:renderer-computer-use-browser-chrome-evidence`
+
+## Latest Update: Computer Session DAG Reconciliation
+
+Hardened Computer Session debug bundle export against aggregate timing races:
+
+- `exportDebugBundle` now reconciles completed/failed/cancelled/expired
+  capability jobs back into their linked DAG action node before returning the
+  bundle.
+- The reconciliation reads `dagRunId` and `dagNodeId` from capability job input
+  metadata, updates a still-running DAG action node to the final job status,
+  and idempotently creates verification/eval follow-up nodes.
+- This preserves the existing capability mirror path but makes debug/export
+  surfaces robust when the job has reached a final state before the DAG view is
+  caught up.
+
+Focused verification passed:
+
+- `npm run build:daemon`
+- `npm run smoke:computer-use-session-http`
+
+## Latest Update: Windows Computer Use Parity Audit
+
+Added an automated prompt-to-artifact audit for the Windows Codex Computer Use
+parity handoff:
+
+- New command: `npm run audit:computer-use-parity`.
+- New script:
+  `scripts/audit-windows-codex-computer-use-parity.mjs`.
+- The audit verifies required handoff docs, protocol/session runtime markers,
+  surface/permission safety, perception/action evidence, Browser Chrome,
+  Toolsmith, Terminal, native watch boundaries, eval/debug UX, promotion gates,
+  and registered verification commands.
+- It runs the Computer Use promotion gate in dry-run JSON mode and maps gate
+  reasons to guarded native/release boundaries.
+- Latest generated report:
+  `docs/reports/windows-codex-computer-use-parity-audit-2026-05-16.md`.
+- Latest generated evidence:
+  `docs/reports/assets/windows-codex-computer-use-parity-audit-2026-05-16/evidence.json`.
+- Latest result: `implemented_with_guarded_boundaries`, passed=41, guarded=4,
+  missing=0.
+
+Focused verification passed:
+
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `npm run audit:computer-use-parity`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `node --check scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `npm run smoke:computer-use-promotion-gate`
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:computer-use-promotion-gate-route`
+
+Aggregate verification passed after this slice with `npm run lint` and
+`npm run smoke:all`. Known non-failing output remained the unsigned helper
+development allowance and one Windows temp cleanup deferred retry.
+
+Next recommended slice:
+
+- Repeated Browser Chrome live dogfood for download verify and debugger
+  print-to-PDF, or live profile-approval dogfood.
+
+## Latest Update: Renderer Permission Profile Manager
+
+Continued the Windows Codex Computer Use parity implementation through the
+Renderer Permission Profile UX slice.
+
+Changed:
+
+- `src/renderer/components/ComputerUseSessionsPanel.tsx`
+- `src/renderer/styles/activity-capability.css`
+- `scripts/smoke-renderer-computer-use-profile-draft.mjs`
+- `scripts/gate-computer-use-promotion.mjs`
+- `scripts/smoke-computer-use-promotion-gate-route.mjs`
+- Windows parity handoff/checklist shards.
+
+Behavior:
+
+- Computer Use now fetches all autonomy permission profiles for management but
+  keeps new-session profile selection limited to active profiles.
+- Added a permission profile manager with all-profile selection, safe one-time
+  draft creation, JSON edit/save through the daemon profile route, and
+  Disable/Expire lifecycle actions.
+- Renderer validation blocks credential access, credential risk class,
+  persistent high-risk/package/OS grants, and broad persistent browser
+  automation without exact domains before POST.
+- `smoke:renderer-computer-use-profile-draft` now verifies unsafe persistent
+  credential/high-risk draft blocking, safe one-time manager creation with
+  `credentialAccess: "never"`, selected active profile detail rendering, exact
+  grant values, and lifecycle Disable POST wiring.
+- `scripts/gate-computer-use-promotion.mjs` now emits
+  `renderer_permission_profile_ux` as a passed but non-promoting renderer
+  safety UX gate; the promotion route smoke asserts it.
+
+Focused verification passed:
+
+- `node --check scripts/smoke-renderer-computer-use-profile-draft.mjs`
+- `npm run build:renderer`
+- `npm run smoke:renderer-computer-use-profile-draft`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `node --check scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `npm run smoke:computer-use-promotion-gate`
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:computer-use-promotion-gate-route`
+
+Aggregate verification passed after this slice with `npm run lint` and
+`npm run smoke:all`. Known non-failing output remained the unsigned helper
+development allowance and one Windows temp cleanup deferred retry.
+
+Next recommended slice:
+
+- Browser Chrome deep-action evidence UX or live profile-approval dogfood.
+
+## Latest Update: Computer Use Parity Status Ledger
+
+The Windows Codex Computer Use parity execution handoff now includes a
+resume-critical status ledger:
+
+- `docs/plans/windows-codex-computer-use-parity/09-approved-execution-handoff/07-current-status-ledger.md`
+
+Use it after the `09-approved-execution-handoff/README.md` when context is lost.
+It records the latest stable boundary, implemented/started/blocked matrix,
+recently touched files, next safe slice, verification command set, non-failing
+warnings, and invariants that must not regress.
+
+Current next recommended slice remains:
+
+- `Continue Renderer Permission Profile UX Completion`
+
+Do not mark the global parity goal complete. The latest stable boundary covers
+foreground watch-mode user-input abort preflight and renderer permission profile
+draft/detail/lifecycle UX, but signed helper v2, native foreground input, native
+file picker selection, production signing, and broad Windows mutation remain
+blocked.
+
+## Latest Update: Computer Use Parity Resumption Shard
+
+The product owner accepted the current Windows Codex Computer Use parity
+direction and asked for a durable handoff that can survive context loss.
+
+Added:
+
+- `docs/plans/windows-codex-computer-use-parity/08-implementation-resumption-handoff.md`
+
+Updated:
+
+- `docs/plans/windows-codex-computer-use-parity-handoff.md`
+- `docs/plans/windows-codex-computer-use-parity/00-overview.md`
+- `docs/plans/windows-codex-computer-use-parity/06-eval-debug-ux-dogfood.md`
+- `docs/plans/windows-codex-computer-use-parity/07-migration-checklist.md`
+- `docs/plans/README.md`
+
+Resume order after compaction or a new session:
+
+1. Read `docs/plans/windows-codex-computer-use-parity-handoff.md`.
+2. Read `docs/plans/windows-codex-computer-use-parity/00-overview.md`.
+3. Read `docs/plans/windows-codex-computer-use-parity/08-implementation-resumption-handoff.md`.
+4. Read `docs/plans/windows-codex-computer-use-parity/07-migration-checklist.md`.
+5. Inspect `git status --short` and the exact files to edit before making
+   changes.
+
+Important current state:
+
+- The parity worktree is intentionally dirty and contains multi-day
+  implementation work. Do not revert unrelated files.
+- Broad foreground Windows mutation remains blocked until signed helper v2,
+  watch-mode guards, effect verification, and rollback proof exist.
+- One-off live OpenAI research-to-PDF successes and fixture-only 30-case
+  evidence are not promotion proof. The Computer Use promotion gate is now
+  wired through `gate:computer-use-promotion`,
+  `smoke:computer-use-promotion-gate`, and `smoke:all`; current written gate
+  evidence is `docs/reports/computer-use-promotion-gate-2026-05-16.md` and it
+  marks scoped-autonomy and parent Computer Session research-to-PDF live slices
+  as eligible for promotion review. Repeated live samples and p95 measurements
+  are now recorded in
+  `docs/reports/assets/scoped-autonomy-web-research-live-runs.jsonl` and
+  `docs/reports/assets/computer-use-toolsmith-live-runs.jsonl`; browser fallback
+  transport is calibrated by repeated stable text hashes without storing raw
+  browser text in the sample ledgers. The gate also includes
+  `browser_action_semantic_live_corpus`, validating reviewed Browser Action live
+  corpus/report rows across read, filter/tab, history, search, and content
+  selection intents. The latest gate is exposed through
+  `GET /computer-use/eval/promotion-gate` and shown in the renderer Computer Use
+  panel. It also includes `windows_native_watch_boundary` as a passed but
+  non-promoting safety boundary: read-only desktop observe and high-risk
+  rejection are covered, unsupported native workflow cases stay blocked by
+  design, the unsigned-helper release signing gate remains deferred, the native
+  watch boundary smoke is in `smoke:all`, and foreground visual actions record
+  `actualInputSent: false` before any native helper input.
+- Toolsmith `dependency_prepare` is now a real autonomy tool run/eval step for
+  generated tools. It records manifest dependency provenance, optional system
+  dependency notes, and isolated runtime workspace evidence. npm dependency
+  preparation is guarded by `package_install`, `npm` command, and runtime
+  workspace write grants, using `--package-lock-only --ignore-scripts`; pip
+  dependency preparation remains blocked until a virtualenv policy exists.
+- Renderer Computer Use promotion gate rows now distinguish `eligible`
+  promotable gates from `guarded` passed-but-non-promoting release/safety
+  guards, and show enough rows to include Browser Action semantic corpus plus
+  Windows native watch boundary status.
+- Browser Action recovery evidence is now first-class in promotion gating:
+  `docs/dogfood/browser-action-recovery-live-corpus.jsonl` links reviewed
+  failure rows to later passing rows across `permission_missing`,
+  `wrong_effect`, and `latency_regression`; `smoke:browser-action:recovery-live-corpus`
+  and the `browser_action_recovery_live_corpus` gate validate row linkage,
+  source coverage, recovery evidence tags, calibration-impact tags, redaction,
+  and latency samples.
+- Renderer blocked-grant UX now derives one-time profile requirements from
+  DAG-node `missingRequirements` in addition to safety decisions, surface
+  grants, and awaiting capability jobs. Grant chips carry requirement reasons
+  in hover text and show overflow counts.
+
+## Latest Update: Windows Codex Computer Use Parity Handoff
+
+Recorded the accepted direction for implementing Codex macOS Computer Use style
+behavior on Windows without assuming unpublished macOS internals.
+
+Added:
+
+- `docs/plans/windows-codex-computer-use-parity-handoff.md` as the index.
+- `docs/plans/windows-codex-computer-use-parity/00-overview.md` for product
+  target, current repo reality, non-goals, and implementation map.
+- `docs/plans/windows-codex-computer-use-parity/01-contract-session-runtime.md`
+  for normalized computer actions, OpenAI action schema adaptation, and the new
+  daemon-owned `ComputerSessionRuntime`.
+- `docs/plans/windows-codex-computer-use-parity/02-surfaces-permissions-safety.md`
+  for explicit execution surfaces, permission checkpoints, risk classes,
+  restricted-page handling, credentials, file, and network policy.
+- `docs/plans/windows-codex-computer-use-parity/03-observation-perception-action.md`
+  for screenshot feedback, perception graph evidence, ROI cascade execution,
+  target grounding, action routing, verification, and failure memory.
+- `docs/plans/windows-codex-computer-use-parity/04-browser-tool-terminal-slices.md`
+  for isolated browser, Browser Chrome, Toolsmith, Terminal, research-to-PDF,
+  download, file-upload, and document-conversion vertical slices.
+- `docs/plans/windows-codex-computer-use-parity/05-windows-native-helper-watch-mode.md`
+  for native helper scope correction, `desktop_action` split, foreground
+  watch-mode, input collision guards, signing, and future VM/Sandbox route.
+- `docs/plans/windows-codex-computer-use-parity/06-eval-debug-ux-dogfood.md`
+  for eval ledger, debug bundle, renderer UX, 30-case dogfood corpus, and
+  promotion gates.
+- `docs/plans/windows-codex-computer-use-parity/07-migration-checklist.md`
+  for phased implementation and acceptance tests.
+
+Key architecture decision:
+
+- Build behavior parity around a new `ComputerSessionRuntime`, an explicit
+  `ExecutionSurfaceManager`, normalized `ComputerAction` adapters, and an
+  observation/action/verification loop.
+- Ship browser/tool/terminal parity before broad Windows foreground desktop
+  control.
+- Treat native Windows foreground control as bounded watch-mode until signed
+  helper v2 and rollback/effect proof exist.
+- Keep Browser Action, Browser Chrome, Toolsmith, Terminal, Vision/OCR,
+  Capability Runtime, Capability DAG, eval ledger, and failure memory as
+  backend modules under the session runtime.
+
+Next implementation slice: protocol and skeleton session runtime, then real
+`browser_action` capability handler registration and isolated-browser session
+vertical.
+
+## Latest Update: Windows Codex Computer Use Parity Phase 1/2 Foundation
+
+Implemented the first concrete slice from the parity handoff.
+
+Added:
+
+- `src/shared/protocol/computerUse.ts` with normalized `ComputerAction`,
+  OpenAI single-action/batched-action/widget-native adapter, session events,
+  execution surface types, risk classes, and debug bundle types.
+- `src/daemon/computer-use/sessionRuntime.ts` and
+  `src/daemon/computer-use/surfaceManager.ts`.
+- Daemon HTTP routes in
+  `src/daemon/server/http/routes/computerUseSessionRoutes.ts`.
+- `ComputerSessionRuntime` startup wiring in `src/daemon/server.ts`.
+- Browser Action registered capability handler foundation in
+  `src/daemon/capabilities/registerCapabilities.ts`.
+- Capability-backed session operation execution and HTTP route:
+  `POST /computer-use/sessions/:id/operations`.
+- Smoke scripts and package commands:
+  - `smoke:computer-use-action-adapter`
+  - `smoke:computer-use-surface-manager`
+  - `smoke:computer-use-session`
+  - `smoke:computer-use-session-http`
+
+Behavior:
+
+- Computer sessions can be created through daemon HTTP.
+- The runtime selects an execution surface, creates an eval run, creates and
+  completes a skeleton DAG, records a skeleton observation, finalizes the eval
+  run as partial success, and exports a redacted debug bundle.
+- Session operations can enqueue capability-backed DAG action/observe nodes and
+  wait for fast/read-only jobs to settle.
+- Read-only Browser Action capability jobs can complete through the registered
+  handler. Side-effect Browser Action jobs now fail with explicit
+  `browser_action_executor_not_bound` until the Computer Session executor route
+  is bound.
+
+Follow-up implementation in the same slice:
+
+- Bound the daemon HTTP Computer Session operation path to the existing
+  `BrowserActionSessionManager`.
+- Browser Action approval, queued extension command, and immediate-result paths
+  now reuse the existing Browser Action capability mirror from Computer Session
+  operations.
+- Browser Action capability mirror carries `dagRunId`/`dagNodeId` for
+  Computer Session operations and updates the linked DAG node when the extension
+  result completes.
+- `smoke:computer-use-session-http` now posts a DOM snapshot, queues a safe
+  Browser Action click through `/computer-use/sessions/:id/operations`, polls
+  the Browser Bridge command, posts the extension result, and verifies the
+  capability job and DAG node complete.
+- Added `POST /computer-use/sessions/:id/browser-action-prompt`, which uses the
+  existing deterministic `planBrowserActionFromPrompt` planner and executes the
+  first planned step through the Computer Session Browser Action operation
+  path. The HTTP smoke now verifies prompt-planned click execution through the
+  Browser Bridge and linked DAG node completion.
+
+Verification passed:
+
+- `npm run lint`
+- `npm run build:web`
+- `npm run smoke:capability-runtime`
+- `npm run smoke:browser-action` (passed on rerun after one timeout flake)
+- `npm run smoke:computer-use-action-adapter`
+- `npm run smoke:computer-use-surface-manager`
+- `npm run smoke:computer-use-session`
+- `npm run smoke:computer-use-session-http`
+- `npm run smoke:all`
+
+Next implementation slice: implement multi-step Browser Action prompt
+continuation under Computer Session and start the isolated-browser session
+vertical.
+
 ## Latest Update: Harness Sync To v1.7.17
 
 Branch `main` is synced to vibe-doctor harness `v1.7.17` and pushed to `origin/main` as commit `cfbbfb9`.
@@ -2125,3 +3230,3121 @@ production signing certificate/service, unrestricted credential flows,
 unattended high-risk Windows mutation, authenticated browser profile/cookie
 access, GPU ASR validation, human microphone corpus benchmark, and full package
 install helper promotion beyond blocked inventory classification.
+
+## Latest Update: Real Widget Session Browser Action Eval Repair
+
+Audited the live widget chat session `4749a65b-8799-4408-b401-d6951ea7c852`
+(`특갤켜줘`) after the product-owner requested verification of actual
+widget-session dogfood, not fixture-style scenario evidence.
+
+Findings:
+- The Browser Bridge/Browser Action event stream showed successful real browser
+  actions, but the unified computer-use eval ledger recorded the corresponding
+  prompt runs as `failed/action_failed`.
+- Root cause was prompt eval finalization happening before the extension command
+  result returned. The eval run was finalized from the initial queued/pending
+  plan instead of the eventual browser result.
+- A second real-use regression was target interpretation: corrective prompts
+  like "개념글 버튼 눌러달라는 뜻이야" and chained write-flow prompts could be
+  treated as representative-content clicks instead of explicit control clicks.
+
+Implemented fixes:
+- Added `promptEvalLedger.ts` so Browser Action prompt evals can record
+  non-terminal checkpoints while extension commands are pending and finalize
+  only after timeout or final extension result.
+- Linked Browser Action capability mirror jobs to the prompt eval run through
+  persisted job input metadata and carried the eval id through queued/result
+  extension follow-up paths.
+- Updated eval rollup action counting to prefer explicit prompt-level
+  `actionCount` and `succeededActionCount` fields before falling back to
+  capability-step counting.
+- Hardened Korean Browser Action intent parsing so explicit button/tab/menu/link
+  wording sets the requested role, direct filter button correction does not
+  become content-open intent, and write/compose flows are not misclassified as
+  representative post selection.
+- Added `scripts/audit-real-use-widget-session.mjs` and
+  `npm run audit:real-use-session` to inspect real chat-session messages,
+  Browser Action events, eval runs, activity, and historical mismatch findings.
+- Added `scripts/smoke-browser-action-real-use-regressions.mjs` and
+  `npm run smoke:browser-action:real-use-regressions` to lock the eval lifecycle
+  regression.
+
+Verification passed `npm run build:daemon`,
+`npm run smoke:browser-action:prompt-classification`,
+`npm run smoke:browser-action:transaction-verification`,
+`npm run smoke:browser-interaction-transaction`,
+`npm run smoke:browser-action:real-use-regressions`,
+`npm run smoke:browser-action`, `npm run lint`, `git diff --check`, strict
+UTF-8 decoding, replacement-character scan, and `.cs` touched-file check.
+
+Historical note: the existing live DB rows remain historical evidence and are
+not rewritten by the fix. Running `npm run audit:real-use-session -- --session
+4749a65b-8799-4408-b401-d6951ea7c852 --since 2026-05-14T09:00:00.000Z --json`
+still reports the prior mismatch: successful Browser Action events paired with
+failed eval rows. New runs should finalize from the real extension result.
+
+## Latest Update: Browser Chrome Deep Actions
+
+Added and implemented `docs/plans/browser-chrome-deep-actions-handoff.md` for
+the Browser Bridge chrome-control gap list.
+
+Implemented:
+- Expanded `browser_chrome` commands for tab groups:
+  `tab_group.list`, `tab_group.create`, `tab_group.claim`,
+  `tab_group.update`, and `tab_group.release`.
+- Expanded downloads commands:
+  `download.search`, `download.observe`, `download.verify`,
+  `download.start`, `download.cancel`, and `download.erase`.
+- Added high-risk one-time approval policy for `history.*`, `debugger.*`, and
+  `file_upload.*` commands. `bookmark.list`, `tab_group.list`, and download
+  read/verify commands remain read-only.
+- Added redacted history evidence: origins are retained, URL paths are redacted.
+- Added bounded debugger commands using fixed CDP methods only:
+  `debugger.inspect` and `debugger.screenshot`; arbitrary debugger evaluation
+  remains unavailable.
+- Added file upload commands:
+  `file_upload.inspect`, `file_upload.set_files`, `file_upload.clear`, and
+  `file_upload.blocked`. File selection requires explicit absolute
+  `approvedFilePaths`, uses debugger-backed `DOM.setFileInputFiles`, records
+  basename-only evidence, and supports clear as rollback.
+- Added transient capability input handling so file upload paths are available
+  in memory for execution but redacted in durable capability job input/output.
+- Added extension permissions and store/privacy rationale for `tabGroups`,
+  `downloads`, `history`, and `debugger`.
+- Generalized capability verification from bookmark-only to
+  `browser_chrome_effect`.
+- Expanded Browser Chrome capability smoke coverage and added
+  `smoke:browser-chrome-deep-actions`.
+
+Verification passed `npm run build:daemon`, extension JS syntax check,
+`npm run smoke:browser-chrome-deep-actions`, `npm run smoke:extension`,
+`npm run lint`, `npm run smoke:capability-runtime`, and
+`npm run smoke:browser-action:native`, plus `git diff --check`, strict UTF-8
+decoding, replacement-character scan, and `npm run vibe:checkpoint`.
+
+Remaining boundaries: browser restricted pages remain unsupported by extension
+DOM injection; native file picker UI selection still belongs to the signed
+native helper track; production extension/helper signing remains dependent on
+the release signing path.
+
+## Latest Update: Windows Codex Computer Use Parity Runtime
+
+Continuing from `docs/plans/windows-codex-computer-use-parity-handoff.md`,
+implemented the next Browser Action session-runtime slice.
+
+Implemented:
+- Added shared Computer Session prompt-run summaries to
+  `src/shared/protocol/computerUse.ts` and included `promptRuns` in the debug
+  bundle.
+- Extended `ComputerSessionRuntime` so `POST
+  /computer-use/sessions/:id/browser-action-prompt` creates a tracked prompt
+  run, records each step, starts the first Browser Action operation, and keeps
+  step/DAG/capability job linkage.
+- Added `POST
+  /computer-use/sessions/:id/browser-action-prompt/continue` for manual prompt
+  run continuation.
+- Connected Browser Bridge extension result handling to
+  `continueBrowserActionPromptByCapabilityJob(...)`, so a completed prompt
+  step can automatically enqueue the next Browser Action step.
+- Expanded `smoke:computer-use-session-http` to cover prompt debug-bundle
+  export, single-step prompt completion, and a two-step Korean prompt with
+  automatic continuation.
+- Updated the parity handoff/checklist to mark multi-step Browser Action prompt
+  continuation implemented. Isolated browser lifecycle, renderer Computer Use
+  UX, full observe/plan/action/verify DAG execution, and native watch-mode
+  remain open.
+
+Verification passed `npm run build:daemon`,
+`npm run smoke:computer-use-session-http`, `npm run smoke:browser-action`, and
+`npm run lint`. A new full `smoke:all`, diff check, UTF-8 scan, and checkpoint
+should be run before any push or closure.
+
+Follow-up slice implemented:
+- Added persistent Playwright controlled-browser sessions for Computer Session
+  Browser Action ids. The Playwright adapter still opens/closes per action for
+  normal Browser Action usage, but `computer-session-browser-action:*` sessions
+  reuse a page so multi-step isolated-browser prompts keep DOM/navigation
+  state.
+- Computer Session prompt planning on the `isolated_browser` surface now
+  defaults to `adapterId: "playwright"` and `source.kind:
+  "controlled_browser"`.
+- The daemon Computer Session Browser Action executor now performs
+  `observeViaAdapter` before non-extension adapter execution, fixing empty DOM
+  target resolution for Playwright/CDP paths.
+- Computer Session cancel closes the persistent Playwright browser for
+  isolated-browser sessions and records `surface_cleanup` evidence.
+- Added `scripts/smoke-computer-use-isolated-browser.mjs`,
+  `npm run smoke:computer-use-isolated-browser`, and included it in
+  `smoke:all`.
+
+Focused verification passed `npm run smoke:computer-use-isolated-browser`,
+`npm run smoke:computer-use-session-http`, `node
+scripts/smoke-browser-action-playwright.mjs`, `npm run smoke:browser-action`,
+and `npm run lint`. Run final aggregate checks before pushing.
+
+## Latest Update: Renderer Computer Use Sessions Panel
+
+Implemented the first renderer UX pass for the Windows Codex Computer Use parity
+track:
+- Added `src/renderer/components/ComputerUseSessionsPanel.tsx`.
+- Activity details now includes a Computer Use panel below Capability Jobs and
+  Autonomy Toolsmith.
+- The panel fetches `/computer-use/surfaces`, `/computer-use/sessions`, and
+  `/computer-use/sessions/:id/debug-bundle`.
+- Users can create a bounded Computer Use session, select execution surface,
+  run a Browser Action prompt, manually continue a prompt run, cancel a session,
+  copy the debug bundle, and approve/cancel awaiting capability jobs.
+- The panel shows session state, selected surface, DAG node count, capability
+  job count, blocked/requires-action state, prompt runs, prompt steps, and
+  recent DAG nodes.
+- Updated the parity handoff/checklist to mark Renderer UX as partially
+  implemented. Artifact/rollback previews, high-risk grant creation, and
+  long-running streaming polish remain open.
+
+Verification passed `npm run build:renderer`, `npm run lint`, and
+`npm run smoke:renderer-chat`. Run aggregate `smoke:all`, diff check, UTF-8
+scan, and checkpoint before any push or closure.
+
+## Latest Update: Browser Chrome Computer Session Smoke
+
+Added a focused Computer Session Browser Chrome verification slice:
+- Added `scripts/smoke-computer-use-browser-chrome.mjs`.
+- Added `npm run smoke:computer-use-browser-chrome` and included it in
+  `smoke:all`.
+- The smoke starts a `regular_browser_extension` Computer Use session, executes
+  `browser_chrome` operations through
+  `/computer-use/sessions/:id/operations`, polls the Browser Bridge command
+  queue, posts extension results, and verifies linked capability jobs plus DAG
+  nodes in the debug bundle.
+- Coverage includes `tab_group.list`, `download.verify`, and high-risk
+  `history.search` with one-time approval and redacted path evidence.
+- Updated the parity handoff/checklist to mark Browser Chrome structured
+  operation mapping as partially implemented through Computer Session.
+
+Verification passed `npm run smoke:computer-use-browser-chrome`,
+`npm run smoke:browser-chrome-capability`, and `npm run lint`. Run final
+aggregate checks before push/closure.
+
+## Latest Update: Computer Session DAG Follow-Up Nodes
+
+Added verification/eval follow-up DAG nodes after Computer Session capability
+actions:
+- `CapabilityRuntime` now appends `${actionNodeId}:verification` and
+  `${actionNodeId}:eval_ledger` nodes when a linked capability job completes.
+- Browser Action capability mirror applies the same follow-up node creation
+  when an extension result completes a linked Computer Session action node.
+- Follow-up verification nodes include verifier status/proof/error metadata
+  when present; eval ledger nodes include the linked eval run id and completed
+  capability job id.
+- `smoke:computer-use-session-http` now asserts follow-up nodes for prompt
+  Browser Action steps, including the two-step Korean continuation case.
+- `smoke:computer-use-browser-chrome` now asserts follow-up nodes for Browser
+  Chrome operations including the one-time approved history path.
+
+Focused verification passed `npm run build:daemon`,
+`npm run smoke:computer-use-session-http`,
+`npm run smoke:computer-use-browser-chrome`,
+`npm run smoke:capability-runtime`, and `npm run lint`. Run aggregate
+`smoke:all`, diff check, UTF-8 scan, and checkpoint before push/closure.
+
+## Latest Update: Computer Session Evidence And Perception Bundle
+
+Implemented the first Phase 4 observation/evidence slice:
+- `ComputerSessionDebugBundle` now includes `evalResources` and
+  `perceptionGraphs`.
+- Session observations are structured records with kind/source/surface,
+  capability job id, DAG node id, eval run id, perception graph id, resource
+  ids, freshness, summary, metadata, and redaction policy.
+- Browser Action extension results for `computer-session-browser-action:*`
+  sessions are promoted into `browser_dom` observations and
+  `computer_session_browser_action_result` perception graphs.
+- OCR/screen/terminal-like capability completions through Computer Session can
+  create structured observation records and eval resource links.
+- Renderer Computer Use panel now shows evidence counts and recent observation
+  records in addition to sessions, prompt runs, jobs, and DAG nodes.
+
+Focused verification passed `npm run build:daemon`,
+`npm run smoke:computer-use-session`, `npm run smoke:computer-use-session-http`,
+`npm run smoke:computer-use-isolated-browser`,
+`npm run smoke:computer-use-browser-chrome`, `npm run build:renderer`,
+`npm run smoke:renderer-chat`, and `npm run lint`. Run final aggregate checks
+before push/closure.
+
+## Latest Update: Browser Parity Smoke
+
+Added the first explicit Computer Session browser parity operation smoke:
+- `scripts/smoke-computer-use-browser-parity.mjs`.
+- `npm run smoke:computer-use-browser-parity`.
+- Included the new smoke in `smoke:all`.
+- Added `npm run smoke:computer-use-debug-bundle` as the focused debug-bundle
+  verification entry point backed by the session HTTP smoke.
+- The browser parity smoke starts an isolated Playwright controlled-browser
+  Computer Session, types into a search input, clicks submit, and verifies
+  completed Browser Action jobs, action/verification/eval DAG follow-up nodes,
+  post-action `browser_dom` observations, perception graph export, and cleanup.
+
+Focused verification passed `npm run smoke:computer-use-browser-parity`.
+Aggregate checks need to be rerun after this smoke addition.
+
+## Latest Update: Computer Session Rollback Surface
+
+Added the first rollback/cleanup debug model:
+- `ComputerSessionDebugBundle` now includes `rollbackActions`.
+- Rollback actions record kind, label, status, risk class, capability job id,
+  target, reason, timestamps, and metadata.
+- Session cancellation records active capability-job cancellation actions.
+- Isolated browser cleanup records a `close_surface` rollback action when the
+  persistent Playwright surface is closed, or `skipped` when no surface was
+  open.
+- Renderer Computer Use panel now shows rollback action count and recent
+  rollback records.
+- High-risk artifact deletion is still intentionally not implemented without
+  explicit file grants and verifier proof.
+
+Focused verification passed `npm run lint`, `npm run smoke:computer-use-session`,
+`npm run smoke:computer-use-isolated-browser`,
+`npm run smoke:computer-use-browser-parity`, and
+`npm run smoke:renderer-chat`. Aggregate checks need to be rerun after this
+rollback slice.
+
+## Latest Update: Terminal Parity Smoke
+
+Added the first Terminal/PT Y Computer Session parity smoke:
+- `scripts/smoke-computer-use-terminal-parity.mjs`.
+- `npm run smoke:computer-use-terminal-parity`.
+- Included the new smoke in `smoke:all`.
+- The smoke starts a `pty_workspace` session, requests a safe local terminal
+  command, verifies that terminal execution is approval-gated, approves through
+  the capability WebSocket path, waits for completion, and checks terminal
+  output.
+- Debug-bundle export now reconciles completed asynchronous capability jobs
+  into structured observations if the original operation returned
+  `awaiting_approval`. This lets post-approval terminal completion appear as a
+  `terminal` observation with linked DAG/eval evidence.
+
+Focused verification passed `npm run smoke:computer-use-terminal-parity`,
+`npm run smoke:computer-use-session-http`,
+`npm run smoke:computer-use-browser-parity`, and `npm run lint`. Aggregate
+checks need to be rerun after this terminal slice.
+
+## Latest Update: Toolsmith Artifact Through Computer Session
+
+Implemented the first Phase 7 integration slice:
+- `toolsmith` Computer Session operations now run
+  `ScopedAutonomyRuntime.runGoalDag` instead of the simulated `agent_tool`
+  bridge.
+- The parent session DAG action node records autonomy run/eval/DAG ids, tool
+  spec id, tool run ids, artifact count, redacted artifact hashes, and
+  Toolsmith verification summary.
+- The parent session DAG appends verification/eval follow-up nodes for the
+  Toolsmith operation.
+- Scoped autonomy Markdown/PDF/citation artifacts are mirrored into the parent
+  Computer Session eval resources and exposed as a `file` observation in the
+  session debug bundle.
+- Artifact deletion rollback is represented as blocked until explicit file
+  rollback grants and verifier proof exist.
+- Added `scripts/smoke-computer-use-toolsmith-artifact.mjs`,
+  `npm run smoke:computer-use-toolsmith-artifact`, and `smoke:all` coverage.
+
+Focused verification passed `npm run smoke:computer-use-toolsmith-artifact`,
+`npm run smoke:computer-use-session-http`,
+`npm run smoke:scoped-autonomy-self-implementation`, and `npm run lint`.
+Aggregate checks need to be rerun after this Toolsmith slice.
+
+## Latest Update: Native Watch Boundary
+
+Implemented the first safe Phase 11 native foreground boundary slice:
+- `visual_desktop_action` Computer Session operations no longer bridge directly
+  to the broad v1 `desktop_action` helper.
+- Foreground visual mutation is blocked before native input unless future
+  watch-mode helper v2 preconditions are satisfied.
+- The blocked path records `actualInputSent: false`, a failed `approval` DAG
+  node, a failed `action` DAG node, and deterministic
+  `:verification`/`:eval_ledger` follow-up nodes.
+- Debug bundles expose the blocker through `safetyDecisions`, a
+  `foreground_desktop_watch_boundary` observation, a failed verifier result,
+  and a `none_available` rollback record explaining no rollback is needed
+  because no foreground input was sent.
+- Computer Session debug bundles now include `failureMemory`; the native watch
+  blocked path records a structured failure memory item as calibration only
+  with `mayCompleteTask: false`, `mayBypassApproval: false`, and
+  `proofSource: false`.
+- Renderer Computer Use panel shows failure-memory counts and recent
+  calibration records next to evidence and rollback records.
+- Missing preconditions now include one-time approval, visible countdown,
+  active-window assertion, process allowlist, user-idle guard,
+  abort-on-user-input, pre/post evidence, signed watch-mode helper v2, and
+  effect verification/rollback proof.
+- Native Browser Action helper capability advertisement now matches the v1
+  helper contract: `screenshot` is not advertised, status diagnostics list it
+  as explicitly unsupported, and direct screenshot requests return a fallback
+  explanation before helper invocation.
+- Added `scripts/smoke-computer-use-native-watch-boundary.mjs`,
+  `npm run smoke:computer-use-native-watch-boundary`, and `smoke:all`
+  coverage.
+
+Verification passed `npm run build:daemon`,
+`node scripts/smoke-computer-use-native-watch-boundary.mjs`,
+`npm run smoke:computer-use-native-watch-boundary`,
+`npm run smoke:computer-use-session`, `npm run smoke:computer-use-session-http`,
+`npm run smoke:browser-action:native`, `npm run lint`, `npm run smoke:all`,
+`npm run build:renderer`, `npm run smoke:renderer-chat`,
+`git diff --check`, strict UTF-8 / replacement-character scan, and
+`npm run vibe:checkpoint`. Known non-failing notes: helper signature smoke
+still reports the unsigned development helper as allowed, `git diff --check`
+prints existing CRLF normalization warnings for `.vibe/agent/session-log.md`
+and `src/daemon/server.ts`, and one smoke temp cleanup was deferred with the
+standard Windows retry path.
+
+## Latest Update: Effect Verifier And Recovery Boundary
+
+Implemented the first Phase 9 verifier/recovery slice:
+- Added `src/daemon/computer-use/effectVerifier.ts`.
+- Capability-backed Computer Session operations now run a session-level
+  verifier after job completion.
+- Explicit operation expectations such as `text contains ...` and
+  `stdout contains ...` are checked against actual output before the session
+  can complete.
+- Failed/inconclusive verification records an `effect_verification` eval step,
+  failed verification/eval DAG follow-up nodes, a bounded `fallback` recovery
+  node, a `recovery_attempt` eval step, and structured failure memory as
+  calibration only.
+- Recovery budget is currently one attempt per Computer Session; when no safe
+  automatic recovery action is available, the attempt is recorded as skipped
+  with next-action hints instead of marking task success.
+- Added `scripts/smoke-computer-use-effect-verifier.mjs`,
+  `npm run smoke:computer-use-effect-verifier`, and `smoke:all` coverage.
+- Added `npm run dogfood:computer-use-30` as a checklist-compatible alias for
+  the existing `dogfood:computer-use-process-30` runner.
+
+Focused verification passed `npm run smoke:computer-use-effect-verifier`,
+`npm run smoke:computer-use-session`, `npm run smoke:computer-use-terminal-parity`,
+`npm run smoke:computer-use-native-watch-boundary`, and `npm run lint`.
+Run aggregate checks, diff check, UTF-8 scan, and checkpoint after any further
+edits.
+
+## Latest Update: Approval Card Grant/Risk Clarity
+
+Implemented the first Phase 10 approval clarity slice:
+- Computer Use awaiting-approval rows now show inferred grant, risk class,
+  reason, and command/action summary instead of only capability kind/id.
+- Covered job classes: terminal, browser_chrome, browser_action,
+  desktop_action, and agent_tool.
+- Blocked or approval-pending Computer Sessions can now derive scoped autonomy
+  requirements from current safety decisions, selected surface grants, and
+  awaiting capability jobs.
+- The renderer can create a narrow `one_time` `scoped_yolo` permission profile
+  from those derived grants, attach it to the session through
+  `POST /computer-use/sessions/:id/profile`, and record the profile attachment
+  in `safetyDecisions` plus an eval ledger step.
+- Computer Use session creation now has an active permission profile selector.
+  It defaults to no profile, passes only the user's explicit selection into
+  `/computer-use/sessions`, and auto-selects a just-created one-time profile
+  for the next run.
+- Warning/error approval rows now include an expandable sanitized Preview with
+  redacted capability input and approval evidence, so high-risk approvals are
+  not reduced to a generic continue/approve button.
+- Computer Use debug resources with artifact-like roles now render in an
+  Artifacts section with retention and blob/capability resource identifiers.
+- Artifact-like eval resources can now be opened/downloaded through
+  `/computer-use/eval/runs/:runId/resources/:resourceId/content`. The route is
+  gated to artifact/file/report/PDF/citation/markdown/download roles, blocks raw
+  screen/audio/perception resources, caps direct serving at 25 MB, and never
+  exposes blob filesystem paths. The renderer provides Open, Save, and text
+  Copy controls for eligible resources.
+- The profile attachment is permission evidence only. It does not bypass
+  external blockers such as the missing signed watch-mode helper v2,
+  foreground countdown, active-window assertion, abort-on-user-input guard, or
+  effect verification/rollback proof.
+- Added `scripts/smoke-computer-use-one-time-profile.mjs`,
+  `npm run smoke:computer-use-one-time-profile`, and `smoke:all` coverage.
+
+Verification passed `npm run build:daemon`, `npm run build:renderer`,
+`npm run smoke:computer-use-one-time-profile`, `npm run lint`,
+`npm run smoke:renderer-chat`, and final `npm run smoke:all` after the profile
+selector change. The later high-risk preview UI change passed
+`npm run build:renderer`, `npm run lint`, and `npm run smoke:renderer-chat`.
+The artifact resource UI change also passed the same renderer-focused checks.
+Final `npm run smoke:all` was rerun after all profile/preview/artifact UI and
+artifact content-route changes and passed. The Toolsmith artifact smoke now
+fetches both Markdown and PDF resources through the content route. Remaining
+final housekeeping for this slice is diff check, UTF-8 scan, and checkpoint.
+
+## Latest Update: Terminal Profile Allowlist
+
+Implemented the Phase 8 profile-level terminal allowlist slice:
+- Computer Session terminal operations now evaluate the active scoped autonomy
+  profile before capability enqueue.
+- If the profile grants the command prefix and session risk class, the terminal
+  job is enqueued with `requireApproval: false`, and the allow decision is
+  recorded in `safetyDecisions`.
+- If a profile is present but the command grant is missing, the operation is
+  blocked before creating a capability job. The action DAG node, eval step, and
+  safety decision include exact missing `AutonomyPermissionRequirement`
+  records.
+- Credential-like and destructive terminal command patterns are hard-blocked at
+  the Computer Session boundary before approval or profile preapproval.
+- `scripts/smoke-computer-use-terminal-parity.mjs` now covers three terminal
+  paths: no real profile -> approval required, allowlisted profile -> completed
+  without approval, and profile missing command grant -> blocked before job
+  creation.
+
+Verification passed `npm run build:daemon`, `npm run lint`,
+`npm run smoke:computer-use-terminal-parity`,
+`npm run smoke:computer-use-effect-verifier`,
+`npm run smoke:computer-use-session-http`,
+`npm run smoke:computer-use-one-time-profile`, and final `npm run smoke:all`.
+Remaining final housekeeping for this slice is diff check, UTF-8 scan, and
+checkpoint.
+
+## Latest Update: Browser Chrome Session Coverage
+
+Expanded the Computer Session Browser Chrome smoke coverage:
+- `scripts/smoke-computer-use-browser-chrome.mjs` now drives
+  `tab_group.list`, `bookmark.list`, one-time approval `bookmark.create`,
+  `download.verify`, high-risk one-time `history.search`, high-risk one-time
+  `debugger.inspect`, and high-risk one-time `file_upload.set_files` through
+  `POST /computer-use/sessions/:id/operations`.
+- The smoke verifies Browser Bridge polling/result completion, capability job
+  completion, action/verification/eval DAG follow-up nodes, debug-bundle
+  visibility, redacted history evidence, and redacted file-path evidence.
+
+Verification passed `npm run smoke:computer-use-browser-chrome`,
+`npm run lint`, and final `npm run smoke:all`. Remaining final housekeeping
+for this slice is diff check, UTF-8 scan, and checkpoint.
+
+## Latest Update: Browser Action Pre/Post Observations
+
+Implemented a Phase 3/5 evidence improvement:
+- Browser Action extension results for `computer-session-browser-action:*`
+  now record separate `pre_action` and `post_action` `browser_dom`
+  observations instead of collapsing to a single post-action observation.
+- Each observation gets its own perception graph source
+  (`computer_session_browser_action_pre_action` or
+  `computer_session_browser_action_post_action`) plus eval step/resource links.
+- `smoke:computer-use-session-http` and `smoke:computer-use-browser-parity`
+  now assert both pre-action and post-action observation evidence.
+
+Verification passed `npm run smoke:computer-use-session-http`,
+`npm run smoke:computer-use-browser-parity`, `npm run lint`, and final
+`npm run smoke:all`. Remaining final housekeeping for this slice is diff
+check, UTF-8 scan, and checkpoint.
+
+## Latest Update: Verifier Audit Surface
+
+Implemented the Phase 9 verifier audit workflow:
+- Added `computer-use-verifier-audit.v1` shared audit types and daemon audit
+  logic for eval-ledger verifier steps.
+- The audit classifies false-negative records, false-positive candidates,
+  inconclusive verifier results, expected-effect action steps missing verifier
+  evidence, and consistent verifier passes/failures.
+- Computer Session debug bundles now include `verifierAudit` so copied/saved
+  bundles carry the audit summary alongside verifier results and failure
+  memory.
+- Added `/computer-use/eval/verifier-audit` and
+  `/computer-use/eval/runs/:runId/verifier-audit`; readiness output now embeds
+  a verifier audit summary.
+- Added `scripts/smoke-computer-use-verifier-audit.mjs`,
+  `npm run smoke:computer-use-verifier-audit`, and `smoke:all` coverage.
+
+Verification passed `npm run build:daemon`,
+`npm run smoke:computer-use-verifier-audit`,
+`npm run smoke:computer-use-effect-verifier`,
+`npm run smoke:computer-use-session-http`, and
+`npm run smoke:computer-use-browser-parity`. Aggregate verification also
+passed `npm run lint`, final `npm run smoke:all`, `git diff --check`, and a
+strict UTF-8/replacement-character scan for 78 touched/untracked text files
+(the only quoted-question hit was a legitimate download query suffix literal).
+Known non-failing notes: unsigned helper remains allowed in development mode,
+CRLF normalization warnings for `.vibe/agent/session-log.md`,
+`src/daemon/server.ts`, and `src/daemon/storage/storage.ts`, plus one standard
+Windows temp cleanup deferred retry.
+
+Follow-up within the same Phase 9 slice:
+- `smoke:computer-use-effect-verifier` now includes an unsupported
+  expected-effect target that produces an `inconclusive` verifier result and
+  proves the session remains failed.
+- `smoke:computer-use-verifier-audit` now asserts the inconclusive audit bucket
+  in both session-scoped audit output and readiness output.
+- `EffectVerifier` now treats unsupported explicit expected outcomes as
+  inconclusive unless the capability output carries explicit effect proof or
+  the expected value is present in the output evidence. Generic capability
+  success no longer silently satisfies an unsupported `expectedOutcome`.
+- Effect verification now updates the parent eval run status/task success after
+  verifier pass/fail/inconclusive results, so debug bundles and readiness audit
+  do not keep a stale passed/partial eval state after a verifier failure.
+
+Verification after the inconclusive follow-up passed
+`npm run smoke:computer-use-effect-verifier`,
+`npm run smoke:computer-use-verifier-audit`,
+`npm run smoke:computer-use-session-http`, `npm run lint`, and final
+`npm run smoke:all`.
+
+## Latest Update: Verifier Audit Renderer Surface
+
+Added renderer visibility for the Phase 9 audit data:
+- `ComputerUseSessionsPanel` now includes a `Verifier` metric, audit bucket
+  counts, and recent audit rows from `bundle.verifierAudit`.
+- The panel surfaces false-negative records, false-positive candidates,
+  inconclusive verifier results, and missing verifier evidence without requiring
+  the user to copy the full debug bundle.
+- Styling reuses the compact Computer Use section layout with a four-column
+  audit metric strip.
+
+Verification passed `npm run build:renderer`, `npm run smoke:renderer-chat`,
+and `npm run lint`.
+
+## Latest Update: 30-Case Dogfood Rerun
+
+Reran the fixture-backed Computer Use 30-case process validation after the
+verifier/eval/audit changes. This entry was later superseded on 2026-05-16 by
+the PDF/download refresh at the top of this handoff:
+- Command: `npm run dogfood:computer-use-30`
+- Outputs:
+  - `docs/dogfood/computer-use-process-validation-30-2026-05-16.json`
+  - `docs/reports/computer-use-process-validation-30-2026-05-16.md`
+  - `docs/reports/assets/computer-use-process-validation-30-2026-05-16/evidence.json`
+- Superseded latest results: 30 scenarios, 21 passed, 9 intentionally blocked,
+  0 needs-follow-up, 0 unexpected failures, 43 eval runs, 11 perception graphs,
+  16 eval resources, 1 DAG run.
+- Superseded latest metrics: task success rate 0.786, proof rate 0.405, p95
+  latency 108 ms, p95 perception latency 40 ms.
+
+This remains safe fixture-backed evidence. Live browser/OS trace promotion is
+still a separate follow-up.
+
+## Latest Update: Debug Bundle Save UX
+
+Added a Save debug bundle control to the Computer Use panel toolbar:
+- Existing Copy still writes the selected session debug bundle JSON to the
+  clipboard.
+- New Save creates a local browser download named
+  `computer-use-debug-<session>.json` from the currently loaded or freshly
+  fetched debug bundle.
+
+Verification passed `npm run build:renderer`, `npm run smoke:renderer-chat`,
+and `npm run lint`.
+
+## Latest Update: Toolsmith Artifact DAG Nodes
+
+Added parent Computer Session DAG nodes for Toolsmith artifacts:
+- `recordToolsmithSessionArtifacts` now creates `${action}:store_artifact` and
+  `${action}:verify_artifact` nodes under the parent session DAG.
+- `store_artifact` records artifact roles and mirrored eval resource ids.
+- `verify_artifact` requires blob-backed artifact content plus hash evidence
+  and records a passed/failed verification summary.
+- A `toolsmith_artifact_verification` eval step links the verifier node to the
+  session eval run.
+- The file observation metadata now points to the parent store/verify artifact
+  node ids.
+
+Verification passed `npm run build:daemon`,
+`npm run smoke:computer-use-toolsmith-artifact`, and
+`npm run smoke:computer-use-session-http`.
+
+## Latest Update: Browser Chrome Print-To-PDF Primitive
+
+Added a bounded Browser Bridge debugger command:
+- New command: `debugger.print_to_pdf`.
+- Extension implementation uses Chrome debugger `Page.printToPDF` with bounded
+  print options.
+- Output records PDF format, byte length, SHA-256 when available, and omits
+  inline PDF bytes by default unless explicitly requested and under the inline
+  size cap.
+- The command is covered as a high-risk one-time Browser Chrome operation in
+  both direct capability and Computer Session Browser Chrome smokes.
+
+Verification passed `npm run build:daemon`,
+`npm run smoke:browser-chrome-capability`,
+`npm run smoke:computer-use-browser-chrome`, and `npm run smoke:extension`.
+
+Final aggregate verification for this slice also passed `npm run lint` and
+final `npm run smoke:all`. Known non-failing notes remained the unsigned
+browser-native helper allowed in development mode and one Windows temp cleanup
+deferred retry.
+
+## Latest Update: Toolsmith Source Visibility
+
+Implemented a Phase 7/10 source-evidence UX slice:
+- Parent Computer Session Toolsmith artifact collection now builds a
+  `sourceSummary` from child Toolsmith tool-run output, citation/source
+  artifacts when available, fetched URL evidence, browser-fallback warnings,
+  and source counts.
+- The `sourceSummary` is stored in the parent eval step, `store_artifact` and
+  `verify_artifact` DAG node outputs, and the `toolsmith_scoped_autonomy` file
+  observation metadata.
+- The Computer Use renderer panel now shows a Sources section for Toolsmith
+  runs, listing source status, title/URL, browser-fallback marker, character
+  count, and excerpt when available.
+- `smoke:computer-use-toolsmith-artifact` now asserts the source summary,
+  including the deterministic browser-fallback source, in addition to artifact
+  and rollback evidence.
+
+Verification passed `npm run smoke:computer-use-toolsmith-artifact`,
+`npm run build:renderer`, `npm run smoke:renderer-chat`, and `npm run lint`.
+
+## Latest Update: Terminal Debug Bundle Output Redaction
+
+Implemented a Phase 8 terminal hardening slice:
+- Computer Session debug bundles now sanitize terminal capability job outputs.
+- Raw stdout/stderr are omitted from the debug-bundle job payload and replaced
+  with `terminalOutput` metadata containing length, SHA-256, a short
+  credential-redacted preview, preview size, and redaction mode.
+- Terminal observations already used metadata/length summaries; this closes the
+  remaining bundle path that exposed raw terminal output through
+  `capabilityJobs`.
+- `smoke:computer-use-terminal-parity` now verifies that the capability job API
+  can still inspect completed stdout for the job owner while the Computer
+  Session debug bundle exposes only redacted preview/hash metadata.
+
+Verification passed `npm run build:daemon` and
+`npm run smoke:computer-use-terminal-parity`.
+
+## Latest Update: Terminal Output Root Diff Artifacts
+
+Implemented the remaining Phase 8 artifact-effect slice for terminal output
+roots:
+- Terminal Computer Session operations can now declare `trackOutputRoots`,
+  `outputRoots`, or `expectedOutputRoots`.
+- If an active scoped autonomy profile grants those directories as write roots,
+  the session runtime snapshots bounded files before execution and diffs them
+  after a completed terminal job.
+- New or modified bounded files are stored as blob-backed
+  `terminal_diff_artifact` eval resources with basename/hash/change metadata.
+- A `terminal_output_root_diff` file observation links those resources in the
+  debug bundle. This complements explicit `expectedArtifacts` without requiring
+  the user to name every output file.
+- `smoke:computer-use-terminal-parity` now creates both an explicitly declared
+  artifact and an automatically detected output-root diff artifact.
+
+Verification passed `npm run build:daemon` and
+`npm run smoke:computer-use-terminal-parity`.
+
+## Latest Update: Toolsmith Browser Fetch Fallback
+
+Connected the Browser Chrome document-capture primitive to the Toolsmith
+research artifact path:
+- `ScopedAutonomyRuntime.runGoalDag` now accepts `browserFallbackDocuments`.
+- The generated `web_research_to_pdf` tool receives both network domain grants
+  and browser domain grants.
+- During `crawl_or_observe`, direct HTTP still runs first when network grants
+  allow it. If direct fetch fails or returns a bad HTTP status and a matching
+  browser fallback document exists for an allowed browser domain, the tool uses
+  the browser-captured text/metadata instead of treating the source as failed.
+- Fallback evidence is marked with `status: "browser_fallback"`,
+  `browserFallback: true`, a `fallbackReason`, sanitized capture metadata, and
+  `browser_fallback_used:<host>:<reason>` warnings. The evidence flows into
+  extracted sources, citations, Markdown, PDF, eval resources, and parent
+  session artifact export.
+- `ComputerSessionRuntime` forwards `browserFallbackDocuments` from
+  `toolsmith` operations into the autonomy DAG.
+- `smoke:computer-use-toolsmith-artifact` now covers a deterministic direct
+  HTTP failure (`127.0.0.1:9`) with a supplied browser fallback document,
+  proving the final report includes browser fallback evidence.
+
+Verification passed `npm run build:daemon` and
+`npm run smoke:computer-use-toolsmith-artifact`. Follow-up verification also
+passed `npm run smoke:scoped-autonomy-self-implementation`,
+`npm run smoke:computer-use-session-http`, `npm run lint`, and final
+`npm run smoke:all`. Known non-failing notes remained the unsigned
+browser-native helper allowed in development mode and one Windows temp cleanup
+deferred retry.
+
+Follow-up Phase 7 rerun/rollback polish:
+- The Autonomy Toolsmith renderer panel now has buttons to rerun the selected
+  run's last completed execute tool run and to rollback the selected autonomy
+  run without deleting user artifacts.
+- `smoke:computer-use-toolsmith-artifact` now verifies the HTTP rerun route and
+  rollback route after artifact creation. The smoke profile uses a bounded
+  one-time profile with enough use budget to cover initial execution and rerun.
+
+Verification passed `npm run build:renderer`, `npm run smoke:renderer-chat`,
+`npm run smoke:computer-use-toolsmith-artifact`, `npm run lint`, and final
+`npm run smoke:all`. Known non-failing notes remained the unsigned
+browser-native helper allowed in development mode and one Windows temp cleanup
+deferred retry.
+
+## Latest Update: Terminal Artifact Effect Detection
+
+Implemented the first Phase 8 artifact-effect slice:
+- Terminal Computer Session operations may declare `expectedArtifacts`.
+- After a completed terminal job, the session runtime reads only declared files
+  that exist inside the active scoped autonomy profile's approved write roots.
+- Matching files are stored as blob-backed eval resources with path-redacted
+  basename and SHA-256 metadata.
+- The session debug bundle receives a `file` observation from
+  `terminal_expected_artifact`, while the terminal observation records
+  `artifactCount`.
+- `smoke:computer-use-terminal-parity` now creates a terminal artifact in the
+  smoke output root with an approved `echo` command and verifies the eval
+  resource plus file observation. The blocked command path still proves missing
+  command grants.
+
+Verification passed `npm run build:daemon` and
+`npm run smoke:computer-use-terminal-parity`. Follow-up verification passed
+`npm run lint`, `npm run smoke:computer-use-session-http`, and final
+`npm run smoke:all`. Known non-failing notes remained the unsigned
+browser-native helper allowed in development mode and one Windows temp cleanup
+deferred retry.
+
+## Latest Update: Observation Freshness Checks
+
+Implemented the first Phase 4 freshness slice:
+- Computer Session debug bundles now annotate observations at export time with
+  `ageMs`, `staleAfterMs`, `freshnessCheckedAt`, and computed `fresh`/`stale`/
+  `unknown` freshness.
+- Debug bundles also include `freshnessSummary` with fresh/stale/unknown
+  counts, max age, and stale observation ids.
+- Capability-backed Computer Session operations can opt into a preflight with
+  `requiresFreshObservation` or `maxEvidenceAgeMs`.
+- If fresh current evidence is required but missing/stale/unknown, the runtime
+  blocks before creating a capability job, records a safety decision, failed
+  action DAG node, and `evidence_freshness_check` eval step with
+  `perception_miss` failure class.
+- `smoke:computer-use-session` now injects synthetic stale DOM evidence,
+  verifies stale preflight blocking, and checks the debug bundle freshness
+  summary.
+
+Verification passed `npm run build:daemon` and
+`npm run smoke:computer-use-session`. Follow-up verification passed
+`npm run lint`, `npm run smoke:computer-use-session-http`,
+`npm run smoke:computer-use-browser-parity`, and final `npm run smoke:all`.
+Known non-failing notes remained the unsigned browser-native helper allowed in
+development mode and one Windows temp cleanup deferred retry.
+
+## Latest Update: Computer Use Before/After Observation Preview
+
+Implemented a Phase 10 renderer UX slice:
+- The Computer Use panel now groups Browser Action `pre_action` and
+  `post_action` observations by DAG/capability job into a Before / after
+  section.
+- Each preview shows the action type, redacted target/source summary, freshness
+  status, URL/title, element count, perception graph node count, verifier
+  status, and capability job id.
+- The preview is intentionally structured/redacted instead of bitmap-backed so
+  it stays within the current raw screenshot retention policy.
+- Full foreground visual bitmap before/after preview remains future work until
+  signed watch-mode helper v2 and screenshot retention boundaries are promoted.
+
+Verification passed `npm run build:renderer`, `npm run smoke:renderer-chat`,
+`npm run lint`, and final `npm run smoke:all`. Known non-failing notes remained
+the unsigned browser-native helper allowed in development mode and one Windows
+temp cleanup deferred retry.
+
+## Latest Update: Live OpenAI Toolsmith Dogfood
+
+Implemented a Phase 7 live evidence slice:
+- `scripts/collect-scoped-autonomy-web-research-live-dogfood.mjs` now uses the
+  current Seoul date for output paths and validates real source body evidence
+  rather than treating HTTP 403 status-only fetches as success.
+- The scoped autonomy live dogfood now captures official OpenAI Codex docs with
+  Playwright browser fallback when daemon-side HTTP fetches are blocked, passes
+  those fallback documents into `web_research_to_pdf`, and requires live source
+  text, citations, Markdown/PDF artifacts, and PDF header proof.
+- Added `scripts/collect-computer-use-toolsmith-live-dogfood.mjs` and
+  `npm run dogfood:computer-use-toolsmith-live` to execute the same OpenAI
+  research-to-PDF scenario through the parent daemon `ComputerSessionRuntime`
+  Toolsmith route.
+- The Computer Session dogfood verifies parent debug-bundle evidence, linked
+  child autonomy run, parent DAG follow-up nodes, mirrored eval resources,
+  browser fallback captures, report text, and PDF bytes.
+- New live evidence:
+  `docs/dogfood/scoped-autonomy-web-research-live-2026-05-16.json`,
+  `docs/reports/scoped-autonomy-web-research-live-2026-05-16.md`,
+  `docs/dogfood/computer-use-toolsmith-live-2026-05-16.json`, and
+  `docs/reports/computer-use-toolsmith-live-2026-05-16.md`.
+
+Verification passed `npm run dogfood:scoped-autonomy-web-research-live`,
+`npm run dogfood:computer-use-toolsmith-live`,
+`npm run smoke:computer-use-toolsmith-artifact`, `npm run lint`, and final
+`npm run smoke:all`. Known non-failing notes remained the unsigned
+browser-native helper allowed in development mode and one Windows temp cleanup
+deferred retry.
+
+## Latest Update: Browser Chrome Download Verification Evidence
+
+Implemented a Phase 6 download-proof slice:
+- Computer Session now reconciles completed `browser_chrome` capability jobs
+  into structured session observations, the same way Browser Action,
+  screen/OCR, and terminal jobs already do.
+- `browser_chrome` `download.verify` operations may include
+  `approvedDownloadPath`. The runtime reads that file only after the Browser
+  Chrome result reports `verified: true` and only if the active scoped autonomy
+  profile grants the path through read/write roots.
+- Approved verified downloads are stored as blob-backed eval resources with
+  role `download_verified_file`. Durable redaction exposes basename, SHA-256,
+  byte size, and source, without exposing full local paths.
+- The debug bundle adds a `browser_chrome_download_verify` file observation
+  linked to the eval resource, so download completion can be proven through the
+  same observation/resource path as Toolsmith and terminal artifacts.
+- `smoke:computer-use-browser-chrome` now creates an approved smoke download,
+  verifies the `download_verified_file` resource and linked file observation,
+  and retains detailed assertion diagnostics for future failures.
+- The same smoke now covers the full Browser Chrome deep command matrix through
+  Computer Session operations: tab group list/create/claim/update/release,
+  bookmark list/create/update/open/remove,
+  download search/observe/verify/start/cancel/erase, history search/open,
+  debugger inspect/screenshot/print-to-PDF, and file upload inspect/set/clear.
+  Read-only commands run without approval, while side-effect/high-risk commands
+  prove the `awaiting_approval` path before explicit approval.
+- Browser Bridge `debugger.screenshot` now includes PNG SHA-256 alongside byte
+  length while still omitting inline screenshot bytes by default.
+- Browser Action Computer Session operations now upsert
+  `${actionNodeId}:verification` and `${actionNodeId}:eval_ledger` follow-up
+  nodes directly when the session operation reaches a final state. This removes
+  the Browser parity smoke race where the action node completed but mirror
+  timing left the first action's follow-up DAG nodes missing.
+
+Verification passed `npm run smoke:computer-use-browser-chrome`,
+`npm run smoke:browser-chrome-capability`, `npm run smoke:extension`,
+`npm run smoke:computer-use-session-http`,
+`npm run smoke:computer-use-browser-parity`, `npm run lint`, focused
+`npm run smoke:browser-action`, and final `npm run smoke:all`. The first
+aggregate run before the direct follow-up fix exposed the Browser parity
+follow-up DAG timing race; focused smokes passed after the fix and the
+aggregate rerun passed. Known non-failing notes remained the unsigned
+browser-native helper allowed in development mode and one Windows temp cleanup
+deferred retry.
+
+## Latest Update: Screen ROI Cascade Evidence Resource
+
+Implemented a second Phase 4 perception slice:
+- `screen_observe` capability output already includes tile hashes, dirty
+  regions, and cascade stages when image data is available.
+- Computer Session now detects that screen cascade payload and stores it as a
+  blob-backed eval resource with role `roi_cascade_evidence`.
+- The resource is linked from the screen observation and keeps raw screenshot
+  retention boundaries explicit with `rawScreenshotStored: false`.
+- `smoke:computer-use-session` overrides `screen_observe` with deterministic
+  tile/dirty/cascade output and verifies the screen observation links the
+  `roi_cascade_evidence` resource.
+
+Verification passed `npm run build:daemon` and
+`npm run smoke:computer-use-session`. Follow-up verification passed
+`npm run lint`, `npm run smoke:computer-use-session-http`,
+`npm run smoke:research-performance-architecture`, and final
+`npm run smoke:all`. Known non-failing notes remained the unsigned
+browser-native helper allowed in development mode and one Windows temp cleanup
+deferred retry.
+
+## Latest Update: Computer Session Action Route Evidence
+
+Implemented the first Phase 5 action-router evidence slice:
+- Computer Session DAG action nodes now record
+  `computer-session-action-route.v1`.
+- Route evidence includes operation kind, selected surface, execution mode,
+  preference rank, visual fallback usage, and a routing reason.
+- Current execution modes cover structured Toolsmith, structured terminal,
+  Browser Chrome API, screen ROI/cascade observe, ROI OCR, Playwright DOM,
+  CDP Browser Action, extension-injected DOM, native browser-window helper, and
+  foreground visual watch-mode.
+- Browser Action DAG node output mirrors the selected route so the debug bundle
+  can explain why isolated-browser actions used Playwright DOM instead of
+  visual/native fallback.
+- `smoke:computer-use-browser-parity` now verifies the click action route is
+  `dom_playwright_locator` and `visualFallbackUsed: false`.
+
+Verification passed `npm run build:daemon` and
+`npm run smoke:computer-use-browser-parity`. Follow-up verification passed
+`npm run lint`, `npm run smoke:computer-use-session-http`,
+`npm run smoke:computer-use-browser-chrome`, and final `npm run smoke:all`
+after adding a wait loop for Browser parity follow-up DAG nodes. Known
+non-failing notes remained the unsigned browser-native helper allowed in
+development mode and one Windows temp cleanup deferred retry.
+
+Renderer follow-up:
+- Computer Use DAG rows now surface action-route evidence directly when present
+  (`executionMode`, preference rank, and structured/visual fallback status)
+  instead of requiring the user to inspect the raw debug bundle.
+
+Verification passed `npm run build:renderer` and `npm run smoke:renderer-chat`.
+Follow-up verification passed `npm run lint`,
+`npm run smoke:computer-use-browser-parity`, and final `npm run smoke:all`.
+Known non-failing notes remained the unsigned browser-native helper allowed in
+development mode and one Windows temp cleanup deferred retry.
+
+## Latest Update: Browser Action Stale-Evidence Recovery
+
+Implemented the next Phase 9 recovery slice:
+- Browser Action Computer Session operations that declare
+  `requiresFreshObservation` or `maxEvidenceAgeMs` now check the latest
+  non-skeleton session observation before executing.
+- If the latest target evidence is stale or missing, the runtime spends the
+  one-attempt recovery budget on a safe Browser Action `read` reobserve through
+  the same adapter/source/session before continuing the original action.
+- Recovery is recorded as a `browser_action_reobserve_recovery` eval step and
+  an `observe` DAG node with action type, redacted target summary, prior
+  observation freshness, required max age, recovery capability job, and
+  post-recovery freshness.
+- The original action proceeds only when post-recovery evidence is fresh. If
+  the budget is exhausted or reobserve cannot produce fresh evidence, the
+  session fails rather than executing on stale DOM evidence.
+- `smoke:computer-use-browser-parity` now primes a stale DOM observation,
+  exercises the fresh-evidence-gated type action, asserts the recovery node and
+  eval step, and then verifies normal Browser Action follow-up DAG nodes.
+
+Verification passed `npm run build:daemon`,
+`npm run smoke:computer-use-browser-parity`,
+`npm run smoke:computer-use-effect-verifier`, `npm run lint`, and final
+`npm run smoke:all`. Known non-failing notes remained the unsigned
+browser-native helper allowed in development mode and one Windows temp cleanup
+deferred retry.
+
+## Latest Update: Browser Action Target Evidence
+
+Implemented the next Phase 4/5 target-grounding slice:
+- Browser Action `pre_action` Computer Session observations now carry
+  `computer-session-target-evidence.v1` when the Browser Action result target
+  can be matched to a perception graph node.
+- The evidence is stored in both debug-bundle observation metadata and the
+  corresponding `browser_action_pre_action_observation` eval step output.
+- The record includes graph id, node id, element id, action type, mapped action
+  risk, confidence threshold, allowed decision, confidence, evidence
+  sources/classes, disagreement notes, and a compact redacted target summary.
+- This gives Browser target choice a session-level explanation path without
+  treating failure memory or previous success as proof. Full cross-source graph
+  arbitration across DOM/UIA/OCR/screenshot/VLM remains a later slice.
+- `smoke:computer-use-browser-parity` now asserts the isolated-browser click
+  target evidence is side-effect safe, allowed, and backed by DOM selector
+  evidence in both the debug bundle and eval ledger.
+
+Verification passed `npm run build:daemon` and
+`npm run smoke:computer-use-browser-parity`. Follow-up verification passed
+`npm run lint` and final `npm run smoke:all`. Known non-failing notes remained
+the unsigned browser-native helper allowed in development mode and one Windows
+temp cleanup deferred retry.
+
+Renderer follow-up:
+- Computer Use Before / after observation panes now display Browser Action
+  target evidence when present: allowed/blocked verdict, risk, confidence over
+  threshold, target label/node id, evidence sources, and evidence classes.
+- The preview remains compact and redacted; it does not expose screenshots or
+  raw DOM payloads.
+
+Verification passed `npm run build:renderer` and `npm run smoke:renderer-chat`.
+Follow-up verification passed `npm run lint` and final `npm run smoke:all`.
+Known non-failing notes remained the unsigned browser-native helper allowed in
+development mode and one Windows temp cleanup deferred retry.
+
+## Latest Update: Shared Perception Target Arbitration
+
+Implemented the first shared session-level target arbitration primitive:
+- Added `arbitratePerceptionTarget()` in `src/daemon/perception-graph/index.ts`.
+  It considers fresh perception graphs, matches by node id, element id, label,
+  or text, scores candidates by evidence confidence, match confidence,
+  freshness, and disagreement penalty, and returns
+  `perception-target-arbitration.v1`.
+- Browser Action target evidence now uses the shared arbitration helper instead
+  of a direct one-off graph lookup. `computer-session-target-evidence.v1`
+  records graph count, candidate count, stale graph count, selected score,
+  match reason, selected graph source, and arbitration reason.
+- This is still a DOM-backed first slice. The helper is ready for UIA/OCR/
+  screenshot/VLM graph inputs, but those sources are not yet merged into
+  Browser Action target choice.
+
+Verification passed `npm run build:daemon`,
+`npm run smoke:research-performance-architecture`, and
+`npm run smoke:computer-use-browser-parity`. Follow-up verification passed
+`npm run lint` and final `npm run smoke:all`. Known non-failing notes remained
+the unsigned browser-native helper allowed in development mode and one Windows
+temp cleanup deferred retry.
+
+## Latest Update: Native Helper UIA Graph Evidence
+
+Implemented the first UIA/native-helper graph input:
+- Added `buildPerceptionGraphFromNativeObservation()` in the perception graph
+  module. It converts bounded native browser-window helper snapshots into graph
+  nodes with `uia` evidence: semantic label, accessibility role, visible text,
+  `uia_selector`, bbox, freshness, and source reliability.
+- Computer Session `desktop_action` observations now create
+  `computer_session_native_browser_observation` graphs when the helper output
+  includes `observation` or `after` snapshots.
+- This keeps the v1 helper browser-window scoped. It does not promote broad
+  foreground desktop mutation or bypass the signing/watch-mode blockers.
+- `smoke:browser-action:native` now drives the mock helper through the Computer
+  Session `native_browser_window_action` path and asserts the graph preserves
+  UIA selector evidence for the `tab-back` element.
+
+Verification passed `npm run build:daemon` and
+`npm run smoke:browser-action:native`. Follow-up verification passed
+`npm run lint` and final `npm run smoke:all`. Known non-failing notes remained
+the unsigned browser-native helper allowed in development mode and one Windows
+temp cleanup deferred retry.
+
+## Latest Update: Screen ROI Cache Reuse
+
+Implemented runtime reuse for screen tile hashes:
+- Computer Session state now keeps the latest screen tile hash set per session.
+- Repeated `screen_observe` operations automatically receive
+  `previousTileHashes`, `previousTileHashObservationId`, and
+  `previousTileHashCapturedAt`.
+- Completed screen observations update the cache and record
+  `metadata.screenTileCache` with tile count, previous tile count, dirty region
+  count, and cache update status.
+- `smoke:computer-use-session` now runs two screen observes. The second one
+  receives the previous tile hash, returns zero dirty regions, and verifies the
+  `roi_ocr` cascade stage is skipped.
+
+Verification passed `npm run build:daemon` and
+`npm run smoke:computer-use-session`. Follow-up verification passed
+`npm run lint` and final `npm run smoke:all`. Known non-failing notes remained
+the unsigned browser-native helper allowed in development mode and one Windows
+temp cleanup deferred retry.
+
+## Latest Update: Computer Session Action Feedback
+
+Implemented the first action-feedback envelope:
+- Added `ComputerSessionActionFeedbackSummary` to the shared Computer Use
+  protocol and `ComputerSessionDebugBundle.actionFeedbacks`.
+- Browser Action result recording now creates a `browser_action` feedback row
+  after pre/post observations are recorded. The row links action type/status,
+  verifier status, before/after observation ids, perception graph id,
+  capability job id, DAG node id, target evidence, and redaction policy.
+- Browser Action feedback rows now create linked `browser_action_feedback` eval
+  ledger steps; the debug-bundle feedback row stores the eval step id.
+- Renderer Computer Use Activity details now show a Feedback section with
+  action type, summary, verifier status, before/after ids, graph id, and job id.
+- This is the structured feedback envelope needed for the Computer Use action
+  loop. Raw screenshot feedback remains governed by existing blob retention and
+  watch-mode boundaries.
+
+Verification passed `npm run build:daemon`, `npm run build:renderer`,
+`npm run smoke:computer-use-browser-parity`, and
+`npm run smoke:renderer-chat`. Follow-up verification passed `npm run lint`
+and final `npm run smoke:all`. Known non-failing notes remained the unsigned
+browser-native helper allowed in development mode and one Windows temp cleanup
+deferred retry.
+
+## Latest Update: Screen Observe Perception Graphs
+
+Implemented the first non-DOM graph input for Computer Session observations:
+- Added `buildPerceptionGraphFromScreenObservation()` in the perception graph
+  module. It converts bounded screen text/boxes into graph nodes that combine
+  OCR visible-text/box evidence with screenshot-region, bbox, freshness, and
+  source-reliability evidence.
+- `screen_observe` Computer Session completions now create
+  `computer_session_screen_observation` graphs when output includes
+  `screenText`, `recognizedText`, `ocrBoxes`, `textBoxes`, or equivalent
+  bounded text regions.
+- The graph id is linked from the screen observation and eval step alongside
+  the existing `roi_cascade_evidence` resource. Raw screenshots remain outside
+  the debug bundle and follow the existing retention policy.
+- `smoke:computer-use-session` now asserts screen observations expose the
+  graph and that the node has both screenshot-region and OCR visible-text
+  evidence.
+
+Verification passed `npm run build:daemon` and
+`npm run smoke:computer-use-session`. Follow-up verification passed
+`npm run lint`, `npm run smoke:research-performance-architecture`, and final
+`npm run smoke:all`. Known non-failing notes remained the unsigned
+browser-native helper allowed in development mode and one Windows temp cleanup
+deferred retry.
+
+## Latest Update: Arbitration Actionability Gate
+
+Hardened the shared target arbitration safety rule:
+- Non-actionable screen/OCR nodes can still ground read-only state, but they no
+  longer authorize side-effect, high-risk, or credential actions.
+- Such candidates record `target_not_actionable`; an actionable DOM/UIA/native
+  node is required before action execution can treat the target as allowed.
+- `smoke:research-performance-architecture` now asserts read-only screen OCR
+  can pass while side-effect screen OCR is blocked. Browser parity still passes
+  because DOM targets are actionable.
+
+Verification passed `npm run build:daemon`,
+`npm run smoke:research-performance-architecture`, and
+`npm run smoke:computer-use-browser-parity`. Follow-up verification passed
+`npm run lint` and final `npm run smoke:all`. Known non-failing notes remained
+the unsigned browser-native helper allowed in development mode and one Windows
+temp cleanup deferred retry.
+
+## Latest Update: Native Helper Release Readiness
+
+Implemented the release-signing hardening slice for the v1 native browser-window
+helper:
+- Runtime native helper status diagnostics now include
+  `native-desktop-helper-release-readiness.v1` with helper provenance, source,
+  implementation, size, SHA-256, mtime, Authenticode signature status, blockers,
+  and development-only/release-ready verdict.
+- The diagnostics explicitly keep Node/cmd/PowerShell helpers
+  development-only. Native `.exe` helpers require a valid Authenticode
+  signature before `releaseReady` can be true.
+- Release readiness now checks the bundled helper artifact and gates
+  `browser-native-helper-signing`; the gate is deferred in
+  `docs/release/deferred-gates.json` until a production certificate or CI
+  signing service exists. Strict release mode still fails on the deferred gate.
+- The broader foreground `visual_desktop_action` path remains blocked until
+  signed watch-mode helper v2, countdown/idle/user-input-abort guards,
+  active-window proof, and rollback/effect verification are implemented.
+
+Verification passed `npm run build:daemon`,
+`npm run smoke:browser-action:native`,
+`npm run smoke:browser-native-desktop-helper:signature`,
+`node --check scripts/release-readiness.mjs`, and a direct
+`getNativeDesktopHelperReleaseReadiness()` probe. Follow-up verification passed
+`npm run lint`, final `npm run smoke:all`, `git diff --check`,
+UTF/mojibake scan, and .cs BOM check. Known non-failing notes remained the
+unsigned browser-native helper allowed in development mode and one Windows temp
+cleanup deferred retry.
+
+## Latest Update: Browser Permission Content Settings
+
+Implemented the helper-v2-free browser permission workflow:
+- Added Browser Chrome commands `permission.get` and `permission.set`.
+  `permission.get` is read-only; `permission.set` requires one-time approval
+  through the existing capability safety policy.
+- The Browser Bridge extension executes permission changes through Chrome
+  `contentSettings` for bounded site permissions such as camera, microphone,
+  location, notifications, popups, and automatic downloads.
+- Computer Session persistence redacts URL paths for permission commands while
+  retaining transient full URLs only for command execution. Output evidence
+  records permission type, origin, primary pattern, requested/verified setting,
+  `pathRedacted: true`, `popupWorkflow: content_settings_api`, and
+  `nativePopupClick: false`.
+- Extension metadata now declares and explains the `contentSettings`
+  permission in store listing, privacy notes, and review notes. The visual
+  browser permission-bubble click path remains blocked until signed watch-mode
+  helper v2 exists.
+
+Verification passed `npm run build:daemon`,
+`npm run smoke:browser-chrome-capability`,
+`npm run smoke:computer-use-browser-chrome`, `npm run smoke:extension`, and
+`npm run smoke:browser-store`. A pre-existing
+`smoke:computer-use-session-http` race was fixed by polling capability job
+completion after Browser Action result POST. Follow-up verification passed
+`npm run lint`, `npm run smoke:computer-use-session-http`, and final
+`npm run smoke:all`. Known non-failing notes remained the unsigned
+browser-native helper allowed in development mode and one Windows temp cleanup
+deferred retry.
+
+## Latest Update: Computer Use Rollback Actions
+
+Implemented the first executable Computer Session rollback route:
+- Added `POST /computer-use/sessions/:sessionId/rollback-actions/:rollbackId`.
+- `delete_artifact` rollback actions call the scoped-autonomy rollback runtime,
+  record a `rollback_action` eval cleanup step, update rollback status/metadata
+  in the debug bundle, and require explicit `includeUserArtifacts` plus
+  `confirmUserArtifacts` before deleting user artifacts. Safe rollback defaults
+  to runtime-only cleanup and skips user artifacts.
+- `cancel_capability_job` rollback actions now cancel the active capability job
+  through the capability runtime.
+- Renderer rollback rows now expose compact Safe/Delete controls. Delete is
+  only enabled for `delete_artifact` rollback rows, while completed/skipped
+  rows cannot be rerun from the panel.
+
+Verification passed `npm run build:daemon`, `npm run build:renderer`,
+`npm run smoke:computer-use-toolsmith-artifact`, and
+`npm run smoke:renderer-chat`. Follow-up verification passed `npm run lint`
+and final `npm run smoke:all`. Known non-failing notes remained the unsigned
+browser-native helper allowed in development mode and one Windows temp cleanup
+deferred retry.
+
+## Latest Update: Computer Session Browser Prompt Dogfood
+
+Added a direct Computer Session Browser Action prompt dogfood slice:
+- `dogfood:computer-use-browser` now runs four user-like Korean browser prompt
+  scenarios through `/computer-use/sessions/:id/browser-action-prompt` on an
+  isolated browser fixture: read current page, search form submit,
+  representative content selection, and navigation.
+- The runner writes dated dogfood JSON, a report, asset evidence, and a redacted
+  sample JSONL ledger under `docs/dogfood/` and `docs/reports/assets/`.
+- `smoke:computer-use-browser-dogfood` validates prompt-run completion,
+  Computer Session DAG/eval/verifier linkage, DOM observations, side-effect
+  perception graph evidence, action feedback, cleanup rollback, redaction, and
+  latency samples.
+- The promotion gate now includes
+  `computer_session_browser_prompt_dogfood` as a passed but non-promoting
+  fixture readiness slice. Public-site live Computer Session browser prompt
+  evidence is still required before promotion.
+- The renderer Promotion gate section now shows all gate rows instead of
+  truncating at six.
+
+Verification passed `node --check` for the new/gate scripts,
+`npm run dogfood:computer-use-browser`, `npm run smoke:computer-use-browser-dogfood`,
+`npm run gate:computer-use-promotion`,
+`npm run smoke:computer-use-promotion-gate-route`,
+`npm run smoke:computer-use-promotion-gate`, `npm run build:renderer`,
+`npm run smoke:renderer-chat`, `npm run lint`, and final
+`npm run smoke:all`. `git diff --check` returned only existing CRLF
+normalization warnings, UTF/mojibake scan passed for changed text files, and no
+`.cs` files were touched.
+
+## Latest Update: Computer Session Browser Prompt Live Corpus
+
+Added repeated public-site live dogfood for the parent Computer Session Browser
+Action prompt route:
+- `dogfood:computer-use-browser-live` runs four public-site scenarios through
+  `/computer-use/sessions/:id/browser-action-prompt` on isolated browser
+  surfaces: read `example.com`, search on `wikipedia.org`, click Example
+  Domain's More information link, and navigate to IANA reserved domains.
+- `smoke:computer-use-browser-live-dogfood` validates the live evidence file
+  and redacted sample ledger.
+- The runner was executed twice on 2026-05-16, producing 8 live sample rows in
+  `docs/reports/assets/computer-use-browser-prompt-live-runs.jsonl`.
+- The promotion gate now includes `computer_session_browser_prompt_live` as a
+  promotable live prompt slice. It requires repeated samples, required intent
+  coverage, public host coverage, direct prompt-route evidence, prompt-run
+  completion, DAG/eval/verifier evidence, DOM observations, side-effect graph
+  evidence, action feedback, cleanup proof, public URL metadata only, and p95
+  latency samples.
+
+Focused verification passed `node --check` for the new/gate scripts,
+two runs of `npm run dogfood:computer-use-browser-live`,
+`npm run smoke:computer-use-browser-live-dogfood`, and
+`npm run gate:computer-use-promotion`. Follow-up verification passed
+`npm run smoke:computer-use-promotion-gate-route`,
+`npm run smoke:computer-use-promotion-gate`, `npm run lint`, and final
+`npm run smoke:all`. Known non-failing notes remained the unsigned helper
+development allowance and one Windows temp cleanup deferred retry.
+
+## Latest Update: Toolsmith NPM Dependency Prepare Smoke
+
+Added a focused Toolsmith dependency-preparation smoke:
+- `ScopedAutonomyRuntime.prepareToolDependencies(...)` exposes the existing
+  dependency preparation path as a callable runtime API for direct verification.
+- `smoke:scoped-autonomy-npm-dependency-prepare` creates a generated-tool
+  manifest with a local `file:` npm fixture, so package-install behavior is
+  tested without registry/network dependency.
+- The smoke proves the blocked path first: with `npm`, runtime workspace write,
+  and `side_effect` grants but no `package_install`, the tool run is blocked,
+  the missing grant names `package_install`, and no lockfile is written.
+- The smoke then proves the allowed path: with `package_install`, `npm`,
+  runtime workspace write, and `side_effect`, dependency preparation completes,
+  `package.json`/`package-lock.json` are created under the generated tool
+  runtime workspace, and lockfile hashes/provenance are recorded in both the
+  tool run and eval step.
+- The smoke found and fixed a Windows npm spawn issue. Toolsmith now invokes
+  npm through `cmd.exe /d /s /c npm.cmd ...` on Windows, while non-Windows keeps
+  a direct `npm` spawn.
+
+Verification passed `node --check` for the new smoke and `smoke-all`, `npm run
+build:daemon`, `npm run smoke:scoped-autonomy-npm-dependency-prepare`, `npm run
+smoke:scoped-autonomy-self-implementation`, `npm run lint`, final `npm run
+smoke:all`, `git diff --check`, UTF/mojibake scan, and `.cs` touched-file
+check. Known non-failing notes remained existing CRLF normalization warnings,
+the unsigned browser-native helper development allowance, and one Windows temp
+cleanup deferred retry. `npm run vibe:checkpoint` passed after this boundary.
+
+## Latest Update: Computer Use Source/Artifact Evidence UX
+
+Improved the Computer Use renderer evidence surface:
+- The Artifacts section now shows compact proof metrics: blob-backed count,
+  text artifact count, PDF count, and whether any artifact rows lack blob
+  proof.
+- Artifact rows now summarize basename/redaction mode when available instead
+  of only showing opaque blob/capability ids.
+- The Sources section now shows source-quality metrics: direct source count,
+  browser-fallback count, total extracted characters, and an overall quality
+  label (`direct`, `fallback`, `hybrid`, or `mixed`).
+- Source rows now preserve browser fallback reason in the visible summary.
+
+Verification passed `npm run build:renderer` and `npm run smoke:renderer-chat`.
+Follow-up verification passed `npm run lint`, final `npm run smoke:all`,
+`git diff --check`, UTF/mojibake scan, and `.cs` touched-file check. Known
+non-failing notes remained existing CRLF normalization warnings, the unsigned
+browser-native helper development allowance, and one Windows temp cleanup
+deferred retry. `npm run vibe:checkpoint` passed after this boundary.
+
+## Latest Update: Autonomy Toolsmith Stability UX
+
+Improved the Autonomy Toolsmith renderer panel:
+- Selected runs now show stability/rerun summary from generated tool manifests,
+  including rerun count and last rerun status when available.
+- Rollback impact is summarized from the latest rollback tool run or manifest
+  rollback actions without displaying raw filesystem targets.
+- Dependency provenance is summarized by dependency source counts.
+- Artifact contract evidence is summarized by required/total contract roles.
+
+Verification passed `npm run build:renderer`, `npm run smoke:renderer-chat`,
+`npm run lint`, final `npm run smoke:all`, `git diff --check`, UTF/mojibake
+scan, and `.cs` touched-file check. Known non-failing notes remained existing
+CRLF normalization warnings, the unsigned browser-native helper development
+allowance, and one Windows temp cleanup deferred retry. `npm run
+vibe:checkpoint` passed after this boundary.
+
+## Latest Update: Toolsmith Rerun Artifact Comparison
+
+Made Toolsmith rerun comparison artifact-aware:
+- `ScopedAutonomyRuntime.rerunToolRun(...)` now writes
+  `toolsmith-rerun-comparison.v1` into the rerun tool-run output.
+- The comparison records scalar fingerprint match plus artifact fingerprint
+  counts and changed/missing/added artifact keys without raw paths.
+- A dedicated `toolsmith_rerun_comparison` eval step is recorded.
+- Manifest stability continues to update from the comparison result.
+- Autonomy Toolsmith stability cards now include latest artifact delta count
+  when rerun comparison evidence exists.
+
+Verification passed `npm run build:daemon`, `npm run build:renderer`,
+`node --check scripts/smoke-scoped-autonomy-self-implementation.mjs`,
+`npm run smoke:scoped-autonomy-self-implementation`,
+`npm run smoke:renderer-chat`, `npm run lint`, final `npm run smoke:all`,
+`git diff --check`, UTF/mojibake scan, and `.cs` touched-file check. Known
+non-failing notes remained existing CRLF normalization warnings, the unsigned
+browser-native helper development allowance, and one Windows temp cleanup
+deferred retry. `npm run vibe:checkpoint` passed after this boundary.
+
+## Latest Update: Windows Settings Read-Only Smoke
+
+Added a Computer Session smoke for a real Windows settings read-only workflow:
+- `smoke:computer-use-windows-settings` creates a scoped autonomy profile with
+  only `reg query` allowed, starts a `pty_workspace` session, and executes
+  `reg query HKCU\Environment` through the terminal capability path.
+- The smoke verifies allow safety-decision evidence, completed terminal
+  capability job evidence, terminal observation evidence, and debug-bundle
+  terminal redaction. Raw stdout/stderr are omitted while bounded preview/hash
+  metadata remain available.
+- The same smoke attempts
+  `reg add HKCU\Environment /v CODEX_WIDGET_BLOCKED_SMOKE /t REG_SZ /d blocked /f`
+  and verifies the mutation is blocked before capability job creation with
+  exact missing command/risk requirements plus
+  `terminal_command_destructive_boundary`.
+- The smoke is wired into `smoke:all`.
+- `smoke:computer-use-session-http` was hardened against a prompt-run/DAG
+  follow-up race by polling for Browser Action `:verification` and
+  `:eval_ledger` nodes before asserting.
+
+Verification passed `node --check` for both touched smoke scripts,
+`npm run smoke:computer-use-session-http`,
+`npm run smoke:computer-use-windows-settings`, `npm run lint`, and final
+`npm run smoke:all`. Known non-failing notes remained existing CRLF
+normalization warnings, the unsigned browser-native helper development
+allowance, and one Windows temp cleanup deferred retry. The renderer artifact
+content URL builder now avoids a double-quoted question-mark suffix literal so
+the strict mojibake scan remains clean. Final `git diff --check`,
+UTF/mojibake scan, and `.cs` touched-file check passed after this handoff/log
+update.
+
+## Latest Update: Active Job Cancellation Smoke
+
+Added focused coverage for Computer Session cancellation propagation:
+- `smoke:computer-use-session` now includes a cancellable long-running
+  `screen_observe` handler that waits for the `AbortSignal`.
+- The smoke starts a second Computer Session, launches the long-running
+  operation, cancels the session, and verifies the capability job reaches
+  `cancelled` after observing the abort signal.
+- The debug bundle must contain the cancelled capability job, a completed
+  `cancel_capability_job` rollback action, and a cancelled DAG run.
+- This verifies the Phase 2 requirement that session cancellation propagates to
+  active capability jobs, not only to session state.
+
+Focused verification passed `node --check scripts/smoke-computer-use-session.mjs`
+and `npm run smoke:computer-use-session`. Follow-up verification passed
+`npm run lint` and final `npm run smoke:all`. Known non-failing notes remained
+the unsigned browser-native helper development allowance and one Windows temp
+cleanup deferred retry.
+
+## Latest Update: Browser Profile Surface Gate
+
+Enforced explicit grants for current browser profile access:
+- `ComputerSessionRuntime.start()` now blocks `regular_browser_extension`
+  startup unless the attached scoped autonomy profile grants
+  `browser_automation` and `high_risk`.
+- Blocked startup records a `surface_permission_profile` safety decision, a
+  failed `permission_check` DAG node with exact missing requirements, a blocked
+  eval step, and failed eval/DAG run status.
+- `smoke:computer-use-session` now verifies both no-profile blocked startup and
+  allowed startup with an explicit browser profile grant.
+- `smoke:computer-use-browser-chrome` now carries the explicit `high_risk`
+  grant in its one-time Browser Chrome profile.
+
+Focused verification passed `npm run build:daemon`,
+`node --check scripts/smoke-computer-use-session.mjs`,
+`node --check scripts/smoke-computer-use-browser-chrome.mjs`,
+`npm run smoke:computer-use-session`, and
+`npm run smoke:computer-use-browser-chrome`. Follow-up verification passed
+`npm run lint` and final `npm run smoke:all`. Known non-failing notes remained
+the unsigned browser-native helper development allowance and one Windows temp
+cleanup deferred retry.
+
+## Latest Update: Daemon-Scoped DAG Runtime
+
+Promoted DAG runtime ownership into daemon startup:
+- `startDaemon()` now constructs a process-level `CapabilityDagRuntime` beside
+  the daemon `CapabilityRuntime`.
+- The daemon injects that instance into `ComputerSessionRuntime`; the runtime
+  constructor fallback remains available for direct tests.
+- This closes the Phase 2 gap where daemon Computer Sessions relied on a
+  session-runtime-owned DAG runtime.
+
+Focused verification passed `npm run build:daemon` and
+`npm run smoke:computer-use-session-http`. Follow-up verification passed
+`npm run lint` and final `npm run smoke:all`. Known non-failing notes remained
+the unsigned browser-native helper development allowance and one Windows temp
+cleanup deferred retry.
+
+## Latest Update: Session-Level Cross-Source Target Graph Set
+
+Expanded target evidence for Browser Action pre-action observations:
+- Target arbitration now receives a deduplicated session graph set: current
+  Browser Action graph, perception graphs linked from prior session
+  observations, and recent stored session graphs.
+- `computer-session-target-evidence.v1` now embeds
+  `computer-session-target-graph-set.v1` with graph/source counts, source
+  breakdown, current graph id, and observation-linked graph count.
+- Arbitration metadata now includes candidate-source summaries so debug bundles
+  show whether DOM, OCR/screenshot, UIA/native, or other sources contributed
+  candidates.
+- Safety remains unchanged: non-actionable OCR/screenshot evidence may explain
+  and rank but cannot authorize side-effect actions without actionable
+  structured evidence.
+- Renderer target evidence previews now show graph/source counts.
+- `smoke:computer-use-session` verifies a DOM click target arbitrated against a
+  matching screen/OCR graph.
+
+Focused verification passed `node --check scripts/smoke-computer-use-session.mjs`,
+`npm run build:daemon`, `npm run smoke:computer-use-session`,
+`npm run smoke:computer-use-browser-parity`, and
+`npm run smoke:research-performance-architecture`. Follow-up verification
+passed `npm run build:renderer`, `npm run smoke:renderer-chat`,
+`npm run lint`, and final `npm run smoke:all`. Known non-failing notes remained
+the unsigned browser-native helper development allowance and one Windows temp
+cleanup deferred retry.
+
+## Latest Update: Native File Picker Boundary
+
+Added an explicit non-executing boundary for native file picker workflows:
+- `ComputerStructuredOperation` now includes `native_file_picker_action`.
+- `ComputerSessionRuntime` blocks native picker automation before local path
+  disclosure or native input while signed helper v2, one-time file-selection
+  approval, active-window proof, abort-on-user-input, and path redaction
+  preconditions are missing.
+- Blocked attempts record approval/action/follow-up DAG nodes, a
+  `native_file_picker_preconditions` safety decision, a
+  `native_file_picker_blocked` eval step, a `native_file_picker_boundary` file
+  observation, verifier failure, skipped rollback, and structured failure
+  memory.
+- `smoke:computer-use-native-watch-boundary` now covers both foreground visual
+  input blocking and native file picker blocking, and asserts no
+  `desktop_action` capability job is created for either boundary.
+- `windows_native_watch_boundary` promotion gate now verifies the file picker
+  boundary implementation and smoke coverage through
+  `native_file_picker_blocked_before_path_disclosure` and
+  `native_file_picker_boundary_smoke_present`.
+
+Focused verification passed `node --check scripts/smoke-computer-use-native-watch-boundary.mjs`,
+`npm run build:daemon`, and `npm run smoke:computer-use-native-watch-boundary`.
+Follow-up verification passed `npm run lint`, final `npm run smoke:all`,
+`node --check scripts/gate-computer-use-promotion.mjs`,
+`npm run smoke:computer-use-promotion-gate`, and
+`npm run smoke:computer-use-promotion-gate-route`. The first aggregate attempt
+hit a transient `smoke:computer-use-session-http` FK failure; the focused HTTP
+smoke passed immediately afterward and the next aggregate run passed. Known
+non-failing notes remained the unsigned browser-native helper development
+allowance and one Windows temp cleanup deferred retry.
+
+## Latest Update: Future VM Sandbox Boundary
+
+Added a non-executing boundary for the future VM/sandbox surface:
+- `future_vm_session` now carries VM-specific surface grants:
+  `vm.session_backend`, `vm.network_isolation`, `vm.lifecycle_cleanup`, and
+  `vm.artifact_sync_policy`.
+- Requested `future_vm_session` sessions block during setup with
+  `future_vm_session_backend_not_available` before VM creation, network bridge,
+  host mutation, clipboard/file sync, or raw screenshot retention.
+- The blocked start records failed/skipped DAG nodes, a
+  `future_vm_session_preconditions` safety decision,
+  `future_vm_session_blocked` eval step, `future_vm_session_boundary`
+  observation, failed verifier, skipped rollback, and structured failure
+  memory with abstention triggers.
+- Added `smoke:computer-use-vm-sandbox-boundary`, wired it into `smoke:all`,
+  and added a passed-but-non-promoting `future_vm_sandbox_boundary` promotion
+  gate.
+
+Focused verification passed `node --check scripts/smoke-computer-use-vm-sandbox-boundary.mjs`,
+`npm run build:daemon`, `npm run smoke:computer-use-vm-sandbox-boundary`,
+`node --check scripts/gate-computer-use-promotion.mjs`, and
+`npm run smoke:computer-use-promotion-gate`. Follow-up verification passed
+`npm run smoke:computer-use-surface-manager`,
+`npm run smoke:computer-use-promotion-gate-route`, `npm run lint`, and final
+`npm run smoke:all`. Known non-failing notes remained the unsigned
+browser-native helper development allowance and one Windows temp cleanup
+deferred retry.
+
+## Latest Update: Dedicated Computer Use Debug Bundle Smoke
+
+Replaced the `smoke:computer-use-debug-bundle` proxy alias with a direct route
+and schema smoke:
+- Added `scripts/smoke-computer-use-debug-bundle.mjs`.
+- The smoke starts a blocked `future_vm_session` case, fetches
+  `/computer-use/sessions/:id/debug-bundle`, and verifies
+  `computer-session-debug-bundle.v1` shape, redaction policy, eval/DAG status,
+  top-level arrays, freshness summary, boundary observation, skipped rollback,
+  verifier failure, and failure memory.
+- `smoke:all` now runs the dedicated debug-bundle smoke.
+
+Focused verification passed `node --check scripts/smoke-computer-use-debug-bundle.mjs`
+and `npm run smoke:computer-use-debug-bundle`. Follow-up verification passed
+`npm run lint` and final `npm run smoke:all`. Known non-failing notes remained
+the unsigned browser-native helper development allowance and one Windows temp
+cleanup deferred retry.
+
+## Latest Update: Renderer Computer Use Live Refresh
+
+Added event-driven live refresh for the renderer Computer Use panel:
+- `WidgetRuntime` now increments a Computer Use refresh signal when daemon
+  `computer.session.*`, `capability.job`, `capability.jobs`, or
+  `capability.resource` events arrive.
+- `WidgetRuntimeView` and `ActivityLog` pass that signal into
+  `ComputerUseSessionsPanel`.
+- `ComputerUseSessionsPanel` debounces the signal, runs a quiet refresh of
+  session/surface/profile/promotion-gate data, refetches the selected debug
+  bundle after the quiet refresh settles, and shows a compact Live refresh
+  timestamp metric.
+- Added `scripts/smoke-renderer-computer-use-live-refresh.mjs` and
+  `smoke:renderer-computer-use-live-refresh`; the smoke runs a fake daemon over
+  HTTP+WebSocket and verifies a `computer.session.state` event updates renderer
+  session state plus the selected debug-bundle DAG row without manual refresh.
+- Wired the focused smoke into `smoke:all`.
+
+Focused verification passed `node --check scripts/smoke-renderer-computer-use-live-refresh.mjs`,
+`npm run smoke:renderer-computer-use-live-refresh`, `npm run build:renderer`,
+`npm run smoke:renderer-chat`, and `npm run lint`. Follow-up verification
+passed final `npm run smoke:all`. Known non-failing notes remained the unsigned
+browser-native helper development allowance and one Windows temp cleanup
+deferred retry.
+
+## Latest Update: Browser Bridge Restricted Reload Gate
+
+Added a Browser Bridge restricted/reload promotion-readiness guard:
+- `scripts/gate-computer-use-promotion.mjs` now emits
+  `browser_bridge_restricted_reload_boundary`.
+- The gate is passed but non-promoting. It verifies the
+  `browser.restricted.extensions.reload` 30-case scenario remains blocked by
+  design, `smoke:browser-bridge` covers `reloadRequired`, `permission_needed`,
+  and `restricted` bridge states, `smoke:extension` plus popup source expose
+  `Reload bridge` through `chrome.runtime.reload()`, renderer Browser Action UI
+  contains reload/restricted recovery guidance, and injected Browser Action
+  commands retain the restricted-page bypass guard.
+- `smoke-computer-use-promotion-gate-route` now asserts the new gate is exposed
+  through `/computer-use/eval/promotion-gate`.
+- Regenerated the 2026-05-16 promotion gate evidence/report.
+
+Focused verification passed `node --check scripts/gate-computer-use-promotion.mjs`,
+`node --check scripts/smoke-computer-use-promotion-gate-route.mjs`,
+`npm run smoke:computer-use-promotion-gate`,
+`npm run gate:computer-use-promotion`,
+`npm run smoke:computer-use-promotion-gate-route`,
+`npm run smoke:browser-bridge`, and `npm run smoke:extension`. Follow-up
+verification passed final `npm run smoke:all`. Known non-failing notes remained
+the unsigned browser-native helper development allowance and one Windows temp
+cleanup deferred retry.
+
+## Latest Update: Windows Settings Reversible Dogfood
+
+Added the reversible middle step for Windows app/settings dogfood:
+- `ComputerSessionRuntime` now recognizes a narrow
+  `reversibleWindowsSetting.scope = "hkcu_app_registry"` descriptor for terminal
+  operations.
+- The only allowed reversible registry root is
+  `HKCU\Software\CodexWidgetComputerUseSmoke`; `reg add/delete` must exactly
+  match the bounded set/delete command form and safe value name/data patterns.
+- The bounded path still requires scoped autonomy grants for exact command
+  allowlist, `osMutation`, and `high_risk`. Unmarked or broad `reg add/delete`
+  commands remain blocked by `terminal_command_destructive_boundary`.
+- `smoke:computer-use-windows-settings` now verifies read-only `reg query`,
+  blocked broad `HKCU\Environment` mutation, bounded reversible set/query/delete
+  with absence proof, safety-decision evidence, and terminal observation
+  metadata.
+- `gate:computer-use-promotion` now exposes this as
+  `windows_settings_reversible_dogfood_boundary`, a passed but non-promoting
+  guard for the read-only/reversible/blocked Windows settings progression.
+
+Focused verification passed `node --check scripts/smoke-computer-use-windows-settings.mjs`,
+`npm run build:daemon`, `npm run smoke:computer-use-windows-settings`,
+`node --check scripts/gate-computer-use-promotion.mjs`,
+`node --check scripts/smoke-computer-use-promotion-gate-route.mjs`,
+`npm run smoke:computer-use-promotion-gate`,
+`npm run gate:computer-use-promotion`, and
+`npm run smoke:computer-use-promotion-gate-route`. Follow-up verification
+passed `npm run lint` and final `npm run smoke:all`. Known non-failing notes
+remained the unsigned browser-native helper development allowance and one
+Windows temp cleanup deferred retry.
+
+## Latest Update: Autonomy Toolsmith Rerun History UX
+
+Added historical rerun comparison browsing to Activity details:
+- `AutonomyToolsmithPanel` now summarizes all `mode: "rerun"` tool runs with
+  `toolsmith-rerun-comparison.v1` output into compact history rows.
+- Rows show matched/changed verdict, scalar match state, artifact match state,
+  changed/missing/added artifact counts, artifact totals, elapsed time, and a
+  redacted rerun id.
+- The stability evidence card still shows the latest artifact delta summary;
+  the new history block lets users inspect older comparisons without opening
+  raw Toolsmith JSON.
+- Added `scripts/smoke-renderer-autonomy-rerun-history.mjs`,
+  `smoke:renderer-autonomy-rerun-history`, and `smoke:all` wiring.
+
+Focused verification passed `node --check scripts/smoke-renderer-autonomy-rerun-history.mjs`,
+`npm run smoke:renderer-autonomy-rerun-history`, `npm run build:renderer`, and
+`npm run smoke:renderer-chat`. Follow-up verification passed `npm run lint` and
+final `npm run smoke:all`. Known non-failing notes remained the unsigned
+browser-native helper development allowance and one Windows temp cleanup
+deferred retry.
+
+## Latest Update: Approved Execution Handoff Shards
+
+The product owner reviewed the Windows Codex Computer Use parity briefing and
+approved proceeding with the current design. Because the implementation scope is
+large, added a dedicated sharded execution handoff under:
+
+- `docs/plans/windows-codex-computer-use-parity/09-approved-execution-handoff/README.md`
+- `docs/plans/windows-codex-computer-use-parity/09-approved-execution-handoff/01-target-boundaries.md`
+- `docs/plans/windows-codex-computer-use-parity/09-approved-execution-handoff/02-current-inventory.md`
+- `docs/plans/windows-codex-computer-use-parity/09-approved-execution-handoff/03-implementation-slices.md`
+- `docs/plans/windows-codex-computer-use-parity/09-approved-execution-handoff/04-runtime-contracts.md`
+- `docs/plans/windows-codex-computer-use-parity/09-approved-execution-handoff/05-verification-dogfood-promotion.md`
+- `docs/plans/windows-codex-computer-use-parity/09-approved-execution-handoff/06-resume-maintenance.md`
+
+The top-level parity handoff and `08-implementation-resumption-handoff.md` now
+point future sessions to the `09` pack before continuing implementation. The
+pack captures the accepted benchmark target, non-negotiable safety boundaries,
+current source inventory, immediate next slice, runtime contracts, verification
+matrix, dogfood/promotion rules, and restart/maintenance procedure.
+
+Immediate next recommended implementation slice:
+
+- Foreground watch-mode user-input abort preflight.
+- Keep it non-executing and blocked before native input.
+- Record DAG/safety/observation/verifier/failure-memory/debug evidence with
+  `actualInputSent: false`.
+- Strengthen the `windows_native_watch_boundary` promotion gate without
+  claiming helper v2 completion.
+
+## Latest Update: Foreground Watch User-Input Abort Preflight
+
+Implemented the first post-handoff slice:
+
+- `ComputerStructuredOperation.visual_desktop_action` accepts optional
+  `watchPreflight` metadata.
+- `ComputerSessionRuntime` normalizes that metadata to
+  `foreground-watch-preflight.v1`.
+- `abortOnUserInputArmed` plus `userInputDetected` now blocks with
+  `foreground_watch_user_input_abort` before native input.
+- Active-window drift blocks with
+  `foreground_watch_active_window_drift_abort` before native input.
+- The original helper-v2 unavailable path still blocks with
+  `foreground_watch_mode_v2_not_available`.
+- All visual watch boundary paths keep `actualInputSent: false` and create no
+  `desktop_action` capability job.
+- `smoke:computer-use-native-watch-boundary` now covers the user-input abort
+  path and verifies DAG/eval/verifier/safety/observation/failure-memory
+  evidence.
+- `windows_native_watch_boundary` promotion gate now checks for the abort guard
+  and smoke evidence while staying non-promoting.
+
+Focused verification passed `node --check scripts/smoke-computer-use-native-watch-boundary.mjs`,
+`node --check scripts/gate-computer-use-promotion.mjs`,
+`node --check scripts/smoke-computer-use-promotion-gate-route.mjs`,
+`npm run build:daemon`, `npm run smoke:computer-use-native-watch-boundary`,
+`npm run smoke:computer-use-promotion-gate`,
+`npm run gate:computer-use-promotion`, and
+`npm run smoke:computer-use-promotion-gate-route`.
+
+## Latest Update: Renderer One-Time Profile Draft Preview
+
+Implemented a focused Renderer Permission Profile UX slice:
+
+- `ComputerUseSessionsPanel` shows a draft one-time profile preview for blocked
+  runs before attachment.
+- The preview exposes scope, max uses, credential policy, risk classes, browser
+  grants, exact command count, and write-root count.
+- Generated one-time profiles still derive grants only from missing
+  requirements and keep `credentialAccess: "never"`.
+- Added `scripts/smoke-renderer-computer-use-profile-draft.mjs`,
+  package script `smoke:renderer-computer-use-profile-draft`, and
+  `smoke:all` wiring.
+- The smoke runs a fake daemon, verifies the draft UI, clicks `One-time`,
+  checks the profile POST body is one-time/high-risk/browser-scoped with no
+  credential grant, and verifies session attachment.
+
+Focused verification passed `node --check scripts/smoke-renderer-computer-use-profile-draft.mjs`,
+`node --check scripts/smoke-all.mjs`, `npm run build:renderer`, and
+`npm run smoke:renderer-computer-use-profile-draft`.
+
+## Latest Update: Renderer Selected Profile Detail And Lifecycle Controls
+
+Extended the Computer Use permission-profile UX:
+
+- Selecting an active profile in `ComputerUseSessionsPanel` now shows profile
+  detail: scope, mode, status, risk classes, browser grant summary, command and
+  write counts, generated-code state, credential policy, use count, and expiry.
+- The detail card exposes Disable and Expire actions using the existing
+  `POST /computer-use/autonomy/profiles/:id` update route.
+- `smoke:renderer-computer-use-profile-draft` now also verifies selected
+  profile detail rendering, exact domain/command/write-root grant values, and
+  Disable lifecycle POST wiring.
+
+Focused verification passed `node --check scripts/smoke-renderer-computer-use-profile-draft.mjs`,
+`npm run build:renderer`, and `npm run smoke:renderer-computer-use-profile-draft`.
+
+## Latest Update: macOS Parity Implementation Handoff Shards
+
+The product owner reviewed the updated macOS Computer Use parity briefing and
+approved proceeding. Added a new detailed shard pack under:
+
+- `docs/plans/windows-codex-computer-use-parity/10-macos-parity-implementation-handoff/README.md`
+- `docs/plans/windows-codex-computer-use-parity/10-macos-parity-implementation-handoff/01-parity-contract.md`
+- `docs/plans/windows-codex-computer-use-parity/10-macos-parity-implementation-handoff/02-runtime-architecture.md`
+- `docs/plans/windows-codex-computer-use-parity/10-macos-parity-implementation-handoff/03-browser-chrome-and-web.md`
+- `docs/plans/windows-codex-computer-use-parity/10-macos-parity-implementation-handoff/04-native-screen-and-windows.md`
+- `docs/plans/windows-codex-computer-use-parity/10-macos-parity-implementation-handoff/05-toolsmith-terminal-artifacts.md`
+- `docs/plans/windows-codex-computer-use-parity/10-macos-parity-implementation-handoff/06-safety-permission-release.md`
+- `docs/plans/windows-codex-computer-use-parity/10-macos-parity-implementation-handoff/07-eval-dogfood-promotion.md`
+- `docs/plans/windows-codex-computer-use-parity/10-macos-parity-implementation-handoff/08-implementation-backlog.md`
+- `docs/plans/windows-codex-computer-use-parity/10-macos-parity-implementation-handoff/09-resume-protocol.md`
+
+The pack defines user-outcome parity, the daemon Computer Session loop,
+browser/chrome/web implementation paths, native/screen/watch-mode boundaries,
+Toolsmith/terminal/artifact workflows, safety/release policy, eval/dogfood
+promotion gates, ordered implementation phases, and context-loss resume rules.
+
+Updated the top-level parity handoff, `00-overview.md`, the approved execution
+README, and `docs/plans/README.md` so future sessions read the new `10` pack
+after the current `09` status pack. The first implementation phase in the new
+backlog is to finish the interrupted Browser Chrome repeated dogfood slice and
+to treat regular browser-extension session cancellation as cleanup
+reconciliation when no isolated `close_surface` rollback exists.
+
+## Latest Update: Browser Chrome Repeated Dogfood Gate
+
+Completed the Browser Chrome repeated dogfood stabilization slice:
+
+- `collect-computer-use-browser-chrome-dogfood.mjs` now treats regular
+  browser-extension session cancellation as cleanup reconciliation when no
+  isolated `close_surface` rollback exists.
+- The collector verifies completed eval evidence through the current
+  `browser_chrome_observation` step linked to the capability job id, while
+  retaining compatibility with the older `browser_chrome` step name.
+- Reran `dogfood:computer-use-browser-chrome`, producing successful repeated
+  fixture-bridge evidence for `download.verify` and `debugger.print_to_pdf`.
+- Added `browser_chrome_repeated_dogfood` to `gate:computer-use-promotion`.
+  It verifies schema, fixture evidence class, repeated samples, 100% latest
+  sample success, `download_verified_file` resource proof, debugger PDF proof,
+  redaction, cleanup reconciliation, verifier/eval nodes, and p95 samples.
+- The gate remains non-promoting with
+  `fixture_bridge_dogfood_needs_real_extension_live_gate_before_promotion`, so
+  real extension live samples remain the next Browser Chrome promotion step.
+
+Focused verification passed:
+
+- `node --check scripts/collect-computer-use-browser-chrome-dogfood.mjs`
+- `node --check scripts/smoke-computer-use-browser-chrome-dogfood.mjs`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `node --check scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `npm run dogfood:computer-use-browser-chrome`
+- `npm run smoke:computer-use-browser-chrome-dogfood`
+- `npm run smoke:computer-use-promotion-gate`
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:computer-use-promotion-gate-route`
+
+Next recommended slice: continue Renderer Permission Profile UX Completion with
+full create/edit management or profile lifecycle evidence in the promotion gate.
+
+## Latest Update: Renderer Selected Profile Grant Details
+
+Added exact selected-profile grant details to the Computer Use panel:
+
+- Active selected profiles now show domain, command allow-prefix, read root,
+  write root, package install, OS mutation, generated-tool, and generated-code
+  grant values in a compact scrollable list.
+- The profile detail smoke now verifies `example.com`,
+  `node scripts/report.mjs`, and an approved output root render before the
+  Disable lifecycle action is triggered.
+
+Focused verification passed `node --check scripts/smoke-renderer-computer-use-profile-draft.mjs`,
+`npm run build:renderer`, and `npm run smoke:renderer-computer-use-profile-draft`.
+
+## Latest Update: Browser Chrome Real Extension Local Dogfood Gate
+
+Added real Browser Bridge extension local-fixture dogfood for Browser Chrome
+deep actions:
+
+- `collect-computer-use-browser-chrome-live-extension-dogfood.mjs` launches a
+  Playwright Chromium persistent profile with the unpacked MV3 Browser Bridge
+  extension.
+- The collector attaches WebSocket listeners immediately after socket creation,
+  configures the extension against the daemon, forces Chrome download behavior
+  into the approved smoke output root, and refreshes the bridge when commands
+  are queued.
+- The download scenario executes real extension `download.start`, waits for
+  `download.observe` to reach `complete`, then runs `download.verify` with an
+  approved path and records `download_verified_file` eval resource evidence.
+- The debugger scenario targets the allowed fixture tab id explicitly and runs
+  fixed-command `debugger.print_to_pdf` with raw PDF bytes omitted from
+  reports.
+- Added `smoke:computer-use-browser-chrome-live-extension-dogfood`.
+- Wired that evidence smoke into `smoke:all`.
+- Added `browser_chrome_live_extension_dogfood` to the Computer Use promotion
+  gate and route smoke. The gate passes but remains non-promoting with
+  `real_extension_local_fixture_gate_passed_public_live_gate_required`.
+
+Focused verification passed:
+
+- `node --check scripts/collect-computer-use-browser-chrome-live-extension-dogfood.mjs`
+- `node --check scripts/smoke-computer-use-browser-chrome-live-extension-dogfood.mjs`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `node --check scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `npm run dogfood:computer-use-browser-chrome-live-extension`
+- `npm run smoke:computer-use-browser-chrome-live-extension-dogfood`
+- `npm run smoke:computer-use-promotion-gate`
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:computer-use-promotion-gate-route`
+
+Next recommended Browser Chrome slice: collect repeated public-site real
+extension samples while keeping local-fixture and public-site evidence classes
+separate.
+
+## Latest Update: Browser Chrome Public Extension Promotion Gate
+
+Added repeated public-site Browser Chrome dogfood through the real Browser
+Bridge extension:
+
+- `collect-computer-use-browser-chrome-public-extension-dogfood.mjs` launches
+  Chromium with the unpacked extension, configures daemon bridge settings, and
+  runs real extension commands against public unauthenticated targets.
+- The collector runs two repeated `download.start` + `download.verify` samples
+  against a W3C public dummy PDF, two fixed-command `debugger.print_to_pdf`
+  samples against `example.com`, and two bounded
+  `tab_group.claim/update/release` samples on a dogfood-owned public tab.
+- Evidence records public hosts plus URL SHA-256 hashes only, keeps full public
+  URLs out of reports, stores download artifacts as basename/hash-backed
+  `download_verified_file` resources, and omits raw PDF bytes.
+- Added `dogfood:computer-use-browser-chrome-public-extension`,
+  `smoke:computer-use-browser-chrome-public-extension-dogfood`, and
+  `smoke:all` coverage.
+- Added `browser_chrome_public_extension_dogfood` to the Computer Use
+  promotion gate and route smoke as a promotable public-site repeated
+  real-extension gate covering download, fixed debugger PDF, and tab-group
+  side effects.
+
+Focused verification passed:
+
+- `node --check scripts/collect-computer-use-browser-chrome-public-extension-dogfood.mjs`
+- `node --check scripts/smoke-computer-use-browser-chrome-public-extension-dogfood.mjs`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `node --check scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `node --check scripts/smoke-all.mjs`
+- `npm run dogfood:computer-use-browser-chrome-public-extension`
+- `npm run smoke:computer-use-browser-chrome-public-extension-dogfood`
+- `npm run smoke:computer-use-promotion-gate`
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:computer-use-promotion-gate-route`
+
+Next recommended Browser Chrome slice: broaden public real-extension dogfood to
+permission/history/file-upload workflows, one risk family at a time.
+
+## Latest Update: Browser Chrome Public Extension History Search Gate
+
+Extended the repeated public-site Browser Chrome dogfood through the real
+Browser Bridge extension:
+
+- `collect-computer-use-browser-chrome-public-extension-dogfood.mjs` now runs
+  two additional `history.search` samples after seeding only a fresh temporary
+  Chromium profile with `example.com`.
+- The history slice requires one-time approval, records `risk: high` and
+  `approval: one_time`, verifies every returned item has path-redacted URL
+  metadata, and stores only host/count/URL-hash evidence.
+- The user browser profile is not touched; the dogfood profile is temporary and
+  cleaned up with the rest of the public-extension run.
+- `browser_chrome_public_extension_dogfood` now requires 8 latest samples:
+  download start/verify, fixed debugger print-to-PDF, tab-group
+  claim/update/release, and redacted history search.
+- Updated the public-extension smoke, promotion gate, route smoke, and parity
+  handoff shards to treat history search as completed public real-extension
+  evidence.
+
+Focused verification passed:
+
+- `node --check scripts/collect-computer-use-browser-chrome-public-extension-dogfood.mjs`
+- `node --check scripts/smoke-computer-use-browser-chrome-public-extension-dogfood.mjs`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `node --check scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `npm run dogfood:computer-use-browser-chrome-public-extension`
+- `npm run smoke:computer-use-browser-chrome-public-extension-dogfood`
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:computer-use-promotion-gate-route`
+
+Next recommended Browser Chrome slice: permission/site-setting read and bounded
+set/rollback guidance dogfood, or live one-time profile approval dogfood.
+
+## Latest Update: Browser Chrome Public Extension Permission Rollback Gate
+
+Extended the same public real-extension dogfood with bounded Chrome
+site-permission evidence:
+
+- `collect-computer-use-browser-chrome-public-extension-dogfood.mjs` now adds
+  two `permission.get+set+rollback` samples for the `example.com` camera
+  content setting in a fresh temporary Chromium profile.
+- Each sample reads the initial setting, applies `camera=block` via
+  `chrome.contentSettings` after one-time approval, verifies the applied
+  setting, restores the initial setting with a second one-time approval, and
+  verifies rollback.
+- Evidence stores only host, permission type, scoped-setting values,
+  popupWorkflow=`content_settings_api`, nativePopupClick=`false`, URL hash,
+  verifier/eval nodes, and cleanup proof. It does not store full origin
+  patterns or touch the user's real browser profile.
+- `browser_chrome_public_extension_dogfood` now requires 10 latest samples:
+  download start/verify, fixed debugger print-to-PDF, tab-group
+  claim/update/release, redacted history search, and permission rollback.
+
+Focused verification passed:
+
+- `node --check scripts/collect-computer-use-browser-chrome-public-extension-dogfood.mjs`
+- `node --check scripts/smoke-computer-use-browser-chrome-public-extension-dogfood.mjs`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `node --check scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `npm run dogfood:computer-use-browser-chrome-public-extension`
+- `npm run smoke:computer-use-browser-chrome-public-extension-dogfood`
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:computer-use-promotion-gate-route`
+
+Next recommended Browser Chrome slice: file-upload blocked/approved preflight
+or multi-tab tab group dogfood.
+
+## Latest Update: Browser Chrome Public Extension Multi-Tab Group Gate
+
+Extended the same public real-extension dogfood with multi-tab tab-group
+evidence:
+
+- `collect-computer-use-browser-chrome-public-extension-dogfood.mjs` now opens
+  two public `example.com` tabs in the fresh temporary Chromium profile, reads
+  both explicit tab ids through the Browser Bridge active-tab status, and runs
+  two `tab_group.multi_tab_claim+update+release` samples.
+- Each sample claims exactly the two dogfood-owned public tab ids, updates the
+  group label/color, releases both tabs, and closes the extra dogfood tab.
+- Evidence stores only host/hash, tabCount=2, releaseCount>=2, dogfood-owned
+  multi-tab redaction, verifier/eval nodes, and cleanup proof.
+- `browser_chrome_public_extension_dogfood` now requires 12 latest samples:
+  download start/verify, fixed debugger print-to-PDF, single-tab group,
+  redacted history search, permission rollback, and multi-tab group.
+
+Focused verification passed:
+
+- `node --check scripts/collect-computer-use-browser-chrome-public-extension-dogfood.mjs`
+- `node --check scripts/smoke-computer-use-browser-chrome-public-extension-dogfood.mjs`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `node --check scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `npm run dogfood:computer-use-browser-chrome-public-extension`
+- `npm run smoke:computer-use-browser-chrome-public-extension-dogfood`
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:computer-use-promotion-gate-route`
+
+Next recommended Browser Chrome slice: file-upload blocked/approved preflight
+or broader permission-type matrix.
+
+## Latest Update: Browser Chrome Public Extension File Upload Gate
+
+Extended the same public real-extension dogfood with bounded file-upload
+evidence:
+
+- `collect-computer-use-browser-chrome-public-extension-dogfood.mjs` now
+  creates an approved temporary upload file under the dogfood runtime root,
+  opens `https://the-internet.herokuapp.com/upload`, and runs two
+  `file_upload.inspect+set_files+clear` samples through the real unpacked
+  Browser Bridge extension.
+- Each sample inspects `#file-upload`, sets exactly the approved temp file via
+  the extension/debugger file-input path, verifies selected basename evidence,
+  clears the file input, and never submits the form.
+- Evidence stores only public host/hash metadata, input count,
+  target-input-found proof, selected basename, clear status, `pathRedacted:
+  true`, `submitClicked: false`, verifier/eval nodes, and cleanup proof.
+- `browser_chrome_public_extension_dogfood` now requires 14 latest samples:
+  download start/verify, fixed debugger print-to-PDF, single-tab group,
+  redacted history search, permission rollback, multi-tab group, and
+  file-upload inspect/set/clear.
+- The Computer Use promotion gate remains promotable for this public-site
+  real-extension evidence class and now checks the public upload host and
+  no-submit/basename-only redaction proof.
+
+Focused verification passed:
+
+- `node --check scripts/collect-computer-use-browser-chrome-public-extension-dogfood.mjs`
+- `node --check scripts/smoke-computer-use-browser-chrome-public-extension-dogfood.mjs`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `node --check scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `npm run dogfood:computer-use-browser-chrome-public-extension`
+- `npm run smoke:computer-use-browser-chrome-public-extension-dogfood`
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:computer-use-promotion-gate-route`
+
+Next recommended Browser Chrome slice: broaden the public real-extension
+permission-type matrix, or defer to signed helper v2 for native file-picker
+selection and browser permission-bubble recovery.
+
+## Latest Update: Browser Chrome Public Extension Permission Matrix Gate
+
+Extended the public real-extension Browser Chrome permission rollback dogfood
+from a single camera setting to a small permission matrix:
+
+- `collect-computer-use-browser-chrome-public-extension-dogfood.mjs` now runs
+  two `permission.get+set+rollback` samples each for `camera`, `microphone`,
+  and `location` on `example.com`.
+- Each sample reads the initial site setting, applies `block` through Chrome
+  `contentSettings` with one-time approval, verifies it, restores the initial
+  value with a second one-time approval, and verifies rollback.
+- Evidence records only host/hash metadata, permission type, scoped setting
+  values, `popupWorkflow: content_settings_api`, `nativePopupClick: false`,
+  rollback proof, verifier/eval nodes, and cleanup proof.
+- `browser_chrome_public_extension_dogfood` now requires 18 latest samples:
+  download start/verify, fixed debugger print-to-PDF, single-tab group,
+  redacted history search, camera/microphone/location permission rollback,
+  multi-tab group, and file-upload inspect/set/clear.
+- The promotion gate now exposes `permissionTypesCovered` and requires
+  `camera`, `microphone`, and `location` before treating the public-extension
+  gate as promotable.
+
+Focused verification passed:
+
+- `node --check scripts/collect-computer-use-browser-chrome-public-extension-dogfood.mjs`
+- `node --check scripts/smoke-computer-use-browser-chrome-public-extension-dogfood.mjs`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `node --check scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `npm run dogfood:computer-use-browser-chrome-public-extension`
+- `npm run smoke:computer-use-browser-chrome-public-extension-dogfood`
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:computer-use-promotion-gate-route`
+
+Next recommended Browser Chrome slice: live profile-approval dogfood, or defer
+native file-picker selection and browser permission-bubble recovery until signed
+helper v2 is available.
+
+## Latest Update: Browser Chrome Public Extension Profile Approval Gate
+
+Added live profile-approval proof to the public real-extension Browser Chrome
+dogfood:
+
+- The collector now starts with a no-profile `regular_browser_extension`
+  session and verifies it blocks with exact missing grant types:
+  `browser_automation` and `risk_class`.
+- It then creates a narrow one-time `scoped_yolo` Browser Chrome profile,
+  attaches it to the blocked session through
+  `POST /computer-use/sessions/:id/profile`, verifies the
+  `profile_attached` safety decision and `permission_profile_attached` eval
+  step, and cancels the blocked session for cleanup proof.
+- The same attached profile is reused for the real extension public command
+  matrix: download, print-to-PDF, tab group, history, camera/microphone/location
+  permission rollback, multi-tab group, and file upload.
+- `browser_chrome_public_extension_dogfood` now keeps 18 command samples and a
+  separate `profileApproval` evidence block. The promotion gate requires
+  `profileApprovalCovered` before treating the public-extension gate as
+  promotable.
+
+Focused verification passed:
+
+- `node --check scripts/collect-computer-use-browser-chrome-public-extension-dogfood.mjs`
+- `node --check scripts/smoke-computer-use-browser-chrome-public-extension-dogfood.mjs`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `node --check scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `npm run dogfood:computer-use-browser-chrome-public-extension`
+- `npm run smoke:computer-use-browser-chrome-public-extension-dogfood`
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:computer-use-promotion-gate-route`
+
+Next recommended Browser Chrome slice: renderer polish for repeated public
+dogfood outcomes, or defer native file-picker/permission-bubble recovery until
+signed helper v2 is available.
+
+## Latest Update: Renderer Public Extension Proof Panel
+
+Added renderer polish for the repeated public Browser Chrome dogfood outcomes:
+
+- `ComputerUseSessionsPanel` now expands
+  `browser_chrome_public_extension_dogfood` into a dedicated "Public extension
+  proof" panel under Promotion gate.
+- The panel shows latest sample count, p95 latency, public host count,
+  profile-approval status, command-family coverage, permission types, and
+  redaction proof.
+- `smoke-renderer-computer-use-browser-chrome-evidence.mjs` now provides a
+  fake public-extension promotion gate payload and verifies the rendered proof
+  text for `Samples 18`, `p95`, `Hosts 3`, `Profile proved`, command-family
+  coverage, `camera/microphone/location`, and redaction proof.
+
+Focused verification passed:
+
+- `node --check scripts/smoke-renderer-computer-use-browser-chrome-evidence.mjs`
+- `npm run build:renderer`
+- `npm run smoke:renderer-computer-use-browser-chrome-evidence`
+
+Next recommended Browser Chrome slice: defer native file-picker and browser
+permission-bubble recovery until signed helper v2 is available; otherwise move
+to release-signing readiness hardening.
+
+## Latest Update: Native Helper Signing Preflight Evidence
+
+Added a release-signing hardening slice for the browser native desktop helper:
+
+- `sign-browser-native-desktop-helper.mjs` now writes a redacted
+  `browser-native-desktop-helper-signing.v1` report for skipped, blocked,
+  dry-run, failed, and signed outcomes.
+- The report includes helper basename/extension, size, SHA-256, mtime,
+  signature status, signing method metadata, and timestamp host, but does not
+  include certificate passwords or absolute local paths.
+- `CODEX_WIDGET_SIGNING_DRY_RUN=1` exercises signing readiness without mutating
+  the helper binary.
+- `smoke-browser-native-desktop-helper-signing-readiness.mjs` verifies
+  development-mode deferral, strict-mode failure when no Authenticode
+  certificate or CI signing service is configured, helper hash evidence, and
+  redaction.
+- `smoke:all` now includes the signing-readiness smoke next to the existing
+  native helper signature smoke.
+
+Focused verification passed:
+
+- `node --check scripts/sign-browser-native-desktop-helper.mjs`
+- `node --check scripts/smoke-browser-native-desktop-helper-signing-readiness.mjs`
+- `npm run smoke:browser-native-desktop-helper:signing-readiness`
+
+Production signing itself remains externally blocked until an Authenticode
+certificate or CI signing service is available.
+
+## Latest Update: Browser Permission Bubble Native-Click Boundary
+
+Added an explicit non-executing boundary for browser permission popup native
+click recovery:
+
+- `ComputerStructuredOperation` now includes
+  `browser_permission_bubble_action`.
+- `ComputerSessionRuntime` handles that operation before capability execution
+  and blocks with `browser_permission_bubble_helper_v2_not_available`.
+- The blocked result records `actualInputSent: false`,
+  `nativePopupClick: false`, `permissionChanged: false`, required grants,
+  missing preconditions, fallback guidance to the contentSettings API/manual
+  handling, approval/action/verification/eval DAG nodes, a metadata-only
+  screen observation, skipped rollback, verifier failure, and structured
+  failure memory.
+- `smoke:computer-use-native-watch-boundary` now exercises the permission
+  bubble operation and proves no `desktop_action` job is created.
+- `windows_native_watch_boundary` promotion gate now verifies the
+  implementation and smoke evidence with
+  `browser_permission_bubble_blocked_before_native_click` and
+  `browser_permission_bubble_boundary_smoke_present`.
+
+Focused verification passed:
+
+- `node --check scripts/smoke-computer-use-native-watch-boundary.mjs`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `npm run build:daemon`
+- `npm run smoke:computer-use-native-watch-boundary`
+- `npm run smoke:computer-use-promotion-gate`
+- `npm run smoke:computer-use-promotion-gate-route`
+
+Actual permission-bubble native clicking remains blocked until signed
+watch-mode helper v2 exists; the existing Browser Chrome `contentSettings` path
+continues to cover supported permission state changes without native popup
+clicking.
+
+## Latest Update: Renderer Native Boundary Proof Panel
+
+Added renderer UX for the non-promoting Windows native boundary gate:
+
+- `ComputerUseSessionsPanel` now summarizes `windows_native_watch_boundary`
+  into a dedicated "Native boundary proof" panel under Promotion gate.
+- The panel shows foreground input, native file picker, browser permission
+  popup, and signing guard state from daemon-owned gate metrics.
+- It explicitly labels guarded/non-promoting status and uses the metrics to
+  show that paths and popup clicks remain hidden before signed helper v2.
+- `smoke-renderer-computer-use-browser-chrome-evidence.mjs` now provides a
+  fake native boundary gate payload and verifies the rendered panel text.
+
+Focused verification passed:
+
+- `node --check scripts/smoke-renderer-computer-use-browser-chrome-evidence.mjs`
+- `npm run build:renderer`
+- `npm run smoke:renderer-computer-use-browser-chrome-evidence`
+
+## Latest Update: Toolsmith Repeated Fixture Breadth Samples
+
+Strengthened the scoped autonomy self-implementation evidence gate:
+
+- `dogfood:scoped-autonomy-self-implementation` now appends redacted
+  `scoped-autonomy-generated-tool-breadth-sample.v1` JSONL rows to
+  `docs/reports/assets/scoped-autonomy-self-implementation-runs.jsonl`.
+- The rows cover execute and rerun samples for `web_research_to_pdf`,
+  `terminal_generated_tool`, and `browser_download_verify`; each row records
+  class, mode, status, elapsed time, matched rerun state, artifact match, and
+  redaction proof.
+- `scoped_autonomy_self_implementation_breadth` now requires two samples per
+  generated class, p95 latency samples, sample path redaction, active generated
+  tools, source revision after failed smoke, matched reruns, and high-risk
+  native blocking.
+- The gate remains non-promoting with promotion class
+  `fixture_repeated_generated_tool_gate_passed_live_generated_tool_gate_required`
+  because the current breadth samples are fixture-backed, not live generated
+  tool evidence.
+- The renderer "Toolsmith breadth proof" panel now shows sample count and p95
+  beside scenario/class/rerun/path proof.
+
+Focused verification passed:
+
+- `node --check scripts/collect-scoped-autonomy-self-implementation-dogfood.mjs`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `node --check scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `node --check scripts/smoke-renderer-computer-use-browser-chrome-evidence.mjs`
+- `npx tsc --noEmit -p tsconfig.json --pretty false`
+- `npm run dogfood:scoped-autonomy-self-implementation`
+- `npm run gate:computer-use-promotion -- --json`
+- absolute-path scan for
+  `docs/reports/assets/scoped-autonomy-self-implementation-runs.jsonl`
+- `npm run build:renderer`
+- `npm run smoke:computer-use-promotion-gate-route`
+- `npm run smoke:renderer-computer-use-browser-chrome-evidence`
+- `npm run smoke:scoped-autonomy-self-implementation`
+- `npm run smoke:scoped-autonomy-npm-dependency-prepare`
+- `npm run audit:computer-use-parity`
+- `npm run lint`
+- `npm run smoke:all`
+- `git diff --check` with only known CRLF normalization warnings
+- UTF-8/mojibake scan over touched text files
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Current Resume Point
+
+Latest completed implementation slice is **Terminal Artifact Delta Manifest And
+Rollback**, plus terminal allow-prefix shell-chaining hardening:
+
+- parity audit status: `implemented_with_guarded_boundaries`
+- parity audit counts: passed=59, guarded=6, missing=0
+- final verification: `npm run lint`, `npm run smoke:computer-use-session`,
+  `npm run smoke:all`, `npm run audit:computer-use-parity`, `git diff
+  --check`, UTF-8/mojibake scan
+- terminal safety addition: unquoted shell control operators (`&`, `|`, `;`,
+  newlines) now return `terminal_command_shell_chaining_boundary` before
+  allow-prefix evaluation, preventing `echo ... & node -v` style bypasses
+- renderer UX addition: `ComputerUseSessionsPanel` now shows a "Terminal
+  artifact deltas" proof section with created/modified/deleted counts,
+  rollback-candidate count, resource roles, and sanitized rollback-path status
+- known non-failing outputs: unsigned helper development allowance, Windows temp
+  cleanup deferred retry, known CRLF warnings for `.vibe/agent/session-log.md`,
+  `src/daemon/server.ts`, and `src/daemon/storage/storage.ts`
+
+Do not mark the active goal complete yet. Guarded boundaries remain: official
+app-server client-tool contract, production signing certificate/service,
+unrestricted credential flows, unattended high-risk Windows mutation,
+authenticated browser profile/cookie access, GPU ASR validation, and human
+microphone corpus benchmark.
+
+## Latest Update: Terminal Artifact Delta Manifest And Rollback
+
+Closed the terminal/PT Y evidence gap where output-root tracking recorded only
+some changed files without a complete effect manifest:
+
+- `ComputerSessionRuntime` now converts approved terminal output-root snapshots
+  into `computer-session-terminal-artifact-delta.v1` manifests.
+- The manifest records created/modified/deleted counts, captured artifact
+  count, omitted count, rollback-candidate count, basename-only entries,
+  relative-path hashes, artifact hashes, and previous hashes for modified or
+  deleted files.
+- New/modified bounded files still become blob-backed
+  `terminal_diff_artifact` eval resources.
+- The manifest itself is stored as a blob-backed
+  `terminal_output_root_delta_manifest` eval resource.
+- Created files become explicit `delete_artifact` rollback candidates, but the
+  action stays `blocked` until the user presses the destructive delete path.
+- Confirmed terminal artifact rollback rechecks the active permission
+  profile's approved write roots and the artifact hash before deleting.
+- Modified/deleted files are evidence-only for now; they are not automatically
+  restored because the snapshot stores hashes, not prior file bytes.
+- Debug bundle export sanitizes terminal rollback targets so raw local paths are
+  not exposed to the renderer.
+- `smoke:computer-use-terminal-parity` now creates, modifies, and deletes files
+  inside an isolated approved output root; verifies declared artifact evidence,
+  diff artifact evidence, the delta manifest, create/modify/delete counts,
+  sanitized rollback metadata, and confirmed deletion of the generated artifact.
+- `audit:computer-use-parity` now includes
+  `slice:terminal-artifact-delta-manifest`.
+
+Verification passed for this slice:
+
+- `node --check scripts/smoke-computer-use-terminal-parity.mjs`
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `npm run build:daemon`
+- `npm run smoke:computer-use-terminal-parity`
+- `npm run smoke:computer-use-session`
+- `npm run lint`
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+  (`implemented_with_guarded_boundaries`, passed=59, guarded=6, missing=0)
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`
+- UTF-8/mojibake scan over 260 dirty/new text files with 0 bad UTF-8; the
+  three `'?` hits are intentional SQL placeholder/redaction literals, and no
+  `.cs` files were touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Latest Update: Toolsmith Dependency Policy Review Final Verification
+
+The dependency policy review slice is now fully recorded beyond focused tests:
+
+- `toolsmith-dependency-policy-review.v1` is emitted for completed and blocked
+  dependency preparation paths.
+- External registry npm dependencies remain blocked before install unless the
+  profile includes an exact `npm:name@version` package allowlist grant.
+- Local `file:` package dependency dogfood remains allowed by default policy
+  and proves isolated install, package provenance, generated-tool import, rerun
+  stability, blob-backed artifacts, eval/resource evidence, and path redaction.
+- The renderer Toolsmith panel exposes the Package policy evidence card.
+- The promotion gate requires dependency policy review evidence for
+  `scoped_autonomy_npm_dependency_dogfood`.
+
+Final aggregate verification passed:
+
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+  (`implemented_with_guarded_boundaries`, passed=56, guarded=6, missing=0)
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`
+- UTF-8/mojibake scan over 153 dirty text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Latest Update: Computer Session Snapshot Persistence
+
+Closed the Phase 1 deferred session-storage gap for Computer Use sessions:
+
+- Added storage schema v7 table `computer_use_sessions`.
+- Added storage APIs:
+  - `upsertComputerUseSessionSnapshot`
+  - `readComputerUseSessionSnapshot`
+  - `listComputerUseSessionSnapshots`
+- `ComputerSessionRuntime` now persists session snapshots on create,
+  transition, observation, action batch, action feedback, verifier, rollback,
+  prompt-run, and debug-bundle export boundaries.
+- A recreated `ComputerSessionRuntime` hydrates persisted snapshots before
+  serving `listSessions`, `read`, or `exportDebugBundle`.
+- Snapshots include summary, observations, action feedbacks, action batches,
+  prompt runs, rollback actions, safety decisions, verifier results, recovery
+  attempts, and screen tile cache state.
+- `smoke:computer-use-session` now verifies persisted snapshot reads, snapshot
+  listing, screen-tile-cache persistence, and debug-bundle reconstruction from
+  a fresh runtime instance.
+- `audit:computer-use-parity` now includes
+  `runtime:session-storage-snapshot`.
+- `docs/plans/windows-codex-computer-use-parity/07-migration-checklist.md`
+  has been updated so the old memory-only/deferred note no longer misleads a
+  resumed agent.
+
+Verification passed:
+
+- `node --check scripts/smoke-computer-use-session.mjs`
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `npm run build:daemon`
+- `npm run smoke:computer-use-session`
+- `npm run smoke:storage`
+- `npm run lint`
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+  (`implemented_with_guarded_boundaries`, passed=57, guarded=6, missing=0)
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`
+- UTF-8/mojibake scan over 260 dirty/new text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Latest Update: Toolsmith Dependency Policy Review Final Verification
+
+The dependency policy review slice is now fully recorded beyond focused tests:
+
+- `toolsmith-dependency-policy-review.v1` is emitted for completed and blocked
+  dependency preparation paths.
+- External registry npm dependencies remain blocked before install unless the
+  profile includes an exact `npm:name@version` package allowlist grant.
+- Local `file:` package dependency dogfood remains allowed by default policy
+  and proves isolated install, package provenance, generated-tool import, rerun
+  stability, blob-backed artifacts, eval/resource evidence, and path redaction.
+- The renderer Toolsmith panel exposes the Package policy evidence card.
+- The promotion gate requires dependency policy review evidence for
+  `scoped_autonomy_npm_dependency_dogfood`.
+
+Final aggregate verification passed:
+
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+  (`implemented_with_guarded_boundaries`, passed=56, guarded=6, missing=0)
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`
+- UTF-8/mojibake scan over 153 dirty text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Latest Update: Toolsmith Dependency Policy Review Evidence
+
+Extended the external npm package allowlist slice with explicit dependency
+policy review evidence:
+
+- Dependency prepare output now includes
+  `toolsmith-dependency-policy-review.v1`, covering package classification,
+  exact allowlist requirements, install isolation flags (`ignore-scripts`,
+  `no-audit`, `no-fund`, no shell), lockfile/package provenance status, review
+  outcome, and promotion boundary.
+- Blocked external registry packages now return the same policy review before
+  install, so the missing exact `npm:name@version` allowlist grant is
+  inspectable without creating lockfiles.
+- `dogfood:scoped-autonomy-npm-dependency`, its smoke, and
+  `scoped_autonomy_npm_dependency_dogfood` now require dependency policy
+  review evidence.
+- The renderer Toolsmith panel now shows a "Package policy" card with
+  local/external counts, scripts-off state, and lockfile provenance.
+- `audit:computer-use-parity` tracks this under
+  `slice:scoped-autonomy-npm-package-allowlist-policy`.
+
+Focused verification passed:
+
+- `node --check scripts/collect-scoped-autonomy-npm-dependency-dogfood.mjs`
+- `node --check scripts/smoke-scoped-autonomy-npm-dependency-dogfood.mjs`
+- `node --check scripts/smoke-scoped-autonomy-npm-dependency-prepare.mjs`
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `npm run lint`
+- `npm run build:renderer`
+- `npm run smoke:scoped-autonomy-npm-dependency-prepare`
+- `npm run dogfood:scoped-autonomy-npm-dependency`
+- `npm run smoke:scoped-autonomy-npm-dependency-dogfood`
+- `npm run gate:computer-use-promotion -- --json`
+- `npm run smoke:computer-use-promotion-gate-route`
+- `npm run smoke:renderer-autonomy-rerun-history`
+- `npm run audit:computer-use-parity`
+
+Current parity audit after this slice:
+`implemented_with_guarded_boundaries`, passed=56, guarded=6, missing=0.
+
+Aggregate verification passed after this slice:
+
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`
+- UTF-8/mojibake scan over 153 dirty text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Latest Update: Toolsmith Dependency Policy Review Evidence
+
+Extended the external npm package allowlist slice with explicit dependency
+policy review evidence:
+
+- Dependency prepare output now includes
+  `toolsmith-dependency-policy-review.v1`, covering package classification,
+  exact allowlist requirements, install isolation flags (`ignore-scripts`,
+  `no-audit`, `no-fund`, no shell), lockfile/package provenance status, review
+  outcome, and promotion boundary.
+- Blocked external registry packages now return the same policy review before
+  install, so the missing exact `npm:name@version` allowlist grant is
+  inspectable without creating lockfiles.
+- `dogfood:scoped-autonomy-npm-dependency`, its smoke, and
+  `scoped_autonomy_npm_dependency_dogfood` now require dependency policy
+  review evidence.
+- The renderer Toolsmith panel now shows a "Package policy" card with
+  local/external counts, scripts-off state, and lockfile provenance.
+- `audit:computer-use-parity` continues to track this under
+  `slice:scoped-autonomy-npm-package-allowlist-policy`.
+
+Focused verification passed:
+
+- `node --check scripts/collect-scoped-autonomy-npm-dependency-dogfood.mjs`
+- `node --check scripts/smoke-scoped-autonomy-npm-dependency-dogfood.mjs`
+- `node --check scripts/smoke-scoped-autonomy-npm-dependency-prepare.mjs`
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `npm run lint`
+- `npm run build:renderer`
+- `npm run smoke:scoped-autonomy-npm-dependency-prepare`
+- `npm run dogfood:scoped-autonomy-npm-dependency`
+- `npm run smoke:scoped-autonomy-npm-dependency-dogfood`
+- `npm run gate:computer-use-promotion -- --json`
+- `npm run smoke:computer-use-promotion-gate-route`
+- `npm run smoke:renderer-autonomy-rerun-history`
+- `npm run audit:computer-use-parity`
+
+Current parity audit after this slice:
+`implemented_with_guarded_boundaries`, passed=56, guarded=6, missing=0.
+
+Aggregate verification passed after this slice:
+
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`
+- UTF-8/mojibake scan over 153 dirty text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Latest Update: Toolsmith External NPM Package Allowlist Boundary
+
+Narrowed package-install permission semantics so external registry packages are
+not covered by broad `packageInstall: true` alone:
+
+- `AutonomyPermissionGrants` now includes `packageAllowlist`, normalized to
+  `["file:*"]` by default for backward-compatible local file package dogfood.
+- Registry npm dependencies add an exact package requirement such as
+  `npm:name@version` during dependency preparation.
+- Permission evaluation now requires a matching `packageAllowlist` entry for
+  non-local npm packages while preserving local `file:` package fixtures.
+- Renderer one-time profile grant generation carries package allowlist entries
+  from `package_install` requirements and profile details show package allow
+  patterns.
+- `smoke:scoped-autonomy-npm-dependency-prepare` now proves an external npm
+  dependency is blocked before install without exact allowlist, no lockfile is
+  written, and an exact `npm:...@...` allowlist satisfies the package
+  permission requirement.
+- Dependency prepare output now includes
+  `toolsmith-dependency-policy-review.v1`, covering package classification,
+  exact allowlist requirements, install isolation flags, lockfile/package
+  provenance status, review outcome, and promotion boundary.
+- `dogfood:scoped-autonomy-npm-dependency`, its smoke, and the promotion gate
+  now require dependency policy review evidence.
+- The renderer Toolsmith panel now shows a "Package policy" card with
+  local/external counts, scripts-off state, and lockfile provenance.
+- `audit:computer-use-parity` now includes
+  `slice:scoped-autonomy-npm-package-allowlist-policy`.
+
+Focused verification passed:
+
+- `node --check scripts/smoke-scoped-autonomy-npm-dependency-prepare.mjs`
+- `node --check scripts/collect-scoped-autonomy-npm-dependency-dogfood.mjs`
+- `node --check scripts/smoke-scoped-autonomy-npm-dependency-dogfood.mjs`
+- `npm run build:daemon`
+- `npm run lint`
+- `npm run smoke:scoped-autonomy-npm-dependency-prepare`
+- `npm run dogfood:scoped-autonomy-npm-dependency`
+- `npm run smoke:scoped-autonomy-npm-dependency-dogfood`
+- `npm run gate:computer-use-promotion -- --json`
+- `npm run smoke:computer-use-promotion-gate-route`
+- `npm run build:renderer`
+- `npm run smoke:renderer-autonomy-rerun-history`
+- `npm run audit:computer-use-parity`
+- `npm run smoke:scoped-autonomy-npm-dependency-dogfood`
+- `npm run smoke:computer-use-promotion-gate-route`
+
+Current parity audit after this slice:
+`implemented_with_guarded_boundaries`, passed=56, guarded=6, missing=0.
+
+Aggregate verification passed after this slice:
+
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`
+- UTF-8/mojibake scan over 153 dirty text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Latest Update: Toolsmith NPM Dependency Dogfood Gate
+
+Promoted the package-consuming generated-tool dependency proof from a single
+smoke to repeated local dogfood evidence:
+
+- Added `scripts/collect-scoped-autonomy-npm-dependency-dogfood.mjs`.
+- Added `scripts/smoke-scoped-autonomy-npm-dependency-dogfood.mjs`.
+- Added npm scripts:
+  `dogfood:scoped-autonomy-npm-dependency` and
+  `smoke:scoped-autonomy-npm-dependency-dogfood`.
+- `smoke:all` now includes the npm dependency dogfood smoke.
+- The dogfood runs two package-consuming generated-tool scenarios using a local
+  file npm package fixture. Each scenario proves isolated npm install, installed
+  package `package.json` hash provenance, import via
+  `CODEX_WIDGET_TOOL_DEPENDENCY_ROOT`, blob-backed artifact storage,
+  `toolsmith_dependency_prepare` and `toolsmith_execute` eval proof, matched
+  rerun stability, p95 samples, and path redaction.
+- Evidence is written to:
+  - `docs/dogfood/scoped-autonomy-npm-dependency-2026-05-16.json`
+  - `docs/reports/scoped-autonomy-npm-dependency-2026-05-16.md`
+  - `docs/reports/assets/scoped-autonomy-npm-dependency-2026-05-16/evidence.json`
+  - `docs/reports/assets/scoped-autonomy-npm-dependency-runs.jsonl`
+- New promotion gate:
+  `scoped_autonomy_npm_dependency_dogfood`.
+  It is `passed` and intentionally non-promoting with
+  `promotionClass: local_dependency_gate_passed_external_package_policy_required`.
+  External registry package installation still needs package allowlist,
+  provenance review, and lockfile policy before promotion.
+
+Focused verification passed:
+
+- `node --check scripts/collect-scoped-autonomy-npm-dependency-dogfood.mjs`
+- `node --check scripts/smoke-scoped-autonomy-npm-dependency-dogfood.mjs`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `node --check scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `npm run dogfood:scoped-autonomy-npm-dependency`
+- `npm run smoke:scoped-autonomy-npm-dependency-dogfood`
+- `npm run gate:computer-use-promotion -- --json`
+- `npm run smoke:computer-use-promotion-gate-route`
+- `npm run audit:computer-use-parity`
+
+Current parity audit after this slice:
+`implemented_with_guarded_boundaries`, passed=55, guarded=6, missing=0.
+
+Aggregate verification passed after this slice:
+
+- `npm run lint`
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`
+- UTF-8/mojibake scan over 150 dirty text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Latest Update: Toolsmith NPM Dependency Execution Proof
+
+Strengthened the scoped-autonomy npm dependency slice from lock/provenance
+preparation to package-consuming generated-tool execution:
+
+- `prepareDependencyWorkspace` now performs isolated `npm install` under the
+  generated tool runtime dependency workspace instead of lockfile-only install.
+- Dependency preparation records installed package provenance through each
+  prepared package's redacted `package.json` path, byte size, and SHA-256 hash.
+- `executeGeneratedTool` now redacts permission decisions in blocked/completed
+  eval outputs and passes the prepared dependency workspace to generated Node
+  tools only through `CODEX_WIDGET_TOOL_DEPENDENCY_ROOT`.
+- `smoke:scoped-autonomy-npm-dependency-prepare` now creates a local file npm
+  package, prepares it inside the isolated runtime workspace, activates a
+  smoke-only generated tool, imports the prepared package from the generated
+  entrypoint, writes a blob-backed report artifact, verifies the
+  `toolsmith_execute` eval step, and asserts no absolute local package or
+  dependency-workspace path leaks.
+- `audit:computer-use-parity` now includes
+  `slice:scoped-autonomy-npm-dependency-execution`.
+
+Focused verification passed:
+
+- `node --check scripts/smoke-scoped-autonomy-npm-dependency-prepare.mjs`
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `npm run build:daemon`
+- `npm run smoke:scoped-autonomy-npm-dependency-prepare`
+- `npm run audit:computer-use-parity`
+
+Current parity audit after this slice:
+`implemented_with_guarded_boundaries`, passed=52, guarded=6, missing=0.
+
+Aggregate verification passed after this slice:
+
+- `npm run lint`
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`
+- UTF-8/mojibake scan over 145 dirty text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Latest Update: Toolsmith NPM Dependency Redaction
+
+Hardened scoped-autonomy dependency preparation before broader package-consuming
+dogfood:
+
+- `src/daemon/scoped-autonomy/toolsmithRuntime.ts` now redacts path-like string
+  values, including absolute `file:` dependency versions, not only keys named
+  `path`/`*Path`/`*Dir`.
+- `toolsmith_dependency_prepare` eval-step output now stores a redacted
+  permission decision, so filesystem/package-install requirement values do not
+  expose temporary local package paths.
+- `scripts/smoke-scoped-autonomy-npm-dependency-prepare.mjs` now asserts the
+  completed tool-run output and eval-step output contain no absolute local
+  paths and no unredacted local `file:` package fixture path.
+- `audit:computer-use-parity` includes
+  `slice:scoped-autonomy-npm-dependency-redaction`.
+
+Focused verification passed:
+
+- `node --check scripts/smoke-scoped-autonomy-npm-dependency-prepare.mjs`
+- `npm run build:daemon`
+- `npm run smoke:scoped-autonomy-npm-dependency-prepare`
+- `npm run audit:computer-use-parity`
+
+Current parity audit after this slice:
+`implemented_with_guarded_boundaries`, passed=51, guarded=6, missing=0.
+
+Aggregate verification passed after this slice:
+
+- `npm run lint`
+- `npm run smoke:all`
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`
+- UTF-8/mojibake scan over 240 touched/new text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Latest Update: Computer Use Dogfood Report Links
+
+Added an operator-console slice for dogfood/report/evidence inspection:
+
+- `GET /computer-use/eval/dogfood-reports` lists latest Computer Use,
+  scoped-autonomy, promotion-gate, and parity-audit reports as repo-relative
+  paths.
+- `GET /computer-use/eval/dogfood-reports/content?path=...` serves bounded
+  Markdown/JSON/JSONL/TXT content only from `docs/reports/**` and
+  `docs/dogfood/**`, rejects absolute paths/traversal, and enforces a direct
+  view size cap.
+- The Renderer Computer Use panel now shows a "Dogfood reports" section with
+  latest report/evidence/dogfood links.
+- `smoke:computer-use-promotion-gate-route` now verifies the dogfood report
+  list, content route, expected public-extension report/evidence/dogfood paths,
+  and path-traversal rejection.
+- `smoke:renderer-computer-use-browser-chrome-evidence` now asserts the
+  dogfood report links panel.
+- `audit:computer-use-parity` now includes `eval:dogfood-report-links`.
+
+Focused verification passed:
+
+- `node --check scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `node --check scripts/smoke-renderer-computer-use-browser-chrome-evidence.mjs`
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `npm run build:daemon`
+- `npm run build:renderer`
+- `npm run smoke:computer-use-promotion-gate-route`
+- `npm run smoke:renderer-computer-use-browser-chrome-evidence`
+- `npm run audit:computer-use-parity`
+
+Current parity audit after this slice:
+`implemented_with_guarded_boundaries`, passed=50, guarded=6, missing=0.
+
+Aggregate verification passed after this slice:
+
+- `npm run lint`
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`
+- UTF-8/mojibake scan over 240 touched/new text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Latest Update: Toolsmith Generated-Tool Live Breadth
+
+Added the first repeated live/local-live generated-tool breadth gate:
+
+- New script:
+  `scripts/collect-scoped-autonomy-generated-tool-live-breadth-dogfood.mjs`.
+- New smoke:
+  `scripts/smoke-scoped-autonomy-generated-tool-live-breadth.mjs`.
+- New npm scripts:
+  `dogfood:scoped-autonomy-generated-tool-live-breadth` and
+  `smoke:scoped-autonomy-generated-tool-live-breadth`.
+- `smoke:all` now includes the live breadth evidence smoke.
+- The dogfood runs two execute/rerun samples each for:
+  - `web_research_to_pdf`: official OpenAI docs browser-captured source
+    evidence, PDF/Markdown/citation artifacts, source-quality accepted, stable
+    fallback capture hashes.
+  - `local_document_conversion`: approved local Markdown source-file
+    conversion, source SHA-256, skipped web stages, Markdown/PDF artifacts.
+  - `terminal_generated_tool`: real local `node --version` generated wrapper,
+    no shell expansion, stdout artifact proof.
+  - `browser_download_verify`: public browser-backed `example.com` download
+    written under the dogfood root, size/SHA-256 verification, path redaction.
+- Evidence is written to:
+  - `docs/dogfood/scoped-autonomy-generated-tool-live-breadth-2026-05-16.json`
+  - `docs/reports/scoped-autonomy-generated-tool-live-breadth-2026-05-16.md`
+  - `docs/reports/assets/scoped-autonomy-generated-tool-live-breadth-2026-05-16/evidence.json`
+  - `docs/reports/assets/scoped-autonomy-generated-tool-live-breadth-runs.jsonl`
+- New promotion gate:
+  `scoped_autonomy_generated_tool_live_breadth`.
+  It requires schema validity, class breadth, all eight latest scenarios
+  succeeded, two execute samples per class, p95 samples, accepted web source
+  quality, repeated stable browser-fallback hashes, local document conversion
+  proof, terminal command proof, public download proof, matched reruns/
+  artifacts, and path redaction.
+- The new gate is `passed`, `promotable: true`, and
+  `promotionClass: eligible_for_generated_tool_promotion_review`.
+- The Computer Use renderer Promotion section now includes a "Toolsmith live
+  breadth proof" panel for sample count, p95, class count, execute-run count,
+  live coverage, calibration, and redaction.
+
+Focused verification passed:
+
+- `node --check scripts/collect-scoped-autonomy-generated-tool-live-breadth-dogfood.mjs`
+- `node --check scripts/smoke-scoped-autonomy-generated-tool-live-breadth.mjs`
+- `node --check scripts/gate-computer-use-promotion.mjs`
+- `node --check scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `node --check scripts/smoke-renderer-computer-use-browser-chrome-evidence.mjs`
+- `npx tsc --noEmit -p tsconfig.json --pretty false`
+- `npm run dogfood:scoped-autonomy-generated-tool-live-breadth`
+- `npm run smoke:scoped-autonomy-generated-tool-live-breadth`
+- `npm run gate:computer-use-promotion -- --json`
+- `npm run smoke:computer-use-promotion-gate-route`
+- `npm run build:renderer`
+- `npm run smoke:renderer-computer-use-browser-chrome-evidence`
+- `npm run audit:computer-use-parity`
+
+Current parity audit after this slice:
+`implemented_with_guarded_boundaries`, passed=49, guarded=6, missing=0.
+
+Aggregate verification passed after this slice:
+
+- `npm run lint`
+- `npm run smoke:all`
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`
+- UTF-8/mojibake scan over 240 touched/new text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Latest Update: Computer Session Snapshot Persistence
+
+Closed the Phase 1 deferred session-storage gap for Computer Use sessions:
+
+- Added storage schema v7 table `computer_use_sessions`.
+- Added storage APIs:
+  - `upsertComputerUseSessionSnapshot`
+  - `readComputerUseSessionSnapshot`
+  - `listComputerUseSessionSnapshots`
+- `ComputerSessionRuntime` now persists session snapshots on create,
+  transition, observation, action batch, action feedback, verifier, rollback,
+  prompt-run, and debug-bundle export boundaries.
+- A recreated `ComputerSessionRuntime` hydrates persisted snapshots before
+  serving `listSessions`, `read`, or `exportDebugBundle`.
+- Snapshots include summary, observations, action feedbacks, action batches,
+  prompt runs, rollback actions, safety decisions, verifier results, recovery
+  attempts, and screen tile cache state.
+- `smoke:computer-use-session` now verifies persisted snapshot reads, snapshot
+  listing, screen-tile-cache persistence, and debug-bundle reconstruction from
+  a fresh runtime instance.
+- `audit:computer-use-parity` now includes
+  `runtime:session-storage-snapshot`.
+- `docs/plans/windows-codex-computer-use-parity/07-migration-checklist.md`
+  has been updated so the old memory-only/deferred note no longer misleads a
+  resumed agent.
+
+Verification passed:
+
+- `node --check scripts/smoke-computer-use-session.mjs`
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `npm run build:daemon`
+- `npm run smoke:computer-use-session`
+- `npm run smoke:storage`
+- `npm run lint`
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+  (`implemented_with_guarded_boundaries`, passed=57, guarded=6, missing=0)
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`
+- UTF-8/mojibake scan over 260 dirty/new text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Latest Update: Toolsmith Dependency Policy Review Final Verification
+
+The dependency policy review slice is now fully recorded beyond focused tests:
+
+- `toolsmith-dependency-policy-review.v1` is emitted for completed and blocked
+  dependency preparation paths.
+- External registry npm dependencies remain blocked before install unless the
+  profile includes an exact `npm:name@version` package allowlist grant.
+- Local `file:` package dependency dogfood remains allowed by default policy
+  and proves isolated install, package provenance, generated-tool import, rerun
+  stability, blob-backed artifacts, eval/resource evidence, and path redaction.
+- The renderer Toolsmith panel exposes the Package policy evidence card.
+- The promotion gate requires dependency policy review evidence for
+  `scoped_autonomy_npm_dependency_dogfood`.
+
+Final aggregate verification passed:
+
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+  (`implemented_with_guarded_boundaries`, passed=56, guarded=6, missing=0)
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`
+- UTF-8/mojibake scan over 153 dirty text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Latest Update: Computer Session Snapshot Persistence
+
+Closed the Phase 1 deferred session-storage gap for Computer Use sessions:
+
+- Added storage schema v7 table `computer_use_sessions`.
+- Added storage APIs:
+  - `upsertComputerUseSessionSnapshot`
+  - `readComputerUseSessionSnapshot`
+  - `listComputerUseSessionSnapshots`
+- `ComputerSessionRuntime` now persists session snapshots on create,
+  transition, observation, action batch, action feedback, verifier, rollback,
+  prompt-run, and debug-bundle export boundaries.
+- A recreated `ComputerSessionRuntime` hydrates persisted snapshots before
+  serving `listSessions`, `read`, or `exportDebugBundle`.
+- Snapshots include summary, observations, action feedbacks, action batches,
+  prompt runs, rollback actions, safety decisions, verifier results, recovery
+  attempts, and screen tile cache state.
+- `smoke:computer-use-session` now verifies persisted snapshot reads, snapshot
+  listing, screen-tile-cache persistence, and debug-bundle reconstruction from
+  a fresh runtime instance.
+- `audit:computer-use-parity` now includes
+  `runtime:session-storage-snapshot`.
+- `docs/plans/windows-codex-computer-use-parity/07-migration-checklist.md`
+  has been updated so the old memory-only/deferred note no longer misleads a
+  resumed agent.
+
+Verification passed:
+
+- `node --check scripts/smoke-computer-use-session.mjs`
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `npm run build:daemon`
+- `npm run smoke:computer-use-session`
+- `npm run smoke:storage`
+- `npm run lint`
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+  (`implemented_with_guarded_boundaries`, passed=57, guarded=6, missing=0)
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`
+- UTF-8/mojibake scan over 260 dirty/new text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Latest Update: Computer Session Restart Reconciliation
+
+Extended the Computer Session snapshot slice with fail-closed restart
+reconciliation for interrupted active sessions:
+
+- `ComputerSessionRuntime` hydration now detects persisted non-final session
+  states (`created`, `observing`, `planning`, `executing`, `verifying`,
+  `recovering`, etc.).
+- Interrupted sessions are marked `cancelled` with
+  `blockedReason: "computer_session_runtime_restarted"` before being exposed
+  through `read`, `listSessions`, or `exportDebugBundle`.
+- Active session capability jobs in `queued`, `scheduled`, `awaiting_approval`,
+  `running`, or `cancelling` are cancelled in durable storage with a
+  `computer_session_runtime_restarted` reason and a capability-job event.
+- Non-final DAG nodes and DAG run are marked `cancelled`.
+- Running eval runs are marked `cancelled` with `taskSuccess: "abstained"` and
+  `failureClass: "external_blocker"`.
+- Non-final prompt runs/steps are marked `cancelled`.
+- Debug bundles retain `runtime_restart_reconciliation` safety evidence,
+  restart verifier evidence, completed `cancel_capability_job` rollback rows,
+  and a `runtime_restart_reconciliation` eval step.
+- `smoke:computer-use-session` now creates a synthetic executing session with a
+  running capability job, DAG node/run, and eval run, recreates the runtime,
+  and verifies every linked object is reconciled before use.
+- `audit:computer-use-parity` keeps this under
+  `runtime:session-storage-snapshot`.
+
+Verification passed:
+
+- `node --check scripts/smoke-computer-use-session.mjs`
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `npm run build:daemon`
+- `npm run smoke:computer-use-session`
+- `npm run smoke:storage`
+- `npm run lint`
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+  (`implemented_with_guarded_boundaries`, passed=57, guarded=6, missing=0)
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`
+- UTF-8/mojibake scan over 260 dirty/new text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Latest Update: Browser Action Adapter Fallback Routing
+
+Closed the Browser parity gap where Computer Session action routing only
+recorded route choice but did not reroute retryable adapter failures:
+
+- `ComputerSessionRuntime` now attempts one bounded Browser Action adapter
+  fallback for retryable adapter failures.
+- Controlled-browser Playwright failures can reroute once to CDP.
+- Regular-browser/active-tab failures can reroute once to the
+  extension-injected DOM adapter.
+- Fallback is disabled for credential, password, secret, token, payment,
+  restricted, permission/approval, unsafe, policy, destructive, or explicit
+  `disableAdapterFallback` cases.
+- The original action DAG node records `routeAttempts`,
+  `computer-session-browser-action-adapter-fallback.v1`, and the final
+  `actionRoute`.
+- A separate `fallback` DAG node records the fallback attempt.
+- A `browser_action_adapter_fallback` eval step records primary and fallback
+  status.
+- Debug bundles include the fallback safety decision and verifier evidence.
+- `smoke:computer-use-session` now proves a synthetic CDP failure is retried
+  through extension DOM, and verifies DAG/eval/safety/verifier evidence.
+- `audit:computer-use-parity` now includes
+  `action:browser-adapter-fallback`.
+- `docs/plans/windows-codex-computer-use-parity/07-migration-checklist.md`
+  has been updated to remove the stale "rerouting later work" statement for
+  this bounded browser-adapter case. Native/coordinate fallback remains guarded
+  by the existing signed helper/watch-mode boundaries.
+
+Verification passed:
+
+- `node --check scripts/smoke-computer-use-session.mjs`
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `npm run build:daemon`
+- `npm run smoke:computer-use-session`
+- `npm run lint`
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+  (`implemented_with_guarded_boundaries`, passed=58, guarded=6, missing=0)
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `src/daemon/server.ts`, and
+  `src/daemon/storage/storage.ts`
+- UTF-8/mojibake scan over 260 dirty/new text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and Windows temp cleanup deferred retry.
+
+## Current Resume Point
+
+Latest completed implementation slice is **Terminal Artifact Delta Manifest And
+Rollback**:
+
+- parity audit status: `implemented_with_guarded_boundaries`
+- parity audit counts: passed=59, guarded=6, missing=0
+- final verification: `npm run lint`, `npm run smoke:computer-use-session`,
+  `npm run smoke:all`, `npm run audit:computer-use-parity`, `git diff
+  --check`, UTF-8/mojibake scan
+- known non-failing outputs: unsigned helper development allowance, Windows temp
+  cleanup deferred retry, known CRLF warnings for `.vibe/agent/session-log.md`,
+  `src/daemon/server.ts`, and `src/daemon/storage/storage.ts`
+
+Do not mark the active goal complete yet. Guarded boundaries remain: official
+app-server client-tool contract, production signing certificate/service,
+unrestricted credential flows, unattended high-risk Windows mutation,
+authenticated browser profile/cookie access, GPU ASR validation, and human
+microphone corpus benchmark.

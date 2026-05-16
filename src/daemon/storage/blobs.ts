@@ -51,6 +51,22 @@ export function insertBlob(
     .run(blob.id, blob.path, blob.size, blob.mime, new Date().toISOString());
 }
 
+export function readBlob(database: NodeDatabaseSync, id: string): StoredBlob | null {
+  const row = database
+    .prepare("SELECT id, path, size, mime FROM blobs WHERE id = ?")
+    .get(id) as { id: string; path: string; size: number; mime: string } | undefined;
+  if (!row) {
+    return null;
+  }
+  return {
+    id: row.id,
+    path: row.path,
+    size: row.size,
+    mime: row.mime,
+    hash: row.id.startsWith("blob:") ? row.id.slice("blob:".length) : row.id
+  };
+}
+
 export function readFileSnapshot(paths: StoragePaths, sourcePath: string): {
   blob: StoredBlob | null;
   mime: string;

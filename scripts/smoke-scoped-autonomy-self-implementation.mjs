@@ -59,7 +59,8 @@ try {
   assert.equal(result.spec.status, "active");
   assert.equal(result.spec.manifest.schemaVersion, "autonomy-tool-manifest.v1");
   assert.equal(Boolean(result.spec.sourceHash), true);
-  assert.equal(result.toolRuns.length >= 8, true, "smoke plus seven DAG stages should be recorded");
+  assert.equal(result.toolRuns.length >= 9, true, "dependency prepare, smoke, and seven DAG stages should be recorded");
+  assert.equal(result.toolRuns.some((toolRun) => toolRun.mode === "dependency_prepare" && toolRun.status === "completed"), true, "dependency prepare should be recorded as a tool run");
 
   const finalRun = storage.readAutonomyRun(result.run.id);
   const outputDir = finalRun.output.outputDir;
@@ -70,6 +71,7 @@ try {
 
   const evalSteps = storage.listComputerUseEvalSteps(finalRun.evalRunId);
   assert.equal(evalSteps.filter((step) => step.kind === "toolsmith_generate_source").length >= 2, true, "first smoke failure should trigger a revised source iteration");
+  assert.equal(evalSteps.some((step) => step.kind === "toolsmith_dependency_prepare" && step.status === "completed"), true);
   assert.equal(evalSteps.some((step) => step.kind === "toolsmith_smoke" && step.status === "failed"), true);
   assert.equal(evalSteps.some((step) => step.kind === "toolsmith_smoke" && step.status === "completed"), true);
   for (const kind of ["crawl_or_observe", "extract", "verify_sources", "draft_markdown", "render_pdf", "store_artifact", "verify_artifact"]) {
@@ -84,6 +86,10 @@ try {
   assert.ok(lastExecutableRun, "completed execution tool run should exist");
   const rerun = await runtime.rerunToolRun({ toolRunId: lastExecutableRun.id });
   assert.equal(rerun.status, "completed", rerun.lastError);
+  assert.equal(rerun.output.rerunComparison.schemaVersion, "toolsmith-rerun-comparison.v1");
+  assert.equal(rerun.output.rerunComparison.matched, true, JSON.stringify(rerun.output.rerunComparison));
+  assert.equal(rerun.output.rerunComparison.artifactComparison.matched, true, "rerun artifact fingerprints should match");
+  assert.equal(storage.listComputerUseEvalSteps(finalRun.evalRunId).some((step) => step.kind === "toolsmith_rerun_comparison" && step.status === "completed"), true);
 
   const debugBundle = runtime.createDebugBundle(finalRun.id);
   assert.equal(debugBundle.schemaVersion, "autonomy-debug-bundle.v1");
@@ -94,6 +100,30 @@ try {
   assert.equal(rollback.status, "completed", rollback.lastError);
   assert.equal(storage.readAutonomyToolSpec(result.spec.id).status, "retired");
   assert.equal(storage.readAutonomyPermissionProfile(profile.id).status, "active");
+
+  const conversionOutputRoot = join(tempRoot, "conversion-outputs");
+  const conversionResult = await runtime.runGoalDag({
+    goal: "제공한 Markdown 내용을 PDF 문서로 변환해줘.",
+    permissionProfileId: profile.id,
+    outputRoot: conversionOutputRoot,
+    title: "Local conversion smoke report",
+    markdown: [
+      "# Local conversion smoke report",
+      "",
+      "This verifies local_document_conversion without web research."
+    ].join("\n")
+  });
+  assert.equal(conversionResult.run.status, "completed", JSON.stringify(conversionResult.run.output));
+  assert.equal(conversionResult.spec.status, "active");
+  assert.equal(conversionResult.spec.capability, "local_document_conversion");
+  const conversionRun = storage.readAutonomyRun(conversionResult.run.id);
+  const conversionDir = conversionRun.output.outputDir;
+  assert.equal(existsSync(join(conversionDir, "report.md")), true);
+  assert.equal(existsSync(join(conversionDir, "report.pdf")), true);
+  const conversionNodes = storage.listCapabilityDagNodes(conversionRun.dagRunId);
+  assert.equal(conversionNodes.some((node) => node.kind === "crawl_or_observe" && node.status === "skipped"), true, "local conversion should skip web crawl");
+  assert.equal(conversionNodes.some((node) => node.kind === "draft_markdown" && node.status === "completed"), true, "local conversion should draft markdown");
+  assert.equal(storage.listComputerUseEvalResources(conversionRun.evalRunId).some((resource) => resource.role === "autonomy_pdf"), true);
 
   console.log("scoped autonomy self-implementation smoke ok");
 } finally {

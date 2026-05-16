@@ -1,0 +1,993 @@
+{
+  "schemaVersion": "computer-use-promotion-gate.v1",
+  "generatedAt": "2026-05-16T10:57:17.314Z",
+  "date": "2026-05-16",
+  "criteria": {
+    "minimumRepeatedLiveRuns": 2,
+    "requireP95LatencyForLivePromotion": true,
+    "requireSourceQualityReview": true,
+    "requireBrowserFallbackCalibration": true,
+    "requireNoUnexpectedFailures": true,
+    "requireNoTaskSuccessRegression": true,
+    "requireNoP95Regression": true,
+    "requireNoUnsafeRejectionRegression": true
+  },
+  "inputs": {
+    "processValidationEvidence": [
+      "docs/reports/assets/computer-use-process-validation-30-2026-05-14/evidence.json",
+      "docs/reports/assets/computer-use-process-validation-30-2026-05-16/evidence.json"
+    ],
+    "scopedAutonomyLiveEvidence": [
+      "docs/reports/assets/scoped-autonomy-web-research-live-2026-05-14/evidence.json",
+      "docs/reports/assets/scoped-autonomy-web-research-live-2026-05-16/evidence.json"
+    ],
+    "scopedAutonomyLiveSampleLedger": "docs/reports/assets/scoped-autonomy-web-research-live-runs.jsonl",
+    "scopedAutonomyLiveSampleCount": 4,
+    "computerSessionLiveEvidence": [
+      "docs/reports/assets/computer-use-toolsmith-live-2026-05-16/evidence.json"
+    ],
+    "computerSessionLiveSampleLedger": "docs/reports/assets/computer-use-toolsmith-live-runs.jsonl",
+    "computerSessionLiveSampleCount": 4,
+    "computerSessionBrowserPromptEvidence": [
+      "docs/reports/assets/computer-use-browser-prompt-dogfood-2026-05-16/evidence.json"
+    ],
+    "computerSessionBrowserPromptLiveEvidence": [
+      "docs/reports/assets/computer-use-browser-prompt-live-2026-05-16/evidence.json"
+    ],
+    "computerSessionBrowserPromptLiveSampleLedger": "docs/reports/assets/computer-use-browser-prompt-live-runs.jsonl",
+    "computerSessionBrowserPromptLiveSampleCount": 8,
+    "computerSessionBrowserChromeDogfoodEvidence": [
+      "docs/reports/assets/computer-use-browser-chrome-dogfood-2026-05-16/evidence.json"
+    ],
+    "computerSessionBrowserChromeDogfoodSampleLedger": "docs/reports/assets/computer-use-browser-chrome-dogfood-runs.jsonl",
+    "computerSessionBrowserChromeDogfoodSampleCount": 16,
+    "computerSessionBrowserChromeLiveExtensionEvidence": [
+      "docs/reports/assets/computer-use-browser-chrome-live-extension-2026-05-16/evidence.json"
+    ],
+    "computerSessionBrowserChromeLiveExtensionSampleLedger": "docs/reports/assets/computer-use-browser-chrome-live-extension-runs.jsonl",
+    "computerSessionBrowserChromeLiveExtensionSampleCount": 4,
+    "computerSessionBrowserChromePublicExtensionEvidence": [
+      "docs/reports/assets/computer-use-browser-chrome-public-extension-2026-05-16/evidence.json"
+    ],
+    "computerSessionBrowserChromePublicExtensionSampleLedger": "docs/reports/assets/computer-use-browser-chrome-public-extension-runs.jsonl",
+    "computerSessionBrowserChromePublicExtensionSampleCount": 104,
+    "scopedAutonomySelfImplementationEvidence": [
+      "docs/reports/assets/scoped-autonomy-self-implementation-2026-05-14/evidence.json",
+      "docs/reports/assets/scoped-autonomy-self-implementation-2026-05-16/evidence.json"
+    ],
+    "scopedAutonomySelfImplementationSampleLedger": "docs/reports/assets/scoped-autonomy-self-implementation-runs.jsonl",
+    "scopedAutonomySelfImplementationSampleCount": 14,
+    "scopedAutonomyGeneratedToolLiveBreadthEvidence": [
+      "docs/reports/assets/scoped-autonomy-generated-tool-live-breadth-2026-05-16/evidence.json"
+    ],
+    "scopedAutonomyGeneratedToolLiveBreadthSampleLedger": "docs/reports/assets/scoped-autonomy-generated-tool-live-breadth-runs.jsonl",
+    "scopedAutonomyGeneratedToolLiveBreadthSampleCount": 52,
+    "scopedAutonomyNpmDependencyEvidence": [
+      "docs/reports/assets/scoped-autonomy-npm-dependency-2026-05-16/evidence.json"
+    ],
+    "scopedAutonomyNpmDependencySampleLedger": "docs/reports/assets/scoped-autonomy-npm-dependency-runs.jsonl",
+    "scopedAutonomyNpmDependencySampleCount": 8,
+    "browserActionSemanticCorpus": "docs/dogfood/browser-action-semantic-live-corpus.jsonl",
+    "browserActionSemanticCorpusCount": 12,
+    "browserActionRecoveryCorpus": "docs/dogfood/browser-action-recovery-live-corpus.jsonl",
+    "browserActionRecoveryCorpusCount": 5,
+    "deferredReleaseGates": "docs/release/deferred-gates.json",
+    "packageManifest": "package.json"
+  },
+  "gates": [
+    {
+      "id": "fixture_30_case_process_validation",
+      "evidenceClass": "fixture",
+      "status": "passed",
+      "promotable": false,
+      "promotionClass": "fixture_gate_passed_live_gate_required",
+      "reasons": [
+        "scenario_count_30",
+        "no_unexpected_failures",
+        "eval_runs_recorded",
+        "task_success_not_regressed",
+        "p95_latency_not_regressed",
+        "unsafe_rejection_not_regressed",
+        "fixture_success_never_promotes_live_computer_use_without_live_trace_gate"
+      ],
+      "latestEvidencePath": "docs/reports/assets/computer-use-process-validation-30-2026-05-16/evidence.json",
+      "baselineEvidencePath": "docs/reports/assets/computer-use-process-validation-30-2026-05-14/evidence.json",
+      "metrics": {
+        "taskSuccessRate": 0.7857142857142857,
+        "proofRate": 0.40476190476190477,
+        "p95LatencyMs": 108,
+        "p95PerceptionLatencyMs": 40,
+        "unsafeActionRejectionRate": 0,
+        "previousP95LatencyMs": 141,
+        "previousTaskSuccessRate": 0.6923076923076923
+      }
+    },
+    {
+      "id": "scoped_autonomy_live_web_research",
+      "evidenceClass": "live",
+      "status": "passed",
+      "promotable": true,
+      "promotionClass": "eligible_for_promotion_review",
+      "reasons": [
+        "all_live_runs_succeeded",
+        "repeated_live_runs_present",
+        "p95_latency_samples_present",
+        "source_quality_review_accepted",
+        "live_source_evidence_present",
+        "browser_fallback_transport_calibrated"
+      ],
+      "latestEvidencePath": "docs/reports/assets/scoped-autonomy-web-research-live-2026-05-16/evidence.json",
+      "evidencePaths": [
+        "docs/reports/assets/scoped-autonomy-web-research-live-2026-05-14/evidence.json",
+        "docs/reports/assets/scoped-autonomy-web-research-live-2026-05-16/evidence.json"
+      ],
+      "sampleLedgerPath": "docs/reports/assets/scoped-autonomy-web-research-live-runs.jsonl",
+      "metrics": {
+        "liveRunCount": 5,
+        "successCount": 5,
+        "sampleLedgerCount": 4,
+        "p95LatencySampleCount": 4,
+        "p95LatencyMs": 6291,
+        "maxValidLiveSourceCount": 3,
+        "fallbackOnly": true,
+        "browserFallbackTransportCalibrated": true,
+        "browserFallbackCalibration": {
+          "schemaVersion": "browser-fallback-transport-calibration-gate.v1",
+          "accepted": true,
+          "calibratedRunCount": 2,
+          "repeatedStableCaptureCount": 3,
+          "requiredCalibratedRunCount": 2,
+          "requiredRepeatedStableCaptureCount": 2,
+          "reason": "browser_fallback_capture_hashes_stable_across_repeated_runs"
+        },
+        "directFetchedSourceCount": 0,
+        "fallbackSourceCount": 12
+      }
+    },
+    {
+      "id": "computer_session_live_web_research",
+      "evidenceClass": "live",
+      "status": "passed",
+      "promotable": true,
+      "promotionClass": "eligible_for_promotion_review",
+      "reasons": [
+        "all_live_runs_succeeded",
+        "repeated_live_runs_present",
+        "p95_latency_samples_present",
+        "source_quality_review_accepted",
+        "live_source_evidence_present",
+        "browser_fallback_transport_calibrated"
+      ],
+      "latestEvidencePath": "docs/reports/assets/computer-use-toolsmith-live-2026-05-16/evidence.json",
+      "evidencePaths": [
+        "docs/reports/assets/computer-use-toolsmith-live-2026-05-16/evidence.json"
+      ],
+      "sampleLedgerPath": "docs/reports/assets/computer-use-toolsmith-live-runs.jsonl",
+      "metrics": {
+        "liveRunCount": 4,
+        "successCount": 4,
+        "sampleLedgerCount": 4,
+        "p95LatencySampleCount": 4,
+        "p95LatencyMs": 5401,
+        "maxValidLiveSourceCount": 3,
+        "fallbackOnly": true,
+        "browserFallbackTransportCalibrated": true,
+        "browserFallbackCalibration": {
+          "schemaVersion": "browser-fallback-transport-calibration-gate.v1",
+          "accepted": true,
+          "calibratedRunCount": 2,
+          "repeatedStableCaptureCount": 3,
+          "requiredCalibratedRunCount": 2,
+          "requiredRepeatedStableCaptureCount": 2,
+          "reason": "browser_fallback_capture_hashes_stable_across_repeated_runs"
+        },
+        "directFetchedSourceCount": 0,
+        "fallbackSourceCount": 12
+      }
+    },
+    {
+      "id": "computer_session_browser_prompt_dogfood",
+      "evidenceClass": "fixture_prompt_dogfood",
+      "status": "passed",
+      "promotable": false,
+      "promotionClass": "fixture_gate_passed_live_gate_required",
+      "reasons": [
+        "fixture_prompt_case_count_present",
+        "all_fixture_prompt_cases_succeeded",
+        "required_prompt_intent_coverage_present",
+        "direct_computer_session_prompt_route_evidence_present",
+        "all_prompt_runs_completed",
+        "prompt_dag_and_eval_evidence_present",
+        "prompt_observation_graph_feedback_present",
+        "isolated_browser_cleanup_evidence_present",
+        "redacted_prompt_dogfood_only",
+        "latency_samples_present",
+        "fixture_prompt_dogfood_needs_live_public_site_gate_before_promotion"
+      ],
+      "latestEvidencePath": "docs/reports/assets/computer-use-browser-prompt-dogfood-2026-05-16/evidence.json",
+      "evidencePaths": [
+        "docs/reports/assets/computer-use-browser-prompt-dogfood-2026-05-16/evidence.json"
+      ],
+      "metrics": {
+        "caseCount": 4,
+        "successCount": 4,
+        "intentCount": 4,
+        "requiredIntentsPresent": true,
+        "promptRouteEvidence": true,
+        "p95LatencyMs": 1005,
+        "fixtureBacked": true,
+        "directComputerSessionPromptRoute": true,
+        "promotable": false
+      }
+    },
+    {
+      "id": "computer_session_browser_prompt_live",
+      "evidenceClass": "live_prompt",
+      "status": "passed",
+      "promotable": true,
+      "promotionClass": "eligible_for_promotion_review",
+      "reasons": [
+        "repeated_live_prompt_samples_present",
+        "all_live_prompt_cases_succeeded",
+        "required_live_prompt_intent_coverage_present",
+        "public_site_host_coverage_present",
+        "repeated_live_runs_present",
+        "direct_computer_session_prompt_route_evidence_present",
+        "all_live_prompt_runs_completed",
+        "live_prompt_dag_and_eval_evidence_present",
+        "live_prompt_observation_graph_feedback_present",
+        "isolated_browser_cleanup_evidence_present",
+        "public_url_metadata_only",
+        "redacted_live_prompt_corpus_only",
+        "p95_latency_samples_present"
+      ],
+      "latestEvidencePath": "docs/reports/assets/computer-use-browser-prompt-live-2026-05-16/evidence.json",
+      "evidencePaths": [
+        "docs/reports/assets/computer-use-browser-prompt-live-2026-05-16/evidence.json"
+      ],
+      "sampleLedgerPath": "docs/reports/assets/computer-use-browser-prompt-live-runs.jsonl",
+      "metrics": {
+        "liveSampleCount": 12,
+        "successCount": 12,
+        "runCount": 2,
+        "intentCount": 4,
+        "sourceHostCount": 3,
+        "requiredIntentsPresent": true,
+        "requiredHostsPresent": true,
+        "p95LatencySampleCount": 12,
+        "p95LatencyMs": 3067,
+        "directComputerSessionPromptRoute": true,
+        "fixtureBacked": false,
+        "livePublicSite": true
+      }
+    },
+    {
+      "id": "browser_action_semantic_live_corpus",
+      "evidenceClass": "live",
+      "status": "passed",
+      "promotable": true,
+      "promotionClass": "eligible_for_promotion_review",
+      "reasons": [
+        "reviewed_live_case_count_present",
+        "no_duplicate_corpus_ids",
+        "all_report_rows_found",
+        "all_reviewed_cases_passed",
+        "report_modes_match_corpus",
+        "required_intent_coverage_present",
+        "widget_and_isolated_sources_present",
+        "redacted_corpus_only",
+        "latency_samples_present"
+      ],
+      "latestEvidencePath": "docs/dogfood/browser-action-semantic-live-corpus.jsonl",
+      "evidencePaths": [
+        "docs/reports/browser-action-live-report-browser-action-public-sites-search-final-20260511.md",
+        "docs/reports/browser-action-live-report-browser-action-post-fix-regression-20260511.md",
+        "docs/reports/browser-action-live-report-iter24-scheduler-memory-isolated-20260511.md"
+      ],
+      "metrics": {
+        "caseCount": 12,
+        "reportCount": 3,
+        "intentCount": 5,
+        "sourceCount": 2,
+        "p95LatencyMs": 8154,
+        "requiredIntentsPresent": true,
+        "sourceCoveragePresent": true,
+        "reportRowsFound": 12,
+        "duplicateIds": []
+      }
+    },
+    {
+      "id": "browser_action_recovery_live_corpus",
+      "evidenceClass": "live_recovery",
+      "status": "passed",
+      "promotable": true,
+      "promotionClass": "eligible_for_recovery_calibration_review",
+      "reasons": [
+        "reviewed_recovery_case_count_present",
+        "no_duplicate_recovery_ids",
+        "all_failure_and_recovery_rows_found",
+        "all_failure_rows_preserved",
+        "all_recovery_rows_passed",
+        "recovery_modes_match_corpus",
+        "required_failure_class_coverage_present",
+        "widget_and_isolated_recovery_sources_present",
+        "redacted_recovery_corpus_only",
+        "recovery_evidence_and_calibration_present",
+        "failure_and_recovery_latency_samples_present"
+      ],
+      "latestEvidencePath": "docs/dogfood/browser-action-recovery-live-corpus.jsonl",
+      "evidencePaths": [
+        "docs/reports/browser-action-live-report-browser-action-public-sites-search-continuation-20260511.md",
+        "docs/reports/browser-action-live-report-browser-action-public-sites-search-final-20260511.md",
+        "docs/reports/browser-action-live-report-browser-action-public-sites-live2-20260511.md",
+        "docs/reports/browser-action-live-report-browser-action-postpush-regression-20260511.md",
+        "docs/reports/browser-action-live-report-browser-action-post-fix-regression-20260511.md",
+        "docs/reports/browser-action-live-report-browser-action-widget-ui-history-regression-20260511.md",
+        "docs/reports/browser-action-live-report-browser-action-widget-ui-final5-20260511.md",
+        "docs/reports/browser-action-live-report-browser-action-widget-ui-final4-20260511.md"
+      ],
+      "metrics": {
+        "caseCount": 5,
+        "reportCount": 8,
+        "failureClassCount": 3,
+        "sourceCount": 2,
+        "requiredFailureCoveragePresent": true,
+        "sourceCoveragePresent": true,
+        "failureRowsFound": 5,
+        "recoveryRowsFound": 5,
+        "p95FailureLatencyMs": 30976,
+        "p95RecoveryLatencyMs": 5612,
+        "duplicateIds": []
+      }
+    },
+    {
+      "id": "scoped_autonomy_self_implementation_breadth",
+      "evidenceClass": "fixture_repeated_breadth",
+      "status": "passed",
+      "promotable": false,
+      "promotionClass": "fixture_repeated_generated_tool_gate_passed_live_generated_tool_gate_required",
+      "reasons": [
+        "scoped_autonomy_self_implementation_schema_valid",
+        "required_self_implementation_scenarios_present",
+        "all_self_implementation_scenarios_succeeded",
+        "generated_capability_class_breadth_present",
+        "generated_tools_active_after_smoke",
+        "failed_smoke_revision_iteration_present",
+        "rerun_stability_comparisons_present",
+        "rerun_artifact_stability_present",
+        "high_risk_native_gap_blocked_before_materialization",
+        "self_implementation_path_redaction_present",
+        "repeated_generated_tool_class_coverage_present",
+        "repeated_generated_tool_samples_present",
+        "generated_tool_breadth_p95_samples_present",
+        "generated_tool_sample_path_redaction_present",
+        "fixture_breadth_needs_repeated_live_generated_tool_gate_before_promotion"
+      ],
+      "latestEvidencePath": "docs/reports/assets/scoped-autonomy-self-implementation-2026-05-16/evidence.json",
+      "evidencePaths": [
+        "docs/reports/assets/scoped-autonomy-self-implementation-2026-05-16/evidence.json",
+        "docs/reports/assets/scoped-autonomy-self-implementation-runs.jsonl"
+      ],
+      "sampleLedgerPath": "docs/reports/assets/scoped-autonomy-self-implementation-runs.jsonl",
+      "metrics": {
+        "scenarioCount": 5,
+        "requiredScenarioCount": 5,
+        "allRequiredScenariosPresent": true,
+        "allScenariosSucceeded": true,
+        "generatedCapabilityClasses": [
+          "browser_download_verify",
+          "local_document_conversion",
+          "terminal_generated_tool",
+          "web_research_to_pdf"
+        ],
+        "requiredGeneratedClasses": [
+          "browser_download_verify",
+          "local_document_conversion",
+          "terminal_generated_tool",
+          "web_research_to_pdf"
+        ],
+        "requiredGeneratedClassesPresent": true,
+        "generatedToolsActive": true,
+        "sourceIterationPresent": true,
+        "rerunMatchedCount": 4,
+        "rerunArtifactMatchedCount": 4,
+        "nativeBlocked": true,
+        "pathRedactionPresent": true,
+        "latestSampleCount": 14,
+        "sampleLedgerCount": 14,
+        "repeatedGeneratedClasses": [
+          "browser_download_verify",
+          "local_document_conversion",
+          "terminal_generated_tool",
+          "web_research_to_pdf"
+        ],
+        "repeatedGeneratedClassesPresent": true,
+        "sampleCountByClass": {
+          "browser_download_verify": 4,
+          "local_document_conversion": 2,
+          "terminal_generated_tool": 4,
+          "web_research_to_pdf": 4
+        },
+        "repeatedClassSamplesPresent": true,
+        "p95LatencySampleCount": 14,
+        "p95LatencyMs": 821,
+        "repeatedRerunMatchedCount": 7,
+        "repeatedRerunArtifactMatchedCount": 7,
+        "samplePathRedactionPresent": true,
+        "repeatedPromotionReady": false
+      }
+    },
+    {
+      "id": "scoped_autonomy_generated_tool_live_breadth",
+      "evidenceClass": "live_generated_tool_breadth",
+      "status": "passed",
+      "promotable": true,
+      "promotionClass": "eligible_for_generated_tool_promotion_review",
+      "reasons": [
+        "generated_tool_live_breadth_schema_valid",
+        "generated_tool_live_class_breadth_present",
+        "all_generated_tool_live_scenarios_succeeded",
+        "repeated_live_generated_tool_runs_present",
+        "all_live_generated_tool_samples_succeeded",
+        "live_generated_tool_p95_samples_present",
+        "web_research_live_source_quality_accepted",
+        "web_research_browser_fallback_calibrated",
+        "local_document_conversion_live_verified",
+        "terminal_generated_tool_live_command_verified",
+        "browser_download_verify_public_download_verified",
+        "live_generated_tool_rerun_stability_present",
+        "live_generated_tool_artifact_stability_present",
+        "live_generated_tool_path_redaction_present"
+      ],
+      "latestEvidencePath": "docs/reports/assets/scoped-autonomy-generated-tool-live-breadth-2026-05-16/evidence.json",
+      "evidencePaths": [
+        "docs/reports/assets/scoped-autonomy-generated-tool-live-breadth-2026-05-16/evidence.json",
+        "docs/reports/assets/scoped-autonomy-generated-tool-live-breadth-runs.jsonl"
+      ],
+      "sampleLedgerPath": "docs/reports/assets/scoped-autonomy-generated-tool-live-breadth-runs.jsonl",
+      "metrics": {
+        "scenarioCount": 8,
+        "successCount": 8,
+        "generatedCapabilityClasses": [
+          "browser_download_verify",
+          "local_document_conversion",
+          "terminal_generated_tool",
+          "web_research_to_pdf"
+        ],
+        "requiredGeneratedClasses": [
+          "browser_download_verify",
+          "local_document_conversion",
+          "terminal_generated_tool",
+          "web_research_to_pdf"
+        ],
+        "requiredGeneratedClassesPresent": true,
+        "latestSampleCount": 16,
+        "sampleLedgerCount": 52,
+        "executeSampleCount": 8,
+        "sampleCountByClass": {
+          "browser_download_verify": 2,
+          "local_document_conversion": 2,
+          "terminal_generated_tool": 2,
+          "web_research_to_pdf": 2
+        },
+        "repeatedLiveRunsPresent": true,
+        "p95LatencySampleCount": 16,
+        "p95LatencyMs": 849,
+        "rerunMatchedCount": 8,
+        "rerunArtifactMatchedCount": 8,
+        "webSourceQualityAccepted": true,
+        "webFallbackCalibration": {
+          "schemaVersion": "generated-tool-live-web-fallback-calibration.v1",
+          "accepted": true,
+          "webRunCount": 2,
+          "repeatedStableCaptureCount": 3,
+          "requiredWebRunCount": 2,
+          "requiredRepeatedStableCaptureCount": 2,
+          "reason": "web_generated_tool_capture_hashes_stable_across_repeated_runs"
+        },
+        "localDocumentConversionVerified": true,
+        "terminalCommandVerified": true,
+        "publicDownloadVerified": true,
+        "pathRedactionPresent": true,
+        "promotable": true
+      }
+    },
+    {
+      "id": "scoped_autonomy_npm_dependency_dogfood",
+      "evidenceClass": "local_npm_dependency",
+      "status": "passed",
+      "promotable": false,
+      "promotionClass": "local_dependency_gate_passed_external_package_policy_required",
+      "reasons": [
+        "npm_dependency_dogfood_schema_valid",
+        "all_npm_dependency_scenarios_succeeded",
+        "repeated_npm_dependency_samples_present",
+        "npm_dependency_p95_samples_present",
+        "npm_dependency_package_install_provenance_present",
+        "npm_dependency_policy_review_present",
+        "npm_dependency_execution_import_present",
+        "npm_dependency_eval_evidence_present",
+        "npm_dependency_artifact_evidence_present",
+        "npm_dependency_rerun_stability_present",
+        "npm_dependency_path_redaction_present",
+        "external_package_install_policy_required_before_promotion"
+      ],
+      "latestEvidencePath": "docs/reports/assets/scoped-autonomy-npm-dependency-2026-05-16/evidence.json",
+      "evidencePaths": [
+        "docs/reports/assets/scoped-autonomy-npm-dependency-2026-05-16/evidence.json",
+        "docs/reports/assets/scoped-autonomy-npm-dependency-runs.jsonl"
+      ],
+      "sampleLedgerPath": "docs/reports/assets/scoped-autonomy-npm-dependency-runs.jsonl",
+      "metrics": {
+        "scenarioCount": 2,
+        "successCount": 2,
+        "latestSampleCount": 4,
+        "sampleLedgerCount": 8,
+        "executeSampleCount": 2,
+        "rerunSampleCount": 2,
+        "p95LatencySampleCount": 4,
+        "p95LatencyMs": 102,
+        "repeatedSamplesPresent": true,
+        "packageInstallProvenancePresent": true,
+        "dependencyPolicyReviewPresent": true,
+        "dependencyExecutionImportPresent": true,
+        "evalEvidencePresent": true,
+        "artifactEvidencePresent": true,
+        "rerunStabilityPresent": true,
+        "pathRedactionPresent": true,
+        "externalPackageInstallPromotable": false
+      }
+    },
+    {
+      "id": "browser_bridge_restricted_reload_boundary",
+      "evidenceClass": "browser_bridge_boundary",
+      "status": "passed",
+      "promotable": false,
+      "promotionClass": "blocked_by_design_recovery_guard",
+      "reasons": [
+        "restricted_reload_fixture_case_present",
+        "restricted_reload_blocked_by_design",
+        "browser_bridge_status_smoke_present",
+        "reload_required_status_smoke_present",
+        "permission_needed_status_smoke_present",
+        "restricted_status_smoke_present",
+        "extension_popup_reload_ux_present",
+        "renderer_recovery_guidance_present",
+        "restricted_page_bypass_blocked",
+        "browser_bridge_smoke_in_smoke_all",
+        "restricted_reload_not_promotable_as_unattended_browser_chrome_mutation"
+      ],
+      "latestEvidencePath": "docs/reports/assets/computer-use-process-validation-30-2026-05-16/evidence.json",
+      "evidencePaths": [
+        "docs/reports/assets/computer-use-process-validation-30-2026-05-16/evidence.json",
+        "scripts/smoke-browser-extension-bridge.mjs",
+        "scripts/smoke-browser-extension.mjs",
+        "providers/browser-dom-extension/popup.html",
+        "providers/browser-dom-extension/popup.js",
+        "providers/browser-dom-extension/bridge/action-channel.js",
+        "src/renderer/components/BrowserActionMenu.tsx",
+        "src/renderer/components/BrowserActionPanel.tsx"
+      ],
+      "metrics": {
+        "restrictedReloadCasePresent": true,
+        "restrictedReloadBlocked": true,
+        "bridgeSmokeScriptPresent": true,
+        "bridgeStatusSmokeCoversReloadRequired": true,
+        "bridgeStatusSmokeCoversPermissionNeeded": true,
+        "bridgeStatusSmokeCoversRestricted": true,
+        "extensionPopupReloadUxPresent": true,
+        "rendererRecoveryGuidancePresent": true,
+        "restrictedBypassBlocked": true,
+        "smokeAllIncludesBridge": true,
+        "unattendedReloadPromotable": false
+      }
+    },
+    {
+      "id": "browser_chrome_deep_action_evidence_ux",
+      "evidenceClass": "renderer_smoke",
+      "status": "passed",
+      "promotable": false,
+      "promotionClass": "renderer_evidence_ux_gate_passed_live_gate_required",
+      "reasons": [
+        "browser_chrome_renderer_evidence_smoke_present",
+        "browser_chrome_renderer_evidence_smoke_in_smoke_all",
+        "renderer_browser_chrome_evidence_section_present",
+        "renderer_browser_chrome_deep_command_summaries_present",
+        "renderer_browser_chrome_redaction_summary_present",
+        "smoke_covers_download_artifact_evidence",
+        "smoke_covers_history_debugger_permission_upload_evidence",
+        "smoke_covers_path_redaction_proof"
+      ],
+      "latestEvidencePath": "scripts/smoke-renderer-computer-use-browser-chrome-evidence.mjs",
+      "evidencePaths": [
+        "src/renderer/components/ComputerUseSessionsPanel.tsx",
+        "scripts/smoke-renderer-computer-use-browser-chrome-evidence.mjs",
+        "scripts/smoke-all.mjs"
+      ],
+      "metrics": {
+        "smokeScriptPresent": true,
+        "smokeAllIncludesEvidenceSmoke": true,
+        "rendererEvidenceSectionPresent": true,
+        "rendererCoversDeepCommands": true,
+        "rendererRedactionSummaryPresent": true,
+        "smokeCoversDownloadEvidence": true,
+        "smokeCoversHistoryDebuggerPermissionUpload": true,
+        "smokeCoversRedactionProof": true,
+        "arbitraryDebuggerCdpAllowed": false,
+        "localPathEvidencePolicy": "basename_or_path_redacted"
+      }
+    },
+    {
+      "id": "browser_chrome_repeated_dogfood",
+      "evidenceClass": "fixture_bridge_repeated_dogfood",
+      "status": "passed",
+      "promotable": false,
+      "promotionClass": "fixture_bridge_gate_passed_live_extension_gate_required",
+      "reasons": [
+        "browser_chrome_dogfood_schema_valid",
+        "fixture_bridge_evidence_class_present",
+        "repeated_browser_chrome_samples_present",
+        "all_browser_chrome_samples_succeeded",
+        "download_verify_resource_evidence_present",
+        "debugger_print_to_pdf_evidence_present",
+        "download_and_debugger_redaction_proof_present",
+        "browser_chrome_cleanup_reconciled",
+        "browser_chrome_verifier_and_eval_nodes_present",
+        "redacted_browser_chrome_dogfood_only",
+        "browser_chrome_p95_samples_present",
+        "fixture_bridge_dogfood_needs_real_extension_live_gate_before_promotion"
+      ],
+      "latestEvidencePath": "docs/reports/assets/computer-use-browser-chrome-dogfood-2026-05-16/evidence.json",
+      "evidencePaths": [
+        "docs/reports/assets/computer-use-browser-chrome-dogfood-2026-05-16/evidence.json"
+      ],
+      "sampleLedgerPath": "docs/reports/assets/computer-use-browser-chrome-dogfood-runs.jsonl",
+      "metrics": {
+        "schemaValid": true,
+        "fixtureBridge": true,
+        "sampleCount": 4,
+        "latestSampleCount": 4,
+        "successCount": 4,
+        "latestSuccessfulSampleCount": 4,
+        "successRate": 1,
+        "p95LatencyMs": 272,
+        "commandCount": 2,
+        "commands": [
+          "download.verify",
+          "debugger.print_to_pdf"
+        ],
+        "downloadVerifyCovered": true,
+        "debuggerPrintPdfCovered": true,
+        "redactionProofPresent": true,
+        "cleanupReconciled": true,
+        "verifierAndEvalEvidencePresent": true,
+        "arbitraryDebuggerCdpAllowed": false,
+        "promotable": false
+      }
+    },
+    {
+      "id": "browser_chrome_live_extension_dogfood",
+      "evidenceClass": "real_extension_local_fixture",
+      "status": "passed",
+      "promotable": false,
+      "promotionClass": "real_extension_local_fixture_gate_passed_public_live_gate_required",
+      "reasons": [
+        "browser_chrome_live_extension_schema_valid",
+        "real_extension_local_fixture_evidence_present",
+        "browser_chrome_live_extension_samples_present",
+        "all_browser_chrome_live_extension_samples_succeeded",
+        "real_extension_download_start_verify_evidence_present",
+        "real_extension_debugger_print_to_pdf_evidence_present",
+        "real_extension_redaction_proof_present",
+        "real_extension_cleanup_reconciled",
+        "real_extension_verifier_and_eval_nodes_present",
+        "redacted_browser_chrome_live_extension_only",
+        "browser_chrome_live_extension_p95_samples_present",
+        "real_extension_local_fixture_needs_public_site_repeated_gate_before_promotion"
+      ],
+      "latestEvidencePath": "docs/reports/assets/computer-use-browser-chrome-live-extension-2026-05-16/evidence.json",
+      "evidencePaths": [
+        "docs/reports/assets/computer-use-browser-chrome-live-extension-2026-05-16/evidence.json"
+      ],
+      "sampleLedgerPath": "docs/reports/assets/computer-use-browser-chrome-live-extension-runs.jsonl",
+      "metrics": {
+        "schemaValid": true,
+        "realExtensionLocalFixture": true,
+        "sampleCount": 2,
+        "latestSampleCount": 2,
+        "successCount": 2,
+        "latestSuccessfulSampleCount": 2,
+        "successRate": 1,
+        "p95LatencyMs": 2473,
+        "commands": [
+          "download.start+download.verify",
+          "debugger.print_to_pdf"
+        ],
+        "permissionTypesCovered": [],
+        "downloadStartVerifyCovered": true,
+        "debuggerPrintPdfCovered": true,
+        "redactionProofPresent": true,
+        "cleanupReconciled": true,
+        "verifierAndEvalEvidencePresent": true,
+        "arbitraryDebuggerCdpAllowed": false,
+        "localFixture": true,
+        "promotable": false
+      }
+    },
+    {
+      "id": "browser_chrome_public_extension_dogfood",
+      "evidenceClass": "real_extension_public_site_repeated",
+      "status": "passed",
+      "promotable": true,
+      "promotionClass": "public_site_repeated_real_extension_gate_passed",
+      "reasons": [
+        "browser_chrome_public_extension_schema_valid",
+        "real_extension_public_site_evidence_present",
+        "browser_chrome_public_extension_repeated_samples_present",
+        "browser_chrome_public_hosts_present",
+        "all_browser_chrome_public_extension_samples_succeeded",
+        "public_extension_download_start_verify_evidence_present",
+        "public_extension_debugger_print_to_pdf_evidence_present",
+        "public_extension_tab_group_claim_release_evidence_present",
+        "public_extension_history_search_redacted_evidence_present",
+        "public_extension_permission_setting_rollback_evidence_present",
+        "public_extension_multi_tab_group_evidence_present",
+        "public_extension_file_upload_evidence_present",
+        "public_extension_profile_approval_evidence_present",
+        "public_extension_redaction_proof_present",
+        "public_extension_cleanup_reconciled",
+        "public_extension_verifier_and_eval_nodes_present",
+        "redacted_browser_chrome_public_extension_only",
+        "browser_chrome_public_extension_p95_samples_present"
+      ],
+      "latestEvidencePath": "docs/reports/assets/computer-use-browser-chrome-public-extension-2026-05-16/evidence.json",
+      "evidencePaths": [
+        "docs/reports/assets/computer-use-browser-chrome-public-extension-2026-05-16/evidence.json"
+      ],
+      "sampleLedgerPath": "docs/reports/assets/computer-use-browser-chrome-public-extension-runs.jsonl",
+      "metrics": {
+        "schemaValid": true,
+        "realExtensionPublicSite": true,
+        "repeatedSamples": true,
+        "requiredHostsPresent": true,
+        "sampleCount": 18,
+        "latestSampleCount": 18,
+        "successCount": 18,
+        "latestSuccessfulSampleCount": 18,
+        "successRate": 1,
+        "p95LatencyMs": 17448,
+        "publicHosts": [
+          "example.com",
+          "the-internet.herokuapp.com",
+          "www.w3.org"
+        ],
+        "commands": [
+          "download.start+download.verify",
+          "debugger.print_to_pdf",
+          "tab_group.claim+update+release",
+          "history.search",
+          "permission.get+set+rollback",
+          "tab_group.multi_tab_claim+update+release",
+          "file_upload.inspect+set_files+clear"
+        ],
+        "permissionTypesCovered": [
+          "camera",
+          "location",
+          "microphone"
+        ],
+        "downloadStartVerifyCovered": true,
+        "debuggerPrintPdfCovered": true,
+        "tabGroupCovered": true,
+        "historySearchCovered": true,
+        "permissionSettingCovered": true,
+        "multiTabGroupCovered": true,
+        "fileUploadCovered": true,
+        "profileApprovalCovered": true,
+        "redactionProofPresent": true,
+        "cleanupReconciled": true,
+        "verifierAndEvalEvidencePresent": true,
+        "arbitraryDebuggerCdpAllowed": false,
+        "localFixture": false,
+        "promotable": true
+      }
+    },
+    {
+      "id": "renderer_permission_profile_ux",
+      "evidenceClass": "renderer_smoke",
+      "status": "passed",
+      "promotable": false,
+      "promotionClass": "renderer_safety_ux_gate_passed_live_gate_required",
+      "reasons": [
+        "renderer_profile_smoke_present",
+        "renderer_profile_smoke_in_smoke_all",
+        "profile_manager_ui_present",
+        "profile_manager_lists_all_profiles_but_session_uses_active",
+        "profile_lifecycle_controls_present",
+        "renderer_profile_validation_blocks_credential_persistent_high_risk",
+        "smoke_blocks_unsafe_persistent_credential_draft",
+        "smoke_creates_safe_one_time_profile",
+        "smoke_covers_profile_lifecycle_post"
+      ],
+      "latestEvidencePath": "scripts/smoke-renderer-computer-use-profile-draft.mjs",
+      "evidencePaths": [
+        "src/renderer/components/ComputerUseSessionsPanel.tsx",
+        "scripts/smoke-renderer-computer-use-profile-draft.mjs",
+        "scripts/smoke-all.mjs"
+      ],
+      "metrics": {
+        "smokeScriptPresent": true,
+        "smokeAllIncludesProfileSmoke": true,
+        "managerUiPresent": true,
+        "allProfileListPresent": true,
+        "lifecycleControlsPresent": true,
+        "rendererValidationPresent": true,
+        "smokeCoversBlockedUnsafeDraft": true,
+        "smokeCoversSafeCreate": true,
+        "smokeCoversLifecyclePost": true,
+        "credentialsAutoGrantAllowed": false,
+        "persistentHighRiskAutoGrantAllowed": false
+      }
+    },
+    {
+      "id": "windows_native_watch_boundary",
+      "evidenceClass": "safety_boundary",
+      "status": "passed",
+      "promotable": false,
+      "promotionClass": "blocked_by_design_release_guard",
+      "reasons": [
+        "read_only_desktop_observe_allowed",
+        "high_risk_windows_mutation_rejected",
+        "bounded_native_workflow_fixture_cases_present",
+        "unsupported_native_mutations_blocked_by_design",
+        "native_helper_release_signing_gate_present",
+        "native_watch_boundary_smoke_present",
+        "native_watch_boundary_in_smoke_all",
+        "foreground_input_blocked_before_native_helper",
+        "foreground_watch_preflight_contract_present",
+        "foreground_watch_user_input_abort_guard_present",
+        "foreground_watch_user_input_abort_smoke_present",
+        "foreground_watch_active_window_drift_abort_guard_present",
+        "foreground_watch_active_window_drift_abort_smoke_present",
+        "native_file_picker_blocked_before_path_disclosure",
+        "native_file_picker_boundary_smoke_present",
+        "browser_permission_bubble_blocked_before_native_click",
+        "browser_permission_bubble_boundary_smoke_present",
+        "foreground_watch_executor_disabled_contract_present",
+        "helper_v2_disabled_command_contracts_present",
+        "native_helper_release_readiness_paths_redacted",
+        "foreground_desktop_mutation_not_promotable_until_signed_watch_mode_helper_v2"
+      ],
+      "latestEvidencePath": "docs/reports/assets/computer-use-process-validation-30-2026-05-16/evidence.json",
+      "evidencePaths": [
+        "docs/reports/assets/computer-use-process-validation-30-2026-05-16/evidence.json",
+        "docs/release/deferred-gates.json",
+        "dist/reports/release-readiness-latest.json",
+        "scripts/smoke-computer-use-native-watch-boundary.mjs"
+      ],
+      "metrics": {
+        "readOnlyObservePresent": true,
+        "highRiskRejected": true,
+        "blockedWorkflowCount": 6,
+        "expectedBlockedWorkflowCount": 6,
+        "missingBlockedWorkflowIds": [],
+        "releaseSigningDeferred": true,
+        "smokeScriptPresent": true,
+        "smokeAllIncludesBoundary": true,
+        "implementationBoundaryPresent": true,
+        "foregroundPreflightContractPresent": true,
+        "userInputAbortGuardPresent": true,
+        "userInputAbortSmokePresent": true,
+        "activeWindowDriftGuardPresent": true,
+        "activeWindowDriftSmokePresent": true,
+        "nativeFilePickerBoundaryPresent": true,
+        "nativeFilePickerSmokePresent": true,
+        "browserPermissionBubbleBoundaryPresent": true,
+        "browserPermissionBubbleSmokePresent": true,
+        "foregroundWatchExecutorDisabledPresent": true,
+        "disabledHelperV2CommandContractsPresent": true,
+        "disabledHelperV2CommandCount": 5,
+        "foregroundWatchExecutorEnabled": false,
+        "foregroundWatchExecutorActualInputSent": false,
+        "releaseReadinessPathsRedacted": true,
+        "actualInputSent": false,
+        "nativePopupClick": false,
+        "localFilePathDisclosed": false,
+        "mutationPromotable": false
+      }
+    },
+    {
+      "id": "windows_settings_reversible_dogfood_boundary",
+      "evidenceClass": "windows_settings_boundary",
+      "status": "passed",
+      "promotable": false,
+      "promotionClass": "blocked_by_design_reversible_fixture_guard",
+      "reasons": [
+        "windows_settings_smoke_present",
+        "windows_settings_smoke_in_smoke_all",
+        "read_only_registry_observe_case_present",
+        "bounded_reversible_registry_case_present",
+        "reversible_registry_profile_gate_present",
+        "runtime_bounded_registry_guard_present",
+        "reversible_registry_observation_evidence_present",
+        "broad_windows_settings_mutation_blocked",
+        "broad_windows_settings_mutation_not_promotable_until_signed_helper_and_product_rollback_policy"
+      ],
+      "latestEvidencePath": "scripts/smoke-computer-use-windows-settings.mjs",
+      "evidencePaths": [
+        "scripts/smoke-computer-use-windows-settings.mjs",
+        "src/daemon/computer-use/sessionRuntime.ts",
+        "scripts/smoke-all.mjs"
+      ],
+      "metrics": {
+        "readOnlyCasePresent": true,
+        "reversibleCasePresent": true,
+        "reversibleGrantGatePresent": true,
+        "runtimeBoundaryPresent": true,
+        "observationEvidencePresent": true,
+        "blockedBroadMutationPresent": true,
+        "smokeAllIncludesWindowsSettings": true,
+        "broadWindowsSettingsMutationPromotable": false
+      }
+    },
+    {
+      "id": "future_vm_sandbox_boundary",
+      "evidenceClass": "safety_boundary",
+      "status": "passed",
+      "promotable": false,
+      "promotionClass": "blocked_by_design_release_guard",
+      "reasons": [
+        "future_vm_surface_registered_with_vm_grants",
+        "future_vm_session_blocked_before_backend_creation",
+        "future_vm_boundary_smoke_present",
+        "future_vm_boundary_in_smoke_all",
+        "future_vm_smoke_asserts_no_vm_or_host_mutation",
+        "future_vm_not_promotable_until_backend_isolation_lifecycle_exists"
+      ],
+      "latestEvidencePath": "scripts/smoke-computer-use-vm-sandbox-boundary.mjs",
+      "evidencePaths": [
+        "src/daemon/computer-use/surfaceManager.ts",
+        "src/daemon/computer-use/sessionRuntime.ts",
+        "scripts/smoke-computer-use-vm-sandbox-boundary.mjs",
+        "scripts/smoke-all.mjs"
+      ],
+      "metrics": {
+        "surfaceRegistered": true,
+        "runtimeBoundaryPresent": true,
+        "smokeScriptPresent": true,
+        "smokeAllIncludesBoundary": true,
+        "smokeCoversNoVmCreation": true,
+        "vmCreated": false,
+        "hostMutationAllowed": false,
+        "vmPromotable": false
+      }
+    }
+  ],
+  "summary": {
+    "overallStatus": "promotable",
+    "promotableSlices": [
+      "scoped_autonomy_live_web_research",
+      "computer_session_live_web_research",
+      "computer_session_browser_prompt_live",
+      "browser_action_semantic_live_corpus",
+      "browser_action_recovery_live_corpus",
+      "scoped_autonomy_generated_tool_live_breadth",
+      "browser_chrome_public_extension_dogfood"
+    ],
+    "blockedSlices": [],
+    "passedNonPromotableSlices": [
+      "fixture_30_case_process_validation",
+      "computer_session_browser_prompt_dogfood",
+      "scoped_autonomy_self_implementation_breadth",
+      "scoped_autonomy_npm_dependency_dogfood",
+      "browser_bridge_restricted_reload_boundary",
+      "browser_chrome_deep_action_evidence_ux",
+      "browser_chrome_repeated_dogfood",
+      "browser_chrome_live_extension_dogfood",
+      "renderer_permission_profile_ux",
+      "windows_native_watch_boundary",
+      "windows_settings_reversible_dogfood_boundary",
+      "future_vm_sandbox_boundary"
+    ],
+    "noSingleRunPromotion": true
+  }
+}

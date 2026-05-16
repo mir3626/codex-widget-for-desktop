@@ -13,6 +13,7 @@ import type { HttpRouteContext } from "./context.js";
 import { handleBrowserBridgeRoute } from "./routes/browserBridgeRoutes.js";
 import { handleCapabilityRoute } from "./routes/capabilityRoutes.js";
 import { handleComputerUseEvalRoute } from "./routes/computerUseEvalRoutes.js";
+import { handleComputerUseSessionRoute } from "./routes/computerUseSessionRoutes.js";
 import { handleOAuthRoute } from "./routes/oauthRoutes.js";
 import { handleProviderSnapshotRoute } from "./routes/providerSnapshotRoutes.js";
 import { handleSemanticMemoryRoute } from "./routes/semanticMemoryRoutes.js";
@@ -26,6 +27,7 @@ type HttpRouteHandler = (
 ) => Promise<boolean>;
 
 const routeHandlers: HttpRouteHandler[] = [
+  handleComputerUseSessionRoute,
   handleComputerUseEvalRoute,
   handleCapabilityRoute,
   handleBrowserBridgeRoute,
@@ -48,6 +50,7 @@ export async function handleHttpRequest(
   clients: Set<WebSocket>,
   storage: StorageService,
   capabilityRuntime: import("../../capability-runtime/index.js").CapabilityRuntime,
+  computerSessionRuntime: import("../../computer-use/index.js").ComputerSessionRuntime,
   semanticMemory: SemanticMemoryStore,
   browserActionCommandWaiters: Map<string, BrowserActionCommandWaiter>
 ): Promise<void> {
@@ -79,6 +82,7 @@ export async function handleHttpRequest(
     clients,
     storage,
     capabilityRuntime,
+    computerSessionRuntime,
     semanticMemory,
     browserActionCommandWaiters
   };

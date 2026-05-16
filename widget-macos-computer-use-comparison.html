@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Codex Widget vs macOS Computer Use Capability Comparison</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #18212f;
+      --muted: #637083;
+      --line: #d8e0ea;
+      --panel: #f7f9fc;
+      --good: #0c7a43;
+      --partial: #a15c02;
+      --blocked: #9a1b1b;
+      --planned: #285c9f;
+      --bg: #ffffff;
+      --accent: #0b7d74;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", "Noto Sans KR", Arial, sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1440px, calc(100% - 48px));
+      margin: 0 auto;
+      padding: 32px 0 48px;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 20px;
+      margin-bottom: 22px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(28px, 4vw, 48px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 32px 0 12px;
+      font-size: 22px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 10px;
+      color: var(--muted);
+      max-width: 1040px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 3px 10px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px;
+      margin: 18px 0 24px;
+    }
+
+    .legend-item {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      border: 1px solid currentColor;
+    }
+
+    .done { color: var(--good); }
+    .partial { color: var(--partial); }
+    .blocked { color: var(--blocked); }
+    .planned { color: var(--planned); }
+    .na { color: #586174; }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1180px;
+      background: #fff;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      padding: 12px 12px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th:last-child, td:last-child {
+      border-right: 0;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #edf4f8;
+      color: #203044;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    td {
+      font-size: 14px;
+    }
+
+    td.feature {
+      width: 190px;
+      font-weight: 700;
+      color: #18212f;
+    }
+
+    td.status-cell {
+      width: 124px;
+    }
+
+    code {
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-size: .92em;
+      background: #eef3f7;
+      border: 1px solid #d9e2ea;
+      border-radius: 5px;
+      padding: 1px 5px;
+      white-space: nowrap;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    li + li {
+      margin-top: 4px;
+    }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      background: #eef8f6;
+      padding: 12px 14px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+      color: #24413d;
+    }
+
+    footer {
+      margin-top: 28px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    a {
+      color: #075e89;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Codex Widget vs macOS Computer Use</h1>
+      <p>
+        현재 저장소 구현 상태를 기준으로, macOS에서 기대되는 일반적인 Computer Use 기능과 비교한 표입니다.
+        여기서 macOS Computer Use는 화면 캡처, 좌표 기반 클릭/타이핑/스크롤/키 입력, 대기, 반복 스크린샷 피드백
+        루프를 갖춘 로컬 macOS 또는 VM 기반 computer-use 환경을 의미합니다.
+      </p>
+      <div class="meta">
+        <span class="pill">Generated: 2026-05-15</span>
+        <span class="pill">Repo: codex-widget-for-desktop</span>
+        <span class="pill">Baseline: OpenAI Computer Use loop + local macOS desktop expectations</span>
+      </div>
+    </header>
+
+    <section class="legend" aria-label="상태 범례">
+      <div class="legend-item"><span class="status done">구현됨</span> 현재 위젯에서 바로 쓰거나 smoke가 있는 기능</div>
+      <div class="legend-item"><span class="status partial">조합 가능</span> 단일 파이프라인은 아니지만 모듈 조합으로 구현 가능한 기능</div>
+      <div class="legend-item"><span class="status planned">부분 구현</span> 기반은 있으나 실제 macOS 수준 연속 workflow에는 추가 연결 필요</div>
+      <div class="legend-item"><span class="status blocked">제한/미구현</span> 안전, OS 권한, signing, helper 부재 등으로 아직 제한</div>
+    </section>
+
+    <p class="note">
+      핵심 차이: macOS Computer Use는 보통 "모델이 화면을 보고 다음 좌표/키보드 액션을 계속 제안하고,
+      런타임이 실행 후 스크린샷을 다시 보내는" 하나의 폐루프가 중심입니다. 현재 위젯은 이 폐루프를 단일 OS
+      파이프라인으로 완성했다기보다는, Browser Action, Vision/OCR, Terminal, capability runtime, Toolsmith,
+      eval ledger 등 여러 모듈을 갖추고 있고 이를 조합하면 상당수 workflow를 구현할 수 있는 구조입니다.
+    </p>
+
+    <h2>Capability Matrix</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>기능 영역</th>
+            <th>macOS Computer Use 기준 기대 기능</th>
+            <th>현재 위젯 상태</th>
+            <th>위젯 구현/조합 방식</th>
+            <th>차이와 후속 작업</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="feature">전체 실행 루프</td>
+            <td>스크린샷 입력 → 모델 액션 제안 → OS가 클릭/타이핑/스크롤/키 입력 실행 → 새 스크린샷 반환을 반복하는 폐루프.</td>
+            <td class="status-cell"><span class="status partial">조합 가능</span></td>
+            <td>
+              <ul>
+                <li><code>screen_observe</code>, <code>ocr</code>, <code>desktop_action</code>, <code>browser_action</code>, capability DAG를 조합.</li>
+                <li>eval ledger가 run/step/evidence/latency를 기록.</li>
+                <li>Browser Action에는 prompt-driven plan/execution/verification 루프가 있음.</li>
+              </ul>
+            </td>
+            <td>OS 전체를 대상으로 하는 단일 "CUA loop"는 아직 아님. DAG scheduler가 관찰/계획/승인/액션/검증을 묶지만 macOS용 input executor와 screenshot feedback loop가 추가로 필요.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">브라우저 DOM 탐색</td>
+            <td>화면 기반 탐색이 기본이며, 환경 구현에 따라 DOM/Playwright 접근도 가능.</td>
+            <td class="status-cell"><span class="status done">구현됨</span></td>
+            <td>
+              <ul>
+                <li>Chrome/Edge MV3 Browser Bridge extension이 active tab DOM snapshot 수집.</li>
+                <li>Browser Action target selection, semantic live corpus, perception graph로 연결.</li>
+                <li>관련 경로: <code>providers/browser-dom-extension</code>, <code>src/daemon/browser-action</code>.</li>
+              </ul>
+            </td>
+            <td>macOS에서도 Chrome/Edge extension은 재사용 가능. Safari 지원은 별도 extension/native integration 필요.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">브라우저 페이지 조작</td>
+            <td>click, type, scroll, keypress, wait, screenshot 등 화면 액션 중심으로 페이지를 조작.</td>
+            <td class="status-cell"><span class="status done">구현됨</span></td>
+            <td>
+              <ul>
+                <li>Extension action channel: read/evaluate/navigate/back/forward/reload/scroll/click/type/select/check.</li>
+                <li>CDP adapter와 Playwright adapter도 보유.</li>
+                <li>위험 액션은 approval/verification 경로를 통과.</li>
+              </ul>
+            </td>
+            <td>화면 좌표 기반 universal action보다 DOM/selector 기반 성공률이 높은 대신 restricted page나 browser chrome UI에는 제한이 있음.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">브라우저 Chrome 제어</td>
+            <td>주소창, 탭, 다운로드, 브라우저 UI, 파일 업로드 등도 화면 조작으로 접근 가능.</td>
+            <td class="status-cell"><span class="status done">구현됨</span></td>
+            <td>
+              <ul>
+                <li><code>browser_chrome</code> capability가 bookmarks, tab groups, downloads, history, debugger, file upload commands 지원.</li>
+                <li>tab group claim/release, download start/observe/verify/cancel, one-time history, bounded debugger, <code>DOM.setFileInputFiles</code> 기반 upload.</li>
+                <li>관련 경로: <code>src/daemon/browser-chrome</code>, <code>providers/browser-dom-extension/bridge/browser-chrome.js</code>.</li>
+              </ul>
+            </td>
+            <td>Chrome/Edge extension API 기반이라 브라우저별 권한과 store review가 필요. History/debugger/file upload는 항상 승인 필요.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">Restricted page 처리</td>
+            <td>화면 좌표 방식이면 chrome:// 같은 페이지도 시각적으로는 볼 수 있으나 정책상 제한 가능.</td>
+            <td class="status-cell"><span class="status planned">부분 구현</span></td>
+            <td>
+              <ul>
+                <li>Extension은 restricted page를 명시적으로 unsupported/permission-needed로 보고.</li>
+                <li>Browser Action recovery UX와 blocker evidence가 있음.</li>
+                <li>Windows native helper fallback은 browser window observe/read/reload 일부 가능.</li>
+              </ul>
+            </td>
+            <td>macOS 수준의 browser chrome fallback에는 Accessibility/Screen Recording 기반 native helper가 필요.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">화면 캡처</td>
+            <td>현재 화면 또는 VM 화면을 캡처해서 모델에 제공.</td>
+            <td class="status-cell"><span class="status done">구현됨</span></td>
+            <td>
+              <ul>
+                <li>Vision snapshot, Agent screen share, Windows screen capture helper.</li>
+                <li>hash/diff/meaningful-change metadata와 blob storage 사용.</li>
+                <li>관련 경로: <code>providers/screen-capture-helper</code>, <code>src/daemon/providers/screenCaptureProvider.ts</code>.</li>
+              </ul>
+            </td>
+            <td>현재 구현은 Windows-first. macOS는 <code>screencapture</code>, ScreenCaptureKit, TCC Screen Recording 권한 처리가 필요.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">OCR / 시각 인식</td>
+            <td>스크린샷에서 텍스트와 UI 요소를 읽고 다음 행동을 결정.</td>
+            <td class="status-cell"><span class="status done">구현됨</span></td>
+            <td>
+              <ul>
+                <li>OCR capability, bundled Tesseract discovery, ROI/delta cascade planning.</li>
+                <li>PerceptionGraph가 DOM/UIA/OCR/screenshot evidence를 통합하는 substrate.</li>
+                <li>관련 경로: <code>src/daemon/perception-graph</code>, <code>src/daemon/perception-cascade</code>.</li>
+              </ul>
+            </td>
+            <td>macOS용 OCR runtime 자체는 이식 가능하지만, native accessibility evidence는 AX API adapter가 필요.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">마우스/키보드 OS 입력</td>
+            <td>좌표 클릭, 더블클릭, 드래그, 키 입력, 단축키, 스크롤 등 OS 입력 실행.</td>
+            <td class="status-cell"><span class="status planned">부분 구현</span></td>
+            <td>
+              <ul>
+                <li>Browser Action에서는 extension/CDP/Playwright/native helper를 통해 click/type/scroll 가능.</li>
+                <li>Windows native desktop helper가 bounded browser-window actions 지원.</li>
+                <li>Terminal PTY에는 direct input/key/mouse forwarding 구현.</li>
+              </ul>
+            </td>
+            <td>macOS 전체 OS 입력에는 Accessibility permission, CGEvent, AX action helper, hardened runtime/notarization 설계가 필요.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">네이티브 앱 조작</td>
+            <td>Finder, System Settings, 앱 메뉴, 파일 대화상자 등 일반 앱 UI를 조작.</td>
+            <td class="status-cell"><span class="status blocked">제한/미구현</span></td>
+            <td>
+              <ul>
+                <li>현재 native helper는 Windows UI Automation 기반 bounded browser/window fallback 중심.</li>
+                <li>Windows Settings dogfood matrix는 read/reversible/blocked workflow evidence를 기록.</li>
+              </ul>
+            </td>
+            <td>macOS native app control은 새 helper가 필요. AX tree observe, menu bar control, Finder/file picker scope, TCC permission UX, signing/notarization이 핵심 blocker.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">파일 시스템 작업</td>
+            <td>사용자 허용 범위 안에서 파일 생성, 열기, 변환, 저장, 업로드/다운로드 검증.</td>
+            <td class="status-cell"><span class="status done">구현됨</span></td>
+            <td>
+              <ul>
+                <li>Artifact/blob storage, terminal capability, scoped autonomy permission profiles.</li>
+                <li>Toolsmith web_research_to_pdf, local document conversion fallback, browser download verifier.</li>
+                <li>Browser file upload은 explicit <code>approvedFilePaths</code>만 허용하고 evidence redaction.</li>
+              </ul>
+            </td>
+            <td>macOS Finder/file picker UI 조작은 별도. CLI/daemon 파일 생성과 브라우저 upload path는 구현됨.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">터미널 작업</td>
+            <td>필요 시 shell command 실행, 결과 관찰, 파일 생성/변환/검증.</td>
+            <td class="status-cell"><span class="status done">구현됨</span></td>
+            <td>
+              <ul>
+                <li>One-shot terminal capability와 persistent node-pty/ConPTY PTY session.</li>
+                <li>Renderer terminal viewport, raw input, key, mouse forwarding.</li>
+                <li>Credential-like terminal command rejection과 destructive guard 있음.</li>
+              </ul>
+            </td>
+            <td>macOS shell 자체는 이식 가능성이 높지만 PTY packaging/runtime과 destructive command policy를 macOS release 경로에 맞춰 검증해야 함.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">음성/ASR 입력</td>
+            <td>컴퓨터 사용 요청을 음성으로 받아 명령/슬롯으로 변환 가능.</td>
+            <td class="status-cell"><span class="status done">구현됨</span></td>
+            <td>
+              <ul>
+                <li>ASR sidecar abstraction, faster-whisper/whisper.cpp/Vosk candidates, persistent worker.</li>
+                <li>Deterministic command-slot decoder, lexicon/alias, clarification gate.</li>
+                <li>GPU validation과 human mic corpus는 deferred.</li>
+              </ul>
+            </td>
+            <td>macOS microphone permission/TCC와 local model runtime packaging 검증 필요. 현재 CPU-first evidence 중심.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">자기 구현 / Toolsmith</td>
+            <td>기본 computer-use 액션으로 부족한 작업을 local tool/script로 보완할 수 있음.</td>
+            <td class="status-cell"><span class="status done">구현됨</span></td>
+            <td>
+              <ul>
+                <li>Scoped autonomy profiles, gap detector, capability inventory, generated tool manifest.</li>
+                <li>Materialize → smoke → retry/revise → activate → execute → rollback/debug bundle.</li>
+                <li>대표 slice: live web research to Markdown/PDF, safe terminal generated tool, download verifier.</li>
+              </ul>
+            </td>
+            <td>무제한 YOLO가 아니라 scoped YOLO. macOS에서도 동일 원칙으로 command/path/domain/risk grant가 필요.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">승인/안전 정책</td>
+            <td>민감 사이트, 인증, 결제, destructive action, prompt injection 위험에 human-in-the-loop 적용.</td>
+            <td class="status-cell"><span class="status done">구현됨</span></td>
+            <td>
+              <ul>
+                <li>Capability runtime approval, Browser Action approval cards, scoped autonomy permission profiles.</li>
+                <li>History/debugger/file upload one-time approval, credential redaction, restricted-page blockers.</li>
+                <li>Terminal credential-like command persistence 거부.</li>
+              </ul>
+            </td>
+            <td>macOS native helper 추가 시 Screen Recording/Accessibility 권한 자체도 사용자 승인 UX에 포함해야 함.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">평가/증거 기록</td>
+            <td>반복 실행 성공률, latency, action trace, screenshot evidence, verifier 결과를 기록.</td>
+            <td class="status-cell"><span class="status done">구현됨</span></td>
+            <td>
+              <ul>
+                <li>Unified computer-use eval ledger schema v4.</li>
+                <li>Browser/Windows/ASR/Vision/Terminal/cross-app run/step/resource 기록.</li>
+                <li>Debug bundle, rollup, dogfood reports, real widget session audit script.</li>
+              </ul>
+            </td>
+            <td>macOS executor가 들어오면 같은 eval ledger에 macOS modality와 native helper evidence를 연결하면 됨.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">성능 최적화</td>
+            <td>화면 변화가 없으면 비싼 OCR/VLM 재실행을 줄이고, p95 latency를 관리.</td>
+            <td class="status-cell"><span class="status done">구현됨</span></td>
+            <td>
+              <ul>
+                <li>Screenshot tile hashing, dirty-region planning, ROI OCR capability path.</li>
+                <li>Cascade stages: cache/DOM/UIA/tile diff/ROI OCR/detector/parser/VLM fallback planning.</li>
+                <li>Stage latency와 p50/p95 metric rollup 기반.</li>
+              </ul>
+            </td>
+            <td>VLM fallback provider는 완전한 live provider로 더 연결해야 함. macOS 화면 캡처 source가 들어와도 cascade 구조는 재사용 가능.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">실패 메모리</td>
+            <td>반복 실패 패턴을 학습해 다음 후보 선택, 복구, abstention에 반영.</td>
+            <td class="status-cell"><span class="status done">구현됨</span></td>
+            <td>
+              <ul>
+                <li>Structured failure memory, taxonomy, calibration updater.</li>
+                <li>Memory는 현재 UI proof가 아니라 ranking/calibration hint로만 사용.</li>
+              </ul>
+            </td>
+            <td>macOS UI 패턴 전용 실패 taxonomy와 AX/visual evidence provenance를 추가하면 확장 가능.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">다운로드/문서화 workflow</td>
+            <td>웹 조사, 다운로드, 문서 생성, PDF 저장 같은 end-to-end task 수행.</td>
+            <td class="status-cell"><span class="status done">구현됨</span></td>
+            <td>
+              <ul>
+                <li>Scoped autonomy live web research/PDF vertical slice.</li>
+                <li>Browser download verify, Markdown/PDF artifact generation, source/evidence/debug bundle.</li>
+                <li>Terminal/pandoc 등 허용 command가 있으면 document conversion helper로 확장 가능.</li>
+              </ul>
+            </td>
+            <td>UI를 클릭해 수행하는 macOS CUA 방식보다, 현재 위젯은 tool/direct HTTP/terminal 경로를 함께 써서 더 안정적인 path를 선택할 수 있음.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">앱 전환/윈도우 관리</td>
+            <td>Dock, Mission Control, 앱 전환, 창 포커스/이동/크기 조절 가능.</td>
+            <td class="status-cell"><span class="status blocked">제한/미구현</span></td>
+            <td>
+              <ul>
+                <li>위젯 자체 window/tray/start-at-login은 구현됨.</li>
+                <li>일반 OS window control은 Windows helper도 browser-window scoped 중심.</li>
+              </ul>
+            </td>
+            <td>macOS AX/CGWindow 기반 window enumerator, focus, move/resize, app launch helper가 필요.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">인증/쿠키/비밀정보</td>
+            <td>인증된 환경에서 작업할 수 있지만, 안전상 높은 감독과 제한이 필요.</td>
+            <td class="status-cell"><span class="status blocked">제한/미구현</span></td>
+            <td>
+              <ul>
+                <li>Credential storage/access는 명시적으로 구현하지 않음.</li>
+                <li>OAuth/Codex auth token은 renderer에 노출하지 않고 daemon memory boundary 유지.</li>
+                <li>Authenticated browser profile/cookie access는 external blocker로 관리.</li>
+              </ul>
+            </td>
+            <td>macOS Computer Use에서도 credential entry/2FA/payment는 human-in-the-loop가 필요. 위젯은 기본적으로 credential secrecy를 우선.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">릴리즈/권한 배포</td>
+            <td>macOS 앱은 Screen Recording/Accessibility 권한, notarization, hardened runtime, helper signing이 중요.</td>
+            <td class="status-cell"><span class="status planned">부분 구현</span></td>
+            <td>
+              <ul>
+                <li>Windows MSI/NSIS, bundled daemon/node/OCR/PTY runtime, browser extension store packet 구현.</li>
+                <li>Windows native helper signing readiness는 있으나 production certificate/service는 blocker.</li>
+              </ul>
+            </td>
+            <td>macOS release를 하려면 Tauri macOS bundle, notarization, AX helper entitlement, TCC onboarding, helper update/signing policy가 새로 필요.</td>
+          </tr>
+
+          <tr>
+            <td class="feature">사용자 관찰 UI</td>
+            <td>작업 중인 액션, 안전 체크, 결과를 사용자가 감시하고 중단할 수 있어야 함.</td>
+            <td class="status-cell"><span class="status done">구현됨</span></td>
+            <td>
+              <ul>
+                <li>Capability Jobs panel, Activity ledger, approval/cancel controls.</li>
+                <li>Autonomy Toolsmith panel, debug bundle copy/save, Browser Action diagnostics.</li>
+                <li>Vision sharing overlay와 stream state 표시.</li>
+              </ul>
+            </td>
+            <td>macOS full CUA loop가 들어오면 좌표 액션/스크린샷 preview/stop button을 같은 panel에 연결하면 됨.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Pipeline 조합 예시</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>사용자 요청 유형</th>
+            <th>현재 위젯 조합 방식</th>
+            <th>macOS CUA 방식과의 차이</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="feature">웹에서 자료 조사 후 PDF 생성</td>
+            <td><code>scoped autonomy profile</code> → gap detector → Toolsmith <code>web_research_to_pdf</code> → live fetch/extract/citation → Markdown/PDF artifact → eval ledger.</td>
+            <td>화면 클릭으로 브라우저를 조작하기보다 허용 domain HTTP/tool path를 우선 사용해 재현성과 속도를 높일 수 있음.</td>
+          </tr>
+          <tr>
+            <td class="feature">브라우저에서 파일 다운로드 후 검증</td>
+            <td><code>browser_chrome download.start</code> → <code>download.observe</code> → <code>download.verify</code> → artifact/evidence 기록.</td>
+            <td>macOS CUA는 다운로드 UI를 시각적으로 추적할 수 있으나, 위젯은 extension API로 더 구조적인 evidence를 얻음.</td>
+          </tr>
+          <tr>
+            <td class="feature">화면의 특정 텍스트/버튼 인식 후 클릭</td>
+            <td><code>screen_observe</code> + OCR/perception graph → target explanation → <code>desktop_action</code> 또는 Browser Action 실행 → verifier.</td>
+            <td>현재 OS 전체 클릭 executor는 Windows/browser 범위가 강함. macOS는 AX/CGEvent helper가 필요.</td>
+          </tr>
+          <tr>
+            <td class="feature">브라우저 업로드 폼에 파일 지정</td>
+            <td><code>file_upload.inspect</code> → approval with explicit <code>approvedFilePaths</code> → <code>file_upload.set_files</code> → 필요 시 <code>file_upload.clear</code>.</td>
+            <td>macOS CUA는 파일 선택 창을 직접 조작할 수 있지만, 위젯은 path grant 기반으로 브라우저 input에 직접 파일을 지정.</td>
+          </tr>
+          <tr>
+            <td class="feature">터미널 기반 로컬 작업</td>
+            <td><code>terminal</code> capability 또는 PTY session → output stream → artifact/eval 기록 → destructive/credential guard.</td>
+            <td>macOS CUA가 Terminal.app을 화면으로 조작하는 대신, 위젯은 daemon PTY/child process를 직접 관리.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer>
+      <p>
+        Reference: OpenAI Computer Use 문서는 computer-use tool이 click/type/scroll/keypress/wait/screenshot 같은 액션을
+        반복 실행하고 결과 스크린샷을 다시 모델에 보내는 루프라고 설명한다.
+        <a href="https://platform.openai.com/docs/guides/tools-computer-use">OpenAI Computer Use guide</a>,
+        <a href="https://platform.openai.com/docs/models/computer-use-preview">computer-use-preview model docs</a>.
+      </p>
+      <p>
+        Local implementation references were taken from repository docs and code paths such as
+        <code>docs/context/product.md</code>, <code>docs/context/architecture.md</code>,
+        <code>docs/plans/browser-chrome-deep-actions-handoff.md</code>,
+        <code>src/daemon/capabilities/registerCapabilities.ts</code>, and
+        <code>src/shared/protocol/scopedAutonomy.ts</code>.
+      </p>
+    </footer>
+  </main>
+</body>
+</html>

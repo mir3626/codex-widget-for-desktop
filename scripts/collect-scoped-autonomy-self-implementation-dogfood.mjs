@@ -1,17 +1,19 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { createStorageService } from "../dist/daemon/storage/storage.js";
 import { ScopedAutonomyRuntime } from "../dist/daemon/scoped-autonomy/index.js";
 
-const DATE = "2026-05-14";
+const DATE = "2026-05-16";
 const repoRoot = process.cwd();
 const dogfoodPath = join(repoRoot, "docs", "dogfood", `scoped-autonomy-self-implementation-${DATE}.json`);
 const reportPath = join(repoRoot, "docs", "reports", `scoped-autonomy-self-implementation-${DATE}.md`);
 const assetDir = join(repoRoot, "docs", "reports", "assets", `scoped-autonomy-self-implementation-${DATE}`);
 const evidencePath = join(assetDir, "evidence.json");
+const sampleLedgerPath = join(repoRoot, "docs", "reports", "assets", "scoped-autonomy-self-implementation-runs.jsonl");
 const tempRoot = mkdtempSync(join(tmpdir(), "codex-widget-self-implementation-dogfood-"));
 let storage;
 
@@ -23,14 +25,26 @@ try {
   const scenarios = [];
 
   scenarios.push(await runFullDagWebPdf({ storage, runtime, tempRoot, assetDir }));
+  scenarios.push(await runLocalDocumentConversion({ storage, runtime, tempRoot, assetDir }));
   scenarios.push(await runTerminalGeneratedTool({ storage, runtime, tempRoot, assetDir }));
   scenarios.push(await runBrowserDownloadVerify({ storage, runtime, tempRoot, assetDir }));
   scenarios.push(runNativeHighRiskBlocked({ storage, runtime, tempRoot }));
+  const generatedAt = new Date().toISOString();
+  const repeatedSamples = buildRepeatedSampleLedgerEntries({
+    generatedAt,
+    evidencePath: relativeRepoPath(evidencePath),
+    scenarios
+  });
 
-  const evidence = {
-    generatedAt: new Date().toISOString(),
+  const rawEvidence = {
+    schemaVersion: "scoped-autonomy-self-implementation-dogfood.v1",
+    generatedAt,
     storageSchemaVersion: storage.health().schemaVersion,
     scenarios,
+    metrics: {
+      ...summarizeScenarios(scenarios),
+      repeatedGeneratedToolSamples: summarizeRepeatedSamples(repeatedSamples)
+    },
     autonomyRuns: storage.listAutonomyRuns({ limit: 100 }),
     tools: storage.listAutonomyToolSpecs({ limit: 100 }),
     inventory: storage.listAutonomyCapabilityInventory({ limit: 100 }),
@@ -48,14 +62,27 @@ try {
       "Native Windows mutation stays blocked until signed helper scope, release signing, and high-risk dogfood gates are complete."
     ]
   };
+  const evidenceWithoutRedaction = redactPaths(rawEvidence);
+  const evidence = {
+    ...evidenceWithoutRedaction,
+    redaction: {
+      rawPathsRedacted: true,
+      repoPathsRelative: true,
+      absolutePathLeakCount: countAbsolutePathLeaks(JSON.stringify(evidenceWithoutRedaction))
+    }
+  };
 
   mkdirSync(join(repoRoot, "docs", "dogfood"), { recursive: true });
   mkdirSync(join(repoRoot, "docs", "reports"), { recursive: true });
-  writeFileSync(dogfoodPath, `${JSON.stringify({ generatedAt: evidence.generatedAt, scenarios }, null, 2)}\n`, "utf8");
+  writeFileSync(dogfoodPath, `${JSON.stringify({ generatedAt: evidence.generatedAt, scenarios: evidence.scenarios }, null, 2)}\n`, "utf8");
   writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, "utf8");
   writeFileSync(reportPath, renderReport(evidence), "utf8");
+  appendRepeatedSampleLedger(sampleLedgerPath, repeatedSamples);
 
   assert.equal(scenarios.every((scenario) => scenario.success), true);
+  assert.equal(evidence.redaction.absolutePathLeakCount, 0, "dogfood evidence must not leak absolute local paths");
+  assert.equal(repeatedSamples.length >= 6, true, "dogfood must record execute/rerun samples for all generated tool classes");
+  assert.equal(countAbsolutePathLeaks(repeatedSamples.map((sample) => JSON.stringify(sample)).join("\n")), 0, "sample ledger entries must not leak absolute local paths");
   console.log(`scoped autonomy self-implementation dogfood evidence written: ${reportPath}`);
 } finally {
   storage?.close();
@@ -87,6 +114,10 @@ async function runFullDagWebPdf({ storage, runtime, tempRoot, assetDir }) {
   const outputDir = run.output.outputDir;
   const dagNodes = storage.listCapabilityDagNodes(run.dagRunId);
   const evalSteps = storage.listComputerUseEvalSteps(run.evalRunId);
+  const executionRun = result.toolRuns.findLast((toolRun) => toolRun.status === "completed" && toolRun.mode === "execute");
+  assert.ok(executionRun, "full DAG should have a completed execute tool run");
+  const rerun = await runtime.rerunToolRun({ toolRunId: executionRun.id });
+  const rerunComparison = rerun.output?.rerunComparison ?? {};
   return {
     id: "self-implementation-full-dag-web-pdf",
     userScenario: "사용자가 OpenAI/Codex 관련 내용을 조사해 PDF 파일로 달라고 요청한다.",
@@ -105,13 +136,24 @@ async function runFullDagWebPdf({ storage, runtime, tempRoot, assetDir }) {
       && existsSync(join(outputDir, "report.pdf"))
       && dagNodes.filter((node) => node.status === "completed").length >= 10
       && evalSteps.some((step) => step.kind === "toolsmith_smoke" && step.status === "failed")
-      && evalSteps.some((step) => step.kind === "toolsmith_smoke" && step.status === "completed"),
+      && evalSteps.some((step) => step.kind === "toolsmith_smoke" && step.status === "completed")
+      && rerun.status === "completed"
+      && rerunComparison.schemaVersion === "toolsmith-rerun-comparison.v1"
+      && rerunComparison.matched === true,
     result: {
       runId: result.run.id,
       toolSpecId: result.spec.id,
-      outputDir,
+      capability: result.spec.capability,
+      outputDir: relativeRepoPath(outputDir),
       dagCompleted: dagNodes.filter((node) => node.status === "completed").length,
-      evalStepCount: evalSteps.length
+      evalStepCount: evalSteps.length,
+      rerunRunId: rerun.id,
+      rerunMatched: rerunComparison.matched === true,
+      rerunArtifactMatched: rerunComparison.artifactComparison?.matched === true,
+      dagElapsedMs: elapsedBetweenMs(run.createdAt, run.completedAt ?? run.updatedAt),
+      executeElapsedMs: result.toolRuns.reduce((sum, toolRun) => sum + Math.max(0, Number(toolRun.elapsedMs ?? 0)), 0),
+      executeStageP95LatencyMs: percentile(result.toolRuns.map((toolRun) => Number(toolRun.elapsedMs)).filter(Number.isFinite), 0.95),
+      rerunElapsedMs: rerun.elapsedMs
     },
     followUp: [
       "Repeat live runs before promoting any latency or stability claim.",
@@ -142,6 +184,8 @@ async function runTerminalGeneratedTool({ storage, runtime, tempRoot, assetDir }
       command: "node --version"
     }
   });
+  const rerun = await runtime.rerunToolRun({ toolRunId: execution.id });
+  const rerunComparison = rerun.output?.rerunComparison ?? {};
   const stdoutPath = join(outputRoot, "stdout.txt");
   return {
     id: "self-implementation-terminal-generated-tool",
@@ -155,17 +199,101 @@ async function runTerminalGeneratedTool({ storage, runtime, tempRoot, assetDir }
     ],
     success: result.spec.status === "active"
       && execution.status === "completed"
+      && rerun.status === "completed"
+      && rerunComparison.schemaVersion === "toolsmith-rerun-comparison.v1"
+      && rerunComparison.matched === true
       && existsSync(stdoutPath)
       && readFileSync(stdoutPath, "utf8").trim().startsWith("v"),
     result: {
       runId: plan.run.id,
       toolSpecId: result.spec.id,
+      capability: result.spec.capability,
       executionRunId: execution.id,
-      stdout: existsSync(stdoutPath) ? readFileSync(stdoutPath, "utf8").trim() : ""
+      rerunRunId: rerun.id,
+      rerunMatched: rerunComparison.matched === true,
+      rerunArtifactMatched: rerunComparison.artifactComparison?.matched === true,
+      executeElapsedMs: execution.elapsedMs,
+      rerunElapsedMs: rerun.elapsedMs,
+      stdoutSha256: existsSync(stdoutPath) ? sha256File(stdoutPath) : ""
     },
     followUp: [
       "Complex generated scripts should require promotion review before becoming repo source.",
       "Command splitting intentionally avoids shell features; richer command models need explicit parser tests."
+    ]
+  };
+}
+
+async function runLocalDocumentConversion({ storage, runtime, tempRoot, assetDir }) {
+  const outputRoot = join(assetDir, "local-document-conversion");
+  const profile = createBroadProfile(storage, tempRoot, assetDir, {
+    name: "dogfood local document conversion",
+    riskClasses: ["read_only", "reversible"]
+  });
+  const result = await runtime.runGoalDag({
+    goal: "제공한 Markdown 내용을 PDF 문서로 변환해줘.",
+    permissionProfileId: profile.id,
+    outputRoot,
+    title: "Local Document Conversion Dogfood",
+    markdown: [
+      "# Local Document Conversion Dogfood",
+      "",
+      "This scenario verifies the local_document_conversion Toolsmith template.",
+      "",
+      "- no web crawl",
+      "- Markdown artifact",
+      "- PDF artifact"
+    ].join("\n")
+  });
+  const run = storage.readAutonomyRun(result.run.id);
+  const outputDir = run.output.outputDir;
+  const dagNodes = storage.listCapabilityDagNodes(run.dagRunId);
+  const evalSteps = storage.listComputerUseEvalSteps(run.evalRunId);
+  const executionRun = result.toolRuns.findLast((toolRun) => toolRun.status === "completed" && toolRun.mode === "execute");
+  assert.ok(executionRun, "local conversion should have a completed execute tool run");
+  const rerun = await runtime.rerunToolRun({ toolRunId: executionRun.id });
+  const rerunComparison = rerun.output?.rerunComparison ?? {};
+  return {
+    id: "self-implementation-local-document-conversion",
+    userScenario: "사용자가 제공한 Markdown 내용을 로컬에서 PDF 문서로 변환해 달라고 요청한다.",
+    architectureWorkflow: [
+      "permission_check validates read-only generated-tool and output-root grants",
+      "capability_gap classifies local_document_conversion instead of web_research_to_pdf",
+      "Toolsmith materializes local_document_conversion.v1 under daemon runtime workspace",
+      "smoke_test activates the converter only after Markdown/PDF artifact checks pass",
+      "DAG skips crawl/extract/source verification and runs draft/render/store/verify stages",
+      "eval ledger records artifact blobs, source hash evidence, timings, and rerun comparison"
+    ],
+    success: result.run.status === "completed"
+      && result.spec.status === "active"
+      && result.spec.capability === "local_document_conversion"
+      && existsSync(join(outputDir, "report.md"))
+      && existsSync(join(outputDir, "report.pdf"))
+      && dagNodes.some((node) => node.kind === "crawl_or_observe" && node.status === "skipped")
+      && dagNodes.some((node) => node.kind === "draft_markdown" && node.status === "completed")
+      && evalSteps.some((step) => step.kind === "toolsmith_smoke" && step.status === "completed")
+      && rerun.status === "completed"
+      && rerunComparison.schemaVersion === "toolsmith-rerun-comparison.v1"
+      && rerunComparison.matched === true,
+    result: {
+      runId: result.run.id,
+      toolSpecId: result.spec.id,
+      capability: result.spec.capability,
+      outputDir: relativeRepoPath(outputDir),
+      dagCompleted: dagNodes.filter((node) => node.status === "completed").length,
+      skippedWebStages: dagNodes.filter((node) => ["crawl_or_observe", "extract", "verify_sources"].includes(node.kind) && node.status === "skipped").length,
+      evalStepCount: evalSteps.length,
+      rerunRunId: rerun.id,
+      rerunMatched: rerunComparison.matched === true,
+      rerunArtifactMatched: rerunComparison.artifactComparison?.matched === true,
+      dagElapsedMs: elapsedBetweenMs(run.createdAt, run.completedAt ?? run.updatedAt),
+      executeElapsedMs: result.toolRuns.reduce((sum, toolRun) => sum + Math.max(0, Number(toolRun.elapsedMs ?? 0)), 0),
+      rerunElapsedMs: rerun.elapsedMs,
+      pdfSha256: sha256File(join(outputDir, "report.pdf")),
+      reportSha256: sha256File(join(outputDir, "report.md"))
+    },
+    followUp: [
+      "Pandoc remains optional; builtin PDF rendering is the default unless a profile grants pandoc.",
+      "Future promotion should add source-file conversion cases with explicit filesystem_read grants."
     ]
   };
 }
@@ -196,6 +324,8 @@ async function runBrowserDownloadVerify({ storage, runtime, tempRoot, assetDir }
       minBytes: 8
     }
   });
+  const rerun = await runtime.rerunToolRun({ toolRunId: execution.id });
+  const rerunComparison = rerun.output?.rerunComparison ?? {};
   const verificationPath = join(outputRoot, "download-verification.json");
   return {
     id: "self-implementation-browser-download-verify",
@@ -209,13 +339,22 @@ async function runBrowserDownloadVerify({ storage, runtime, tempRoot, assetDir }
     ],
     success: result.spec.status === "active"
       && execution.status === "completed"
+      && rerun.status === "completed"
+      && rerunComparison.schemaVersion === "toolsmith-rerun-comparison.v1"
+      && rerunComparison.matched === true
       && existsSync(verificationPath)
       && JSON.parse(readFileSync(verificationPath, "utf8")).ok === true,
     result: {
       runId: plan.run.id,
       toolSpecId: result.spec.id,
+      capability: result.spec.capability,
       executionRunId: execution.id,
-      verificationPath
+      rerunRunId: rerun.id,
+      rerunMatched: rerunComparison.matched === true,
+      rerunArtifactMatched: rerunComparison.artifactComparison?.matched === true,
+      executeElapsedMs: execution.elapsedMs,
+      rerunElapsedMs: rerun.elapsedMs,
+      verificationPath: relativeRepoPath(verificationPath)
     },
     followUp: [
       "Actual browser download shelf observation still requires browser bridge or native helper integration.",
@@ -257,6 +396,7 @@ function runNativeHighRiskBlocked({ storage, runtime, tempRoot }) {
     success: plan.run.status === "blocked" && plan.permission.missingRequirements.some((requirement) => requirement.type === "os_mutation"),
     result: {
       runId: plan.run.id,
+      requestedCapability: plan.gaps[0]?.requestedCapability,
       missingRequirements: plan.permission.missingRequirements,
       blockers: plan.gaps.flatMap((gap) => gap.blockers)
     },
@@ -304,6 +444,12 @@ function renderReport(evidence) {
     "",
     `Generated: ${evidence.generatedAt}`,
     `Storage schema version: ${evidence.storageSchemaVersion}`,
+    `Successful scenarios: ${evidence.metrics.successfulScenarios}/${evidence.metrics.totalScenarios}`,
+    `Generated capability classes: ${evidence.metrics.generatedCapabilityClasses.join(", ")}`,
+    `Matched reruns: ${evidence.metrics.rerunMatchedCount}`,
+    `Repeated samples: ${evidence.metrics.repeatedGeneratedToolSamples.sampleCount}`,
+    `Repeated p95 latency: ${evidence.metrics.repeatedGeneratedToolSamples.p95LatencyMs}ms`,
+    `Path redaction: ${evidence.redaction.absolutePathLeakCount === 0 ? "passed" : "failed"}`,
     "",
     "## Scenario Results",
     ""
@@ -328,4 +474,189 @@ function renderReport(evidence) {
   }
   lines.push("", `Raw evidence: docs/reports/assets/scoped-autonomy-self-implementation-${DATE}/evidence.json`, "");
   return lines.join("\n");
+}
+
+function summarizeScenarios(scenarios) {
+  const generatedCapabilityClasses = [...new Set(scenarios
+    .map((scenario) => scenario.result?.capability)
+    .filter(Boolean))].sort();
+  const rerunMatchedCount = scenarios.filter((scenario) => scenario.result?.rerunMatched === true).length;
+  const rerunArtifactMatchedCount = scenarios.filter((scenario) => scenario.result?.rerunArtifactMatched === true).length;
+  return {
+    totalScenarios: scenarios.length,
+    successfulScenarios: scenarios.filter((scenario) => scenario.success === true).length,
+    generatedCapabilityClasses,
+    rerunMatchedCount,
+    rerunArtifactMatchedCount,
+    nativeBlockedCount: scenarios.filter((scenario) => scenario.id === "self-implementation-native-windows-blocked" && scenario.success === true).length
+  };
+}
+
+function buildRepeatedSampleLedgerEntries(input) {
+  const entries = [];
+  for (const scenario of input.scenarios) {
+    const capability = scenario.result?.capability;
+    if (!["browser_download_verify", "local_document_conversion", "terminal_generated_tool", "web_research_to_pdf"].includes(capability)) {
+      continue;
+    }
+    const executeElapsedMs = readFiniteNumber(scenario.result?.executeElapsedMs, scenario.result?.dagElapsedMs);
+    const rerunElapsedMs = readFiniteNumber(scenario.result?.rerunElapsedMs);
+    if (Number.isFinite(executeElapsedMs)) {
+      entries.push(buildRepeatedSample({
+        generatedAt: input.generatedAt,
+        evidencePath: input.evidencePath,
+        scenario,
+        capability,
+        mode: "execute",
+        elapsedMs: executeElapsedMs,
+        matched: scenario.success === true,
+        artifactMatched: scenario.success === true
+      }));
+    }
+    if (Number.isFinite(rerunElapsedMs)) {
+      entries.push(buildRepeatedSample({
+        generatedAt: input.generatedAt,
+        evidencePath: input.evidencePath,
+        scenario,
+        capability,
+        mode: "rerun",
+        elapsedMs: rerunElapsedMs,
+        matched: scenario.result?.rerunMatched === true,
+        artifactMatched: scenario.result?.rerunArtifactMatched === true
+      }));
+    }
+  }
+  return entries.map((entry) => {
+    const redacted = redactPaths(entry);
+    return {
+      ...redacted,
+      redaction: {
+        rawPathsRedacted: true,
+        repoPathsRelative: true,
+        absolutePathLeakCount: countAbsolutePathLeaks(JSON.stringify(redacted))
+      }
+    };
+  });
+}
+
+function buildRepeatedSample(input) {
+  return {
+    schemaVersion: "scoped-autonomy-generated-tool-breadth-sample.v1",
+    generatedAt: input.generatedAt,
+    evidenceClass: "fixture_repeated_generated_tool",
+    evidencePath: input.evidencePath,
+    scenario: {
+      id: input.scenario.id,
+      success: input.scenario.success === true,
+      result: {
+        capability: input.capability,
+        elapsedMs: input.elapsedMs,
+        rerunMatched: input.scenario.result?.rerunMatched === true,
+        rerunArtifactMatched: input.scenario.result?.rerunArtifactMatched === true
+      }
+    },
+    sample: {
+      capability: input.capability,
+      mode: input.mode,
+      status: input.matched ? "completed" : "failed",
+      elapsedMs: input.elapsedMs,
+      matched: input.matched,
+      artifactMatched: input.artifactMatched,
+      fixtureBacked: true
+    }
+  };
+}
+
+function summarizeRepeatedSamples(samples) {
+  const elapsedValues = samples
+    .map((sample) => Number(sample.sample?.elapsedMs))
+    .filter(Number.isFinite);
+  const generatedClasses = [...new Set(samples.map((sample) => sample.sample?.capability).filter(Boolean))].sort();
+  const sampleCountByClass = Object.fromEntries(generatedClasses.map((capability) => [
+    capability,
+    samples.filter((sample) => sample.sample?.capability === capability).length
+  ]));
+  return {
+    sampleCount: samples.length,
+    generatedClasses,
+    sampleCountByClass,
+    p95LatencyMs: elapsedValues.length ? percentile(elapsedValues, 0.95) : undefined,
+    rerunMatchedCount: samples.filter((sample) => sample.sample?.mode === "rerun" && sample.sample?.matched === true).length,
+    rerunArtifactMatchedCount: samples.filter((sample) => sample.sample?.mode === "rerun" && sample.sample?.artifactMatched === true).length,
+    pathRedactionPresent: samples.length > 0 && samples.every((sample) => Number(sample.redaction?.absolutePathLeakCount ?? 1) === 0)
+  };
+}
+
+function appendRepeatedSampleLedger(path, samples) {
+  if (!samples.length) {
+    return;
+  }
+  mkdirSync(dirname(path), { recursive: true });
+  appendFileSync(path, `${samples.map((sample) => JSON.stringify(sample)).join("\n")}\n`, "utf8");
+}
+
+function relativeRepoPath(path) {
+  const normalizedRoot = repoRoot.toLowerCase();
+  const normalizedPath = String(path).toLowerCase();
+  if (normalizedPath === normalizedRoot || normalizedPath.startsWith(`${normalizedRoot}\\`) || normalizedPath.startsWith(`${normalizedRoot}/`)) {
+    return relative(repoRoot, path).replace(/\\/g, "/");
+  }
+  return path;
+}
+
+function redactPaths(value) {
+  if (Array.isArray(value)) {
+    return value.map(redactPaths);
+  }
+  if (typeof value === "string") {
+    return redactPathString(value);
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+  return Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, redactPaths(nested)]));
+}
+
+function redactPathString(value) {
+  const relativePath = relativeRepoPath(value);
+  if (relativePath !== value) {
+    return relativePath;
+  }
+  if (/^[a-z]:[\\/]/i.test(value)) {
+    return `<redacted>/${basename(value)}`;
+  }
+  return value;
+}
+
+function countAbsolutePathLeaks(text) {
+  return (text.match(/[A-Z]:[\\/]/gi) ?? []).length;
+}
+
+function sha256File(path) {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function elapsedBetweenMs(startedAt, completedAt) {
+  const start = Date.parse(startedAt ?? "");
+  const end = Date.parse(completedAt ?? "");
+  return Number.isFinite(start) && Number.isFinite(end) ? Math.max(0, end - start) : undefined;
+}
+
+function readFiniteNumber(...values) {
+  for (const value of values) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) {
+      return numeric;
+    }
+  }
+  return undefined;
+}
+
+function percentile(values, p) {
+  const sorted = [...values].sort((a, b) => a - b);
+  if (!sorted.length) {
+    return undefined;
+  }
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * p) - 1));
+  return sorted[index];
 }

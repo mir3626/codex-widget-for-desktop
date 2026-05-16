@@ -1,0 +1,7 @@
+{
+  "ok": true,
+  "stdout": "v24.14.1\r\n",
+  "stderr": "",
+  "exitCode": 0,
+  "command": "node --version"
+}

@@ -3,6 +3,7 @@ export * from "./protocol/base.js";
 export * from "./protocol/browserAction.js";
 export * from "./protocol/capability.js";
 export * from "./protocol/client.js";
+export * from "./protocol/computerUse.js";
 export * from "./protocol/ledger.js";
 export * from "./protocol/model.js";
 export * from "./protocol/runtime.js";

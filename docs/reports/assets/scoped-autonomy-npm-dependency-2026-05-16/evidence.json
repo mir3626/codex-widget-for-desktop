@@ -1,0 +1,260 @@
+{
+  "schemaVersion": "scoped-autonomy-npm-dependency-dogfood.v1",
+  "generatedAt": "2026-05-16T08:21:37.325Z",
+  "storageSchemaVersion": 6,
+  "evidenceClass": "local_npm_dependency",
+  "scenarios": [
+    {
+      "id": "npm-dependency-generated-tool-1",
+      "capability": "terminal_generated_tool",
+      "sourceClass": "local_file_npm_dependency",
+      "userScenario": "A scoped user asks Toolsmith to run a generated Node tool that consumes a prepared npm dependency.",
+      "architectureWorkflow": [
+        "permission profile allows package_install, generated_tool_execution, npm/node command prefixes, and bounded runtime/output roots",
+        "Toolsmith prepares dependencies inside the generated tool runtime workspace",
+        "dependency preparation records installed package provenance without exposing local file package paths",
+        "generated Node entrypoint receives only CODEX_WIDGET_TOOL_DEPENDENCY_ROOT and imports the prepared package",
+        "execution stores a blob-backed artifact and rerun compares stable output"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-122862c5-e7a4-4117-aebc-cc64328a5ffb",
+        "status": "completed",
+        "toolSpecId": "tool-npm-dependency-dogfood-probe-1",
+        "dependencyPrepareRunId": "autonomy-tool-run-5a8a3e43-ad89-4645-99b9-b8cb60884721",
+        "executeToolRunId": "autonomy-tool-run-e8c7b43a-0214-4373-b0de-a415b81bd2de",
+        "rerunToolRunId": "autonomy-tool-run-465e06e5-b5fa-46c7-99cf-e800b64a3600",
+        "outputRoot": "<redacted>/npm-dependency-1",
+        "elapsedMs": 1071,
+        "prepareElapsedMs": 825,
+        "executeElapsedMs": 97,
+        "rerunElapsedMs": 82,
+        "packageInstallPerformed": true,
+        "installedPackageCount": 1,
+        "installedPackages": [
+          {
+            "name": "codex-widget-local-npm-probe",
+            "version": "0.0.1",
+            "source": "npm",
+            "packageJson": {
+              "path": "<redacted>/package.json",
+              "size": 108,
+              "sha256": "bce0b7f87acd1a1690a6712e46edd3a106a25baed4ec01b3b797870d6d486554"
+            }
+          }
+        ],
+        "dependencyPolicyReview": {
+          "schemaVersion": "toolsmith-dependency-policy-review.v1",
+          "workspace": "<redacted>/dependencies",
+          "installIsolation": {
+            "prefix": "<redacted>/dependencies",
+            "ignoreScripts": true,
+            "noAudit": true,
+            "noFund": true,
+            "shell": false,
+            "timeoutMs": 120000
+          },
+          "dependencies": [
+            {
+              "name": "node",
+              "source": "system",
+              "version": "",
+              "installable": false,
+              "localFilePackage": false,
+              "externalRegistryPackage": false,
+              "unsupportedPipPackage": false,
+              "policy": "no_install_required"
+            },
+            {
+              "name": "codex-widget-local-npm-probe",
+              "source": "npm",
+              "version": "file:<redacted>/local-npm-package-1",
+              "installable": true,
+              "localFilePackage": true,
+              "externalRegistryPackage": false,
+              "unsupportedPipPackage": false,
+              "packageRequirement": "file:*",
+              "policy": "local_file_package_allowed_by_default_policy"
+            }
+          ],
+          "packageAllowlistPolicy": {
+            "defaultLocalFilePattern": "file:*",
+            "externalRequirementFormat": "npm:name@version",
+            "exactExternalAllowlistRequired": true
+          },
+          "externalRegistryPackageCount": 0,
+          "localFilePackageCount": 1,
+          "unsupportedPipPackageCount": 0,
+          "lockfileRequired": true,
+          "installedPackageProvenanceRequired": true,
+          "promotionBoundary": "local_file_dependency_fixture_only",
+          "lockfileProvenancePresent": true,
+          "installedPackageProvenancePresent": true,
+          "reviewOutcome": "passed_local_or_allowlisted_dependency_policy"
+        },
+        "dependencyPolicyReviewOutcome": "passed_local_or_allowlisted_dependency_policy",
+        "dependencyWorkspaceProvided": true,
+        "dependencyImported": true,
+        "probeValue": true,
+        "artifactStored": true,
+        "artifactRole": "report",
+        "evalDependencyStepStatus": "completed",
+        "evalExecuteStepStatus": "completed",
+        "evalResourceCount": 2,
+        "rerunMatched": true,
+        "rerunArtifactMatched": true,
+        "permissionEvidence": {
+          "packageInstallUsed": true,
+          "generatedToolExecutionUsed": true
+        }
+      },
+      "followUp": [
+        "Add reviewed external package allowlist policy before treating network package install as promotable.",
+        "Keep generated package execution behind explicit package_install and generated_tool_execution grants."
+      ],
+      "redaction": {
+        "absolutePathLeakCount": 0
+      }
+    },
+    {
+      "id": "npm-dependency-generated-tool-2",
+      "capability": "terminal_generated_tool",
+      "sourceClass": "local_file_npm_dependency",
+      "userScenario": "A scoped user asks Toolsmith to run a generated Node tool that consumes a prepared npm dependency.",
+      "architectureWorkflow": [
+        "permission profile allows package_install, generated_tool_execution, npm/node command prefixes, and bounded runtime/output roots",
+        "Toolsmith prepares dependencies inside the generated tool runtime workspace",
+        "dependency preparation records installed package provenance without exposing local file package paths",
+        "generated Node entrypoint receives only CODEX_WIDGET_TOOL_DEPENDENCY_ROOT and imports the prepared package",
+        "execution stores a blob-backed artifact and rerun compares stable output"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-2d4f4eb8-5716-417f-ae3b-340cd7461b67",
+        "status": "completed",
+        "toolSpecId": "tool-npm-dependency-dogfood-probe-2",
+        "dependencyPrepareRunId": "autonomy-tool-run-603f9c05-9d4f-46ff-9b4f-e1b33950be4d",
+        "executeToolRunId": "autonomy-tool-run-c44b4a97-5f18-4ff3-b175-226a926a6ccb",
+        "rerunToolRunId": "autonomy-tool-run-0b32edd5-5176-4cb6-82ca-480b15c79c5b",
+        "outputRoot": "<redacted>/npm-dependency-2",
+        "elapsedMs": 1094,
+        "prepareElapsedMs": 856,
+        "executeElapsedMs": 102,
+        "rerunElapsedMs": 82,
+        "packageInstallPerformed": true,
+        "installedPackageCount": 1,
+        "installedPackages": [
+          {
+            "name": "codex-widget-local-npm-probe",
+            "version": "0.0.2",
+            "source": "npm",
+            "packageJson": {
+              "path": "<redacted>/package.json",
+              "size": 108,
+              "sha256": "ee321c350239b1c69c9ac96d7f15b7951aece1ff31768accb1659b7fe2da6d34"
+            }
+          }
+        ],
+        "dependencyPolicyReview": {
+          "schemaVersion": "toolsmith-dependency-policy-review.v1",
+          "workspace": "<redacted>/dependencies",
+          "installIsolation": {
+            "prefix": "<redacted>/dependencies",
+            "ignoreScripts": true,
+            "noAudit": true,
+            "noFund": true,
+            "shell": false,
+            "timeoutMs": 120000
+          },
+          "dependencies": [
+            {
+              "name": "node",
+              "source": "system",
+              "version": "",
+              "installable": false,
+              "localFilePackage": false,
+              "externalRegistryPackage": false,
+              "unsupportedPipPackage": false,
+              "policy": "no_install_required"
+            },
+            {
+              "name": "codex-widget-local-npm-probe",
+              "source": "npm",
+              "version": "file:<redacted>/local-npm-package-2",
+              "installable": true,
+              "localFilePackage": true,
+              "externalRegistryPackage": false,
+              "unsupportedPipPackage": false,
+              "packageRequirement": "file:*",
+              "policy": "local_file_package_allowed_by_default_policy"
+            }
+          ],
+          "packageAllowlistPolicy": {
+            "defaultLocalFilePattern": "file:*",
+            "externalRequirementFormat": "npm:name@version",
+            "exactExternalAllowlistRequired": true
+          },
+          "externalRegistryPackageCount": 0,
+          "localFilePackageCount": 1,
+          "unsupportedPipPackageCount": 0,
+          "lockfileRequired": true,
+          "installedPackageProvenanceRequired": true,
+          "promotionBoundary": "local_file_dependency_fixture_only",
+          "lockfileProvenancePresent": true,
+          "installedPackageProvenancePresent": true,
+          "reviewOutcome": "passed_local_or_allowlisted_dependency_policy"
+        },
+        "dependencyPolicyReviewOutcome": "passed_local_or_allowlisted_dependency_policy",
+        "dependencyWorkspaceProvided": true,
+        "dependencyImported": true,
+        "probeValue": true,
+        "artifactStored": true,
+        "artifactRole": "report",
+        "evalDependencyStepStatus": "completed",
+        "evalExecuteStepStatus": "completed",
+        "evalResourceCount": 2,
+        "rerunMatched": true,
+        "rerunArtifactMatched": true,
+        "permissionEvidence": {
+          "packageInstallUsed": true,
+          "generatedToolExecutionUsed": true
+        }
+      },
+      "followUp": [
+        "Add reviewed external package allowlist policy before treating network package install as promotable.",
+        "Keep generated package execution behind explicit package_install and generated_tool_execution grants."
+      ],
+      "redaction": {
+        "absolutePathLeakCount": 0
+      }
+    }
+  ],
+  "metrics": {
+    "scenarioCount": 2,
+    "successCount": 2,
+    "sampleCount": 4,
+    "executeSampleCount": 2,
+    "rerunSampleCount": 2,
+    "repeatedSamplesPresent": true,
+    "p95LatencySampleCount": 4,
+    "p95LatencyMs": 102,
+    "packageInstallProvenancePresent": true,
+    "dependencyPolicyReviewPresent": true,
+    "dependencyExecutionImportPresent": true,
+    "evalEvidencePresent": true,
+    "artifactEvidencePresent": true,
+    "rerunStabilityPresent": true,
+    "pathRedactionPresent": true
+  },
+  "sampleLedger": "docs/reports/assets/scoped-autonomy-npm-dependency-runs.jsonl",
+  "improvementItems": [
+    "This dogfood proves package-consuming generated-tool execution with isolated local npm dependencies.",
+    "The fixture uses a local file package to avoid network-dependent package registry behavior.",
+    "Promotion remains blocked for external package install policy until package allowlist, provenance, and lock review rules are productized."
+  ],
+  "redaction": {
+    "rawPathsRedacted": true,
+    "repoPathsRelative": true,
+    "absolutePathLeakCount": 0
+  }
+}

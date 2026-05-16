@@ -1,0 +1,88 @@
+{
+  "schemaVersion": "computer-use-browser-chrome-dogfood.v1",
+  "generatedAt": "2026-05-16T02:12:01.649Z",
+  "date": "2026-05-16",
+  "runId": "computer-use-browser-chrome-dogfood-20260516-111200",
+  "evidenceClass": "fixture_bridge_repeated_dogfood",
+  "promotion": "non_promoting_until_real_extension_live_samples_exist",
+  "scenarios": [
+    {
+      "id": "browser-chrome-download-verify-repeat",
+      "command": "download.verify",
+      "repeatCount": 2,
+      "userScenario": "사용자가 현재 브라우저 다운로드 목록에서 방금 받은 PDF가 완료되었는지 확인하고, 승인된 다운로드 파일 증거를 남기도록 요청한다.",
+      "architectureWorkflow": [
+        "Computer Session starts on the regular_browser_extension surface with an explicit browser chrome permission profile.",
+        "A browser_chrome operation requests download.verify with an approved local download path rooted in the scoped profile.",
+        "Browser Bridge polling delivers the bounded Browser Chrome command to the extension channel.",
+        "The fixture bridge returns redacted download completion metadata, simulating the extension API result without exposing full local paths.",
+        "ComputerSessionRuntime stores a blob-backed download_verified_file eval resource, a file observation, DAG verification, and eval-ledger evidence.",
+        "The debug bundle links the capability job, DAG node, observation, eval resource, verifier result, and basename-only redaction policy."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "sampleCount": 2,
+        "successCount": 2,
+        "p95LatencyMs": 272,
+        "resourceRoles": [
+          "download_verified_file"
+        ],
+        "verifierNodeCount": 2,
+        "evalLedgerNodeCount": 4,
+        "cleanupRollbackCompleted": true,
+        "redaction": [
+          {
+            "expected": "basename_only",
+            "localPathPolicy": "basename_only",
+            "outputPathRedacted": false
+          },
+          {
+            "expected": "basename_only",
+            "localPathPolicy": "basename_only",
+            "outputPathRedacted": false
+          }
+        ]
+      },
+      "improvementAndFollowUp": "반복 dogfood는 성공했지만 Browser Bridge result를 fixture로 주입한 증거다. 실제 확장 프로그램 live samples와 p95 비교가 있어야 live promotion이 가능하다."
+    },
+    {
+      "id": "browser-chrome-debugger-print-pdf-repeat",
+      "command": "debugger.print_to_pdf",
+      "repeatCount": 2,
+      "userScenario": "사용자가 현재 탭을 브라우저 debugger 기반 print-to-PDF 명령으로 PDF화할 수 있는지 검증하고, 임의 CDP 실행 없이 고정 명령 증거만 남기도록 요청한다.",
+      "architectureWorkflow": [
+        "Computer Session starts on the regular_browser_extension surface with an explicit high-risk browser chrome profile.",
+        "A browser_chrome operation requests the fixed debugger.print_to_pdf command and awaits one-time approval.",
+        "The renderer-equivalent approval event allows only the bounded command, not arbitrary CDP evaluation.",
+        "Browser Bridge polling delivers debugger.print_to_pdf and the fixture bridge returns minimized PDF metadata.",
+        "ComputerSessionRuntime records capability job output, DAG verification, eval-ledger linkage, and redaction evidence.",
+        "The debug bundle exposes the fixed command proof and keeps browser-private content out of the dogfood corpus."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "sampleCount": 2,
+        "successCount": 2,
+        "p95LatencyMs": 145,
+        "resourceRoles": [],
+        "verifierNodeCount": 2,
+        "evalLedgerNodeCount": 4,
+        "cleanupRollbackCompleted": true,
+        "redaction": [
+          {
+            "expected": "path_redacted",
+            "localPathPolicy": "path_redacted",
+            "outputPathRedacted": true
+          },
+          {
+            "expected": "path_redacted",
+            "localPathPolicy": "path_redacted",
+            "outputPathRedacted": true
+          }
+        ]
+      },
+      "improvementAndFollowUp": "반복 dogfood는 성공했지만 Browser Bridge result를 fixture로 주입한 증거다. 실제 확장 프로그램 live samples와 p95 비교가 있어야 live promotion이 가능하다."
+    }
+  ]
+}

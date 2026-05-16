@@ -897,6 +897,7 @@ function normalizeGrants(input: Partial<AutonomyPermissionGrants> | unknown): Au
       denyPatterns: normalizeStringArray(commands.denyPatterns, defaultDenyPatterns())
     },
     packageInstall: Boolean(record.packageInstall),
+    packageAllowlist: normalizeStringArray(record.packageAllowlist, ["file:*"]),
     osMutation: Boolean(record.osMutation),
     generatedToolMaterialization: Boolean(record.generatedToolMaterialization),
     generatedToolExecution: Boolean(record.generatedToolExecution),

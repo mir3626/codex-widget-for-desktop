@@ -124,6 +124,53 @@ export type ComputerUseEvalResourceSummary = {
   createdAt: string;
 };
 
+export type ComputerUseVerifierAuditClass =
+  | "consistent_pass"
+  | "consistent_failure"
+  | "false_positive_candidate"
+  | "false_negative_record"
+  | "inconclusive_verifier"
+  | "missing_verifier_evidence";
+
+export type ComputerUseVerifierStepAudit = {
+  id: string;
+  runId: string;
+  scenarioId: string;
+  sessionId?: string;
+  stepId?: string;
+  stepKind: string;
+  phase: string;
+  capabilityJobId?: string;
+  capabilityDagNodeId?: string;
+  verifierStatus?: "passed" | "failed" | "inconclusive" | "unknown";
+  verifierClass?: string;
+  failureClass?: ComputerUseFailureClass;
+  auditClass: ComputerUseVerifierAuditClass;
+  reason: string;
+  evidence: {
+    taskSuccess: ComputerUseTaskSuccess;
+    runFailureClass: ComputerUseFailureClass;
+    expectedDeclared: boolean;
+    proofRecorded: boolean;
+    recoveryAttempted: boolean;
+    matchingVerifierStepIds: string[];
+  };
+  createdAt: string;
+};
+
+export type ComputerUseVerifierAuditSummary = {
+  schemaVersion: "computer-use-verifier-audit.v1";
+  createdAt: string;
+  runsAudited: number;
+  stepsAudited: number;
+  verifierStepCount: number;
+  falsePositiveCandidates: number;
+  falseNegativeRecords: number;
+  inconclusiveRecords: number;
+  missingVerifierEvidence: number;
+  audits: ComputerUseVerifierStepAudit[];
+};
+
 export type PerceptionEvidenceSource =
   | "dom"
   | "uia"

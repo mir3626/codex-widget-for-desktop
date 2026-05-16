@@ -15,6 +15,7 @@ assertEqual(manifest.manifest_version, 3, "manifest_version");
 assertIncludes(manifest.permissions, "activeTab", "permissions");
 assertIncludes(manifest.permissions, "alarms", "permissions");
 assertIncludes(manifest.permissions, "bookmarks", "permissions");
+assertIncludes(manifest.permissions, "contentSettings", "permissions");
 assertIncludes(manifest.permissions, "scripting", "permissions");
 assertIncludes(manifest.permissions, "storage", "permissions");
 assertIncludes(manifest.permissions, "tabs", "permissions");
@@ -76,6 +77,7 @@ for (const marker of [
   "chrome.storage.sync.get",
   "chrome.runtime.sendNativeMessage",
   "chrome.bookmarks",
+  "chrome.contentSettings",
   "com.mir3626.codex_widget_dom",
   "/providers/dom/snapshot",
   "/browser-action/extension/poll",
@@ -94,6 +96,7 @@ for (const marker of [
   "collectInteractiveElements",
   "executeBrowserActionInPage",
   "executeBrowserChromeCommand",
+  "permission.set",
   "chrome.tabs.captureVisibleTab",
   "chrome.tabs.goForward",
   "chrome.tabs.goBack",

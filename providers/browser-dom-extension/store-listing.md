@@ -23,8 +23,13 @@ The extension can use an optional Chrome/Edge native messaging host installed wi
 - `activeTab`: provides a one-time fallback when the user opens the popup from the active tab.
 - `alarms`: wakes the Manifest V3 service worker to refresh heartbeat, badge, and command polling state.
 - `bookmarks`: lets the local daemon run explicitly approved browser-chrome bookmark actions such as listing, creating, updating, removing, or opening bookmarks.
+- `debugger`: lets the local daemon run explicitly approved, bounded debugger inspection and file-input commands. Arbitrary debugger code execution is not exposed.
+- `contentSettings`: lets the local daemon read or change bounded site permissions such as camera, microphone, location, notifications, popups, or automatic downloads after explicit approval for mutations.
+- `downloads`: lets the local daemon start, observe, verify, cancel, or erase narrowly scoped downloads after the daemon approval policy allows the action.
+- `history`: lets the local daemon run one-time-approved history search/open commands with redacted evidence. There is no always-allow path for history access.
 - `scripting`: required to collect page observations and execute typed Browser Action commands on approved pages.
 - `storage`: required to save local Browser Bridge settings.
+- `tabGroups`: lets the local daemon create, update, list, and release tab groups for a specific widget run.
 - `tabs`: required to identify the active tab, URL, title, and window for bridge status and source matching.
 - `nativeMessaging`: required for the optional installed desktop host bridge.
 - `http://127.0.0.1/*` and `http://localhost/*`: required to communicate with the local desktop daemon.

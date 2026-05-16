@@ -39,7 +39,7 @@ export const playwrightAdapter: BrowserActionAdapter = {
       const snapshot = await collectPlaywrightSnapshot(pageSession.page);
       return buildBrowserObservation({ source: input.session.source, snapshot });
     } finally {
-      await pageSession.browser.close();
+      await pageSession.close();
     }
   },
   async execute(input) {
@@ -70,7 +70,7 @@ export const playwrightAdapter: BrowserActionAdapter = {
         metadata: actionResult.metadata
       };
     } finally {
-      await pageSession.browser.close();
+      await pageSession.close();
     }
   }
 };

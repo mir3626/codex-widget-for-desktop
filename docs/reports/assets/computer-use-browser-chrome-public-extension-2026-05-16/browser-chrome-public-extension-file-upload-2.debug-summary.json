@@ -1,0 +1,44 @@
+{
+  "id": "browser-chrome-public-extension-file-upload-2",
+  "command": "file_upload.inspect+set_files+clear",
+  "userScenario": "User asks the widget to inspect a public upload control, select an explicitly approved local file, and clear it without submitting the form.",
+  "architectureWorkflow": [
+    "Playwright opens a public unauthenticated upload page in a fresh temporary Chromium profile with the real Browser Bridge extension.",
+    "Computer Session queues file_upload.inspect and requires one-time approval before reading file-input metadata.",
+    "The dogfood harness creates an approved temporary file under the run-owned upload root.",
+    "Computer Session queues file_upload.set_files with the explicit approved path; capability persistence redacts the path.",
+    "The extension uses the fixed DOM.setFileInputFiles debugger command against the explicit file input selector.",
+    "Computer Session queues file_upload.clear as rollback and records only basename/path-redacted proof plus verifier/eval nodes."
+  ],
+  "success": true,
+  "status": "passed",
+  "result": {
+    "elapsedMs": 2510,
+    "p95LatencyMs": 2510,
+    "sourceHost": "the-internet.herokuapp.com",
+    "sourceUrlHash": "4d06ce4045980e46232cb2c780ed87f1f3175078702d867b3fb25a6b3d016910",
+    "verifierNodeCount": 3,
+    "evalLedgerNodeCount": 4,
+    "cleanupReconciled": true,
+    "redaction": {
+      "localPathPolicy": "basename_only",
+      "fullPathStoredInReport": false,
+      "fileContentsStoredInReport": false,
+      "uploadSubmit": "not_submitted",
+      "urls": "public_url_hash_only",
+      "credentials": "not_used"
+    },
+    "approval": "one_time",
+    "risk": "high",
+    "inputCount": 2,
+    "targetInputFound": true,
+    "selectedFileCount": 1,
+    "selectedBasenames": [
+      "codex-public-upload-2.txt"
+    ],
+    "clearStatus": "files_cleared",
+    "pathRedacted": true,
+    "submitClicked": false
+  },
+  "improvementAndFollowUp": "This proves approved file selection can use the fixed Browser Bridge file-upload command with basename-only evidence and clear rollback; native picker automation remains blocked until signed helper v2."
+}

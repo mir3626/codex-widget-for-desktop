@@ -1,0 +1,1276 @@
+{
+  "generatedAt": "2026-05-15T21:10:44.604Z",
+  "metrics": {
+    "scenarioCount": 1,
+    "p50LatencyMs": 5114,
+    "p95LatencyMs": 5114,
+    "sourceQualityReview": "accepted",
+    "fallbackOnly": true,
+    "browserFallbackCalibration": "accepted"
+  },
+  "scenarios": [
+    {
+      "id": "computer-use-session-live-openai-web-research-to-pdf",
+      "userScenario": "사용자가 위젯 Computer Use 세션에 OpenAI Codex 관련 공식 문서를 조사해서 PDF로 저장해 달라고 요청한다.",
+      "architectureWorkflow": [
+        "renderer-equivalent request creates a tool_workspace Computer Session with a scoped one-time permission profile",
+        "ComputerSessionRuntime routes the operation to Toolsmith and links the child autonomy DAG to the parent action node",
+        "Toolsmith materializes web_research_to_pdf.v2 in the runtime workspace and passes smoke before execution",
+        "live official OpenAI source pages are captured through browser-backed fallback when daemon-side HTTP is blocked",
+        "crawl_or_observe, extract, verify_sources, draft_markdown, render_pdf, store_artifact, and verify_artifact run as distinct child DAG stages",
+        "parent Computer Session mirrors report/PDF artifacts into eval resources and debug-bundle observations",
+        "parent DAG records action, verification, eval_ledger, store_artifact, and verify_artifact proof nodes"
+      ],
+      "success": true,
+      "result": {
+        "sessionId": "62184eca-a59b-4835-8cee-2be927a98977",
+        "evalRunId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+        "autonomyRunId": "autonomy-run-458bf09f-0609-4ee3-847a-3a819c920a5d",
+        "outputRoot": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\computer-use-toolsmith-live-2026-05-16\\live-report",
+        "elapsedMs": 5114,
+        "p50LatencyMs": 5114,
+        "p95LatencyMs": 5114,
+        "sourceSummary": {
+          "sourceCount": 3,
+          "rows": [
+            {
+              "url": "help.openai.com",
+              "status": "browser_fallback",
+              "browserFallback": true
+            },
+            {
+              "url": "platform.openai.com",
+              "status": "browser_fallback",
+              "browserFallback": true
+            }
+          ],
+          "fetchedUrls": [],
+          "browserFallbackUrls": [
+            "help.openai.com",
+            "platform.openai.com"
+          ],
+          "warnings": [
+            "http_status_403:help.openai.com",
+            "browser_fallback_used:help.openai.com:http_status_403",
+            "http_status_403:platform.openai.com",
+            "browser_fallback_used:platform.openai.com:http_status_403"
+          ]
+        },
+        "validLiveSourceCount": 3,
+        "validSourceSummaryCount": 0,
+        "validBrowserCaptureCount": 3,
+        "fallbackOnly": true,
+        "sourceQualityReview": "accepted",
+        "sourceQualityEvidence": {
+          "status": "accepted",
+          "officialSourceCount": 3,
+          "totalChars": 7599,
+          "codexMentioned": true,
+          "directFetchedSourceCount": 0,
+          "fallbackSourceCount": 3,
+          "fallbackOnly": true,
+          "basis": [
+            "requires at least two official OpenAI sources over 300 chars",
+            "requires total extracted source text over 1000 chars",
+            "requires Codex to appear in the generated report or source metadata",
+            "records fallbackOnly separately so accepted content quality does not imply direct-fetch promotion"
+          ]
+        },
+        "browserFallbackCalibration": {
+          "schemaVersion": "browser-fallback-calibration.v1",
+          "status": "accepted",
+          "captureCount": 3,
+          "captures": [
+            {
+              "origin": "https://help.openai.com",
+              "urlHash": "4a149b79f038ad3b70f4bae8d7650255fb41541bf9d27f240e314184d4ce2c9d",
+              "status": 200,
+              "chars": 3160,
+              "titleSha256": "4780972d52a3a7682dad05e4230b6c0b916e59f2d37addf9f0e26c18ce62bc51",
+              "textSha256": "4e9109d64290483b0d45b9488081098cb3a852ca5c9f5c05314a3ddb5273636c"
+            },
+            {
+              "origin": "https://platform.openai.com",
+              "urlHash": "e8a7deb65d78dd3bc4486368fbe6a8259f456dd44c7f8801d97f5efed79b792f",
+              "status": 200,
+              "chars": 2078,
+              "titleSha256": "16e29357caffd2131cd73f226accd70586603874487cfe05e257093f225c7835",
+              "textSha256": "1c383c491125efbd48f26cbbc7cf0c1974810d4e2d4b674cc9576a7b6ae7ba06"
+            },
+            {
+              "origin": "https://platform.openai.com",
+              "urlHash": "75849823b21faf3252c5b7f704059e6b3eb0e9310aaff7c15f317237d4347551",
+              "status": 200,
+              "chars": 2361,
+              "titleSha256": "cfb8a9dcb206fc4133d9a47d1f38e877f517e53529c908b58dd880d3f5259c28",
+              "textSha256": "c616e7100cb77212e01d68e291b263b8a7bdb2eb3cccac68350c60e084d46e2a"
+            }
+          ],
+          "basis": [
+            "requires at least two browser-captured official sources",
+            "requires HTTP 2xx/3xx browser response status for every capture",
+            "requires every captured body to exceed 300 chars",
+            "stores text hashes and lengths only; raw browser text is omitted from sample ledgers",
+            "promotion gate still requires repeated samples with stable capture hashes"
+          ]
+        },
+        "browserFallbackCaptures": [
+          {
+            "url": "https://help.openai.com/en/articles/11096431-openai-codex-ci-getting-started",
+            "chars": 3160,
+            "textSha256": "4e9109d64290483b0d45b9488081098cb3a852ca5c9f5c05314a3ddb5273636c",
+            "status": 200,
+            "title": "CLI – Codex | OpenAI Developers"
+          },
+          {
+            "url": "https://platform.openai.com/docs/codex/overview",
+            "chars": 2078,
+            "textSha256": "1c383c491125efbd48f26cbbc7cf0c1974810d4e2d4b674cc9576a7b6ae7ba06",
+            "status": 200,
+            "title": "Web – Codex | OpenAI Developers"
+          },
+          {
+            "url": "https://platform.openai.com/docs/docs-mcp",
+            "chars": 2361,
+            "textSha256": "c616e7100cb77212e01d68e291b263b8a7bdb2eb3cccac68350c60e084d46e2a",
+            "status": 200,
+            "title": "Docs MCP | OpenAI Developers"
+          }
+        ],
+        "artifactRoles": [
+          "toolsmith_report",
+          "toolsmith_pdf",
+          "toolsmith_citation",
+          "toolsmith_source",
+          "toolsmith_source",
+          "toolsmith_citation",
+          "toolsmith_report",
+          "toolsmith_pdf",
+          "toolsmith_report",
+          "toolsmith_pdf",
+          "toolsmith_citation",
+          "toolsmith_report",
+          "toolsmith_pdf"
+        ],
+        "pdfBytes": 1182,
+        "reportChars": 26887
+      },
+      "followUp": [
+        "Current live success depends on browser-backed public documentation capture because daemon-side HTTP can return 403.",
+        "Promotion still needs repeated parent Computer Session live runs, p95 latency tracking, and non-fallback transport calibration.",
+        "This dogfood proves the parent Computer Session evidence path, not only the child scoped-autonomy runtime."
+      ]
+    }
+  ],
+  "debugBundle": {
+    "schemaVersion": "computer-session-debug-bundle.v1",
+    "session": {
+      "sessionId": "62184eca-a59b-4835-8cee-2be927a98977",
+      "userRequest": "OpenAI 홈페이지에서 Codex 지원 명령어 조사해서 PDF 파일로 제공해줘.",
+      "profileId": "autonomy-profile-fc9fc430-28f7-4815-a535-59916ac9ee89",
+      "riskClass": "local_artifact_create",
+      "state": "completed",
+      "createdAt": "2026-05-15T21:10:43.280Z",
+      "updatedAt": "2026-05-15T21:10:44.586Z",
+      "selectedSurface": {
+        "id": "surface:tool_workspace",
+        "kind": "tool_workspace",
+        "isolationLevel": "workspace",
+        "supportsVisualActions": false,
+        "supportsStructuredDom": false,
+        "supportsBrowserChrome": false,
+        "supportsTerminal": false,
+        "supportsGeneratedTools": true,
+        "supportsFileArtifacts": true,
+        "requiresForeground": false,
+        "requiresUserProfileAccess": false,
+        "defaultRiskClass": "local_artifact_create"
+      },
+      "evalRunId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+      "dagRunId": "capability-dag-a6ccd107-382b-40a5-9aa7-6dca89e61413",
+      "latestObservationId": "observation:17830ceb-8281-4c8a-a4e7-586ca694a14c",
+      "latestVerifierResultId": "verifier:62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d"
+    },
+    "evalRun": {
+      "id": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+      "scenarioId": "computer-session:62184eca-a59b-4835-8cee-2be927a98977",
+      "sessionId": "62184eca-a59b-4835-8cee-2be927a98977",
+      "status": "completed",
+      "modalities": [
+        "terminal",
+        "cross_app"
+      ],
+      "prompt": "OpenAI 홈페이지에서 Codex 지원 명령어 조사해서 PDF 파일로 제공해줘.",
+      "scenario": {
+        "id": "computer-session:62184eca-a59b-4835-8cee-2be927a98977",
+        "title": "OpenAI 홈페이지에서 Codex 지원 명령어 조사해서 PDF 파일로 제공해줘.",
+        "modalities": [
+          "terminal",
+          "cross_app"
+        ],
+        "source": "computer_session_runtime",
+        "prompt": "OpenAI 홈페이지에서 Codex 지원 명령어 조사해서 PDF 파일로 제공해줘.",
+        "setup": {
+          "profileId": "autonomy-profile-fc9fc430-28f7-4815-a535-59916ac9ee89",
+          "requestedSurface": "tool_workspace",
+          "selectedSurface": "tool_workspace",
+          "requiredGrants": [
+            "generated_code.runtime_workspace",
+            "file.write_output_root"
+          ]
+        },
+        "tags": [
+          "computer_session_runtime",
+          "tool_workspace"
+        ],
+        "safetyBoundaries": [
+          "approval_required_for_high_risk_actions",
+          "restricted_pages_are_not_bypassed",
+          "credentials_are_not_automated",
+          "foreground_desktop_requires_watch_mode"
+        ]
+      },
+      "taskSuccess": "partial",
+      "failureClass": "none",
+      "startedAt": "2026-05-15T21:10:43.289Z",
+      "completedAt": "2026-05-15T21:10:43.331Z",
+      "elapsedMs": 42,
+      "metrics": {
+        "runtime": "computer_session_runtime.v1",
+        "selectedSurface": "tool_workspace",
+        "steps": 1,
+        "actionCount": 0,
+        "proofRecorded": false,
+        "clarificationCount": 0
+      },
+      "createdAt": "2026-05-15T21:10:43.289Z",
+      "updatedAt": "2026-05-15T21:10:43.331Z"
+    },
+    "dagRun": {
+      "id": "capability-dag-a6ccd107-382b-40a5-9aa7-6dca89e61413",
+      "evalRunId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+      "sessionId": "62184eca-a59b-4835-8cee-2be927a98977",
+      "status": "completed",
+      "goal": "OpenAI 홈페이지에서 Codex 지원 명령어 조사해서 PDF 파일로 제공해줘.",
+      "metadata": {
+        "runtime": "computer_session_runtime.v1",
+        "surface": "tool_workspace",
+        "profileId": "autonomy-profile-fc9fc430-28f7-4815-a535-59916ac9ee89",
+        "createsLocalArtifact": true,
+        "requiresGeneratedTool": true,
+        "nodeCount": 5
+      },
+      "createdAt": "2026-05-15T21:10:43.292Z",
+      "updatedAt": "2026-05-15T21:10:43.327Z",
+      "completedAt": "2026-05-15T21:10:43.327Z"
+    },
+    "dagNodes": [
+      {
+        "id": "62184eca-a59b-4835-8cee-2be927a98977:permission_check",
+        "dagRunId": "capability-dag-a6ccd107-382b-40a5-9aa7-6dca89e61413",
+        "kind": "permission_check",
+        "status": "completed",
+        "capabilityKind": null,
+        "priority": "normal",
+        "requestedBy": "direct_ui",
+        "dependsOn": [],
+        "input": {
+          "evalRunId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+          "requiredGrants": [
+            "generated_code.runtime_workspace",
+            "file.write_output_root"
+          ]
+        },
+        "output": {
+          "ok": true,
+          "mode": "local_dag_node"
+        },
+        "resourceUsage": {},
+        "startedAt": "2026-05-15T21:10:43.313Z",
+        "completedAt": "2026-05-15T21:10:43.313Z",
+        "elapsedMs": 0,
+        "createdAt": "2026-05-15T21:10:43.295Z",
+        "updatedAt": "2026-05-15T21:10:43.295Z"
+      },
+      {
+        "id": "62184eca-a59b-4835-8cee-2be927a98977:surface_select",
+        "dagRunId": "capability-dag-a6ccd107-382b-40a5-9aa7-6dca89e61413",
+        "kind": "setup",
+        "status": "completed",
+        "capabilityKind": null,
+        "priority": "normal",
+        "requestedBy": "direct_ui",
+        "dependsOn": [
+          "62184eca-a59b-4835-8cee-2be927a98977:permission_check"
+        ],
+        "input": {
+          "surface": "tool_workspace",
+          "reason": "requested_surface:tool_workspace"
+        },
+        "output": {
+          "ok": true,
+          "mode": "local_dag_node"
+        },
+        "resourceUsage": {},
+        "startedAt": "2026-05-15T21:10:43.316Z",
+        "completedAt": "2026-05-15T21:10:43.316Z",
+        "elapsedMs": 0,
+        "createdAt": "2026-05-15T21:10:43.298Z",
+        "updatedAt": "2026-05-15T21:10:43.298Z"
+      },
+      {
+        "id": "62184eca-a59b-4835-8cee-2be927a98977:observe",
+        "dagRunId": "capability-dag-a6ccd107-382b-40a5-9aa7-6dca89e61413",
+        "kind": "observe",
+        "status": "completed",
+        "capabilityKind": null,
+        "priority": "normal",
+        "requestedBy": "direct_ui",
+        "dependsOn": [
+          "62184eca-a59b-4835-8cee-2be927a98977:surface_select"
+        ],
+        "input": {
+          "mode": "skeleton_observe"
+        },
+        "output": {
+          "ok": true,
+          "mode": "local_dag_node"
+        },
+        "resourceUsage": {},
+        "startedAt": "2026-05-15T21:10:43.319Z",
+        "completedAt": "2026-05-15T21:10:43.319Z",
+        "elapsedMs": 0,
+        "createdAt": "2026-05-15T21:10:43.301Z",
+        "updatedAt": "2026-05-15T21:10:43.301Z"
+      },
+      {
+        "id": "62184eca-a59b-4835-8cee-2be927a98977:plan",
+        "dagRunId": "capability-dag-a6ccd107-382b-40a5-9aa7-6dca89e61413",
+        "kind": "plan",
+        "status": "completed",
+        "capabilityKind": null,
+        "priority": "normal",
+        "requestedBy": "direct_ui",
+        "dependsOn": [
+          "62184eca-a59b-4835-8cee-2be927a98977:observe"
+        ],
+        "input": {
+          "mode": "skeleton_plan"
+        },
+        "output": {
+          "ok": true,
+          "mode": "local_dag_node"
+        },
+        "resourceUsage": {},
+        "startedAt": "2026-05-15T21:10:43.321Z",
+        "completedAt": "2026-05-15T21:10:43.321Z",
+        "elapsedMs": 0,
+        "createdAt": "2026-05-15T21:10:43.304Z",
+        "updatedAt": "2026-05-15T21:10:43.304Z"
+      },
+      {
+        "id": "62184eca-a59b-4835-8cee-2be927a98977:eval_ledger",
+        "dagRunId": "capability-dag-a6ccd107-382b-40a5-9aa7-6dca89e61413",
+        "kind": "eval_ledger",
+        "status": "completed",
+        "capabilityKind": null,
+        "priority": "normal",
+        "requestedBy": "direct_ui",
+        "dependsOn": [
+          "62184eca-a59b-4835-8cee-2be927a98977:plan"
+        ],
+        "input": {
+          "evalRunId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63"
+        },
+        "output": {
+          "ok": true,
+          "mode": "local_dag_node"
+        },
+        "resourceUsage": {},
+        "startedAt": "2026-05-15T21:10:43.324Z",
+        "completedAt": "2026-05-15T21:10:43.324Z",
+        "elapsedMs": 0,
+        "createdAt": "2026-05-15T21:10:43.307Z",
+        "updatedAt": "2026-05-15T21:10:43.307Z"
+      },
+      {
+        "id": "62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d",
+        "dagRunId": "capability-dag-a6ccd107-382b-40a5-9aa7-6dca89e61413",
+        "kind": "action",
+        "status": "completed",
+        "capabilityKind": "agent_tool",
+        "priority": "normal",
+        "requestedBy": "direct_ui",
+        "dependsOn": [],
+        "input": {
+          "goal": "OpenAI 홈페이지에서 Codex 지원 명령어 조사해서 PDF 파일로 제공해줘.",
+          "permissionProfileId": "autonomy-profile-fc9fc430-28f7-4815-a535-59916ac9ee89",
+          "outputRoot": "C:\\Users\\Tony\\Workspace\\codex-widget-for-desktop\\docs\\reports\\assets\\computer-use-toolsmith-live-2026-05-16\\live-report",
+          "title": "Computer Use OpenAI Codex live source report",
+          "urls": [
+            "https://help.openai.com/en/articles/11096431-openai-codex-ci-getting-started",
+            "https://platform.openai.com/docs/codex/overview",
+            "https://platform.openai.com/docs/docs-mcp"
+          ],
+          "browserFallbackDocuments": [
+            {
+              "title": "CLI – Codex | OpenAI Developers",
+              "url": "https://help.openai.com/en/articles/11096431-openai-codex-ci-getting-started",
+              "text": "Home API Codex ChatGPT Resources Start searching API Dashboard Getting Started Overview Quickstart Explore use cases Migrate Pricing Concepts Using Codex App IDE Extension CLI Overview Features Command Line Options Slash commands Web Integrations Codex Security Configuration Config File Speed Rules Hooks AGENTS.md MCP Plugins Skills Subagents Administration Authentication Agent approvals & security Remote connections Enterprise Windows Automation Non-interactive Mode Codex SDK App Server MCP Server GitHub Action Learn Best practices Videos Community Blog Cookbooks Building AI Teams Releases Changelog Feature Maturity Open Source CLI setup Work with the Codex CLI Copy Page Codex CLI Pair with Codex in your terminal Copy Page Codex CLI is OpenAI’s coding agent that you can run locally from your terminal. It can read, change, and run code on your machine in the selected directory. It’s open source and built in Rust for speed and efficiency. ChatGPT Plus, Pro, Business, Edu, and Enterprise plans include Codex. Learn more about what’s included. CLI setup Choose your package manager npm Homebrew 1 Install Install the Codex CLI with npm. npm install command npm i -g @openai/codex Copy 2 Run Run Codex in a terminal. It can inspect your repository, edit files, and run commands. Run Codex command codex Copy The first time you run Codex, you'll be prompted to sign in. Authenticate with your ChatGPT account or an API key. See the pricing page if you're not sure which plans include Codex access. 3 Upgrade New versions of the Codex CLI are released regularly. See the changelog for release notes. To upgrade with npm, run: npm upgrade command npm i -g @openai/codex@latest Copy The Codex CLI is available on macOS, Windows, and Linux. On Windows, run Codex natively in PowerShell with the Windows sandbox, or use WSL2 when you need a Linux-native environment. For setup details, see the Windows setup guide. If you’re new to Codex, read the best practices guide. Work with the Codex CLI Run Codex interactively Run codex to start an interactive terminal UI (TUI) session. Control model and reasoning Use /model to switch between GPT-5.4, GPT-5.3-Codex, and other available models, or adjust reasoning levels. Image inputs Attach screenshots or design specs so Codex reads them alongside your prompt. Image generation Generate or edit images directly in the CLI, and attach references when you want Codex to iterate on an existing asset. Run local code review Get your code reviewed by a separate Codex agent before you commit or push your changes. Use subagents Use subagents to parallelize complex tasks. Web search Use Codex to search the web and get up-to-date information for your task. Codex Cloud tasks Launch a Codex Cloud task, choose environments, and apply the resulting diffs without leaving your terminal. Scripting Codex Automate repeatable workflows by scripting Codex with the exec command. Model Context Protocol Give Codex access to additional third-party tools and context with Model Context Protocol (MCP). Approval modes Choose the approval mode that matches your comfort level before Codex edits or runs commands. Next Features",
+              "capture": {
+                "command": "playwright.browser_capture",
+                "status": 200,
+                "title": "CLI – Codex | OpenAI Developers",
+                "chars": 3201,
+                "textSha256": "4e9109d64290483b0d45b9488081098cb3a852ca5c9f5c05314a3ddb5273636c",
+                "capturedAt": "2026-05-15T21:10:41.060Z",
+                "dataOmitted": true
+              }
+            },
+            {
+              "title": "Web – Codex | OpenAI Developers",
+              "url": "https://platform.openai.com/docs/codex/overview",
+              "text": "Home API Codex ChatGPT Resources Start searching API Dashboard Getting Started Overview Quickstart Explore use cases Migrate Pricing Concepts Using Codex App IDE Extension CLI Web Overview Environments Internet Access Integrations Codex Security Configuration Config File Speed Rules Hooks AGENTS.md MCP Plugins Skills Subagents Administration Authentication Agent approvals & security Remote connections Enterprise Windows Automation Non-interactive Mode Codex SDK App Server MCP Server GitHub Action Learn Best practices Videos Community Blog Cookbooks Building AI Teams Releases Changelog Feature Maturity Open Source Codex web setup Work with Codex web Copy Page Codex web Delegate to Codex in the cloud Copy Page Codex is OpenAI’s coding agent that can read, edit, and run code. It helps you build faster, fix bugs, and understand unfamiliar code. With Codex cloud, Codex can work on tasks in the background (including in parallel) using its own cloud environment. Codex web setup Go to Codex and connect your GitHub account. This lets Codex work with the code in your repositories and create pull requests from its work. Your Plus, Pro, Business, Edu, or Enterprise plan includes Codex. Learn more about what’s included. Some Enterprise workspaces may require admin setup before you can access Codex. Work with Codex web Learn about prompting Write clearer prompts, add constraints, and choose the right level of detail to get better results. Common workflows Start with proven patterns for delegating tasks, reviewing changes, and turning results into PRs. Configuring environments Choose the repo, setup steps, and tools Codex should use when it runs tasks in the cloud. Delegate work from the IDE extension Kick off a cloud task from your editor, then monitor progress and apply the resulting diffs locally. Delegating from GitHub Tag @codex on issues and pull requests to spin up tasks and propose changes directly from GitHub. Control internet access Decide whether Codex can reach the public internet from cloud environments, and when to enable it. Next Environments",
+              "capture": {
+                "command": "playwright.browser_capture",
+                "status": 200,
+                "title": "Web – Codex | OpenAI Developers",
+                "chars": 2097,
+                "textSha256": "1c383c491125efbd48f26cbbc7cf0c1974810d4e2d4b674cc9576a7b6ae7ba06",
+                "capturedAt": "2026-05-15T21:10:42.131Z",
+                "dataOmitted": true
+              }
+            },
+            {
+              "title": "Docs MCP | OpenAI Developers",
+              "url": "https://platform.openai.com/docs/docs-mcp",
+              "text": "Home API Codex ChatGPT Resources Start searching API Dashboard Home OpenAI Developers plugin Docs MCP Categories Demo apps Videos Topics Agents Audio & Voice Computer Use Codex Evals gpt-oss Fine-tuning Image generation Scaling Tools Video generation What it provides Quickstart Tips OpenAI Docs Skill Copy Page Docs MCP Search and read OpenAI developer docs from your editor using MCP. Copy Page OpenAI hosts a public Model Context Protocol (MCP) server for developer documentation on developers.openai.com and platform.openai.com. Server URL (streamable HTTP): https://developers.openai.com/mcp What it provides Read-only access to OpenAI developer documentation (search + page content). A way to pull documentation into your agent’s context while you work. This MCP server is documentation-only. It does not call the OpenAI API on your behalf. Quickstart Choose an option Codex VS Code Cursor Claude Code You can connect Codex to MCP servers in the CLI or IDE extension. The configuration is shared between both so you only have to set it up once. Add the server using the Codex CLI: codex mcp add openaiDeveloperDocs --url https://developers.openai.com/mcp Verify it’s configured: codex mcp list Alternatively, you can add it in ~/.codex/config.toml directly: [mcp_servers.openaiDeveloperDocs] url = \"https://developers.openai.com/mcp\" To have Codex reliably use the MCP server, add this snippet to your AGENTS.md: Always use the OpenAI developer documentation MCP server if you need to work with the OpenAI API, ChatGPT Apps SDK, Codex,… without me having to explicitly ask. Tips If you don’t have the snippet in the AGENTS.md file, you need to explicitly tell your agent to consult the Docs MCP server for the answer. If you have more than one MCP server, keep server names short and descriptive to aid the agent in selecting the server. OpenAI Docs Skill If you use skills in your AI tooling, pair this MCP server with the OpenAI Docs Skill. It tells the agent to use Docs MCP tools first for OpenAI questions, then fall back to official OpenAI domains. Install the skill from the OpenAI skills repository. Confirm you configured this Docs MCP server at https://developers.openai.com/mcp. Enable the skill for your project or session in your agent tooling. Ask OpenAI product/API questions and request citations so answers stay traceable to docs sources.",
+              "capture": {
+                "command": "playwright.browser_capture",
+                "status": 200,
+                "title": "Docs MCP | OpenAI Developers",
+                "chars": 2379,
+                "textSha256": "c616e7100cb77212e01d68e291b263b8a7bdb2eb3cccac68350c60e084d46e2a",
+                "capturedAt": "2026-05-15T21:10:43.202Z",
+                "dataOmitted": true
+              }
+            }
+          ],
+          "actionRoute": {
+            "schemaVersion": "computer-session-action-route.v1",
+            "operationKind": "toolsmith",
+            "selectedSurface": "tool_workspace",
+            "executionMode": "structured_toolsmith",
+            "preferenceRank": 1,
+            "visualFallbackUsed": false,
+            "reason": "Research/artifact work is routed to the bounded Toolsmith workspace."
+          }
+        },
+        "output": {
+          "ok": true,
+          "autonomyRunId": "autonomy-run-458bf09f-0609-4ee3-847a-3a819c920a5d",
+          "autonomyEvalRunId": "computer-use-eval-64efde47-129f-4f13-9aa2-1ec276d7e9cd",
+          "autonomyDagRunId": "capability-dag-86b0b80e-1822-466a-a848-37a498f5dfde",
+          "status": "completed",
+          "failureClass": "none",
+          "toolSpecId": "tool-web-research-to-pdf",
+          "toolRunIds": [
+            "autonomy-tool-run-93f3ba39-8530-49e3-820d-755d35db0cdf",
+            "autonomy-tool-run-4edd9c99-7116-49b5-abf2-fa7665c3b78a",
+            "autonomy-tool-run-9a51fb31-5ef4-4699-8be5-545384b81465",
+            "autonomy-tool-run-ed885184-71e2-47b3-8e08-1ea548ed1c8f",
+            "autonomy-tool-run-64f5022d-8732-455f-a0ca-c046ed7d79e1",
+            "autonomy-tool-run-cf40497e-e3d3-407c-8f43-fa9f0d9c1f98",
+            "autonomy-tool-run-7241485d-6145-402e-8808-583d612ef175",
+            "autonomy-tool-run-ae68e90e-28a3-4f55-88dd-fdf2f1d77278"
+          ],
+          "artifactCount": 13,
+          "sourceSummary": {
+            "sourceCount": 3,
+            "rows": [
+              {
+                "url": "help.openai.com",
+                "status": "browser_fallback",
+                "browserFallback": true
+              },
+              {
+                "url": "platform.openai.com",
+                "status": "browser_fallback",
+                "browserFallback": true
+              }
+            ],
+            "fetchedUrls": [],
+            "browserFallbackUrls": [
+              "help.openai.com",
+              "platform.openai.com"
+            ],
+            "warnings": [
+              "http_status_403:help.openai.com",
+              "browser_fallback_used:help.openai.com:http_status_403",
+              "http_status_403:platform.openai.com",
+              "browser_fallback_used:platform.openai.com:http_status_403"
+            ]
+          },
+          "artifacts": [
+            {
+              "role": "report",
+              "mime": "text/markdown",
+              "size": 406,
+              "sha256": "e5dfdd246c251662f65a22fe9c99b9fa40604209ba65e344f703038b8dd2c4d3",
+              "blobId": "blob:e5dfdd246c251662f65a22fe9c99b9fa40604209ba65e344f703038b8dd2c4d3",
+              "resourceId": "computer-use-resource-9feefb44-64f0-421f-878f-9785a772545f",
+              "basename": "report.md"
+            },
+            {
+              "role": "pdf",
+              "mime": "application/pdf",
+              "size": 1182,
+              "sha256": "b28c5e635bfad3b3369fba409f454c3f03d07fcbcfb9fbaad418d88eec30caf6",
+              "blobId": "blob:b28c5e635bfad3b3369fba409f454c3f03d07fcbcfb9fbaad418d88eec30caf6",
+              "resourceId": "computer-use-resource-59c6df42-7675-4852-92d0-eee260c00391",
+              "basename": "report.pdf"
+            },
+            {
+              "role": "citation",
+              "mime": "application/json",
+              "size": 319,
+              "sha256": "2f080cfec5627aa75a6d205f52032231360f4035f64ea57f65ead35f04e4f041",
+              "blobId": "blob:2f080cfec5627aa75a6d205f52032231360f4035f64ea57f65ead35f04e4f041",
+              "resourceId": "computer-use-resource-e0290832-59b5-4c33-9776-90904c3921ef",
+              "basename": "citations.json"
+            },
+            {
+              "role": "source",
+              "mime": "application/json",
+              "size": 9424,
+              "sha256": "e999ea83c547bc12bdd910bae0f377c57e0225fa9404cb9e9cfe88ded802cebe",
+              "blobId": "blob:e999ea83c547bc12bdd910bae0f377c57e0225fa9404cb9e9cfe88ded802cebe",
+              "resourceId": "computer-use-resource-331f15b5-bc75-47e3-9cc7-fc14b1dafddd",
+              "basename": "sources.json"
+            },
+            {
+              "role": "source",
+              "mime": "application/json",
+              "size": 9472,
+              "sha256": "603095adc5dc7d50870eae165a1b90fb283118081be7752adbf3666507361ba6",
+              "blobId": "blob:603095adc5dc7d50870eae165a1b90fb283118081be7752adbf3666507361ba6",
+              "resourceId": "computer-use-resource-1c52d2ca-f266-47c7-b108-6d33362bec16",
+              "basename": "extracted.json"
+            },
+            {
+              "role": "citation",
+              "mime": "application/json",
+              "size": 1640,
+              "sha256": "b59b93fd46e95c046541b185a0b0e7b0aa150ece941e03e05e36b4f08bcccd82",
+              "blobId": "blob:b59b93fd46e95c046541b185a0b0e7b0aa150ece941e03e05e36b4f08bcccd82",
+              "resourceId": "computer-use-resource-e186c6bf-d7d1-4e1a-8b51-6e2cdcdd41f3",
+              "basename": "citations.json"
+            },
+            {
+              "role": "report",
+              "mime": "text/markdown",
+              "size": 8832,
+              "sha256": "a77ed0ad1cae10e7b465219058c83ba9c90a3f81508c46cb9b948b87c5091bb0",
+              "blobId": "blob:a77ed0ad1cae10e7b465219058c83ba9c90a3f81508c46cb9b948b87c5091bb0",
+              "resourceId": "computer-use-resource-78e36b88-e724-43cf-a0b5-6fec3801975c",
+              "basename": "report.md"
+            },
+            {
+              "role": "pdf",
+              "mime": "application/pdf",
+              "size": 2331,
+              "sha256": "51b62d51636a0485c27fc3b9a405e12ba251fe5071eeb6e167ae5d931b3d1122",
+              "blobId": "blob:51b62d51636a0485c27fc3b9a405e12ba251fe5071eeb6e167ae5d931b3d1122",
+              "resourceId": "computer-use-resource-555e7012-bd34-41d1-af67-7c79212716c4",
+              "basename": "report.pdf"
+            },
+            {
+              "role": "report",
+              "mime": "text/markdown",
+              "size": 8832,
+              "sha256": "a77ed0ad1cae10e7b465219058c83ba9c90a3f81508c46cb9b948b87c5091bb0",
+              "blobId": "blob:a77ed0ad1cae10e7b465219058c83ba9c90a3f81508c46cb9b948b87c5091bb0",
+              "resourceId": "computer-use-resource-dd7333cc-5c7a-47b1-80a3-472a9d46cbd0",
+              "basename": "report.md"
+            },
+            {
+              "role": "pdf",
+              "mime": "application/pdf",
+              "size": 2331,
+              "sha256": "51b62d51636a0485c27fc3b9a405e12ba251fe5071eeb6e167ae5d931b3d1122",
+              "blobId": "blob:51b62d51636a0485c27fc3b9a405e12ba251fe5071eeb6e167ae5d931b3d1122",
+              "resourceId": "computer-use-resource-6f00a2f2-cec6-4aa6-9819-a82763444db1",
+              "basename": "report.pdf"
+            },
+            {
+              "role": "citation",
+              "mime": "application/json",
+              "size": 1640,
+              "sha256": "b59b93fd46e95c046541b185a0b0e7b0aa150ece941e03e05e36b4f08bcccd82",
+              "blobId": "blob:b59b93fd46e95c046541b185a0b0e7b0aa150ece941e03e05e36b4f08bcccd82",
+              "resourceId": "computer-use-resource-b5646d40-6823-4d68-818c-ff1f7c4d7a5f",
+              "basename": "citations.json"
+            },
+            {
+              "role": "report",
+              "mime": "text/markdown",
+              "size": 8832,
+              "sha256": "a77ed0ad1cae10e7b465219058c83ba9c90a3f81508c46cb9b948b87c5091bb0",
+              "blobId": "blob:a77ed0ad1cae10e7b465219058c83ba9c90a3f81508c46cb9b948b87c5091bb0",
+              "resourceId": "computer-use-resource-80b46f3b-ed23-4187-aae5-9a36c7a7cac4",
+              "basename": "report.md"
+            },
+            {
+              "role": "pdf",
+              "mime": "application/pdf",
+              "size": 2331,
+              "sha256": "51b62d51636a0485c27fc3b9a405e12ba251fe5071eeb6e167ae5d931b3d1122",
+              "blobId": "blob:51b62d51636a0485c27fc3b9a405e12ba251fe5071eeb6e167ae5d931b3d1122",
+              "resourceId": "computer-use-resource-f8a0dee0-dece-47c4-b3a6-e641ceb26605",
+              "basename": "report.pdf"
+            }
+          ],
+          "verification": {
+            "status": "passed",
+            "reason": "Scoped autonomy DAG completed and produced artifact evidence."
+          }
+        },
+        "resourceUsage": {},
+        "startedAt": "2026-05-15T21:10:43.337Z",
+        "completedAt": "2026-05-15T21:10:44.518Z",
+        "elapsedMs": 1181,
+        "createdAt": "2026-05-15T21:10:43.337Z",
+        "updatedAt": "2026-05-15T21:10:43.337Z"
+      },
+      {
+        "id": "62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d:verification",
+        "dagRunId": "capability-dag-a6ccd107-382b-40a5-9aa7-6dca89e61413",
+        "kind": "verification",
+        "status": "completed",
+        "capabilityKind": null,
+        "priority": "normal",
+        "requestedBy": "direct_ui",
+        "dependsOn": [
+          "62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d"
+        ],
+        "input": {
+          "actionNodeId": "62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d"
+        },
+        "output": {
+          "jobStatus": "completed",
+          "verification": {
+            "status": "passed",
+            "reason": "Scoped autonomy DAG completed and produced artifact evidence."
+          }
+        },
+        "resourceUsage": {},
+        "startedAt": "2026-05-15T21:10:44.518Z",
+        "completedAt": "2026-05-15T21:10:44.518Z",
+        "elapsedMs": 0,
+        "createdAt": "2026-05-15T21:10:44.522Z",
+        "updatedAt": "2026-05-15T21:10:44.522Z"
+      },
+      {
+        "id": "62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d:eval_ledger",
+        "dagRunId": "capability-dag-a6ccd107-382b-40a5-9aa7-6dca89e61413",
+        "kind": "eval_ledger",
+        "status": "completed",
+        "capabilityKind": null,
+        "priority": "normal",
+        "requestedBy": "direct_ui",
+        "dependsOn": [
+          "62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d:verification"
+        ],
+        "input": {
+          "verificationNodeId": "62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d:verification"
+        },
+        "output": {
+          "recorded": true,
+          "jobStatus": "completed"
+        },
+        "resourceUsage": {},
+        "startedAt": "2026-05-15T21:10:44.518Z",
+        "completedAt": "2026-05-15T21:10:44.518Z",
+        "elapsedMs": 0,
+        "createdAt": "2026-05-15T21:10:44.525Z",
+        "updatedAt": "2026-05-15T21:10:44.525Z"
+      },
+      {
+        "id": "62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d:store_artifact",
+        "dagRunId": "capability-dag-a6ccd107-382b-40a5-9aa7-6dca89e61413",
+        "kind": "store_artifact",
+        "status": "completed",
+        "capabilityKind": null,
+        "priority": "normal",
+        "requestedBy": "direct_ui",
+        "dependsOn": [
+          "62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d"
+        ],
+        "input": {
+          "autonomyRunId": "autonomy-run-458bf09f-0609-4ee3-847a-3a819c920a5d",
+          "artifactCount": 13
+        },
+        "output": {
+          "artifactCount": 13,
+          "artifactRoles": [
+            "report",
+            "pdf",
+            "citation",
+            "source"
+          ],
+          "sourceSummary": {
+            "sourceCount": 3,
+            "rows": [
+              {
+                "url": "help.openai.com",
+                "status": "browser_fallback",
+                "browserFallback": true
+              },
+              {
+                "url": "platform.openai.com",
+                "status": "browser_fallback",
+                "browserFallback": true
+              }
+            ],
+            "fetchedUrls": [],
+            "browserFallbackUrls": [
+              "help.openai.com",
+              "platform.openai.com"
+            ],
+            "warnings": [
+              "http_status_403:help.openai.com",
+              "browser_fallback_used:help.openai.com:http_status_403",
+              "http_status_403:platform.openai.com",
+              "browser_fallback_used:platform.openai.com:http_status_403"
+            ]
+          },
+          "evalResourceIds": [
+            "computer-use-resource-1698ec62-1ff6-43f9-9a0a-dc78e9e2ad91",
+            "computer-use-resource-f2306e74-2213-4f02-bf05-705f263779c4",
+            "computer-use-resource-8a88e834-42c9-4aaf-b414-6da21ea68cee",
+            "computer-use-resource-f9022105-b927-4022-bd38-29634819e051",
+            "computer-use-resource-f7b3a594-afcb-4472-9967-62a936002f31",
+            "computer-use-resource-377e1637-b7ec-4fcd-95bc-5217dc89013c",
+            "computer-use-resource-39635726-aed2-4d59-899f-2b8717011f98",
+            "computer-use-resource-5b7216af-bfed-4b88-b5b3-2402f3082966",
+            "computer-use-resource-7b64dada-394f-4806-9703-df975ad7a2a8",
+            "computer-use-resource-02926031-65b2-426c-9455-0e5a1fc28ffa",
+            "computer-use-resource-f1478d46-f02d-44a7-97da-ab5a4fb5a2c3",
+            "computer-use-resource-4f77b2e8-b190-422f-a4ce-94d43629db42",
+            "computer-use-resource-e1649d49-d2dc-4da0-97f4-a8c2ce112ed6"
+          ]
+        },
+        "resourceUsage": {},
+        "startedAt": "2026-05-15T21:10:44.574Z",
+        "completedAt": "2026-05-15T21:10:44.574Z",
+        "elapsedMs": 0,
+        "createdAt": "2026-05-15T21:10:44.574Z",
+        "updatedAt": "2026-05-15T21:10:44.574Z"
+      },
+      {
+        "id": "62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d:verify_artifact",
+        "dagRunId": "capability-dag-a6ccd107-382b-40a5-9aa7-6dca89e61413",
+        "kind": "verify_artifact",
+        "status": "completed",
+        "capabilityKind": null,
+        "priority": "normal",
+        "requestedBy": "direct_ui",
+        "dependsOn": [
+          "62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d:store_artifact"
+        ],
+        "input": {
+          "autonomyRunId": "autonomy-run-458bf09f-0609-4ee3-847a-3a819c920a5d",
+          "storeArtifactNodeId": "62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d:store_artifact"
+        },
+        "output": {
+          "artifactCount": 13,
+          "verifiedArtifactCount": 13,
+          "artifactRoles": [
+            "report",
+            "pdf",
+            "citation",
+            "source"
+          ],
+          "sourceSummary": {
+            "sourceCount": 3,
+            "rows": [
+              {
+                "url": "help.openai.com",
+                "status": "browser_fallback",
+                "browserFallback": true
+              },
+              {
+                "url": "platform.openai.com",
+                "status": "browser_fallback",
+                "browserFallback": true
+              }
+            ],
+            "fetchedUrls": [],
+            "browserFallbackUrls": [
+              "help.openai.com",
+              "platform.openai.com"
+            ],
+            "warnings": [
+              "http_status_403:help.openai.com",
+              "browser_fallback_used:help.openai.com:http_status_403",
+              "http_status_403:platform.openai.com",
+              "browser_fallback_used:platform.openai.com:http_status_403"
+            ]
+          },
+          "verification": {
+            "status": "passed",
+            "reason": "Toolsmith artifacts have blob-backed content and hash evidence."
+          }
+        },
+        "resourceUsage": {},
+        "startedAt": "2026-05-15T21:10:44.574Z",
+        "completedAt": "2026-05-15T21:10:44.574Z",
+        "elapsedMs": 0,
+        "createdAt": "2026-05-15T21:10:44.580Z",
+        "updatedAt": "2026-05-15T21:10:44.580Z"
+      }
+    ],
+    "capabilityJobs": [],
+    "evalResources": [
+      {
+        "id": "computer-use-resource-1698ec62-1ff6-43f9-9a0a-dc78e9e2ad91",
+        "runId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+        "stepId": "computer-use-step-3a37bb03-6d20-4b13-9226-d5ee5658f06d",
+        "blobId": "blob:e5dfdd246c251662f65a22fe9c99b9fa40604209ba65e344f703038b8dd2c4d3",
+        "role": "toolsmith_report",
+        "retention": "evidence",
+        "redaction": {
+          "mode": "artifact_path_redacted",
+          "basename": "report.md",
+          "source": "scoped_autonomy"
+        },
+        "createdAt": "2026-05-15T21:10:44.531Z"
+      },
+      {
+        "id": "computer-use-resource-f2306e74-2213-4f02-bf05-705f263779c4",
+        "runId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+        "stepId": "computer-use-step-3a37bb03-6d20-4b13-9226-d5ee5658f06d",
+        "blobId": "blob:b28c5e635bfad3b3369fba409f454c3f03d07fcbcfb9fbaad418d88eec30caf6",
+        "role": "toolsmith_pdf",
+        "retention": "evidence",
+        "redaction": {
+          "mode": "artifact_path_redacted",
+          "basename": "report.pdf",
+          "source": "scoped_autonomy"
+        },
+        "createdAt": "2026-05-15T21:10:44.534Z"
+      },
+      {
+        "id": "computer-use-resource-8a88e834-42c9-4aaf-b414-6da21ea68cee",
+        "runId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+        "stepId": "computer-use-step-3a37bb03-6d20-4b13-9226-d5ee5658f06d",
+        "blobId": "blob:2f080cfec5627aa75a6d205f52032231360f4035f64ea57f65ead35f04e4f041",
+        "role": "toolsmith_citation",
+        "retention": "evidence",
+        "redaction": {
+          "mode": "artifact_path_redacted",
+          "basename": "citations.json",
+          "source": "scoped_autonomy"
+        },
+        "createdAt": "2026-05-15T21:10:44.537Z"
+      },
+      {
+        "id": "computer-use-resource-f9022105-b927-4022-bd38-29634819e051",
+        "runId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+        "stepId": "computer-use-step-3a37bb03-6d20-4b13-9226-d5ee5658f06d",
+        "blobId": "blob:e999ea83c547bc12bdd910bae0f377c57e0225fa9404cb9e9cfe88ded802cebe",
+        "role": "toolsmith_source",
+        "retention": "evidence",
+        "redaction": {
+          "mode": "artifact_path_redacted",
+          "basename": "sources.json",
+          "source": "scoped_autonomy"
+        },
+        "createdAt": "2026-05-15T21:10:44.539Z"
+      },
+      {
+        "id": "computer-use-resource-f7b3a594-afcb-4472-9967-62a936002f31",
+        "runId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+        "stepId": "computer-use-step-3a37bb03-6d20-4b13-9226-d5ee5658f06d",
+        "blobId": "blob:603095adc5dc7d50870eae165a1b90fb283118081be7752adbf3666507361ba6",
+        "role": "toolsmith_source",
+        "retention": "evidence",
+        "redaction": {
+          "mode": "artifact_path_redacted",
+          "basename": "extracted.json",
+          "source": "scoped_autonomy"
+        },
+        "createdAt": "2026-05-15T21:10:44.542Z"
+      },
+      {
+        "id": "computer-use-resource-377e1637-b7ec-4fcd-95bc-5217dc89013c",
+        "runId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+        "stepId": "computer-use-step-3a37bb03-6d20-4b13-9226-d5ee5658f06d",
+        "blobId": "blob:b59b93fd46e95c046541b185a0b0e7b0aa150ece941e03e05e36b4f08bcccd82",
+        "role": "toolsmith_citation",
+        "retention": "evidence",
+        "redaction": {
+          "mode": "artifact_path_redacted",
+          "basename": "citations.json",
+          "source": "scoped_autonomy"
+        },
+        "createdAt": "2026-05-15T21:10:44.545Z"
+      },
+      {
+        "id": "computer-use-resource-39635726-aed2-4d59-899f-2b8717011f98",
+        "runId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+        "stepId": "computer-use-step-3a37bb03-6d20-4b13-9226-d5ee5658f06d",
+        "blobId": "blob:a77ed0ad1cae10e7b465219058c83ba9c90a3f81508c46cb9b948b87c5091bb0",
+        "role": "toolsmith_report",
+        "retention": "evidence",
+        "redaction": {
+          "mode": "artifact_path_redacted",
+          "basename": "report.md",
+          "source": "scoped_autonomy"
+        },
+        "createdAt": "2026-05-15T21:10:44.547Z"
+      },
+      {
+        "id": "computer-use-resource-5b7216af-bfed-4b88-b5b3-2402f3082966",
+        "runId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+        "stepId": "computer-use-step-3a37bb03-6d20-4b13-9226-d5ee5658f06d",
+        "blobId": "blob:51b62d51636a0485c27fc3b9a405e12ba251fe5071eeb6e167ae5d931b3d1122",
+        "role": "toolsmith_pdf",
+        "retention": "evidence",
+        "redaction": {
+          "mode": "artifact_path_redacted",
+          "basename": "report.pdf",
+          "source": "scoped_autonomy"
+        },
+        "createdAt": "2026-05-15T21:10:44.550Z"
+      },
+      {
+        "id": "computer-use-resource-7b64dada-394f-4806-9703-df975ad7a2a8",
+        "runId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+        "stepId": "computer-use-step-3a37bb03-6d20-4b13-9226-d5ee5658f06d",
+        "blobId": "blob:a77ed0ad1cae10e7b465219058c83ba9c90a3f81508c46cb9b948b87c5091bb0",
+        "role": "toolsmith_report",
+        "retention": "evidence",
+        "redaction": {
+          "mode": "artifact_path_redacted",
+          "basename": "report.md",
+          "source": "scoped_autonomy"
+        },
+        "createdAt": "2026-05-15T21:10:44.553Z"
+      },
+      {
+        "id": "computer-use-resource-02926031-65b2-426c-9455-0e5a1fc28ffa",
+        "runId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+        "stepId": "computer-use-step-3a37bb03-6d20-4b13-9226-d5ee5658f06d",
+        "blobId": "blob:51b62d51636a0485c27fc3b9a405e12ba251fe5071eeb6e167ae5d931b3d1122",
+        "role": "toolsmith_pdf",
+        "retention": "evidence",
+        "redaction": {
+          "mode": "artifact_path_redacted",
+          "basename": "report.pdf",
+          "source": "scoped_autonomy"
+        },
+        "createdAt": "2026-05-15T21:10:44.555Z"
+      },
+      {
+        "id": "computer-use-resource-f1478d46-f02d-44a7-97da-ab5a4fb5a2c3",
+        "runId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+        "stepId": "computer-use-step-3a37bb03-6d20-4b13-9226-d5ee5658f06d",
+        "blobId": "blob:b59b93fd46e95c046541b185a0b0e7b0aa150ece941e03e05e36b4f08bcccd82",
+        "role": "toolsmith_citation",
+        "retention": "evidence",
+        "redaction": {
+          "mode": "artifact_path_redacted",
+          "basename": "citations.json",
+          "source": "scoped_autonomy"
+        },
+        "createdAt": "2026-05-15T21:10:44.558Z"
+      },
+      {
+        "id": "computer-use-resource-4f77b2e8-b190-422f-a4ce-94d43629db42",
+        "runId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+        "stepId": "computer-use-step-3a37bb03-6d20-4b13-9226-d5ee5658f06d",
+        "blobId": "blob:a77ed0ad1cae10e7b465219058c83ba9c90a3f81508c46cb9b948b87c5091bb0",
+        "role": "toolsmith_report",
+        "retention": "evidence",
+        "redaction": {
+          "mode": "artifact_path_redacted",
+          "basename": "report.md",
+          "source": "scoped_autonomy"
+        },
+        "createdAt": "2026-05-15T21:10:44.562Z"
+      },
+      {
+        "id": "computer-use-resource-e1649d49-d2dc-4da0-97f4-a8c2ce112ed6",
+        "runId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+        "stepId": "computer-use-step-3a37bb03-6d20-4b13-9226-d5ee5658f06d",
+        "blobId": "blob:51b62d51636a0485c27fc3b9a405e12ba251fe5071eeb6e167ae5d931b3d1122",
+        "role": "toolsmith_pdf",
+        "retention": "evidence",
+        "redaction": {
+          "mode": "artifact_path_redacted",
+          "basename": "report.pdf",
+          "source": "scoped_autonomy"
+        },
+        "createdAt": "2026-05-15T21:10:44.569Z"
+      }
+    ],
+    "perceptionGraphs": [],
+    "failureMemory": [],
+    "freshnessSummary": {
+      "checkedAt": "2026-05-15T21:10:44.591Z",
+      "fresh": 1,
+      "stale": 0,
+      "unknown": 1,
+      "staleObservationIds": [],
+      "maxAgeMs": 85
+    },
+    "observations": [
+      {
+        "id": "observation:2c3c53f4-f975-4c28-8fa8-27cc7cb642fe",
+        "kind": "session_skeleton",
+        "source": "computer_session_runtime",
+        "surface": "tool_workspace",
+        "capturedAt": "2026-05-15T21:10:43.310Z",
+        "evalRunId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+        "freshness": "unknown",
+        "summary": "Computer Session runtime started and selected an execution surface.",
+        "metadata": {
+          "userRequest": "OpenAI 홈페이지에서 Codex 지원 명령어 조사해서 PDF 파일로 제공해줘.",
+          "selectedSurface": "tool_workspace",
+          "freshnessCheckedAt": "2026-05-15T21:10:44.590Z",
+          "freshnessReason": "no_freshness_window"
+        }
+      },
+      {
+        "id": "observation:17830ceb-8281-4c8a-a4e7-586ca694a14c",
+        "kind": "file",
+        "source": "toolsmith_scoped_autonomy",
+        "surface": "tool_workspace",
+        "capturedAt": "2026-05-15T21:10:44.505Z",
+        "dagNodeId": "62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d",
+        "evalRunId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+        "resourceIds": [
+          {
+            "evalResourceId": "computer-use-resource-1698ec62-1ff6-43f9-9a0a-dc78e9e2ad91",
+            "blobId": "blob:e5dfdd246c251662f65a22fe9c99b9fa40604209ba65e344f703038b8dd2c4d3",
+            "role": "toolsmith_report",
+            "retention": "evidence"
+          },
+          {
+            "evalResourceId": "computer-use-resource-f2306e74-2213-4f02-bf05-705f263779c4",
+            "blobId": "blob:b28c5e635bfad3b3369fba409f454c3f03d07fcbcfb9fbaad418d88eec30caf6",
+            "role": "toolsmith_pdf",
+            "retention": "evidence"
+          },
+          {
+            "evalResourceId": "computer-use-resource-8a88e834-42c9-4aaf-b414-6da21ea68cee",
+            "blobId": "blob:2f080cfec5627aa75a6d205f52032231360f4035f64ea57f65ead35f04e4f041",
+            "role": "toolsmith_citation",
+            "retention": "evidence"
+          },
+          {
+            "evalResourceId": "computer-use-resource-f9022105-b927-4022-bd38-29634819e051",
+            "blobId": "blob:e999ea83c547bc12bdd910bae0f377c57e0225fa9404cb9e9cfe88ded802cebe",
+            "role": "toolsmith_source",
+            "retention": "evidence"
+          },
+          {
+            "evalResourceId": "computer-use-resource-f7b3a594-afcb-4472-9967-62a936002f31",
+            "blobId": "blob:603095adc5dc7d50870eae165a1b90fb283118081be7752adbf3666507361ba6",
+            "role": "toolsmith_source",
+            "retention": "evidence"
+          },
+          {
+            "evalResourceId": "computer-use-resource-377e1637-b7ec-4fcd-95bc-5217dc89013c",
+            "blobId": "blob:b59b93fd46e95c046541b185a0b0e7b0aa150ece941e03e05e36b4f08bcccd82",
+            "role": "toolsmith_citation",
+            "retention": "evidence"
+          },
+          {
+            "evalResourceId": "computer-use-resource-39635726-aed2-4d59-899f-2b8717011f98",
+            "blobId": "blob:a77ed0ad1cae10e7b465219058c83ba9c90a3f81508c46cb9b948b87c5091bb0",
+            "role": "toolsmith_report",
+            "retention": "evidence"
+          },
+          {
+            "evalResourceId": "computer-use-resource-5b7216af-bfed-4b88-b5b3-2402f3082966",
+            "blobId": "blob:51b62d51636a0485c27fc3b9a405e12ba251fe5071eeb6e167ae5d931b3d1122",
+            "role": "toolsmith_pdf",
+            "retention": "evidence"
+          },
+          {
+            "evalResourceId": "computer-use-resource-7b64dada-394f-4806-9703-df975ad7a2a8",
+            "blobId": "blob:a77ed0ad1cae10e7b465219058c83ba9c90a3f81508c46cb9b948b87c5091bb0",
+            "role": "toolsmith_report",
+            "retention": "evidence"
+          },
+          {
+            "evalResourceId": "computer-use-resource-02926031-65b2-426c-9455-0e5a1fc28ffa",
+            "blobId": "blob:51b62d51636a0485c27fc3b9a405e12ba251fe5071eeb6e167ae5d931b3d1122",
+            "role": "toolsmith_pdf",
+            "retention": "evidence"
+          },
+          {
+            "evalResourceId": "computer-use-resource-f1478d46-f02d-44a7-97da-ab5a4fb5a2c3",
+            "blobId": "blob:b59b93fd46e95c046541b185a0b0e7b0aa150ece941e03e05e36b4f08bcccd82",
+            "role": "toolsmith_citation",
+            "retention": "evidence"
+          },
+          {
+            "evalResourceId": "computer-use-resource-4f77b2e8-b190-422f-a4ce-94d43629db42",
+            "blobId": "blob:a77ed0ad1cae10e7b465219058c83ba9c90a3f81508c46cb9b948b87c5091bb0",
+            "role": "toolsmith_report",
+            "retention": "evidence"
+          },
+          {
+            "evalResourceId": "computer-use-resource-e1649d49-d2dc-4da0-97f4-a8c2ce112ed6",
+            "blobId": "blob:51b62d51636a0485c27fc3b9a405e12ba251fe5071eeb6e167ae5d931b3d1122",
+            "role": "toolsmith_pdf",
+            "retention": "evidence"
+          }
+        ],
+        "summary": "Toolsmith autonomy run completed; 13 artifacts collected.",
+        "freshness": "fresh",
+        "metadata": {
+          "autonomyRunId": "autonomy-run-458bf09f-0609-4ee3-847a-3a819c920a5d",
+          "autonomyEvalRunId": "computer-use-eval-64efde47-129f-4f13-9aa2-1ec276d7e9cd",
+          "autonomyDagRunId": "capability-dag-86b0b80e-1822-466a-a848-37a498f5dfde",
+          "toolRunCount": 8,
+          "artifactCount": 13,
+          "artifactRoles": [
+            "report",
+            "pdf",
+            "citation",
+            "source"
+          ],
+          "sourceSummary": {
+            "sourceCount": 3,
+            "rows": [
+              {
+                "url": "help.openai.com",
+                "status": "browser_fallback",
+                "browserFallback": true
+              },
+              {
+                "url": "platform.openai.com",
+                "status": "browser_fallback",
+                "browserFallback": true
+              }
+            ],
+            "fetchedUrls": [],
+            "browserFallbackUrls": [
+              "help.openai.com",
+              "platform.openai.com"
+            ],
+            "warnings": [
+              "http_status_403:help.openai.com",
+              "browser_fallback_used:help.openai.com:http_status_403",
+              "http_status_403:platform.openai.com",
+              "browser_fallback_used:platform.openai.com:http_status_403"
+            ]
+          },
+          "storeArtifactNodeId": "62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d:store_artifact",
+          "verifyArtifactNodeId": "62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d:verify_artifact",
+          "status": "completed",
+          "freshnessCheckedAt": "2026-05-15T21:10:44.590Z",
+          "ageMs": 85,
+          "staleAfterMs": 300000
+        },
+        "redaction": {
+          "rawArtifactPaths": "redacted",
+          "credentials": "redacted"
+        }
+      }
+    ],
+    "actionFeedbacks": [],
+    "actionBatches": [],
+    "promptRuns": [],
+    "rollbackActions": [
+      {
+        "id": "rollback:6d60ee56-04f5-4423-af3c-dd86f2b03136",
+        "createdAt": "2026-05-15T21:10:44.586Z",
+        "kind": "delete_artifact",
+        "label": "Artifact deletion requires an explicit file rollback grant",
+        "status": "blocked",
+        "riskClass": "local_file_disclosure",
+        "reason": "artifact_delete_grant_required",
+        "metadata": {
+          "autonomyRunId": "autonomy-run-458bf09f-0609-4ee3-847a-3a819c920a5d",
+          "artifactCount": 13,
+          "artifactRoles": [
+            "report",
+            "pdf",
+            "citation",
+            "source"
+          ]
+        }
+      }
+    ],
+    "safetyDecisions": [
+      {
+        "decision": "allow",
+        "phase": "permission_check",
+        "requiredGrants": [
+          "generated_code.runtime_workspace",
+          "file.write_output_root"
+        ],
+        "reason": "requested_surface:tool_workspace",
+        "warnings": []
+      }
+    ],
+    "verifierResults": [
+      {
+        "id": "verifier:62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d",
+        "status": "passed",
+        "reason": "Scoped autonomy Toolsmith DAG completed through Computer Session runtime.",
+        "autonomyRunId": "autonomy-run-458bf09f-0609-4ee3-847a-3a819c920a5d",
+        "toolRunCount": 8
+      }
+    ],
+    "verifierAudit": {
+      "schemaVersion": "computer-use-verifier-audit.v1",
+      "createdAt": "2026-05-15T21:10:44.590Z",
+      "runsAudited": 1,
+      "stepsAudited": 3,
+      "verifierStepCount": 1,
+      "falsePositiveCandidates": 0,
+      "falseNegativeRecords": 0,
+      "inconclusiveRecords": 0,
+      "missingVerifierEvidence": 0,
+      "audits": [
+        {
+          "id": "verifier-audit:computer-use-step-d2711c58-4b87-44f1-9cad-f6b2ca8725fd",
+          "runId": "computer-use-eval-06387aae-825e-41ca-afce-093d0514fb63",
+          "scenarioId": "computer-session:62184eca-a59b-4835-8cee-2be927a98977",
+          "sessionId": "62184eca-a59b-4835-8cee-2be927a98977",
+          "stepId": "computer-use-step-d2711c58-4b87-44f1-9cad-f6b2ca8725fd",
+          "stepKind": "toolsmith_artifact_verification",
+          "phase": "verify_artifact",
+          "capabilityDagNodeId": "62184eca-a59b-4835-8cee-2be927a98977:toolsmith:32dcea10-0a60-45da-a5d7-75269134384d:verify_artifact",
+          "verifierStatus": "passed",
+          "failureClass": "none",
+          "auditClass": "consistent_pass",
+          "reason": "Verifier passed and no run-level failure conflict was found.",
+          "evidence": {
+            "taskSuccess": "partial",
+            "runFailureClass": "none",
+            "expectedDeclared": false,
+            "proofRecorded": false,
+            "recoveryAttempted": false,
+            "matchingVerifierStepIds": [
+              "computer-use-step-d2711c58-4b87-44f1-9cad-f6b2ca8725fd"
+            ]
+          },
+          "createdAt": "2026-05-15T21:10:44.590Z"
+        }
+      ]
+    },
+    "redaction": {
+      "credentials": "redacted",
+      "browserHistory": "redacted_by_default",
+      "localPaths": "minimized",
+      "screenshots": "blob_retention_policy"
+    }
+  }
+}

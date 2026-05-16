@@ -1,18 +1,24 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::VecDeque;
 use std::io::{self, Read};
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use sysinfo::System;
-use uiautomation::patterns::{UIInvokePattern, UISelectionItemPattern, UITogglePattern, UIValuePattern};
+use uiautomation::patterns::{
+    UIInvokePattern, UISelectionItemPattern, UITogglePattern, UIValuePattern,
+};
 use uiautomation::types::{ControlType, Rect as UiaRect, ToggleState};
 use uiautomation::{UIAutomation, UIElement};
+use windows_sys::Win32::System::SystemInformation::GetTickCount;
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
 
 const SCHEMA_VERSION: &str = "browser-native-desktop-helper.v1";
 const HELPER_VERSION: &str = "0.1.0";
+const CAPABILITY_MANIFEST_SCHEMA_VERSION: &str =
+    "browser-native-desktop-helper-capability-manifest.v2";
 const MAX_VISITED_NODES: usize = 450;
 const MAX_ELEMENTS: usize = 120;
 const MAX_DEPTH: usize = 9;
@@ -44,7 +50,8 @@ fn run() -> Result<HelperResponse> {
         ));
     }
 
-    let request: HelperRequest = serde_json::from_str(&input).context("Native desktop helper received invalid JSON.")?;
+    let request: HelperRequest =
+        serde_json::from_str(&input).context("Native desktop helper received invalid JSON.")?;
     if request.schema_version != SCHEMA_VERSION {
         return Ok(error_response(
             format!(
@@ -57,6 +64,19 @@ fn run() -> Result<HelperResponse> {
 
     match request.command.as_str() {
         "status" => command_status(&request),
+        "watch_preflight" => command_watch_preflight(&request),
+        "foreground_watch_execute" => command_foreground_watch_execute_disabled(&request),
+        "capture_screenshot"
+        | "focus_window"
+        | "double_click"
+        | "move"
+        | "drag"
+        | "key"
+        | "clipboard_set_scoped"
+        | "clipboard_restore"
+        | "file_picker_select"
+        | "menu_command"
+        | "browser_permission_popup_click" => command_helper_v2_disabled(&request),
         "observe" => command_observe(&request),
         "execute" => command_execute(&request),
         other => Ok(error_response(
@@ -77,6 +97,7 @@ struct HelperRequest {
     session: HelperSession,
     action: Option<BrowserAction>,
     target: Option<BrowserElementTarget>,
+    watch_preflight: Option<WatchPreflightOptions>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -173,6 +194,17 @@ struct BrowserElementTarget {
     bbox: Option<Rect>,
 }
 
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+#[serde(rename_all = "camelCase")]
+struct WatchPreflightOptions {
+    monitor_ms: Option<u64>,
+    sample_interval_ms: Option<u64>,
+    idle_threshold_ms: Option<u64>,
+    require_no_user_input: Option<bool>,
+    require_active_window_stable: Option<bool>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Rect {
     x: i32,
@@ -259,7 +291,11 @@ fn command_status(request: &HelperRequest) -> Result<HelperResponse> {
         url: None,
         title: "Windows browser UIA native helper status".to_string(),
         text: "Bounded browser-window UI Automation native helper is available.".to_string(),
-        windows: resolved.windows.iter().map(|window| window.info.clone()).collect(),
+        windows: resolved
+            .windows
+            .iter()
+            .map(|window| window.info.clone())
+            .collect(),
         elements: Vec::new(),
     };
     Ok(HelperResponse {
@@ -273,10 +309,385 @@ fn command_status(request: &HelperRequest) -> Result<HelperResponse> {
             json!({
                 "scope": "browser_windows_only",
                 "windows": resolved.windows.len(),
-                "capabilities": ["read", "click", "type", "select", "check", "scroll", "navigate", "back", "forward", "reload"]
+                "capabilities": ["read", "click", "type", "select", "check", "scroll", "navigate", "back", "forward", "reload"],
+                "capabilityManifest": helper_capability_manifest()
             }),
         ),
     })
+}
+
+fn helper_capability_manifest() -> Value {
+    json!({
+        "schemaVersion": CAPABILITY_MANIFEST_SCHEMA_VERSION,
+        "helperSchemaVersion": SCHEMA_VERSION,
+        "helperVersion": HELPER_VERSION,
+        "scope": "browser_windows_only",
+        "boundary": {
+            "foregroundDesktopWatchExecutor": false,
+            "nativeFilePickerExecutor": false,
+            "browserPermissionPopupNativeClickExecutor": false,
+            "requiresSignedHelperV2ForForegroundInput": true,
+            "actualInputSentForBlockedV2Commands": false
+        },
+        "commands": [
+            helper_capability("status", true, false, false, true, "no_sensitive_content", 5_000, "current_v1"),
+            helper_capability("watch_preflight", true, false, false, true, "metadata_only_no_input", 5_000, "current_v1_observe_only"),
+            helper_capability("observe_uia", true, false, false, true, "password_values_omitted", 5_000, "current_v1"),
+            helper_capability("execute.read", true, false, false, true, "password_values_omitted", 5_000, "current_v1"),
+            helper_capability("execute.click", true, false, true, false, "target_evidence_only", 10_000, "current_v1_uia_pattern_or_click"),
+            helper_capability("execute.type_text", true, true, true, false, "sensitive_text_blocked", 10_000, "current_v1_value_pattern_or_send_text"),
+            helper_capability("execute.select", true, false, true, false, "sensitive_slot_blocked", 10_000, "current_v1_uia_pattern"),
+            helper_capability("execute.check", true, false, true, false, "target_evidence_only", 10_000, "current_v1_uia_pattern"),
+            helper_capability("execute.scroll", true, true, true, false, "target_evidence_only", 10_000, "current_v1_send_keys"),
+            helper_capability("execute.navigate", true, true, true, false, "url_redacted_if_sensitive", 15_000, "current_v1_ctrl_l_send_keys"),
+            helper_capability("execute.back", true, true, true, false, "target_evidence_only", 10_000, "current_v1_send_keys"),
+            helper_capability("execute.forward", true, true, true, false, "target_evidence_only", 10_000, "current_v1_send_keys"),
+            helper_capability("execute.reload", true, true, true, false, "target_evidence_only", 10_000, "current_v1_send_keys"),
+            helper_capability("execute.hotkey", true, true, true, false, "sensitive_key_blocked", 10_000, "current_v1_send_keys"),
+            helper_capability("foreground_watch_execute", false, true, true, false, "metadata_only_no_input", 15_000, "disabled_until_signed_helper_v2_and_release_gate"),
+            helper_capability("capture_screenshot", false, true, true, true, "blob_backed_region_only", 5_000, "blocked_until_signed_helper_v2"),
+            helper_capability("focus_window", false, true, true, true, "window_title_redacted", 5_000, "blocked_until_signed_helper_v2"),
+            helper_capability("double_click", false, true, true, false, "target_evidence_only", 10_000, "blocked_until_signed_helper_v2"),
+            helper_capability("move", false, true, true, true, "coordinates_window_relative_only", 10_000, "blocked_until_signed_helper_v2"),
+            helper_capability("drag", false, true, true, false, "coordinates_window_relative_only", 10_000, "blocked_until_signed_helper_v2"),
+            helper_capability("key", false, true, true, false, "sensitive_key_blocked", 10_000, "blocked_until_signed_helper_v2"),
+            helper_capability("clipboard_set_scoped", false, true, true, true, "sensitive_clipboard_blocked", 5_000, "blocked_until_signed_helper_v2"),
+            helper_capability("clipboard_restore", false, true, false, true, "clipboard_content_never_logged", 5_000, "blocked_until_signed_helper_v2"),
+            helper_capability("file_picker_select", false, true, true, false, "basename_only_path_evidence", 15_000, "blocked_until_signed_helper_v2"),
+            helper_capability("menu_command", false, true, true, false, "menu_label_only", 10_000, "blocked_until_signed_helper_v2"),
+            helper_capability("browser_permission_popup_click", false, true, true, false, "origin_redacted_and_no_credentials", 10_000, "blocked_until_signed_helper_v2")
+        ]
+    })
+}
+
+fn helper_capability(
+    name: &str,
+    supported: bool,
+    requires_foreground: bool,
+    requires_approval: bool,
+    reversible: bool,
+    redaction_behavior: &str,
+    max_timeout_ms: u64,
+    status: &str,
+) -> Value {
+    json!({
+        "name": name,
+        "supported": supported,
+        "requiresForeground": requires_foreground,
+        "requiresApproval": requires_approval,
+        "reversible": reversible,
+        "redactionBehavior": redaction_behavior,
+        "maxTimeoutMs": max_timeout_ms,
+        "status": status
+    })
+}
+
+fn command_watch_preflight(request: &HelperRequest) -> Result<HelperResponse> {
+    let resolved = resolve_browser_window(request)?;
+    let last_input = read_last_input_state();
+    let monitor = run_watch_preflight_monitor(request, &resolved, &last_input);
+    let selected = resolved.selected.as_ref();
+    let focused_process_id = read_focused_process_id();
+    let active_window_asserted = selected
+        .map(|window| Some(window.info.id) == focused_process_id)
+        .unwrap_or(false);
+    let active_window_drift_detected =
+        (selected.is_some() && !active_window_asserted) || monitor.active_window_drift_detected;
+    let process_allowed = selected
+        .map(|window| is_browser_process_name(&window.info.process_name))
+        .unwrap_or(false);
+    let target_identity_asserted = selected
+        .map(|window| target_identity_matches(request.session.source.as_ref(), &window.info))
+        .unwrap_or(false);
+    let idle_threshold_ms = request
+        .watch_preflight
+        .as_ref()
+        .and_then(|options| options.idle_threshold_ms)
+        .unwrap_or(750)
+        .clamp(100, 30_000);
+    let user_idle = last_input
+        .age_ms
+        .map(|age_ms| age_ms >= idle_threshold_ms && !monitor.user_input_detected)
+        .unwrap_or(false);
+    let user_input_detected = last_input
+        .age_ms
+        .map(|age_ms| age_ms < idle_threshold_ms)
+        .unwrap_or(false)
+        || monitor.user_input_detected;
+    let abort_reason = if user_input_detected {
+        Some("foreground_watch_user_input_abort")
+    } else if active_window_drift_detected {
+        Some("foreground_watch_active_window_drift_abort")
+    } else {
+        None
+    };
+    let watch_preflight = json!({
+        "schemaVersion": "foreground-watch-preflight.v1",
+        "oneTimeApprovalGranted": false,
+        "visibleCountdownArmed": false,
+        "activeWindowAsserted": active_window_asserted,
+        "targetIdentityAsserted": target_identity_asserted,
+        "processAllowed": process_allowed,
+        "surfaceLockArmed": false,
+        "userIdle": user_idle,
+        "abortOnUserInputArmed": true,
+        "userInputDetected": user_input_detected,
+        "activeWindowDriftDetected": active_window_drift_detected,
+        "timeoutArmed": request.timeout_ms.unwrap_or_default() > 0,
+        "preActionEvidenceReady": selected.is_some(),
+        "postActionEvidenceReady": false,
+        "effectVerifierReady": false,
+        "rollbackProofReady": false,
+        "notReversibleRecordReady": true,
+        "signedHelperV2Available": false,
+        "actualInputSent": false
+    });
+    let watch_preflight = if let Some(reason) = abort_reason {
+        merge_json(watch_preflight, json!({ "abortReason": reason }))
+    } else {
+        watch_preflight
+    };
+    let observation = HelperSnapshot {
+        url: None,
+        title: "Windows browser UIA native helper watch preflight".to_string(),
+        text: "Helper-side foreground watch preflight observed browser-window identity and input-idle state without sending native input.".to_string(),
+        windows: resolved.windows.iter().map(|window| window.info.clone()).collect(),
+        elements: Vec::new(),
+    };
+    Ok(HelperResponse {
+        ok: true,
+        error: None,
+        observation: Some(observation),
+        after: None,
+        metadata: metadata(
+            "watch_preflight",
+            None,
+            json!({
+                "scope": "browser_windows_only",
+                "actualInputSent": false,
+                "watchPreflight": watch_preflight,
+                "helperSideGuards": {
+                    "schemaVersion": "browser-native-desktop-helper-watch-preflight-guards.v1",
+                    "lastInput": {
+                        "available": last_input.available,
+                        "ageMs": last_input.age_ms,
+                        "idleThresholdMs": idle_threshold_ms
+                    },
+                    "activeWindow": {
+                        "focusedProcessId": focused_process_id,
+                        "selectedProcessId": selected.map(|window| window.info.id),
+                        "asserted": active_window_asserted,
+                        "driftDetected": active_window_drift_detected
+                    },
+                    "targetIdentityAsserted": target_identity_asserted,
+                    "processAllowed": process_allowed,
+                    "continuousMonitoring": monitor.enabled,
+                    "monitor": {
+                        "enabled": monitor.enabled,
+                        "requestedMs": monitor.requested_ms,
+                        "elapsedMs": monitor.elapsed_ms,
+                        "sampleIntervalMs": monitor.sample_interval_ms,
+                        "sampleCount": monitor.sample_count,
+                        "userInputDetected": monitor.user_input_detected,
+                        "activeWindowDriftDetected": monitor.active_window_drift_detected,
+                        "abortReason": monitor.abort_reason
+                    },
+                    "reason": "observe_only_preflight_no_foreground_input"
+                }
+            }),
+        ),
+    })
+}
+
+fn command_foreground_watch_execute_disabled(_request: &HelperRequest) -> Result<HelperResponse> {
+    Ok(error_response(
+        "Foreground watch execution is disabled until signed helper v2 and release gates are available.".to_string(),
+        metadata(
+            "foreground_watch_execute",
+            None,
+            json!({
+                "schemaVersion": "browser-native-desktop-helper-foreground-watch-executor.v1",
+                "enabled": false,
+                "supported": false,
+                "dryRunOnly": true,
+                "actualInputSent": false,
+                "signedHelperV2Available": false,
+                "releaseGate": "browser-native-helper-signing",
+                "blocker": "signed_helper_v2_unavailable",
+                "requiredPreconditions": [
+                    "one_time_approval",
+                    "visible_countdown",
+                    "active_window_assertion",
+                    "target_identity_assertion",
+                    "process_allowlist",
+                    "surface_lock",
+                    "user_idle",
+                    "abort_on_user_input",
+                    "timeout_guard",
+                    "pre_action_evidence",
+                    "post_action_evidence",
+                    "effect_verifier",
+                    "rollback_or_not_reversible_record"
+                ],
+                "disabledReason": "current_helper_is_browser_window_scoped_and_must_not_send_broad_foreground_input"
+            }),
+        ),
+    ))
+}
+
+fn command_helper_v2_disabled(request: &HelperRequest) -> Result<HelperResponse> {
+    let command = request.command.as_str();
+    let (purpose, required_preconditions, extras) = disabled_helper_v2_contract(command);
+    Ok(error_response(
+        format!("{purpose} is disabled until signed helper v2 and release gates are available."),
+        metadata(
+            command,
+            None,
+            merge_json(
+                json!({
+                    "schemaVersion": "browser-native-desktop-helper-v2-disabled-command.v1",
+                    "command": command,
+                    "enabled": false,
+                    "supported": false,
+                    "dryRunOnly": true,
+                    "actualInputSent": false,
+                    "signedHelperV2Available": false,
+                    "releaseGate": "browser-native-helper-signing",
+                    "blocker": "signed_helper_v2_unavailable",
+                    "requiredPreconditions": required_preconditions,
+                    "disabledReason": "current_helper_is_browser_window_scoped_and_must_not_send_helper_v2_input"
+                }),
+                extras,
+            ),
+        ),
+    ))
+}
+
+fn disabled_helper_v2_contract(command: &str) -> (&'static str, Value, Value) {
+    match command {
+        "capture_screenshot" => (
+            "Native screenshot capture",
+            json!([
+                "one_time_approval",
+                "signed_helper_v2",
+                "active_window_assertion",
+                "region_bound",
+                "blob_retention_policy",
+                "redaction_policy"
+            ]),
+            json!({
+                "screenshotCaptured": false,
+                "rawScreenshotStored": false,
+                "blobCreated": false,
+                "retention": "not_stored"
+            }),
+        ),
+        "file_picker_select" => (
+            "Native file picker selection",
+            json!([
+                "one_time_approval",
+                "signed_helper_v2",
+                "explicit_file_path_grant",
+                "active_window_assertion",
+                "process_allowlist",
+                "clipboard_restore",
+                "post_action_basename_verifier"
+            ]),
+            json!({
+                "localFilePathDisclosed": false,
+                "fileSelected": false,
+                "clipboardChanged": false,
+                "clipboardRestored": false,
+                "pathEvidence": "basename_only_after_future_approval"
+            }),
+        ),
+        "browser_permission_popup_click" => (
+            "Browser permission popup native click",
+            json!([
+                "one_time_approval",
+                "signed_helper_v2",
+                "active_window_assertion",
+                "origin_verification",
+                "permission_type_verification",
+                "pre_action_permission_state",
+                "post_action_permission_state",
+                "rollback_or_not_reversible_record"
+            ]),
+            json!({
+                "nativePopupClick": false,
+                "permissionChanged": false,
+                "originDisclosed": false,
+                "credentialPromptHandled": false
+            }),
+        ),
+        "clipboard_set_scoped" => (
+            "Scoped clipboard set",
+            json!([
+                "one_time_approval",
+                "signed_helper_v2",
+                "clipboard_restore",
+                "secret_redaction_policy",
+                "bounded_timeout"
+            ]),
+            json!({
+                "clipboardChanged": false,
+                "clipboardContentLogged": false,
+                "clipboardRestored": false
+            }),
+        ),
+        "clipboard_restore" => (
+            "Scoped clipboard restore",
+            json!([
+                "signed_helper_v2",
+                "prior_scoped_clipboard_snapshot",
+                "secret_redaction_policy",
+                "bounded_timeout"
+            ]),
+            json!({
+                "clipboardChanged": false,
+                "clipboardContentLogged": false,
+                "clipboardRestored": false
+            }),
+        ),
+        "menu_command" => (
+            "Native menu command",
+            json!([
+                "one_time_approval",
+                "signed_helper_v2",
+                "active_window_assertion",
+                "menu_label_verification",
+                "post_action_effect_verifier",
+                "rollback_or_not_reversible_record"
+            ]),
+            json!({
+                "menuCommandSent": false,
+                "menuLabelOnly": true
+            }),
+        ),
+        _ => (
+            "Native foreground helper-v2 command",
+            json!([
+                "one_time_approval",
+                "signed_helper_v2",
+                "visible_countdown",
+                "active_window_assertion",
+                "target_identity_assertion",
+                "process_allowlist",
+                "surface_lock",
+                "user_idle",
+                "abort_on_user_input",
+                "timeout_guard",
+                "pre_action_evidence",
+                "post_action_evidence",
+                "effect_verifier",
+                "rollback_or_not_reversible_record"
+            ]),
+            json!({
+                "foregroundInputSent": false,
+                "targetEvidenceOnly": true
+            }),
+        ),
+    }
 }
 
 fn command_observe(request: &HelperRequest) -> Result<HelperResponse> {
@@ -297,7 +708,7 @@ fn command_execute(request: &HelperRequest) -> Result<HelperResponse> {
             return Ok(error_response(
                 "Native desktop helper execute request is missing action.type.".to_string(),
                 metadata("execute", None, json!({})),
-            ))
+            ));
         }
     };
 
@@ -312,7 +723,11 @@ fn command_execute(request: &HelperRequest) -> Result<HelperResponse> {
         if is_sensitive_text(text.as_deref().unwrap_or_default()) {
             return Ok(error_response(
                 "Native desktop helper blocked sensitive text input.".to_string(),
-                metadata("execute", Some("type"), json!({ "method": "blocked_sensitive_text" })),
+                metadata(
+                    "execute",
+                    Some("type"),
+                    json!({ "method": "blocked_sensitive_text" }),
+                ),
             ));
         }
     }
@@ -343,11 +758,7 @@ fn command_execute(request: &HelperRequest) -> Result<HelperResponse> {
             )),
             observation: None,
             after: None,
-            metadata: metadata(
-                "execute",
-                Some(action_label),
-                json!({ "method": method }),
-            ),
+            metadata: metadata("execute", Some(action_label), json!({ "method": method })),
         });
     }
 
@@ -358,17 +769,30 @@ fn command_execute(request: &HelperRequest) -> Result<HelperResponse> {
         error: None,
         observation: None,
         after: Some(build_observation(&after)?),
-        metadata: metadata(
-            "execute",
-            Some(action_label),
-            json!({ "method": method }),
-        ),
+        metadata: metadata("execute", Some(action_label), json!({ "method": method })),
     })
 }
 
 struct ResolvedWindow {
     selected: Option<BrowserWindow>,
     windows: Vec<BrowserWindow>,
+}
+
+struct LastInputState {
+    available: bool,
+    age_ms: Option<u64>,
+    tick: Option<u32>,
+}
+
+struct WatchPreflightMonitorResult {
+    enabled: bool,
+    requested_ms: u64,
+    elapsed_ms: u64,
+    sample_interval_ms: u64,
+    sample_count: u32,
+    user_input_detected: bool,
+    active_window_drift_detected: bool,
+    abort_reason: Option<&'static str>,
 }
 
 fn resolve_browser_window(request: &HelperRequest) -> Result<ResolvedWindow> {
@@ -471,6 +895,147 @@ fn process_name_map() -> std::collections::HashMap<u32, String> {
         .collect()
 }
 
+fn read_focused_process_id() -> Option<u32> {
+    UIAutomation::new()
+        .ok()
+        .and_then(|automation| automation.get_focused_element().ok())
+        .and_then(|element| element.get_process_id().ok())
+}
+
+fn read_last_input_state() -> LastInputState {
+    let mut info = LASTINPUTINFO {
+        cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32,
+        dwTime: 0,
+    };
+    let ok = unsafe { GetLastInputInfo(&mut info) } != 0;
+    if !ok {
+        return LastInputState {
+            available: false,
+            age_ms: None,
+            tick: None,
+        };
+    }
+    let now = unsafe { GetTickCount() };
+    let age_ms = now.wrapping_sub(info.dwTime) as u64;
+    LastInputState {
+        available: true,
+        age_ms: Some(age_ms),
+        tick: Some(info.dwTime),
+    }
+}
+
+fn run_watch_preflight_monitor(
+    request: &HelperRequest,
+    resolved: &ResolvedWindow,
+    initial_last_input: &LastInputState,
+) -> WatchPreflightMonitorResult {
+    let options = request.watch_preflight.as_ref();
+    let requested_ms = options
+        .and_then(|options| options.monitor_ms)
+        .unwrap_or(0)
+        .min(2_000);
+    let sample_interval_ms = options
+        .and_then(|options| options.sample_interval_ms)
+        .unwrap_or(25)
+        .clamp(5, 250);
+    let require_no_user_input = options
+        .and_then(|options| options.require_no_user_input)
+        .unwrap_or(true);
+    let require_active_window_stable = options
+        .and_then(|options| options.require_active_window_stable)
+        .unwrap_or(true);
+    if requested_ms == 0 {
+        return WatchPreflightMonitorResult {
+            enabled: false,
+            requested_ms,
+            elapsed_ms: 0,
+            sample_interval_ms,
+            sample_count: 0,
+            user_input_detected: false,
+            active_window_drift_detected: false,
+            abort_reason: None,
+        };
+    }
+
+    let selected_process_id = resolved.selected.as_ref().map(|window| window.info.id);
+    let baseline_input_tick = initial_last_input.tick;
+    let started = Instant::now();
+    let mut sample_count = 0u32;
+    let mut user_input_detected = false;
+    let mut active_window_drift_detected = false;
+    while started.elapsed() < Duration::from_millis(requested_ms) {
+        sleep(Duration::from_millis(sample_interval_ms));
+        sample_count = sample_count.saturating_add(1);
+        if require_no_user_input {
+            let current = read_last_input_state();
+            if current.available
+                && baseline_input_tick.is_some()
+                && current.tick.is_some()
+                && current.tick != baseline_input_tick
+            {
+                user_input_detected = true;
+            }
+        }
+        if require_active_window_stable {
+            let focused = read_focused_process_id();
+            if selected_process_id.is_some() && focused != selected_process_id {
+                active_window_drift_detected = true;
+            }
+        }
+        if user_input_detected || active_window_drift_detected {
+            break;
+        }
+    }
+    let abort_reason = if user_input_detected {
+        Some("foreground_watch_user_input_abort")
+    } else if active_window_drift_detected {
+        Some("foreground_watch_active_window_drift_abort")
+    } else {
+        None
+    };
+    WatchPreflightMonitorResult {
+        enabled: true,
+        requested_ms,
+        elapsed_ms: started.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+        sample_interval_ms,
+        sample_count,
+        user_input_detected,
+        active_window_drift_detected,
+        abort_reason,
+    }
+}
+
+fn target_identity_matches(source: Option<&BrowserActionSource>, window: &WindowInfo) -> bool {
+    let Some(source) = source else {
+        return false;
+    };
+    if let Some(window_id) = &source.window_id {
+        if window_id == &window.id.to_string() {
+            return true;
+        }
+    }
+    if let Some(title) = &source.title {
+        let title = title.trim().to_lowercase();
+        let window_title = window.title.trim().to_lowercase();
+        if !title.is_empty() && (title == window_title || window_title.contains(&title)) {
+            return true;
+        }
+    }
+    if let Some(browser) = &source.browser {
+        let browser = browser.trim().to_lowercase();
+        let process = window.process_name.trim().to_lowercase();
+        if !browser.is_empty()
+            && (process == browser
+                || (browser == "chrome" && process == "chromium")
+                || (browser == "chromium" && process == "chrome")
+                || (browser == "edge" && process == "msedge"))
+        {
+            return true;
+        }
+    }
+    false
+}
+
 fn build_observation(resolved: &ResolvedWindow) -> Result<HelperSnapshot> {
     let windows: Vec<WindowInfo> = resolved
         .windows
@@ -571,7 +1136,9 @@ fn is_interesting_element(element: &UIElement, depth: usize) -> bool {
         "window",
     ];
     interesting_roles.contains(&role.as_str())
-        || (depth <= 4 && has_bounds && (!name.trim().is_empty() || !automation_id.trim().is_empty()))
+        || (depth <= 4
+            && has_bounds
+            && (!name.trim().is_empty() || !automation_id.trim().is_empty()))
 }
 
 fn convert_element_for_observation(element: &UIElement, index: usize) -> Option<ElementInfo> {
@@ -592,7 +1159,9 @@ fn convert_element_for_observation(element: &UIElement, index: usize) -> Option<
     if role == "button"
         && contains_any_ci(
             &name,
-            &["submit", "send", "post", "publish", "pay", "purchase", "buy"],
+            &[
+                "submit", "send", "post", "publish", "pay", "purchase", "buy",
+            ],
         )
     {
         risk_hints.push("submit".to_string());
@@ -632,7 +1201,11 @@ fn convert_element_for_observation(element: &UIElement, index: usize) -> Option<
     })
 }
 
-fn execute_action(resolved: &ResolvedWindow, action: &BrowserAction, request: &HelperRequest) -> Result<String> {
+fn execute_action(
+    resolved: &ResolvedWindow,
+    action: &BrowserAction,
+    request: &HelperRequest,
+) -> Result<String> {
     let window = match &resolved.selected {
         Some(window) => window,
         None => return Ok("missing_browser_window".to_string()),
@@ -656,7 +1229,8 @@ fn execute_action(resolved: &ResolvedWindow, action: &BrowserAction, request: &H
             Ok("ctrl_l_url_enter".to_string())
         }
         BrowserAction::Click { target, .. } => {
-            let element = find_element_by_target(resolved, target.as_ref(), request.target.as_ref())?;
+            let element =
+                find_element_by_target(resolved, target.as_ref(), request.target.as_ref())?;
             invoke_element_default(element.as_ref())
         }
         BrowserAction::TypeText {
@@ -665,7 +1239,8 @@ fn execute_action(resolved: &ResolvedWindow, action: &BrowserAction, request: &H
             clear_first,
             submit,
         } => {
-            let element = find_element_by_target(resolved, target.as_ref(), request.target.as_ref())?;
+            let element =
+                find_element_by_target(resolved, target.as_ref(), request.target.as_ref())?;
             set_element_text(
                 element.as_ref(),
                 &safe_string(text.clone().unwrap_or_default(), 4096),
@@ -674,11 +1249,13 @@ fn execute_action(resolved: &ResolvedWindow, action: &BrowserAction, request: &H
             )
         }
         BrowserAction::Check { target, checked } => {
-            let element = find_element_by_target(resolved, target.as_ref(), request.target.as_ref())?;
+            let element =
+                find_element_by_target(resolved, target.as_ref(), request.target.as_ref())?;
             set_element_checked(element.as_ref(), checked.unwrap_or(true))
         }
         BrowserAction::Select { target, value } => {
-            let element = find_element_by_target(resolved, target.as_ref(), request.target.as_ref())?;
+            let element =
+                find_element_by_target(resolved, target.as_ref(), request.target.as_ref())?;
             select_element(element.as_ref(), value.as_deref().unwrap_or_default())
         }
         BrowserAction::Scroll { direction, .. } => {
@@ -753,7 +1330,9 @@ fn find_element_by_target(
     if let Some(action_target) = action_target {
         match action_target {
             ElementTarget::ElementId { id: target_id } => id = target_id.clone(),
-            ElementTarget::Selector { selector: target_selector } => selector = target_selector.clone(),
+            ElementTarget::Selector {
+                selector: target_selector,
+            } => selector = target_selector.clone(),
             ElementTarget::Text { text, .. } => target_text = text.clone(),
             ElementTarget::Bbox { .. } | ElementTarget::Focused => {}
         }
@@ -807,7 +1386,12 @@ fn invoke_element_default(element: Option<&UIElement>) -> Result<String> {
     Ok("failed_default_action".to_string())
 }
 
-fn set_element_text(element: Option<&UIElement>, text: &str, clear_first: bool, submit: bool) -> Result<String> {
+fn set_element_text(
+    element: Option<&UIElement>,
+    text: &str,
+    clear_first: bool,
+    submit: bool,
+) -> Result<String> {
     let Some(element) = element else {
         return Ok("missing_target".to_string());
     };
@@ -842,7 +1426,11 @@ fn set_element_checked(element: Option<&UIElement>, checked: bool) -> Result<Str
     };
     if let Ok(pattern) = element.get_pattern::<UITogglePattern>() {
         let current = pattern.get_toggle_state().ok();
-        let desired = if checked { ToggleState::On } else { ToggleState::Off };
+        let desired = if checked {
+            ToggleState::On
+        } else {
+            ToggleState::Off
+        };
         if current != Some(desired) {
             pattern.toggle()?;
         }
@@ -1002,9 +1590,7 @@ fn non_empty(value: String) -> Option<String> {
 }
 
 fn is_browser_process_name(process_name: &str) -> bool {
-    let lower = process_name
-        .trim_end_matches(".exe")
-        .to_ascii_lowercase();
+    let lower = process_name.trim_end_matches(".exe").to_ascii_lowercase();
     BROWSER_PROCESS_NAMES.iter().any(|name| lower == *name)
 }
 

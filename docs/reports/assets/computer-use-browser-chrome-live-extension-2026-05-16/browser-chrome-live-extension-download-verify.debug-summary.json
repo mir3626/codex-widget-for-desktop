@@ -1,0 +1,34 @@
+{
+  "id": "browser-chrome-live-extension-download-verify",
+  "command": "download.start+download.verify",
+  "userScenario": "User asks the widget to start a browser download through the installed Browser Bridge path and verify the completed file with approved artifact evidence.",
+  "architectureWorkflow": [
+    "Playwright launches Chromium with the real unpacked Browser Bridge extension.",
+    "The extension service worker connects to the daemon and polls Browser Chrome commands.",
+    "Computer Session runs download.start through the regular_browser_extension surface and one-time approval.",
+    "Chrome downloads API creates the download in the session download directory.",
+    "Computer Session runs download.verify by id and approvedDownloadPath.",
+    "The daemon stores a blob-backed download_verified_file eval resource and redacted basename/hash/size evidence."
+  ],
+  "success": true,
+  "status": "passed",
+  "result": {
+    "elapsedMs": 2473,
+    "p95LatencyMs": 2473,
+    "resourceRoles": [
+      "download_verified_file"
+    ],
+    "verifierNodeCount": 3,
+    "evalLedgerNodeCount": 4,
+    "cleanupReconciled": true,
+    "redaction": {
+      "localPathPolicy": "basename_only",
+      "fullPathStoredInReport": false,
+      "credentials": "not_used"
+    },
+    "fileExists": true,
+    "approvedDownloadBasename": "browser-chrome-live-extension-report.pdf",
+    "fileSha256": "8380fcef9d9f477cada42f9f20b7b11320ea65c5aca56613b76eb442610f82b7"
+  },
+  "improvementAndFollowUp": "This proves the real extension and Chrome downloads API path on a local fixture. Public-site repeated samples are still required for promotion."
+}

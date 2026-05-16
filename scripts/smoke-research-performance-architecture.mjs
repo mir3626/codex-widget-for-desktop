@@ -7,7 +7,7 @@ import { createStorageService } from "../dist/daemon/storage/storage.js";
 import { CapabilityRuntime } from "../dist/daemon/capability-runtime/index.js";
 import { CapabilityDagRuntime } from "../dist/daemon/capability-dag/index.js";
 import { finalizeEvalRunFromSteps, rollupComputerUseEvalMetrics } from "../dist/daemon/computer-use-eval/index.js";
-import { buildPerceptionGraphFromBrowserObservation, explainPerceptionTarget } from "../dist/daemon/perception-graph/index.js";
+import { arbitratePerceptionTarget, buildPerceptionGraphFromBrowserObservation, buildPerceptionGraphFromScreenObservation, explainPerceptionTarget } from "../dist/daemon/perception-graph/index.js";
 import { computeTileHashes, diffTileHashes, planPerceptionCascade } from "../dist/daemon/perception-cascade/index.js";
 import { decodeAsrCommand } from "../dist/daemon/transcription/index.js";
 import { readFailureCalibration, recordStructuredFailure } from "../dist/daemon/failure-memory/index.js";
@@ -77,13 +77,40 @@ try {
   });
   const explanation = explainPerceptionTarget({ graph, nodeId: "search", risk: "side_effect" });
   assert.equal(explanation.allowed, true, explanation.reason);
+  const arbitration = arbitratePerceptionTarget({
+    graphs: [graph],
+    target: { elementId: "search", label: "검색" },
+    risk: "side_effect"
+  });
+  assert.equal(arbitration.schemaVersion, "perception-target-arbitration.v1");
+  assert.equal(arbitration.selected?.candidate.matchReason, "element_id");
+  assert.equal(arbitration.selected?.explanation.allowed, true, arbitration.reason);
+  const screenGraph = buildPerceptionGraphFromScreenObservation({
+    sessionId: evalRun.sessionId,
+    text: "검색",
+    boxes: [{ text: "검색", bbox: { x: 20, y: 20, w: 80, h: 24 }, confidence: 0.92 }],
+    dirtyRegions: [{ id: "roi-search", bbox: { x: 0, y: 0, w: 160, h: 80 }, changedPixelsEstimate: 6400 }]
+  });
+  const readOnlyScreenArbitration = arbitratePerceptionTarget({
+    graphs: [screenGraph],
+    target: { text: "검색" },
+    risk: "read_only"
+  });
+  assert.equal(readOnlyScreenArbitration.selected?.explanation.allowed, true, readOnlyScreenArbitration.reason);
+  const sideEffectScreenArbitration = arbitratePerceptionTarget({
+    graphs: [screenGraph],
+    target: { text: "검색" },
+    risk: "side_effect"
+  });
+  assert.equal(sideEffectScreenArbitration.selected?.explanation.allowed, false, "Non-actionable screen OCR evidence must not authorize side effects.");
+  assert.equal(sideEffectScreenArbitration.selected?.candidate.disagreementNotes.includes("target_not_actionable"), true);
   storage.appendComputerUseEvalStep({
     runId: evalRun.id,
     kind: "perception_graph",
     phase: "perceiving",
     status: "completed",
     perceptionGraphId: graph.id,
-    output: { explanation }
+    output: { explanation, arbitration: { candidateCount: arbitration.candidateCount, reason: arbitration.reason } }
   });
 
   const transcript = {

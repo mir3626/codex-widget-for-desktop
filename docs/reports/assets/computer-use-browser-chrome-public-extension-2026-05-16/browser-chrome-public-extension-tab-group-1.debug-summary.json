@@ -1,0 +1,31 @@
+{
+  "id": "browser-chrome-public-extension-tab-group-1",
+  "command": "tab_group.claim+update+release",
+  "userScenario": "User asks the widget to claim the current public tab into a dogfood-owned tab group, update its label, and release it again.",
+  "architectureWorkflow": [
+    "Playwright keeps a public unauthenticated tab active under the real Browser Bridge extension.",
+    "Computer Session queues tab_group.claim with a dogfood owner and one-time side-effect approval.",
+    "The extension groups only the target tab id reported by the allowed bridge status.",
+    "Computer Session queues tab_group.update to prove bounded group mutation.",
+    "Computer Session queues tab_group.release to restore the tab outside the group.",
+    "The daemon records capability jobs, DAG verification, eval-ledger, redaction, and cleanup evidence."
+  ],
+  "success": true,
+  "status": "passed",
+  "result": {
+    "elapsedMs": 1632,
+    "p95LatencyMs": 1632,
+    "sourceHost": "example.com",
+    "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+    "verifierNodeCount": 3,
+    "evalLedgerNodeCount": 4,
+    "cleanupReconciled": true,
+    "redaction": {
+      "tabOwnership": "dogfood_owned_tab",
+      "urls": "public_url_hash_only",
+      "credentials": "not_used"
+    },
+    "releaseCount": 1
+  },
+  "improvementAndFollowUp": "This proves bounded tab group claim/update/release through the real extension on a repeated public unauthenticated tab."
+}

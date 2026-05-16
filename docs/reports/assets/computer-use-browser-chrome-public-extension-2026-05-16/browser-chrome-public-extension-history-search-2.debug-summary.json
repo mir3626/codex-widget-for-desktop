@@ -1,0 +1,36 @@
+{
+  "id": "browser-chrome-public-extension-history-search-2",
+  "command": "history.search",
+  "userScenario": "User asks the widget to search recent browser history from a dogfood-owned fresh browser profile and return only redacted host/hash evidence.",
+  "architectureWorkflow": [
+    "Playwright launches Chromium with a fresh temporary profile and the real unpacked Browser Bridge extension.",
+    "The dogfood harness first visits a public unauthenticated page to create profile-local history.",
+    "Computer Session queues the high-risk history.search command and requires one-time approval.",
+    "The extension calls chrome.history.search and normalizes each result with URL paths redacted.",
+    "The dogfood evidence stores only host counts, URL hash, approval metadata, DAG verification, eval-ledger, and cleanup proof.",
+    "The user profile is never read; the temporary browser profile is deleted during cleanup."
+  ],
+  "success": true,
+  "status": "passed",
+  "result": {
+    "elapsedMs": 2898,
+    "p95LatencyMs": 2898,
+    "sourceHost": "example.com",
+    "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+    "verifierNodeCount": 1,
+    "evalLedgerNodeCount": 2,
+    "cleanupReconciled": true,
+    "redaction": {
+      "history": "one_time_fresh_profile_path_redacted",
+      "browserProfile": "dogfood_fresh_profile_only",
+      "urls": "public_url_hash_only",
+      "credentials": "not_used"
+    },
+    "historyItemCount": 1,
+    "matchingHostCount": 1,
+    "pathRedactedCount": 1,
+    "approval": "one_time",
+    "risk": "high"
+  },
+  "improvementAndFollowUp": "This proves high-risk history search can run through the real extension with one-time approval and redacted evidence, without touching the user's real browser profile."
+}

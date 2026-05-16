@@ -8,6 +8,13 @@ export type CapabilitySafetyDecision = {
 };
 
 export function decideCapabilitySafety(input: CapabilityRuntimeEnqueueInput): CapabilitySafetyDecision {
+  if (input.requireApproval === false) {
+    return {
+      requiresApproval: false,
+      reason: "caller_preapproved"
+    };
+  }
+
   if (input.requireApproval) {
     return {
       requiresApproval: true,
@@ -46,7 +53,7 @@ export function decideCapabilitySafety(input: CapabilityRuntimeEnqueueInput): Ca
       : {
           requiresApproval: true,
           approvalId: input.approvalId ?? `approval:${input.id ?? input.transactionId ?? randomUUID()}`,
-          reason: "browser_chrome_side_effect"
+          reason: readBrowserChromeApprovalReason(input.input)
         };
   }
 
@@ -62,7 +69,24 @@ function isBrowserChromeReadOnly(input: unknown): boolean {
     return true;
   }
   const command = (input as Record<string, unknown>).command;
-  return command === undefined || command === "bookmark.list";
+  return command === undefined ||
+    command === "bookmark.list" ||
+    command === "tab_group.list" ||
+    command === "download.search" ||
+    command === "download.observe" ||
+    command === "download.verify" ||
+    command === "permission.get";
+}
+
+function readBrowserChromeApprovalReason(input: unknown): string {
+  if (!input || typeof input !== "object") {
+    return "browser_chrome_side_effect";
+  }
+  const command = (input as Record<string, unknown>).command;
+  if (typeof command === "string" && (command.startsWith("history.") || command.startsWith("debugger.") || command.startsWith("file_upload.") || command.startsWith("permission."))) {
+    return "browser_chrome_high_risk_one_time";
+  }
+  return "browser_chrome_side_effect";
 }
 
 function isDesktopObserve(input: unknown): boolean {

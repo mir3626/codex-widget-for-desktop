@@ -4,6 +4,7 @@ import { capabilityJobsMigration } from "./migrations/v3CapabilityJobs.js";
 import { researchPerformanceArchitectureMigration } from "./migrations/v4ResearchPerformanceArchitecture.js";
 import { scopedAutonomyToolsmithMigration } from "./migrations/v5ScopedAutonomyToolsmith.js";
 import { scopedAutonomySelfImplementationMigration } from "./migrations/v6ScopedAutonomySelfImplementation.js";
+import { computerUseSessionSnapshotsMigration } from "./migrations/v7ComputerUseSessionSnapshots.js";
 
 export type StorageMigration = {
   version: number;
@@ -17,7 +18,8 @@ export const STORAGE_MIGRATIONS: StorageMigration[] = [
   capabilityJobsMigration,
   researchPerformanceArchitectureMigration,
   scopedAutonomyToolsmithMigration,
-  scopedAutonomySelfImplementationMigration
+  scopedAutonomySelfImplementationMigration,
+  computerUseSessionSnapshotsMigration
 ];
 
 export const LATEST_STORAGE_SCHEMA_VERSION = STORAGE_MIGRATIONS[STORAGE_MIGRATIONS.length - 1]?.version ?? 0;

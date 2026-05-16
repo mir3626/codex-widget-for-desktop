@@ -10,6 +10,8 @@ import { BrowserActionSessionManager } from "./browser-action/index.js";
 import { BrowserChromeCommandBridge } from "./browser-chrome/index.js";
 import { BrowserPerceptionService } from "./browser-perception/index.js";
 import { CapabilityRuntime, mapCapabilityRuntimeEvent } from "./capability-runtime/index.js";
+import { CapabilityDagRuntime } from "./capability-dag/index.js";
+import { ComputerSessionRuntime } from "./computer-use/index.js";
 import { VisionContextSessionManager } from "./vision-context/index.js";
 import { createSemanticMemoryStore } from "./semantic-interface/index.js";
 import { registerDaemonCapabilities } from "./capabilities/registerCapabilities.js";
@@ -28,6 +30,14 @@ import {
 import { handleHttpRequest } from "./server/http/routes.js";
 import { syncCodexAppServer } from "./server/runtime/codexAppServerThread.js";
 import { handleWebSocketConnection } from "./server/ws/connection.js";
+import { recordBrowserActionAudit, buildBrowserActionApprovalBody } from "./server/browser-action/helpers.js";
+import { broadcastLedgerSnapshot } from "./server/clientEvents.js";
+import {
+  recordBrowserActionCapabilityApproval,
+  recordBrowserActionCapabilityCommandQueued,
+  recordBrowserActionCapabilityResult
+} from "./server/browser-action/capabilityMirror.js";
+import { summarizeBrowserActionResult, type BrowserAction } from "./browser-action/index.js";
 
 export type DaemonHandle = {
   port: number;
@@ -61,6 +71,149 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     storage,
     emit: (event) => broadcast(clients, mapCapabilityRuntimeEvent(event))
   });
+  const capabilityDagRuntime = new CapabilityDagRuntime(storage, capabilityRuntime);
+  const computerSessionRuntime = new ComputerSessionRuntime({
+    storage,
+    capabilityRuntime,
+    dagRuntime: capabilityDagRuntime,
+    executors: {
+      browserAction: async ({ session, operation, evalRunId, dagRunId, dagNodeId }) => {
+        const input = operation.kind === "browser_action" ? operation.input : {};
+        const actionSessionId = typeof input.actionSessionId === "string" && input.actionSessionId.trim()
+          ? input.actionSessionId.trim()
+          : `computer-session-browser-action:${session.sessionId}`;
+        if (!browserActions.get(actionSessionId)) {
+          browserActions.start({
+            id: actionSessionId,
+            sessionId: session.sessionId,
+            mode: input.mode === "read_only" || input.mode === "ask_before_action" || input.mode === "auto_safe_actions" || input.mode === "full_control_dev"
+              ? input.mode
+              : "auto_safe_actions",
+            source: input.source && typeof input.source === "object" ? input.source as never : undefined
+          });
+        }
+        const adapterId = typeof input.adapterId === "string" ? input.adapterId : undefined;
+        if (adapterId && adapterId !== "extension") {
+          const observed = await browserActions.observeViaAdapter({
+            actionSessionId,
+            adapterId,
+            providerState: input.source && typeof input.source === "object" ? input.source : undefined
+          });
+          recordBrowserActionAudit(storage, observed.audit);
+        }
+        const execution = await browserActions.execute({
+          actionSessionId,
+          action: readComputerSessionBrowserAction(input.action),
+          snapshot: providers.getDomSnapshot(),
+          adapterId,
+          approved: input.approved === true,
+          targetHint: typeof input.targetHint === "string" ? input.targetHint : undefined,
+          policies: storage.readBrowserActionPolicies()
+        });
+        recordBrowserActionAudit(storage, execution.audit);
+        if (execution.approval) {
+          const job = recordBrowserActionCapabilityApproval({
+            storage,
+            clients,
+            requestId: typeof input.requestId === "string" ? input.requestId : execution.approval.id,
+            actionSessionId,
+            sessionId: session.sessionId,
+            evalRunId,
+            dagRunId,
+            dagNodeId,
+            action: execution.approval.action,
+            result: execution.result,
+            approvalId: execution.approval.id
+          });
+          broadcast(clients, {
+            type: "interaction.required",
+            interaction: {
+              id: execution.approval.id,
+              requestId: typeof input.requestId === "string" ? input.requestId : undefined,
+              kind: "approval",
+              title: "Browser action approval",
+              body: buildBrowserActionApprovalBody(execution.result),
+              action: `Browser action: ${execution.result.safety.actionLabel}`
+            }
+          });
+          broadcast(clients, {
+            type: "browserAction.progress",
+            actionSessionId,
+            status: "approval_required",
+            detail: summarizeBrowserActionResult(execution.result)
+          });
+          broadcastLedgerSnapshot(clients, storage, session.sessionId);
+          return {
+            status: "awaiting_approval",
+            capabilityJob: job,
+            output: summarizeBrowserActionResult(execution.result),
+            summary: "Browser Action operation requires approval."
+          };
+        }
+        if (execution.command) {
+          const job = recordBrowserActionCapabilityCommandQueued({
+            storage,
+            clients,
+            command: execution.command,
+            sessionId: session.sessionId,
+            evalRunId,
+            dagRunId,
+            dagNodeId,
+            result: execution.result
+          });
+          broadcast(clients, {
+            type: "browserAction.progress",
+            actionSessionId,
+            status: "queued",
+            detail: { requestId: execution.command.requestId, action: execution.command.action.type }
+          });
+          broadcastLedgerSnapshot(clients, storage, session.sessionId);
+          return {
+            status: "running",
+            capabilityJob: job,
+            output: {
+              result: summarizeBrowserActionResult(execution.result),
+              command: {
+                requestId: execution.command.requestId,
+                resultId: execution.command.resultId,
+                action: execution.command.action.type
+              }
+            },
+            summary: "Browser Action operation queued for Browser Bridge execution."
+          };
+        }
+        const job = recordBrowserActionCapabilityResult({
+          storage,
+          clients,
+          result: execution.result,
+          requestId: typeof input.requestId === "string" ? input.requestId : undefined,
+          sessionId: session.sessionId,
+          evalRunId,
+          dagRunId,
+          dagNodeId
+        });
+        computerSessionRuntime.recordBrowserActionResultObservation({
+          result: execution.result,
+          capabilityJobId: job.id,
+          dagNodeId
+        });
+        broadcast(clients, {
+          type: "browserAction.result",
+          actionSessionId,
+          result: summarizeBrowserActionResult(execution.result)
+        });
+        broadcastLedgerSnapshot(clients, storage, session.sessionId);
+        return {
+          status: execution.result.status === "succeeded" ? "completed" : execution.result.status === "cancelled" ? "cancelled" : "failed",
+          capabilityJob: job,
+          output: summarizeBrowserActionResult(execution.result),
+          summary: `Browser Action operation ${execution.result.status}.`,
+          error: execution.result.error
+        };
+      }
+    },
+    emit: (event) => broadcast(clients, event)
+  });
   const semanticClarifications = new Map<string, PendingSemanticClarification>();
   const browserActionCommandWaiters = new Map<string, BrowserActionCommandWaiter>();
   const requestSessions = new Map<string, string>();
@@ -78,7 +231,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     getDaemonPort: () => (serverRef ? getServerPort(serverRef) : 0)
   });
   const server = createServer((request, response) => {
-    void handleHttpRequest(request, response, auth, onAuthChanged, providers, browserPerception, browserActions, browserChromeCommands, browserExtensionBridge, clients, storage, capabilityRuntime, semanticMemory, browserActionCommandWaiters);
+    void handleHttpRequest(request, response, auth, onAuthChanged, providers, browserPerception, browserActions, browserChromeCommands, browserExtensionBridge, clients, storage, capabilityRuntime, computerSessionRuntime, semanticMemory, browserActionCommandWaiters);
   });
   serverRef = server;
   const wss = new WebSocketServer({ server });
@@ -161,4 +314,10 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
       }
     }
   };
+}
+
+function readComputerSessionBrowserAction(input: unknown): BrowserAction {
+  return input && typeof input === "object" && typeof (input as Record<string, unknown>).type === "string"
+    ? input as BrowserAction
+    : { type: "read", reason: "Computer Session Browser Action operation did not include an action payload." };
 }

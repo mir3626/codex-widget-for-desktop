@@ -20,6 +20,9 @@ export function recordBrowserActionCapabilityApproval(input: {
   requestId: string;
   actionSessionId: string;
   sessionId?: string;
+  evalRunId?: string;
+  dagRunId?: string;
+  dagNodeId?: string;
   action: BrowserAction;
   result?: BrowserActionResult;
   approvalId?: string;
@@ -30,9 +33,12 @@ export function recordBrowserActionCapabilityApproval(input: {
     requestId: input.requestId,
     actionSessionId: input.actionSessionId,
     sessionId: input.sessionId,
+    evalRunId: input.evalRunId,
     action: input.action,
     result: input.result,
     approvalId: input.approvalId,
+    dagRunId: input.dagRunId,
+    dagNodeId: input.dagNodeId,
     status: "awaiting_approval"
   });
   return transitionBrowserActionCapabilityJob({
@@ -51,6 +57,9 @@ export function recordBrowserActionCapabilityCommandQueued(input: {
   clients: Set<WebSocket>;
   command: BrowserQueuedCommand;
   sessionId?: string;
+  evalRunId?: string;
+  dagRunId?: string;
+  dagNodeId?: string;
   result?: BrowserActionResult;
 }): CapabilityJobSummary {
   const job = ensureBrowserActionCapabilityJob({
@@ -59,12 +68,16 @@ export function recordBrowserActionCapabilityCommandQueued(input: {
     requestId: input.command.requestId,
     actionSessionId: input.command.actionSessionId,
     sessionId: input.sessionId,
+    evalRunId: input.evalRunId,
     action: input.command.action,
     result: input.result,
     leaseId: readLeaseId(input.command, input.result),
     status: "queued",
     inputJson: {
       requestId: input.command.requestId,
+      evalRunId: input.evalRunId,
+      dagRunId: input.dagRunId,
+      dagNodeId: input.dagNodeId,
       actionSessionId: input.command.actionSessionId,
       resultId: input.command.resultId,
       adapterId: input.command.adapterId,
@@ -114,6 +127,9 @@ export function recordBrowserActionCapabilityResult(input: {
   result: BrowserActionResult;
   requestId?: string;
   sessionId?: string;
+  evalRunId?: string;
+  dagRunId?: string;
+  dagNodeId?: string;
 }): CapabilityJobSummary {
   const requestId = input.requestId?.trim() || input.result.id;
   const job = ensureBrowserActionCapabilityJob({
@@ -122,9 +138,12 @@ export function recordBrowserActionCapabilityResult(input: {
     requestId,
     actionSessionId: input.result.actionSessionId,
     sessionId: input.sessionId,
+    evalRunId: input.evalRunId,
     action: input.result.action,
     result: input.result,
     leaseId: input.result.transaction?.leaseId,
+    dagRunId: input.dagRunId,
+    dagNodeId: input.dagNodeId,
     status: "running"
   });
   const status = mapBrowserActionResultStatus(input.result.status);
@@ -207,6 +226,9 @@ function ensureBrowserActionCapabilityJob(input: {
   requestId: string;
   actionSessionId: string;
   sessionId?: string;
+  evalRunId?: string;
+  dagRunId?: string;
+  dagNodeId?: string;
   action: BrowserAction;
   result?: BrowserActionResult;
   leaseId?: string;
@@ -229,6 +251,9 @@ function ensureBrowserActionCapabilityJob(input: {
     requestedBy: "direct_ui",
     inputJson: redactBrowserActionSecret(input.inputJson ?? {
       requestId: input.requestId,
+      evalRunId: input.evalRunId,
+      dagRunId: input.dagRunId,
+      dagNodeId: input.dagNodeId,
       actionSessionId: input.actionSessionId,
       resultId: input.result?.id,
       action: input.action,
@@ -275,6 +300,7 @@ function transitionBrowserActionCapabilityJob(input: {
     lastError: input.lastError
   });
   emitCapabilityJob(input.storage, input.clients, updated, input.phase, input.summary, redactBrowserActionSecret(input.detail));
+  updateBrowserActionDagNode(input.storage, updated);
   return updated;
 }
 
@@ -377,4 +403,111 @@ function mapCapabilityPhase(status: CapabilityJobStatus): CapabilityEventPhase {
 
 function isFinalCapabilityStatus(status: CapabilityJobStatus): boolean {
   return status === "completed" || status === "failed" || status === "cancelled" || status === "expired";
+}
+
+function updateBrowserActionDagNode(storage: StorageService, job: CapabilityJobSummary): void {
+  const input = job.inputJson && typeof job.inputJson === "object" ? job.inputJson as Record<string, unknown> : {};
+  const dagRunId = typeof input.dagRunId === "string" ? input.dagRunId : undefined;
+  const dagNodeId = typeof input.dagNodeId === "string" ? input.dagNodeId : undefined;
+  if (!dagRunId || !dagNodeId) {
+    return;
+  }
+  const node = storage.readCapabilityDagNode(dagNodeId);
+  if (!node) {
+    return;
+  }
+  const completedAt = job.completedAt ?? (isFinalCapabilityStatus(job.status) ? new Date().toISOString() : undefined);
+  const status = job.status === "completed"
+    ? "completed"
+    : job.status === "failed" || job.status === "expired"
+      ? "failed"
+      : job.status === "cancelled"
+        ? "cancelled"
+        : "running";
+  storage.upsertCapabilityDagNode({
+    ...node,
+    status,
+    capabilityJobId: job.id,
+    output: job.outputJson,
+    completedAt,
+    elapsedMs: completedAt && node.startedAt ? Math.max(0, Date.parse(completedAt) - Date.parse(node.startedAt)) : node.elapsedMs,
+    lastError: job.lastError
+  });
+  if (completedAt && isFinalCapabilityStatus(job.status)) {
+    upsertBrowserActionFollowupDagNodes(storage, {
+      dagRunId,
+      dagNodeId,
+      capabilityJobId: job.id,
+      status,
+      completedAt,
+      outputJson: job.outputJson,
+      lastError: job.lastError
+    });
+  }
+}
+
+function upsertBrowserActionFollowupDagNodes(
+  storage: StorageService,
+  input: {
+    dagRunId: string;
+    dagNodeId: string;
+    capabilityJobId: string;
+    status: "completed" | "failed" | "cancelled" | "running" | "pending" | "ready" | "skipped";
+    completedAt: string;
+    outputJson?: unknown;
+    lastError?: string;
+  }
+): void {
+  const finalStatus = input.status === "completed"
+    ? "completed"
+    : input.status === "cancelled"
+      ? "cancelled"
+      : "failed";
+  const verificationNodeId = `${input.dagNodeId}:verification`;
+  storage.upsertCapabilityDagNode({
+    id: verificationNodeId,
+    dagRunId: input.dagRunId,
+    kind: "verification",
+    status: finalStatus,
+    capabilityJobId: input.capabilityJobId,
+    dependsOn: [input.dagNodeId],
+    input: {
+      capabilityJobId: input.capabilityJobId,
+      actionNodeId: input.dagNodeId
+    },
+    output: {
+      jobStatus: input.status,
+      verification: readCapabilityVerification(input.outputJson),
+      lastError: input.lastError
+    },
+    startedAt: input.completedAt,
+    completedAt: input.completedAt,
+    elapsedMs: 0,
+    lastError: input.lastError
+  });
+  storage.upsertCapabilityDagNode({
+    id: `${input.dagNodeId}:eval_ledger`,
+    dagRunId: input.dagRunId,
+    kind: "eval_ledger",
+    status: finalStatus,
+    capabilityJobId: input.capabilityJobId,
+    dependsOn: [verificationNodeId],
+    input: {
+      capabilityJobId: input.capabilityJobId,
+      verificationNodeId
+    },
+    output: {
+      recorded: true,
+      jobStatus: input.status
+    },
+    startedAt: input.completedAt,
+    completedAt: input.completedAt,
+    elapsedMs: 0,
+    lastError: input.lastError
+  });
+}
+
+function readCapabilityVerification(outputJson: unknown): unknown {
+  const record = outputJson && typeof outputJson === "object" ? outputJson as Record<string, unknown> : {};
+  return record.capabilityVerification ?? record.verification;
 }

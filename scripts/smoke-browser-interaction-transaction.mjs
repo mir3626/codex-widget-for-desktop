@@ -79,10 +79,29 @@ async function verifyTransactionCore() {
   assert(candidates.length >= 2, "duplicate concept controls should produce multiple candidates");
   assert(candidates.every((candidate) => candidate.leaseId === lease.leaseId), "candidate ids should be lease-scoped");
   verifySearchIntentAndGate({ graph, lease });
+  verifyExplicitControlRoleIntentAndGate({ graph, lease });
   verifyOrdinalContentIntentAndGate({ graph, lease });
   verifyContentIdentifierIntentAndGate({ graph, lease });
   verifyRepresentativeContentAvoidsNavigation({ graph, lease });
   verifySemanticMemoryAdvisoryRanking({ graph, lease });
+}
+
+function verifyExplicitControlRoleIntentAndGate({ graph, lease }) {
+  const intent = resolveBrowserActionIntent("개념글 버튼 눌러달라는 뜻이야");
+  assertEqual(intent.actions.length, 1, "explicit concept button correction should produce one click");
+  assertEqual(intent.actions[0].target.text, "개념글", "explicit concept button target text");
+  assertEqual(intent.actions[0].target.role, "button", "explicit concept button target role");
+  const candidates = generateCandidateSteps({
+    action: intent.actions[0],
+    graph,
+    target: intent.actions[0].target,
+    hint: intent.actions[0].target.text,
+    lease
+  });
+  const decision = decideCandidatePlanningGate({ action: intent.actions[0], candidates, locale: "ko", requireFreshLease: true });
+  const selected = candidates.find((candidate) => candidate.candidateId === decision.selectedCandidateId);
+  assertEqual(decision.decision, "proceed", "explicit button role should disambiguate duplicate concept targets");
+  assertEqual(selected?.element?.id, "concept-filter", "explicit button role should select the control, not a content or sidebar link");
 }
 
 function verifySearchIntentAndGate({ graph, lease }) {

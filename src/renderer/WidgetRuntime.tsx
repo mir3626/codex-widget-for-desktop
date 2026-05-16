@@ -42,6 +42,7 @@ export function WidgetRuntime() {
   const [showActivityDetails, setShowActivityDetails] = useState(false);
   const [logLines, setLogLines] = useState<LogLine[]>([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [computerUseRefreshSignal, setComputerUseRefreshSignal] = useState(0);
   const conversationRef = useRef<HTMLElement | null>(null);
   const promptInputRef = useRef<HTMLTextAreaElement | null>(null);
   const browserModeButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -345,6 +346,9 @@ export function WidgetRuntime() {
   }
 
   function handleServerEvent(event: ServerEvent) {
+    if (isComputerUseRefreshEvent(event)) {
+      setComputerUseRefreshSignal((current) => current + 1);
+    }
     handleWidgetServerEvent(event, {
       activeSessionIdRef,
       addInteraction,
@@ -502,6 +506,7 @@ export function WidgetRuntime() {
       isVisionStreaming={isVisionStreaming}
       ledger={ledger}
       capabilityJobs={capabilityJobs}
+      computerUseRefreshSignal={computerUseRefreshSignal}
       liveLabel={liveLabel}
       maximized={maximized}
       minimize={minimize}
@@ -622,4 +627,11 @@ export function WidgetRuntime() {
       voiceListening={voiceListening}
     />
   );
+}
+
+function isComputerUseRefreshEvent(event: ServerEvent): boolean {
+  return event.type.startsWith("computer.session.") ||
+    event.type === "capability.job" ||
+    event.type === "capability.jobs" ||
+    event.type === "capability.resource";
 }

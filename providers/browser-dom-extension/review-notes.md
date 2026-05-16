@@ -32,6 +32,7 @@ The native host can be registered for local testing with:
 - `activeTab`: fallback active-tab access when the user opens the popup.
 - `alarms`: heartbeat and command polling for the Manifest V3 service worker.
 - `bookmarks`: execute daemon-approved browser chrome bookmark actions and verify bookmark tree changes.
+- `contentSettings`: execute one-time-approved site permission changes such as camera, microphone, location, notifications, popups, or automatic downloads for a bounded origin.
 - `scripting`: run the page observation collector and typed Browser Action executor on approved pages.
 - `storage`: store local Browser Bridge settings.
 - `tabs`: read active tab metadata for status and source matching.

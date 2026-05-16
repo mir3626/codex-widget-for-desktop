@@ -1,6 +1,6 @@
 {
   "$schema": "./deferred-gates.schema.json",
-  "updatedAt": "2026-05-06T08:56:59.660+09:00",
+  "updatedAt": "2026-05-16T00:00:00.000+09:00",
   "gates": {
     "browser-store-submission": {
       "status": "deferred",
@@ -8,6 +8,13 @@
       "deferredBy": "product-owner",
       "reason": "Dogfood the desktop widget before completing Chrome Web Store or Microsoft Edge Add-ons dashboard submission.",
       "resumeRunbook": "docs/release/browser-store-submission.md"
+    },
+    "browser-native-helper-signing": {
+      "status": "deferred",
+      "deferredAt": "2026-05-16T00:00:00.000+09:00",
+      "deferredBy": "product-owner",
+      "reason": "Production Authenticode certificate or CI signing service is not available yet; unsigned native helpers remain development-only.",
+      "resumeRunbook": "docs/plans/windows-codex-computer-use-parity/05-windows-native-helper-watch-mode.md"
     }
   }
 }

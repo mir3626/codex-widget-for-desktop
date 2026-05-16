@@ -1,0 +1,35 @@
+[
+  {
+    "id": "S1",
+    "title": "CLI – Codex | OpenAI Developers",
+    "url": "https://help.openai.com/en/articles/11096431-openai-codex-ci-getting-started",
+    "fetched": false,
+    "status": "browser_fallback",
+    "browserFallback": true,
+    "fallbackReason": "http_status_403",
+    "chars": 3160,
+    "excerpt": "Home API Codex ChatGPT Resources Start searching API Dashboard Getting Started Overview Quickstart Explore use cases Migrate Pricing Concepts Using Codex App IDE Extension CLI Overview Features Command Line Options Slash commands Web Integr"
+  },
+  {
+    "id": "S2",
+    "title": "Web – Codex | OpenAI Developers",
+    "url": "https://platform.openai.com/docs/codex/overview",
+    "fetched": false,
+    "status": "browser_fallback",
+    "browserFallback": true,
+    "fallbackReason": "http_status_403",
+    "chars": 2078,
+    "excerpt": "Home API Codex ChatGPT Resources Start searching API Dashboard Getting Started Overview Quickstart Explore use cases Migrate Pricing Concepts Using Codex App IDE Extension CLI Web Overview Environments Internet Access Integrations Codex Sec"
+  },
+  {
+    "id": "S3",
+    "title": "Docs MCP | OpenAI Developers",
+    "url": "https://platform.openai.com/docs/docs-mcp",
+    "fetched": false,
+    "status": "browser_fallback",
+    "browserFallback": true,
+    "fallbackReason": "http_status_403",
+    "chars": 2361,
+    "excerpt": "Home API Codex ChatGPT Resources Start searching API Dashboard Home OpenAI Developers plugin Docs MCP Categories Demo apps Videos Topics Agents Audio & Voice Computer Use Codex Evals gpt-oss Fine-tuning Image generation Scaling Tools Video "
+  }
+]

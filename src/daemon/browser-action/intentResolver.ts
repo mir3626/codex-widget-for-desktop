@@ -110,7 +110,15 @@ export function resolveBrowserActionIntent(text: string): BrowserActionIntent {
     actions.push({ type: "select", target: { kind: "text", text: targetPhrase || value || "select" }, value });
   } else if (/클릭|눌러|누르|click|press|펼쳐|expand/i.test(utterance)) {
     actionType = "click";
-    actions.push({ type: "click", target: { kind: "text", text: targetPhrase || stripBrowserActionSuffix(utterance) || utterance.slice(0, 80) } });
+    const requestedRole = readRequestedElementRole(utterance);
+    actions.push({
+      type: "click",
+      target: {
+        kind: "text",
+        ...(requestedRole ? { role: requestedRole } : {}),
+        text: targetPhrase || stripBrowserActionSuffix(utterance) || utterance.slice(0, 80)
+      }
+    });
   } else if (/읽어|요약|설명|describe|summarize|read|observe|봐줘/i.test(utterance)) {
     actionType = "read";
     actions.push({ type: "read", reason: utterance.slice(0, 240) });
@@ -147,6 +155,22 @@ function readHistoryCommand(text: string): "back" | "forward" | "reload" | undef
   }
   if (/새로고침|reload|refresh/i.test(text)) {
     return "reload";
+  }
+  return undefined;
+}
+
+function readRequestedElementRole(text: string): string | undefined {
+  if (/(?:버튼|button)/i.test(text)) {
+    return "button";
+  }
+  if (/(?:탭|tab)/i.test(text)) {
+    return "tab";
+  }
+  if (/(?:메뉴|menu)/i.test(text)) {
+    return "menuitem";
+  }
+  if (/(?:링크|link)/i.test(text)) {
+    return "link";
   }
   return undefined;
 }

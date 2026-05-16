@@ -20,6 +20,19 @@ This directory now keeps active planning state and historical tombstones.
 - `research-driven-performance-architecture-handoff.md` defines the proposed
   paper-prioritized macro-architecture for improving task success, ASR,
   Vision/OCR, agent feedback, capability scheduling, and release metrics.
+- `browser-chrome-deep-actions-handoff.md` defines the expanded Browser Bridge
+  chrome-control surface for tab groups, downloads, history, debugger,
+  file-upload preflight, and native fallback boundaries.
+- `windows-codex-computer-use-parity-handoff.md` is the active sharded
+  handoff for implementing Windows behavior parity with Codex macOS Computer
+  Use through a daemon-owned Computer Session Runtime, explicit execution
+  surfaces, normalized computer actions, browser/tool fast paths, and bounded
+  native watch-mode. Its `windows-codex-computer-use-parity/README.md` shard is
+  the context-loss restart index for the full pack,
+  `09-approved-execution-handoff/README.md` is the execution-status pack, and
+  `10-macos-parity-implementation-handoff/README.md` is the detailed
+  user-outcome parity implementation map to use when continuing the broad
+  macOS Computer Use benchmark migration after context loss.
 - `../reports/local-asr-cpu-benchmark-2026-05-13.md` records the first
   faster-whisper CPU comparison and the current GPU runtime blocker.
 - Completed handoff documents that have been consolidated into

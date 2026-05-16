@@ -32,13 +32,13 @@ import {
   summarizeBrowserActionPlan
 } from "./presentation.js";
 import { createBrowserActionPromptToolInvocation } from "../../agent-tools/index.js";
-import { summarizeCapabilityTimings } from "../../capability-transaction/index.js";
-import {
-  finalizeEvalRunFromSteps,
-  rollupComputerUseEvalMetrics
-} from "../../computer-use-eval/index.js";
 import { buildPerceptionGraphFromBrowserObservation } from "../../perception-graph/index.js";
 import { recordStructuredFailure } from "../../failure-memory/index.js";
+import {
+  recordPromptBrowserActionEvalCheckpoint,
+  recordPromptBrowserActionTimingSummary,
+  type BrowserActionPromptEvalContext
+} from "./promptEvalLedger.js";
 
 export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput): Promise<boolean> {
   const promptPlan = planBrowserActionFromPrompt({
@@ -104,6 +104,11 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
       firstAction: promptPlan.steps[0]?.action.type
     }
   });
+  const evalContext: BrowserActionPromptEvalContext = {
+    evalRunId: evalRun.id,
+    perceptionGraphId: "",
+    transactionId: transaction.transactionId
+  };
 
   const firstAction = promptPlan.steps[0]?.action;
   transaction = input.browserActions.markInteractionTiming(transaction.transactionId, "fresh_context_wait_started", "perceiving", {
@@ -159,6 +164,7 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
     sessionId: input.sessionId,
     source: "browser_action"
   });
+  evalContext.perceptionGraphId = perceptionGraph.id;
   input.storage.appendComputerUseEvalStep({
     runId: evalRun.id,
     kind: "perception_graph",
@@ -254,34 +260,16 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
       debugBundle
     });
   }
-  const timingSummary = summarizeCapabilityTimings(transaction.timings);
-  input.storage.appendComputerUseEvalStep({
-    runId: evalRun.id,
-    kind: "browser_action_plan",
-    phase: "verifying",
-    status: execution.plan.status,
-    perceptionGraphId: perceptionGraph.id,
-    input: {
-      planId: execution.plan.id,
-      stepCount: execution.plan.steps.length
-    },
-    output: {
-      planStatus: execution.plan.status,
-      resultCount: execution.results.length,
-      latestStatus: execution.results.at(-1)?.status,
-      timingSummary
-    },
-    startedAt: execution.plan.createdAt ?? transaction.capability.createdAt,
-    completedAt: new Date().toISOString(),
-    failureClass: execution.plan.status === "completed" ? "none" : "action_failed"
-  });
-  const completedEval = finalizeEvalRunFromSteps({
+  const completedEval = recordPromptBrowserActionEvalCheckpoint({
     storage: input.storage,
-    runId: evalRun.id,
-    taskSuccess: execution.plan.status === "completed" ? "passed" : execution.plan.status === "awaiting_approval" ? "unknown" : "failed",
-    failureClass: execution.plan.status === "completed" ? "none" : execution.plan.status === "awaiting_approval" ? "approval_denied" : "action_failed"
+    sessionId: input.sessionId,
+    context: evalContext,
+    plan: execution.plan,
+    results: execution.results,
+    timingSource: transaction,
+    terminal: !execution.command
   });
-  if (completedEval.failureClass !== "none" && completedEval.failureClass !== "unknown") {
+  if (completedEval && completedEval.failureClass !== "none" && completedEval.failureClass !== "unknown") {
     recordStructuredFailure({
       storage: input.storage,
       failureClass: completedEval.failureClass,
@@ -295,13 +283,16 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
       ttlMs: 14 * 24 * 60 * 60 * 1000
     });
   }
-  recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", "Browser Action timing summary", {
-    transactionId: transaction.transactionId,
-    planStatus: execution.plan.status,
-    timings: timingSummary,
-    evalRunId: completedEval.id,
-    evalMetrics: rollupComputerUseEvalMetrics(input.storage.listComputerUseEvalRuns({ scenarioId: completedEval.scenarioId, limit: 50 }))
-  });
+  if (completedEval) {
+    recordPromptBrowserActionTimingSummary({
+      storage: input.storage,
+      sessionId: input.sessionId,
+      context: evalContext,
+      plan: execution.plan,
+      timingSource: transaction,
+      completedEval
+    });
+  }
   broadcast(input.clients, {
     type: "browserAction.diagnostics",
     actionSessionId: session.id,
@@ -311,7 +302,7 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
       requestId: input.message.id,
       phase: transaction.phase,
       planStatus: execution.plan.status,
-      timingSummary,
+      timingSummary: transaction ? Object.fromEntries(transaction.timings.map((timing) => [timing.name, timing.elapsedMs])) : {},
       debugBundle
     }
   });
@@ -324,6 +315,7 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
       requestId: input.message.id,
       actionSessionId: session.id,
       sessionId: input.sessionId,
+      evalRunId: evalRun.id,
       action: execution.approval.action,
       result: execution.results.at(-1),
       approvalId: execution.approval.id
@@ -342,12 +334,14 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
       clients: input.clients,
       command: execution.command,
       sessionId: input.sessionId,
+      evalRunId: evalRun.id,
       result: execution.results.at(-1)
     });
     return handlePromptExtensionCommand(input, {
       plan: execution.plan,
       results: execution.results,
-      command: execution.command
+      command: execution.command,
+      evalContext
     });
   }
 
@@ -371,7 +365,8 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
       clients: input.clients,
       result: latestResult,
       requestId: input.message.id,
-      sessionId: input.sessionId
+      sessionId: input.sessionId,
+      evalRunId: evalRun.id
     });
   }
   return true;

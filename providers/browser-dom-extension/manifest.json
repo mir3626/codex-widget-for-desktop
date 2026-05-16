@@ -3,7 +3,7 @@
   "name": "Codex Widget Browser Bridge",
   "version": "0.1.0",
   "description": "Bridge approved browser pages to the local Codex Widget daemon for safe Browser Action control.",
-  "permissions": ["activeTab", "alarms", "bookmarks", "nativeMessaging", "scripting", "storage", "tabs"],
+  "permissions": ["activeTab", "alarms", "bookmarks", "contentSettings", "debugger", "downloads", "history", "nativeMessaging", "scripting", "storage", "tabGroups", "tabs"],
   "host_permissions": ["http://127.0.0.1/*", "http://localhost/*"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],
   "icons": {

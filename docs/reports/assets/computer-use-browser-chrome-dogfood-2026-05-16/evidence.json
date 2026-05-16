@@ -1,0 +1,297 @@
+{
+  "schemaVersion": "computer-use-browser-chrome-dogfood.v1",
+  "generatedAt": "2026-05-16T02:12:01.649Z",
+  "date": "2026-05-16",
+  "runId": "computer-use-browser-chrome-dogfood-20260516-111200",
+  "evidenceClass": "fixture_bridge_repeated_dogfood",
+  "promotion": "non_promoting_until_real_extension_live_samples_exist",
+  "metrics": {
+    "scenarioCount": 2,
+    "sampleCount": 4,
+    "successCount": 4,
+    "successRate": 1,
+    "p50LatencyMs": 145,
+    "p95LatencyMs": 272,
+    "elapsedMs": 802,
+    "fixtureBridge": true,
+    "repeatedSamples": true,
+    "commands": [
+      "download.verify",
+      "debugger.print_to_pdf"
+    ],
+    "downloadVerifyCovered": true,
+    "debuggerPrintPdfCovered": true,
+    "redactionProofPresent": true,
+    "cleanupRollbackCompleted": true
+  },
+  "scenarios": [
+    {
+      "id": "browser-chrome-download-verify-repeat",
+      "command": "download.verify",
+      "repeatCount": 2,
+      "userScenario": "사용자가 현재 브라우저 다운로드 목록에서 방금 받은 PDF가 완료되었는지 확인하고, 승인된 다운로드 파일 증거를 남기도록 요청한다.",
+      "architectureWorkflow": [
+        "Computer Session starts on the regular_browser_extension surface with an explicit browser chrome permission profile.",
+        "A browser_chrome operation requests download.verify with an approved local download path rooted in the scoped profile.",
+        "Browser Bridge polling delivers the bounded Browser Chrome command to the extension channel.",
+        "The fixture bridge returns redacted download completion metadata, simulating the extension API result without exposing full local paths.",
+        "ComputerSessionRuntime stores a blob-backed download_verified_file eval resource, a file observation, DAG verification, and eval-ledger evidence.",
+        "The debug bundle links the capability job, DAG node, observation, eval resource, verifier result, and basename-only redaction policy."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "sampleCount": 2,
+        "successCount": 2,
+        "p50LatencyMs": 251,
+        "p95LatencyMs": 272,
+        "resourceRoles": [
+          "download_verified_file"
+        ],
+        "verifierNodeCount": 2,
+        "evalLedgerNodeCount": 4,
+        "outputHashes": [
+          "957279235fcca4bd52fcf67ed52c7c28817b1b662efb25e005b7bad9d7700468",
+          "9f3630161eab08702e9403a9a078d5ac2a870d67ad53d10c38fcdf30f784f88d"
+        ],
+        "redaction": [
+          {
+            "expected": "basename_only",
+            "observationRedactions": [
+              {
+                "credentials": "redacted",
+                "localPaths": "metadata_only"
+              },
+              {
+                "credentials": "redacted",
+                "localPaths": "basename_only"
+              }
+            ],
+            "outputPathRedacted": false,
+            "localPathPolicy": "basename_only"
+          },
+          {
+            "expected": "basename_only",
+            "observationRedactions": [
+              {
+                "credentials": "redacted",
+                "localPaths": "metadata_only"
+              },
+              {
+                "credentials": "redacted",
+                "localPaths": "basename_only"
+              }
+            ],
+            "outputPathRedacted": false,
+            "localPathPolicy": "basename_only"
+          }
+        ],
+        "cleanupRollbackCompleted": true
+      },
+      "samples": [
+        {
+          "iteration": 0,
+          "success": true,
+          "status": "passed",
+          "elapsedMs": 272,
+          "p50LatencyMs": 272,
+          "p95LatencyMs": 272,
+          "sessionId": "2f4c0ad9-e698-45bd-80b7-d5997eac01b9",
+          "evalRunId": "computer-use-eval-31dde845-d633-4e1d-8efd-6fc85c02ac2f",
+          "dagNodeId": "2f4c0ad9-e698-45bd-80b7-d5997eac01b9:operation:15461905-fa7b-47a3-b7ce-2b5cb639b355",
+          "capabilityJobId": "capability-job-06e9acd2-c0f6-4f53-9a88-95ff9d93e46e",
+          "command": "download.verify",
+          "jobStatus": "completed",
+          "approvalRequired": false,
+          "outputHash": "957279235fcca4bd52fcf67ed52c7c28817b1b662efb25e005b7bad9d7700468",
+          "verifierNodeCount": 1,
+          "evalLedgerNodeCount": 2,
+          "evalStepCount": 6,
+          "resourceRoles": [
+            "download_verified_file"
+          ],
+          "observationCount": 2,
+          "redaction": {
+            "expected": "basename_only",
+            "observationRedactions": [
+              {
+                "credentials": "redacted",
+                "localPaths": "metadata_only"
+              },
+              {
+                "credentials": "redacted",
+                "localPaths": "basename_only"
+              }
+            ],
+            "outputPathRedacted": false,
+            "localPathPolicy": "basename_only"
+          },
+          "cleanupRollbackCompleted": true
+        },
+        {
+          "iteration": 1,
+          "success": true,
+          "status": "passed",
+          "elapsedMs": 251,
+          "p50LatencyMs": 251,
+          "p95LatencyMs": 251,
+          "sessionId": "e81150c3-8d9e-402c-9f8b-93a6ab618f59",
+          "evalRunId": "computer-use-eval-6617c1c1-5a8f-4d60-a96b-75e55a68ca13",
+          "dagNodeId": "e81150c3-8d9e-402c-9f8b-93a6ab618f59:operation:a4f3a377-cb30-47b2-84b2-bb7fcea241d4",
+          "capabilityJobId": "capability-job-cef6cc15-7056-4163-81d3-0e59d3b17816",
+          "command": "download.verify",
+          "jobStatus": "completed",
+          "approvalRequired": false,
+          "outputHash": "9f3630161eab08702e9403a9a078d5ac2a870d67ad53d10c38fcdf30f784f88d",
+          "verifierNodeCount": 1,
+          "evalLedgerNodeCount": 2,
+          "evalStepCount": 6,
+          "resourceRoles": [
+            "download_verified_file"
+          ],
+          "observationCount": 2,
+          "redaction": {
+            "expected": "basename_only",
+            "observationRedactions": [
+              {
+                "credentials": "redacted",
+                "localPaths": "metadata_only"
+              },
+              {
+                "credentials": "redacted",
+                "localPaths": "basename_only"
+              }
+            ],
+            "outputPathRedacted": false,
+            "localPathPolicy": "basename_only"
+          },
+          "cleanupRollbackCompleted": true
+        }
+      ],
+      "improvementAndFollowUp": "반복 dogfood는 성공했지만 Browser Bridge result를 fixture로 주입한 증거다. 실제 확장 프로그램 live samples와 p95 비교가 있어야 live promotion이 가능하다."
+    },
+    {
+      "id": "browser-chrome-debugger-print-pdf-repeat",
+      "command": "debugger.print_to_pdf",
+      "repeatCount": 2,
+      "userScenario": "사용자가 현재 탭을 브라우저 debugger 기반 print-to-PDF 명령으로 PDF화할 수 있는지 검증하고, 임의 CDP 실행 없이 고정 명령 증거만 남기도록 요청한다.",
+      "architectureWorkflow": [
+        "Computer Session starts on the regular_browser_extension surface with an explicit high-risk browser chrome profile.",
+        "A browser_chrome operation requests the fixed debugger.print_to_pdf command and awaits one-time approval.",
+        "The renderer-equivalent approval event allows only the bounded command, not arbitrary CDP evaluation.",
+        "Browser Bridge polling delivers debugger.print_to_pdf and the fixture bridge returns minimized PDF metadata.",
+        "ComputerSessionRuntime records capability job output, DAG verification, eval-ledger linkage, and redaction evidence.",
+        "The debug bundle exposes the fixed command proof and keeps browser-private content out of the dogfood corpus."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "sampleCount": 2,
+        "successCount": 2,
+        "p50LatencyMs": 134,
+        "p95LatencyMs": 145,
+        "resourceRoles": [],
+        "verifierNodeCount": 2,
+        "evalLedgerNodeCount": 4,
+        "outputHashes": [
+          "0b1029da99593801102a4c20214edccd3b4f74eee8944dbc0433f7fb69558690",
+          "cd0a4410415c9c9ed5fe0343ec9a46af1e9813fe043d32abb5e4e08e04f93430"
+        ],
+        "redaction": [
+          {
+            "expected": "path_redacted",
+            "observationRedactions": [
+              {
+                "credentials": "redacted",
+                "localPaths": "metadata_only"
+              }
+            ],
+            "outputPathRedacted": true,
+            "localPathPolicy": "path_redacted"
+          },
+          {
+            "expected": "path_redacted",
+            "observationRedactions": [
+              {
+                "credentials": "redacted",
+                "localPaths": "metadata_only"
+              }
+            ],
+            "outputPathRedacted": true,
+            "localPathPolicy": "path_redacted"
+          }
+        ],
+        "cleanupRollbackCompleted": true
+      },
+      "samples": [
+        {
+          "iteration": 0,
+          "success": true,
+          "status": "passed",
+          "elapsedMs": 145,
+          "p50LatencyMs": 145,
+          "p95LatencyMs": 145,
+          "sessionId": "9fdb4501-2093-4700-8eac-9823b1fdcd92",
+          "evalRunId": "computer-use-eval-01abda41-18e8-4bcb-9c58-164cc41289df",
+          "dagNodeId": "9fdb4501-2093-4700-8eac-9823b1fdcd92:operation:efb8f8a3-9278-428c-897e-ab55e907da2a",
+          "capabilityJobId": "capability-job-63442129-2eba-44dc-9d7a-2c54b7d8cc96",
+          "command": "debugger.print_to_pdf",
+          "jobStatus": "completed",
+          "approvalRequired": true,
+          "outputHash": "0b1029da99593801102a4c20214edccd3b4f74eee8944dbc0433f7fb69558690",
+          "verifierNodeCount": 1,
+          "evalLedgerNodeCount": 2,
+          "evalStepCount": 8,
+          "resourceRoles": [],
+          "observationCount": 1,
+          "redaction": {
+            "expected": "path_redacted",
+            "observationRedactions": [
+              {
+                "credentials": "redacted",
+                "localPaths": "metadata_only"
+              }
+            ],
+            "outputPathRedacted": true,
+            "localPathPolicy": "path_redacted"
+          },
+          "cleanupRollbackCompleted": true
+        },
+        {
+          "iteration": 1,
+          "success": true,
+          "status": "passed",
+          "elapsedMs": 134,
+          "p50LatencyMs": 134,
+          "p95LatencyMs": 134,
+          "sessionId": "a0afd1ab-4c2b-4782-97ac-cf390dad72e1",
+          "evalRunId": "computer-use-eval-2ae06f67-b943-412c-916d-4b704a741598",
+          "dagNodeId": "a0afd1ab-4c2b-4782-97ac-cf390dad72e1:operation:5d36996d-b4d3-4377-ab5e-95ac419dcbcb",
+          "capabilityJobId": "capability-job-bdcc187f-989d-4907-bc26-5a2f05175d7c",
+          "command": "debugger.print_to_pdf",
+          "jobStatus": "completed",
+          "approvalRequired": true,
+          "outputHash": "cd0a4410415c9c9ed5fe0343ec9a46af1e9813fe043d32abb5e4e08e04f93430",
+          "verifierNodeCount": 1,
+          "evalLedgerNodeCount": 2,
+          "evalStepCount": 8,
+          "resourceRoles": [],
+          "observationCount": 1,
+          "redaction": {
+            "expected": "path_redacted",
+            "observationRedactions": [
+              {
+                "credentials": "redacted",
+                "localPaths": "metadata_only"
+              }
+            ],
+            "outputPathRedacted": true,
+            "localPathPolicy": "path_redacted"
+          },
+          "cleanupRollbackCompleted": true
+        }
+      ],
+      "improvementAndFollowUp": "반복 dogfood는 성공했지만 Browser Bridge result를 fixture로 주입한 증거다. 실제 확장 프로그램 live samples와 p95 비교가 있어야 live promotion이 가능하다."
+    }
+  ]
+}

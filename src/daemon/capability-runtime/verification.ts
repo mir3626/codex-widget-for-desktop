@@ -5,6 +5,7 @@ export type CapabilityVerificationClass =
   | "read_observation"
   | "ocr_extraction"
   | "browser_bookmark_effect"
+  | "browser_chrome_effect"
   | "browser_action_effect"
   | "desktop_effect"
   | "terminal_state"
@@ -51,7 +52,7 @@ export function verifyCapabilityHandlerOutput(
     const metadata = output.metadata && typeof output.metadata === "object" ? output.metadata as Record<string, unknown> : {};
     return {
       status: output.ok === false ? "failed" : "passed",
-      class: "browser_bookmark_effect",
+      class: "browser_chrome_effect",
       reason: typeof metadata.verification === "string" ? metadata.verification : "Browser chrome command returned verified output.",
       failureClass: output.ok === false ? readFailureClass(result.output, "effect_mismatch") : undefined,
       evidence: readEvidence(result.output)
@@ -117,7 +118,7 @@ export function attachCapabilityVerification(
 function classifyCapability(job: CapabilityJobSummary): CapabilityVerificationClass {
   if (job.kind === "screen_observe") return "read_observation";
   if (job.kind === "ocr") return "ocr_extraction";
-  if (job.kind === "browser_chrome") return "browser_bookmark_effect";
+  if (job.kind === "browser_chrome") return "browser_chrome_effect";
   if (job.kind === "browser_action") return "browser_action_effect";
   if (job.kind === "desktop_action") return "desktop_effect";
   if (job.kind === "terminal") return "terminal_state";

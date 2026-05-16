@@ -78,6 +78,7 @@ type WidgetRuntimeViewProps = {
   clearSemanticMemory: () => void;
   clearTerminalViewport: () => void;
   connected: boolean;
+  computerUseRefreshSignal: number;
   conversationRef: RefObject<HTMLElement | null>;
   copyCodeBlock: (code: string) => void;
   copyMessage: (messageId: string, text: string) => void;
@@ -474,6 +475,7 @@ export function WidgetRuntimeView(props: WidgetRuntimeViewProps) {
               activityBadgeCount: props.activityBadgeCount + props.capabilityJobs.jobs.length,
               ledger: props.ledger,
               capabilityJobs: props.capabilityJobs,
+              computerUseRefreshSignal: props.computerUseRefreshSignal,
               daemonPort: props.daemonPort,
               providerSnapshots: props.providerSnapshots,
               onApproveCapabilityJob: props.approveCapabilityJob,

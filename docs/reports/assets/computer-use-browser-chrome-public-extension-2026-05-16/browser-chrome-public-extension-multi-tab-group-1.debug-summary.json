@@ -1,0 +1,32 @@
+{
+  "id": "browser-chrome-public-extension-multi-tab-group-1",
+  "command": "tab_group.multi_tab_claim+update+release",
+  "userScenario": "User asks the widget to organize two public browser tabs into a dogfood-owned group, label it, and release both tabs.",
+  "architectureWorkflow": [
+    "Playwright opens two public unauthenticated tabs in a fresh temporary Chromium profile with the real Browser Bridge extension.",
+    "The extension bridge reports each active tab id after the dogfood harness brings it to front.",
+    "Computer Session queues tab_group.claim with both dogfood-owned tab ids and one-time side-effect approval.",
+    "The extension groups only the two explicit tab ids and returns the created group id.",
+    "Computer Session updates the group label/color, then releases both tabs back out of the group.",
+    "Evidence stores tab counts and host/hash proof only, plus verifier/eval nodes and cleanup reconciliation."
+  ],
+  "success": true,
+  "status": "passed",
+  "result": {
+    "elapsedMs": 2280,
+    "p95LatencyMs": 2280,
+    "sourceHost": "example.com",
+    "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+    "verifierNodeCount": 3,
+    "evalLedgerNodeCount": 4,
+    "cleanupReconciled": true,
+    "redaction": {
+      "tabOwnership": "dogfood_owned_multi_tab",
+      "urls": "public_url_hash_only",
+      "credentials": "not_used"
+    },
+    "tabCount": 2,
+    "releaseCount": 2
+  },
+  "improvementAndFollowUp": "This proves tab-group orchestration can handle multiple explicit public tab ids through the real extension while avoiding arbitrary browser-profile state."
+}

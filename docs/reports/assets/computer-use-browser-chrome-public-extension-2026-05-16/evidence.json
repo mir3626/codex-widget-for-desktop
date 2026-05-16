@@ -1,0 +1,882 @@
+{
+  "schemaVersion": "computer-use-browser-chrome-public-extension-dogfood.v1",
+  "generatedAt": "2026-05-16T04:12:28.774Z",
+  "date": "2026-05-16",
+  "runId": "computer-use-browser-chrome-public-extension-20260516-131121",
+  "evidenceClass": "real_extension_public_site_repeated",
+  "promotion": "public_site_repeated_browser_chrome_extension_gate",
+  "extension": {
+    "id": "eclklilhmjbijffammcbojpenhgonppb",
+    "mode": "playwright_persistent_context",
+    "browserApiExecution": true
+  },
+  "publicTargets": {
+    "hosts": [
+      "example.com",
+      "www.w3.org",
+      "the-internet.herokuapp.com"
+    ],
+    "urls": "hashed_only"
+  },
+  "metrics": {
+    "scenarioCount": 18,
+    "sampleCount": 18,
+    "successCount": 18,
+    "successRate": 1,
+    "elapsedMs": 64520,
+    "p50LatencyMs": 2814,
+    "p95LatencyMs": 17448,
+    "realExtension": true,
+    "localFixture": false,
+    "publicSite": true,
+    "repeatedSamples": true,
+    "publicHosts": [
+      "example.com",
+      "the-internet.herokuapp.com",
+      "www.w3.org"
+    ],
+    "requiredHostsPresent": true,
+    "permissionTypesCovered": [
+      "camera",
+      "location",
+      "microphone"
+    ],
+    "profileApprovalCovered": true,
+    "downloadVerifyCovered": true,
+    "debuggerPrintPdfCovered": true,
+    "tabGroupCovered": true,
+    "historySearchCovered": true,
+    "permissionSettingCovered": true,
+    "multiTabGroupCovered": true,
+    "fileUploadCovered": true,
+    "redactionProofPresent": true,
+    "cleanupReconciled": true
+  },
+  "profileApproval": {
+    "id": "browser-chrome-public-extension-profile-approval",
+    "status": "passed",
+    "success": true,
+    "elapsedMs": 73,
+    "sourceHost": "example.com",
+    "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+    "blockedSessionId": "5e386333-1eab-4e90-8ce4-3e1112649396",
+    "attachedProfileId": "autonomy-profile-0f27b319-c6fd-4149-b561-70517923ab4b",
+    "profileScope": "one_time",
+    "profileMode": "scoped_yolo",
+    "maxUses": 64,
+    "missingGrantTypes": [
+      "browser_automation",
+      "risk_class"
+    ],
+    "exactMissingGrantCount": 4,
+    "attachedDecisionPresent": true,
+    "attachedEvalStepPresent": true,
+    "cleanupReconciled": true,
+    "redaction": {
+      "blockedGrantEvidence": "types_only",
+      "profileGrantEvidence": "domains_and_roots_only",
+      "urls": "public_url_hash_only",
+      "credentials": "not_used"
+    }
+  },
+  "scenarios": [
+    {
+      "id": "browser-chrome-public-extension-download-verify-1",
+      "command": "download.start+download.verify",
+      "userScenario": "User asks the widget to start a public unauthenticated browser download through the installed Browser Bridge path and verify the completed file with approved artifact evidence.",
+      "architectureWorkflow": [
+        "Playwright launches Chromium with the real unpacked Browser Bridge extension.",
+        "The extension service worker connects to the daemon and polls Browser Chrome commands.",
+        "Computer Session runs download.start against a public W3C PDF URL through the regular_browser_extension surface and one-time approval.",
+        "Chrome downloads API creates the download in the session download directory.",
+        "Computer Session runs download.verify by id and approvedDownloadPath.",
+        "The daemon stores a blob-backed download_verified_file eval resource and redacted basename/hash/size evidence."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 4101,
+        "p50LatencyMs": 4101,
+        "p95LatencyMs": 4101,
+        "sessionId": "3589abd8-7987-428b-95c3-6e84c85b9caf",
+        "evalRunId": "computer-use-eval-8bd801dd-21ca-4eed-8c38-ad396e5efc0b",
+        "startJobId": "capability-job-08fab650-60df-42bf-b8fc-1e0c5076dc3e",
+        "verifyJobId": "capability-job-e92deba9-09eb-474a-8357-02e1c22169dd",
+        "downloadId": 1,
+        "sourceHost": "www.w3.org",
+        "sourceUrlHash": "c712e96563e8f8b0868ca5150548c4fde964b2a7d94061dd66473c0bc3b0d29a",
+        "approvedDownloadBasename": "browser-chrome-public-extension-w3c-dummy-1.pdf",
+        "fileExists": true,
+        "fileSha256": "3df79d34abbca99308e79cb94461c1893582604d68329a41fd4bec1885e6adb4",
+        "resourceRoles": [
+          "download_verified_file"
+        ],
+        "verifierNodeCount": 3,
+        "evalLedgerNodeCount": 4,
+        "cleanupReconciled": true,
+        "redaction": {
+          "localPathPolicy": "basename_only",
+          "fullPathStoredInReport": false,
+          "urls": "public_url_hash_only",
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves the real extension and Chrome downloads API path on a repeated public unauthenticated PDF target."
+    },
+    {
+      "id": "browser-chrome-public-extension-download-verify-2",
+      "command": "download.start+download.verify",
+      "userScenario": "User asks the widget to start a public unauthenticated browser download through the installed Browser Bridge path and verify the completed file with approved artifact evidence.",
+      "architectureWorkflow": [
+        "Playwright launches Chromium with the real unpacked Browser Bridge extension.",
+        "The extension service worker connects to the daemon and polls Browser Chrome commands.",
+        "Computer Session runs download.start against a public W3C PDF URL through the regular_browser_extension surface and one-time approval.",
+        "Chrome downloads API creates the download in the session download directory.",
+        "Computer Session runs download.verify by id and approvedDownloadPath.",
+        "The daemon stores a blob-backed download_verified_file eval resource and redacted basename/hash/size evidence."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 1734,
+        "p50LatencyMs": 1734,
+        "p95LatencyMs": 1734,
+        "sessionId": "34bfa1a0-d723-4528-a3c2-5b9c1e9b2832",
+        "evalRunId": "computer-use-eval-21270f0e-af02-4482-972e-07a5ac2991f6",
+        "startJobId": "capability-job-f83db606-d33a-4008-b48b-372828b7e3e7",
+        "verifyJobId": "capability-job-0a2844b2-8191-4905-ae8b-22c9e9b6d1bb",
+        "downloadId": 2,
+        "sourceHost": "www.w3.org",
+        "sourceUrlHash": "c712e96563e8f8b0868ca5150548c4fde964b2a7d94061dd66473c0bc3b0d29a",
+        "approvedDownloadBasename": "browser-chrome-public-extension-w3c-dummy-2.pdf",
+        "fileExists": true,
+        "fileSha256": "3df79d34abbca99308e79cb94461c1893582604d68329a41fd4bec1885e6adb4",
+        "resourceRoles": [
+          "download_verified_file"
+        ],
+        "verifierNodeCount": 3,
+        "evalLedgerNodeCount": 4,
+        "cleanupReconciled": true,
+        "redaction": {
+          "localPathPolicy": "basename_only",
+          "fullPathStoredInReport": false,
+          "urls": "public_url_hash_only",
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves the real extension and Chrome downloads API path on a repeated public unauthenticated PDF target."
+    },
+    {
+      "id": "browser-chrome-public-extension-debugger-print-pdf-1",
+      "command": "debugger.print_to_pdf",
+      "userScenario": "User asks the widget to print a public unauthenticated browser tab to PDF through the Browser Bridge debugger adapter while keeping arbitrary CDP evaluation unavailable.",
+      "architectureWorkflow": [
+        "Playwright launches Chromium with the real unpacked Browser Bridge extension.",
+        "Computer Session queues the high-risk fixed debugger.print_to_pdf command.",
+        "One-time approval releases only the bounded Browser Chrome command.",
+        "The extension attaches Chrome debugger to the allowed public page tab and calls Page.printToPDF.",
+        "The result stores byte length and hash only; raw PDF bytes are omitted from the report.",
+        "The daemon records capability job, DAG verification, eval-ledger, redaction, and cleanup evidence."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 1213,
+        "p50LatencyMs": 1213,
+        "p95LatencyMs": 1213,
+        "sessionId": "69d184e4-1b7f-414b-8410-301646bda67f",
+        "evalRunId": "computer-use-eval-cd5ef027-f4be-46fd-90fe-91a60008422e",
+        "capabilityJobId": "capability-job-bd81d212-f6ad-4579-8ef1-b57ec231a02d",
+        "sourceHost": "example.com",
+        "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+        "byteLength": 19425,
+        "pdfSha256": "212f9a37d97fd0cdff80e46a0bda285c94adfc8db5d3fd53d0edbae621ef086f",
+        "dataOmitted": true,
+        "verifierNodeCount": 1,
+        "evalLedgerNodeCount": 2,
+        "cleanupReconciled": true,
+        "redaction": {
+          "localPathPolicy": "path_redacted",
+          "urls": "public_url_hash_only",
+          "rawPdfBytesInReport": false,
+          "arbitraryCdpEvalAllowed": false,
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves the real extension debugger fixed-command path on a repeated public unauthenticated page."
+    },
+    {
+      "id": "browser-chrome-public-extension-debugger-print-pdf-2",
+      "command": "debugger.print_to_pdf",
+      "userScenario": "User asks the widget to print a public unauthenticated browser tab to PDF through the Browser Bridge debugger adapter while keeping arbitrary CDP evaluation unavailable.",
+      "architectureWorkflow": [
+        "Playwright launches Chromium with the real unpacked Browser Bridge extension.",
+        "Computer Session queues the high-risk fixed debugger.print_to_pdf command.",
+        "One-time approval releases only the bounded Browser Chrome command.",
+        "The extension attaches Chrome debugger to the allowed public page tab and calls Page.printToPDF.",
+        "The result stores byte length and hash only; raw PDF bytes are omitted from the report.",
+        "The daemon records capability job, DAG verification, eval-ledger, redaction, and cleanup evidence."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 1149,
+        "p50LatencyMs": 1149,
+        "p95LatencyMs": 1149,
+        "sessionId": "1fc1b5f0-6252-47a0-b80b-abddc554500f",
+        "evalRunId": "computer-use-eval-d0587375-4660-46cf-b1c7-721fd4f4e4e9",
+        "capabilityJobId": "capability-job-b4ff1e4c-a6b2-4a68-aecb-37943c64ecdd",
+        "sourceHost": "example.com",
+        "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+        "byteLength": 19425,
+        "pdfSha256": "ed2eb2e05a0317a586a0dbe24fff9c2a91f37ded7ab8749431f23d1d9506ce0c",
+        "dataOmitted": true,
+        "verifierNodeCount": 1,
+        "evalLedgerNodeCount": 2,
+        "cleanupReconciled": true,
+        "redaction": {
+          "localPathPolicy": "path_redacted",
+          "urls": "public_url_hash_only",
+          "rawPdfBytesInReport": false,
+          "arbitraryCdpEvalAllowed": false,
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves the real extension debugger fixed-command path on a repeated public unauthenticated page."
+    },
+    {
+      "id": "browser-chrome-public-extension-tab-group-1",
+      "command": "tab_group.claim+update+release",
+      "userScenario": "User asks the widget to claim the current public tab into a dogfood-owned tab group, update its label, and release it again.",
+      "architectureWorkflow": [
+        "Playwright keeps a public unauthenticated tab active under the real Browser Bridge extension.",
+        "Computer Session queues tab_group.claim with a dogfood owner and one-time side-effect approval.",
+        "The extension groups only the target tab id reported by the allowed bridge status.",
+        "Computer Session queues tab_group.update to prove bounded group mutation.",
+        "Computer Session queues tab_group.release to restore the tab outside the group.",
+        "The daemon records capability jobs, DAG verification, eval-ledger, redaction, and cleanup evidence."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 1632,
+        "p50LatencyMs": 1632,
+        "p95LatencyMs": 1632,
+        "sessionId": "7c8c6a79-ff73-4f46-a139-2b6b9ef9d348",
+        "evalRunId": "computer-use-eval-e06d4996-389a-4cf3-a824-2004b1a7f326",
+        "claimJobId": "capability-job-6621168c-d9b2-49cc-b131-3e1ef61008c4",
+        "updateJobId": "capability-job-122e1549-d98f-435b-83a9-bee3f38e1eac",
+        "releaseJobId": "capability-job-f667c310-effa-45ec-8ae7-b17a814966da",
+        "sourceHost": "example.com",
+        "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+        "groupId": 344768060,
+        "releaseCount": 1,
+        "verifierNodeCount": 3,
+        "evalLedgerNodeCount": 4,
+        "cleanupReconciled": true,
+        "redaction": {
+          "tabOwnership": "dogfood_owned_tab",
+          "urls": "public_url_hash_only",
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves bounded tab group claim/update/release through the real extension on a repeated public unauthenticated tab."
+    },
+    {
+      "id": "browser-chrome-public-extension-tab-group-2",
+      "command": "tab_group.claim+update+release",
+      "userScenario": "User asks the widget to claim the current public tab into a dogfood-owned tab group, update its label, and release it again.",
+      "architectureWorkflow": [
+        "Playwright keeps a public unauthenticated tab active under the real Browser Bridge extension.",
+        "Computer Session queues tab_group.claim with a dogfood owner and one-time side-effect approval.",
+        "The extension groups only the target tab id reported by the allowed bridge status.",
+        "Computer Session queues tab_group.update to prove bounded group mutation.",
+        "Computer Session queues tab_group.release to restore the tab outside the group.",
+        "The daemon records capability jobs, DAG verification, eval-ledger, redaction, and cleanup evidence."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 2814,
+        "p50LatencyMs": 2814,
+        "p95LatencyMs": 2814,
+        "sessionId": "f2cece8a-1c47-4e13-aeca-7a7e8196d99b",
+        "evalRunId": "computer-use-eval-3b5b585b-bac9-44a0-a247-cc2054919584",
+        "claimJobId": "capability-job-18f67556-59df-433b-9597-cf8636820265",
+        "updateJobId": "capability-job-b14111e0-8cbf-4fae-80b1-792ba5ca70e0",
+        "releaseJobId": "capability-job-5c36c297-11ed-474b-886a-870401270c33",
+        "sourceHost": "example.com",
+        "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+        "groupId": 922848378,
+        "releaseCount": 1,
+        "verifierNodeCount": 3,
+        "evalLedgerNodeCount": 4,
+        "cleanupReconciled": true,
+        "redaction": {
+          "tabOwnership": "dogfood_owned_tab",
+          "urls": "public_url_hash_only",
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves bounded tab group claim/update/release through the real extension on a repeated public unauthenticated tab."
+    },
+    {
+      "id": "browser-chrome-public-extension-history-search-1",
+      "command": "history.search",
+      "userScenario": "User asks the widget to search recent browser history from a dogfood-owned fresh browser profile and return only redacted host/hash evidence.",
+      "architectureWorkflow": [
+        "Playwright launches Chromium with a fresh temporary profile and the real unpacked Browser Bridge extension.",
+        "The dogfood harness first visits a public unauthenticated page to create profile-local history.",
+        "Computer Session queues the high-risk history.search command and requires one-time approval.",
+        "The extension calls chrome.history.search and normalizes each result with URL paths redacted.",
+        "The dogfood evidence stores only host counts, URL hash, approval metadata, DAG verification, eval-ledger, and cleanup proof.",
+        "The user profile is never read; the temporary browser profile is deleted during cleanup."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 1597,
+        "p50LatencyMs": 1597,
+        "p95LatencyMs": 1597,
+        "sessionId": "a63802a3-f57b-4bab-9b13-e9d75b4124b7",
+        "evalRunId": "computer-use-eval-3cf67fae-35f3-4acb-9982-3bc1f61771e6",
+        "capabilityJobId": "capability-job-dad57da8-2edb-46df-846a-4021c677f768",
+        "sourceHost": "example.com",
+        "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+        "historyItemCount": 1,
+        "matchingHostCount": 1,
+        "pathRedactedCount": 1,
+        "approval": "one_time",
+        "risk": "high",
+        "verifierNodeCount": 1,
+        "evalLedgerNodeCount": 2,
+        "cleanupReconciled": true,
+        "redaction": {
+          "history": "one_time_fresh_profile_path_redacted",
+          "browserProfile": "dogfood_fresh_profile_only",
+          "urls": "public_url_hash_only",
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves high-risk history search can run through the real extension with one-time approval and redacted evidence, without touching the user's real browser profile."
+    },
+    {
+      "id": "browser-chrome-public-extension-history-search-2",
+      "command": "history.search",
+      "userScenario": "User asks the widget to search recent browser history from a dogfood-owned fresh browser profile and return only redacted host/hash evidence.",
+      "architectureWorkflow": [
+        "Playwright launches Chromium with a fresh temporary profile and the real unpacked Browser Bridge extension.",
+        "The dogfood harness first visits a public unauthenticated page to create profile-local history.",
+        "Computer Session queues the high-risk history.search command and requires one-time approval.",
+        "The extension calls chrome.history.search and normalizes each result with URL paths redacted.",
+        "The dogfood evidence stores only host counts, URL hash, approval metadata, DAG verification, eval-ledger, and cleanup proof.",
+        "The user profile is never read; the temporary browser profile is deleted during cleanup."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 2898,
+        "p50LatencyMs": 2898,
+        "p95LatencyMs": 2898,
+        "sessionId": "ef04ebcd-54fe-4b73-a071-d5595ad565d5",
+        "evalRunId": "computer-use-eval-5dba5963-4807-4d42-804c-a7b54ac5ce7c",
+        "capabilityJobId": "capability-job-921d4c89-0c7c-4c57-8255-86b92dda0c36",
+        "sourceHost": "example.com",
+        "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+        "historyItemCount": 1,
+        "matchingHostCount": 1,
+        "pathRedactedCount": 1,
+        "approval": "one_time",
+        "risk": "high",
+        "verifierNodeCount": 1,
+        "evalLedgerNodeCount": 2,
+        "cleanupReconciled": true,
+        "redaction": {
+          "history": "one_time_fresh_profile_path_redacted",
+          "browserProfile": "dogfood_fresh_profile_only",
+          "urls": "public_url_hash_only",
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves high-risk history search can run through the real extension with one-time approval and redacted evidence, without touching the user's real browser profile."
+    },
+    {
+      "id": "browser-chrome-public-extension-permission-setting-camera-1",
+      "command": "permission.get+set+rollback",
+      "userScenario": "User asks the widget to inspect the camera site permission, apply a bounded one-time setting change, and roll it back on a dogfood-owned browser profile.",
+      "architectureWorkflow": [
+        "Playwright launches Chromium with a fresh temporary profile and the real unpacked Browser Bridge extension.",
+        "Computer Session reads the current site permission through permission.get without native browser chrome clicks.",
+        "Computer Session queues high-risk permission.set for only the public page origin and requires one-time approval.",
+        "The extension uses Chrome contentSettings to apply the bounded camera setting, then Computer Session verifies it with permission.get.",
+        "Computer Session queues a second one-time permission.set to restore the initial setting and verifies rollback.",
+        "The dogfood evidence stores only host, setting values, approval metadata, popup-click=false proof, DAG/eval proof, and cleanup proof."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 2862,
+        "p50LatencyMs": 2862,
+        "p95LatencyMs": 2862,
+        "sessionId": "20866b73-15d5-4dfa-9a9c-69ebd3f485bd",
+        "evalRunId": "computer-use-eval-3b5510d2-dbae-4531-a9cb-2c239114381f",
+        "initialJobId": "capability-job-5d5ff151-743a-4ded-8c2e-7a7c4ff42bac",
+        "setJobId": "capability-job-1e7dced2-bc8c-4945-a27e-cda76e40211c",
+        "rollbackJobId": "capability-job-a74e50b7-f577-4b9c-9579-10f788c8b734",
+        "sourceHost": "example.com",
+        "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+        "permissionType": "camera",
+        "permissionHost": "example.com",
+        "permissionPattern": "host_scoped_wildcard",
+        "initialSetting": "ask",
+        "appliedSetting": "block",
+        "verifiedAfterSet": "block",
+        "rollbackSetting": "ask",
+        "verifiedAfterRollback": "ask",
+        "approval": "one_time",
+        "risk": "high",
+        "nativePopupClick": false,
+        "popupWorkflow": "content_settings_api",
+        "verifierNodeCount": 4,
+        "evalLedgerNodeCount": 5,
+        "cleanupReconciled": true,
+        "redaction": {
+          "sitePermission": "host_only_no_path",
+          "rollback": "restored_to_initial_setting",
+          "browserProfile": "dogfood_fresh_profile_only",
+          "urls": "public_url_hash_only",
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves camera site permission mutation can use the Chrome contentSettings API with one-time approval, bounded origin scope, and rollback proof instead of coordinate-clicking browser chrome."
+    },
+    {
+      "id": "browser-chrome-public-extension-permission-setting-camera-2",
+      "command": "permission.get+set+rollback",
+      "userScenario": "User asks the widget to inspect the camera site permission, apply a bounded one-time setting change, and roll it back on a dogfood-owned browser profile.",
+      "architectureWorkflow": [
+        "Playwright launches Chromium with a fresh temporary profile and the real unpacked Browser Bridge extension.",
+        "Computer Session reads the current site permission through permission.get without native browser chrome clicks.",
+        "Computer Session queues high-risk permission.set for only the public page origin and requires one-time approval.",
+        "The extension uses Chrome contentSettings to apply the bounded camera setting, then Computer Session verifies it with permission.get.",
+        "Computer Session queues a second one-time permission.set to restore the initial setting and verifies rollback.",
+        "The dogfood evidence stores only host, setting values, approval metadata, popup-click=false proof, DAG/eval proof, and cleanup proof."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 17448,
+        "p50LatencyMs": 17448,
+        "p95LatencyMs": 17448,
+        "sessionId": "abfca635-f638-4fd7-8e1c-6eb48c9d6d1a",
+        "evalRunId": "computer-use-eval-12bb787d-e1e5-48ad-913d-c2e64cbdb676",
+        "initialJobId": "capability-job-644d1e23-d493-40d3-aad5-bb08c445d857",
+        "setJobId": "capability-job-7746b2db-a500-45fc-93da-3fe86f874f92",
+        "rollbackJobId": "capability-job-689f2cb7-d103-4c40-941a-2de196699257",
+        "sourceHost": "example.com",
+        "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+        "permissionType": "camera",
+        "permissionHost": "example.com",
+        "permissionPattern": "host_scoped_wildcard",
+        "initialSetting": "ask",
+        "appliedSetting": "block",
+        "verifiedAfterSet": "block",
+        "rollbackSetting": "ask",
+        "verifiedAfterRollback": "ask",
+        "approval": "one_time",
+        "risk": "high",
+        "nativePopupClick": false,
+        "popupWorkflow": "content_settings_api",
+        "verifierNodeCount": 4,
+        "evalLedgerNodeCount": 5,
+        "cleanupReconciled": true,
+        "redaction": {
+          "sitePermission": "host_only_no_path",
+          "rollback": "restored_to_initial_setting",
+          "browserProfile": "dogfood_fresh_profile_only",
+          "urls": "public_url_hash_only",
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves camera site permission mutation can use the Chrome contentSettings API with one-time approval, bounded origin scope, and rollback proof instead of coordinate-clicking browser chrome."
+    },
+    {
+      "id": "browser-chrome-public-extension-permission-setting-microphone-1",
+      "command": "permission.get+set+rollback",
+      "userScenario": "User asks the widget to inspect the microphone site permission, apply a bounded one-time setting change, and roll it back on a dogfood-owned browser profile.",
+      "architectureWorkflow": [
+        "Playwright launches Chromium with a fresh temporary profile and the real unpacked Browser Bridge extension.",
+        "Computer Session reads the current site permission through permission.get without native browser chrome clicks.",
+        "Computer Session queues high-risk permission.set for only the public page origin and requires one-time approval.",
+        "The extension uses Chrome contentSettings to apply the bounded microphone setting, then Computer Session verifies it with permission.get.",
+        "Computer Session queues a second one-time permission.set to restore the initial setting and verifies rollback.",
+        "The dogfood evidence stores only host, setting values, approval metadata, popup-click=false proof, DAG/eval proof, and cleanup proof."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 5702,
+        "p50LatencyMs": 5702,
+        "p95LatencyMs": 5702,
+        "sessionId": "aa4c7e6e-a3c4-4b7a-90ab-e32b87909d85",
+        "evalRunId": "computer-use-eval-8e6a7d9a-7528-47a7-a2ee-9f547f80c7c5",
+        "initialJobId": "capability-job-cb7a2305-881d-4c72-ac77-7e438c7c8edd",
+        "setJobId": "capability-job-a02c0d4d-8508-4b99-96e8-039a50d16beb",
+        "rollbackJobId": "capability-job-529e2076-b7ba-4a33-b42f-4f2c18138110",
+        "sourceHost": "example.com",
+        "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+        "permissionType": "microphone",
+        "permissionHost": "example.com",
+        "permissionPattern": "host_scoped_wildcard",
+        "initialSetting": "ask",
+        "appliedSetting": "block",
+        "verifiedAfterSet": "block",
+        "rollbackSetting": "ask",
+        "verifiedAfterRollback": "ask",
+        "approval": "one_time",
+        "risk": "high",
+        "nativePopupClick": false,
+        "popupWorkflow": "content_settings_api",
+        "verifierNodeCount": 4,
+        "evalLedgerNodeCount": 5,
+        "cleanupReconciled": true,
+        "redaction": {
+          "sitePermission": "host_only_no_path",
+          "rollback": "restored_to_initial_setting",
+          "browserProfile": "dogfood_fresh_profile_only",
+          "urls": "public_url_hash_only",
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves microphone site permission mutation can use the Chrome contentSettings API with one-time approval, bounded origin scope, and rollback proof instead of coordinate-clicking browser chrome."
+    },
+    {
+      "id": "browser-chrome-public-extension-permission-setting-microphone-2",
+      "command": "permission.get+set+rollback",
+      "userScenario": "User asks the widget to inspect the microphone site permission, apply a bounded one-time setting change, and roll it back on a dogfood-owned browser profile.",
+      "architectureWorkflow": [
+        "Playwright launches Chromium with a fresh temporary profile and the real unpacked Browser Bridge extension.",
+        "Computer Session reads the current site permission through permission.get without native browser chrome clicks.",
+        "Computer Session queues high-risk permission.set for only the public page origin and requires one-time approval.",
+        "The extension uses Chrome contentSettings to apply the bounded microphone setting, then Computer Session verifies it with permission.get.",
+        "Computer Session queues a second one-time permission.set to restore the initial setting and verifies rollback.",
+        "The dogfood evidence stores only host, setting values, approval metadata, popup-click=false proof, DAG/eval proof, and cleanup proof."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 2864,
+        "p50LatencyMs": 2864,
+        "p95LatencyMs": 2864,
+        "sessionId": "b7d47690-da6b-4361-85c6-149893f0adfa",
+        "evalRunId": "computer-use-eval-560bf7c3-92fe-45f4-ac3a-c024428c8feb",
+        "initialJobId": "capability-job-2e170409-1e42-4c24-bf00-f6ab8c233722",
+        "setJobId": "capability-job-f8cbe92e-9a9f-4f1f-bb6a-16d02172c399",
+        "rollbackJobId": "capability-job-72047bee-12c0-4690-89ed-ac0fdf5cb816",
+        "sourceHost": "example.com",
+        "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+        "permissionType": "microphone",
+        "permissionHost": "example.com",
+        "permissionPattern": "host_scoped_wildcard",
+        "initialSetting": "ask",
+        "appliedSetting": "block",
+        "verifiedAfterSet": "block",
+        "rollbackSetting": "ask",
+        "verifiedAfterRollback": "ask",
+        "approval": "one_time",
+        "risk": "high",
+        "nativePopupClick": false,
+        "popupWorkflow": "content_settings_api",
+        "verifierNodeCount": 4,
+        "evalLedgerNodeCount": 5,
+        "cleanupReconciled": true,
+        "redaction": {
+          "sitePermission": "host_only_no_path",
+          "rollback": "restored_to_initial_setting",
+          "browserProfile": "dogfood_fresh_profile_only",
+          "urls": "public_url_hash_only",
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves microphone site permission mutation can use the Chrome contentSettings API with one-time approval, bounded origin scope, and rollback proof instead of coordinate-clicking browser chrome."
+    },
+    {
+      "id": "browser-chrome-public-extension-permission-setting-location-1",
+      "command": "permission.get+set+rollback",
+      "userScenario": "User asks the widget to inspect the location site permission, apply a bounded one-time setting change, and roll it back on a dogfood-owned browser profile.",
+      "architectureWorkflow": [
+        "Playwright launches Chromium with a fresh temporary profile and the real unpacked Browser Bridge extension.",
+        "Computer Session reads the current site permission through permission.get without native browser chrome clicks.",
+        "Computer Session queues high-risk permission.set for only the public page origin and requires one-time approval.",
+        "The extension uses Chrome contentSettings to apply the bounded location setting, then Computer Session verifies it with permission.get.",
+        "Computer Session queues a second one-time permission.set to restore the initial setting and verifies rollback.",
+        "The dogfood evidence stores only host, setting values, approval metadata, popup-click=false proof, DAG/eval proof, and cleanup proof."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 3221,
+        "p50LatencyMs": 3221,
+        "p95LatencyMs": 3221,
+        "sessionId": "9c849ce0-6f6d-4186-ab82-c9e9e42d0c5e",
+        "evalRunId": "computer-use-eval-12feb8d5-f965-4e1a-a546-ceab28745a76",
+        "initialJobId": "capability-job-c657ffa5-47cb-468e-b413-8247d5c82eef",
+        "setJobId": "capability-job-ae350541-f8ec-48d2-a8fa-58dd7c9b9703",
+        "rollbackJobId": "capability-job-8887f681-0f58-4c61-aef8-b6ae2d815e6d",
+        "sourceHost": "example.com",
+        "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+        "permissionType": "location",
+        "permissionHost": "example.com",
+        "permissionPattern": "host_scoped_wildcard",
+        "initialSetting": "ask",
+        "appliedSetting": "block",
+        "verifiedAfterSet": "block",
+        "rollbackSetting": "ask",
+        "verifiedAfterRollback": "ask",
+        "approval": "one_time",
+        "risk": "high",
+        "nativePopupClick": false,
+        "popupWorkflow": "content_settings_api",
+        "verifierNodeCount": 4,
+        "evalLedgerNodeCount": 5,
+        "cleanupReconciled": true,
+        "redaction": {
+          "sitePermission": "host_only_no_path",
+          "rollback": "restored_to_initial_setting",
+          "browserProfile": "dogfood_fresh_profile_only",
+          "urls": "public_url_hash_only",
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves location site permission mutation can use the Chrome contentSettings API with one-time approval, bounded origin scope, and rollback proof instead of coordinate-clicking browser chrome."
+    },
+    {
+      "id": "browser-chrome-public-extension-permission-setting-location-2",
+      "command": "permission.get+set+rollback",
+      "userScenario": "User asks the widget to inspect the location site permission, apply a bounded one-time setting change, and roll it back on a dogfood-owned browser profile.",
+      "architectureWorkflow": [
+        "Playwright launches Chromium with a fresh temporary profile and the real unpacked Browser Bridge extension.",
+        "Computer Session reads the current site permission through permission.get without native browser chrome clicks.",
+        "Computer Session queues high-risk permission.set for only the public page origin and requires one-time approval.",
+        "The extension uses Chrome contentSettings to apply the bounded location setting, then Computer Session verifies it with permission.get.",
+        "Computer Session queues a second one-time permission.set to restore the initial setting and verifies rollback.",
+        "The dogfood evidence stores only host, setting values, approval metadata, popup-click=false proof, DAG/eval proof, and cleanup proof."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 2862,
+        "p50LatencyMs": 2862,
+        "p95LatencyMs": 2862,
+        "sessionId": "123bfae0-b1ec-4231-9464-d215d2d5fa58",
+        "evalRunId": "computer-use-eval-5149973d-ff24-40fe-8904-c08daf11d132",
+        "initialJobId": "capability-job-08b1d358-f571-4812-addf-e4b1d5d548b4",
+        "setJobId": "capability-job-4a39c996-ce01-4441-84c7-264afebc0d69",
+        "rollbackJobId": "capability-job-73293407-4195-4f8c-b57f-cf3bb3aca231",
+        "sourceHost": "example.com",
+        "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+        "permissionType": "location",
+        "permissionHost": "example.com",
+        "permissionPattern": "host_scoped_wildcard",
+        "initialSetting": "ask",
+        "appliedSetting": "block",
+        "verifiedAfterSet": "block",
+        "rollbackSetting": "ask",
+        "verifiedAfterRollback": "ask",
+        "approval": "one_time",
+        "risk": "high",
+        "nativePopupClick": false,
+        "popupWorkflow": "content_settings_api",
+        "verifierNodeCount": 4,
+        "evalLedgerNodeCount": 5,
+        "cleanupReconciled": true,
+        "redaction": {
+          "sitePermission": "host_only_no_path",
+          "rollback": "restored_to_initial_setting",
+          "browserProfile": "dogfood_fresh_profile_only",
+          "urls": "public_url_hash_only",
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves location site permission mutation can use the Chrome contentSettings API with one-time approval, bounded origin scope, and rollback proof instead of coordinate-clicking browser chrome."
+    },
+    {
+      "id": "browser-chrome-public-extension-multi-tab-group-1",
+      "command": "tab_group.multi_tab_claim+update+release",
+      "userScenario": "User asks the widget to organize two public browser tabs into a dogfood-owned group, label it, and release both tabs.",
+      "architectureWorkflow": [
+        "Playwright opens two public unauthenticated tabs in a fresh temporary Chromium profile with the real Browser Bridge extension.",
+        "The extension bridge reports each active tab id after the dogfood harness brings it to front.",
+        "Computer Session queues tab_group.claim with both dogfood-owned tab ids and one-time side-effect approval.",
+        "The extension groups only the two explicit tab ids and returns the created group id.",
+        "Computer Session updates the group label/color, then releases both tabs back out of the group.",
+        "Evidence stores tab counts and host/hash proof only, plus verifier/eval nodes and cleanup reconciliation."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 2280,
+        "p50LatencyMs": 2280,
+        "p95LatencyMs": 2280,
+        "sessionId": "27b2045a-b60b-42b2-a543-dadaa73830d8",
+        "evalRunId": "computer-use-eval-905cade5-2481-49c4-a0ed-cdfb1df17881",
+        "claimJobId": "capability-job-23a6ba07-4ee6-4f20-a2e6-b335980f4822",
+        "updateJobId": "capability-job-d625f85d-5f30-4556-9414-4e297660f26b",
+        "releaseJobId": "capability-job-a90b02e1-5001-4d1e-ba19-ec592cdfd07f",
+        "sourceHost": "example.com",
+        "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+        "groupId": 721104250,
+        "tabCount": 2,
+        "releaseCount": 2,
+        "verifierNodeCount": 3,
+        "evalLedgerNodeCount": 4,
+        "cleanupReconciled": true,
+        "redaction": {
+          "tabOwnership": "dogfood_owned_multi_tab",
+          "urls": "public_url_hash_only",
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves tab-group orchestration can handle multiple explicit public tab ids through the real extension while avoiding arbitrary browser-profile state."
+    },
+    {
+      "id": "browser-chrome-public-extension-multi-tab-group-2",
+      "command": "tab_group.multi_tab_claim+update+release",
+      "userScenario": "User asks the widget to organize two public browser tabs into a dogfood-owned group, label it, and release both tabs.",
+      "architectureWorkflow": [
+        "Playwright opens two public unauthenticated tabs in a fresh temporary Chromium profile with the real Browser Bridge extension.",
+        "The extension bridge reports each active tab id after the dogfood harness brings it to front.",
+        "Computer Session queues tab_group.claim with both dogfood-owned tab ids and one-time side-effect approval.",
+        "The extension groups only the two explicit tab ids and returns the created group id.",
+        "Computer Session updates the group label/color, then releases both tabs back out of the group.",
+        "Evidence stores tab counts and host/hash proof only, plus verifier/eval nodes and cleanup reconciliation."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 2452,
+        "p50LatencyMs": 2452,
+        "p95LatencyMs": 2452,
+        "sessionId": "35c0ccf2-43ec-4225-af25-18f7b5c18eb9",
+        "evalRunId": "computer-use-eval-6c0f2152-ed13-499c-bbb7-aed7c2b4fe7c",
+        "claimJobId": "capability-job-fcf09b87-baec-4d7b-b3b3-dc587d857278",
+        "updateJobId": "capability-job-3028fabd-9dda-4eb6-bb0b-8926d8f18b9f",
+        "releaseJobId": "capability-job-c35690f3-05c5-403b-9f8e-1b089954b929",
+        "sourceHost": "example.com",
+        "sourceUrlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+        "groupId": 1135219974,
+        "tabCount": 2,
+        "releaseCount": 2,
+        "verifierNodeCount": 3,
+        "evalLedgerNodeCount": 4,
+        "cleanupReconciled": true,
+        "redaction": {
+          "tabOwnership": "dogfood_owned_multi_tab",
+          "urls": "public_url_hash_only",
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves tab-group orchestration can handle multiple explicit public tab ids through the real extension while avoiding arbitrary browser-profile state."
+    },
+    {
+      "id": "browser-chrome-public-extension-file-upload-1",
+      "command": "file_upload.inspect+set_files+clear",
+      "userScenario": "User asks the widget to inspect a public upload control, select an explicitly approved local file, and clear it without submitting the form.",
+      "architectureWorkflow": [
+        "Playwright opens a public unauthenticated upload page in a fresh temporary Chromium profile with the real Browser Bridge extension.",
+        "Computer Session queues file_upload.inspect and requires one-time approval before reading file-input metadata.",
+        "The dogfood harness creates an approved temporary file under the run-owned upload root.",
+        "Computer Session queues file_upload.set_files with the explicit approved path; capability persistence redacts the path.",
+        "The extension uses the fixed DOM.setFileInputFiles debugger command against the explicit file input selector.",
+        "Computer Session queues file_upload.clear as rollback and records only basename/path-redacted proof plus verifier/eval nodes."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 5119,
+        "p50LatencyMs": 5119,
+        "p95LatencyMs": 5119,
+        "sessionId": "820e7137-9bb6-4669-96b0-2a8fd07bb34b",
+        "evalRunId": "computer-use-eval-35890570-3677-41a9-b329-b729fdd6dd5b",
+        "inspectJobId": "capability-job-23eefe11-e028-42e5-91d7-8c5e6966decc",
+        "setFilesJobId": "capability-job-e8a7c3fc-9691-44c7-a2a0-39736fed3873",
+        "clearFilesJobId": "capability-job-8d33242c-5500-4da2-aede-6c3d05b6fb31",
+        "sourceHost": "the-internet.herokuapp.com",
+        "sourceUrlHash": "4d06ce4045980e46232cb2c780ed87f1f3175078702d867b3fb25a6b3d016910",
+        "inputCount": 2,
+        "targetInputFound": true,
+        "selectedFileCount": 1,
+        "selectedBasenames": [
+          "codex-public-upload-1.txt"
+        ],
+        "clearStatus": "files_cleared",
+        "approval": "one_time",
+        "risk": "high",
+        "pathRedacted": true,
+        "submitClicked": false,
+        "verifierNodeCount": 3,
+        "evalLedgerNodeCount": 4,
+        "cleanupReconciled": true,
+        "redaction": {
+          "localPathPolicy": "basename_only",
+          "fullPathStoredInReport": false,
+          "fileContentsStoredInReport": false,
+          "uploadSubmit": "not_submitted",
+          "urls": "public_url_hash_only",
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves approved file selection can use the fixed Browser Bridge file-upload command with basename-only evidence and clear rollback; native picker automation remains blocked until signed helper v2."
+    },
+    {
+      "id": "browser-chrome-public-extension-file-upload-2",
+      "command": "file_upload.inspect+set_files+clear",
+      "userScenario": "User asks the widget to inspect a public upload control, select an explicitly approved local file, and clear it without submitting the form.",
+      "architectureWorkflow": [
+        "Playwright opens a public unauthenticated upload page in a fresh temporary Chromium profile with the real Browser Bridge extension.",
+        "Computer Session queues file_upload.inspect and requires one-time approval before reading file-input metadata.",
+        "The dogfood harness creates an approved temporary file under the run-owned upload root.",
+        "Computer Session queues file_upload.set_files with the explicit approved path; capability persistence redacts the path.",
+        "The extension uses the fixed DOM.setFileInputFiles debugger command against the explicit file input selector.",
+        "Computer Session queues file_upload.clear as rollback and records only basename/path-redacted proof plus verifier/eval nodes."
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "elapsedMs": 2510,
+        "p50LatencyMs": 2510,
+        "p95LatencyMs": 2510,
+        "sessionId": "f0cb7c4f-6296-48e2-9e80-866a24b609d8",
+        "evalRunId": "computer-use-eval-04129801-b99e-4428-8a10-fbc1004327b1",
+        "inspectJobId": "capability-job-409b663e-703a-40a1-afc8-b4c4371e7b82",
+        "setFilesJobId": "capability-job-737b0a35-0c17-4a54-a7c5-dda6a64aae03",
+        "clearFilesJobId": "capability-job-6917b262-e253-4943-8c27-590e39ba6f19",
+        "sourceHost": "the-internet.herokuapp.com",
+        "sourceUrlHash": "4d06ce4045980e46232cb2c780ed87f1f3175078702d867b3fb25a6b3d016910",
+        "inputCount": 2,
+        "targetInputFound": true,
+        "selectedFileCount": 1,
+        "selectedBasenames": [
+          "codex-public-upload-2.txt"
+        ],
+        "clearStatus": "files_cleared",
+        "approval": "one_time",
+        "risk": "high",
+        "pathRedacted": true,
+        "submitClicked": false,
+        "verifierNodeCount": 3,
+        "evalLedgerNodeCount": 4,
+        "cleanupReconciled": true,
+        "redaction": {
+          "localPathPolicy": "basename_only",
+          "fullPathStoredInReport": false,
+          "fileContentsStoredInReport": false,
+          "uploadSubmit": "not_submitted",
+          "urls": "public_url_hash_only",
+          "credentials": "not_used"
+        }
+      },
+      "improvementAndFollowUp": "This proves approved file selection can use the fixed Browser Bridge file-upload command with basename-only evidence and clear rollback; native picker automation remains blocked until signed helper v2."
+    }
+  ]
+}

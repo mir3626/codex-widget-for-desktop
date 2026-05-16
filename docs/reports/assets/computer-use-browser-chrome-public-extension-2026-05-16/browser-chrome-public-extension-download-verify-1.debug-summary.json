@@ -1,0 +1,37 @@
+{
+  "id": "browser-chrome-public-extension-download-verify-1",
+  "command": "download.start+download.verify",
+  "userScenario": "User asks the widget to start a public unauthenticated browser download through the installed Browser Bridge path and verify the completed file with approved artifact evidence.",
+  "architectureWorkflow": [
+    "Playwright launches Chromium with the real unpacked Browser Bridge extension.",
+    "The extension service worker connects to the daemon and polls Browser Chrome commands.",
+    "Computer Session runs download.start against a public W3C PDF URL through the regular_browser_extension surface and one-time approval.",
+    "Chrome downloads API creates the download in the session download directory.",
+    "Computer Session runs download.verify by id and approvedDownloadPath.",
+    "The daemon stores a blob-backed download_verified_file eval resource and redacted basename/hash/size evidence."
+  ],
+  "success": true,
+  "status": "passed",
+  "result": {
+    "elapsedMs": 4101,
+    "p95LatencyMs": 4101,
+    "resourceRoles": [
+      "download_verified_file"
+    ],
+    "sourceHost": "www.w3.org",
+    "sourceUrlHash": "c712e96563e8f8b0868ca5150548c4fde964b2a7d94061dd66473c0bc3b0d29a",
+    "verifierNodeCount": 3,
+    "evalLedgerNodeCount": 4,
+    "cleanupReconciled": true,
+    "redaction": {
+      "localPathPolicy": "basename_only",
+      "fullPathStoredInReport": false,
+      "urls": "public_url_hash_only",
+      "credentials": "not_used"
+    },
+    "fileExists": true,
+    "approvedDownloadBasename": "browser-chrome-public-extension-w3c-dummy-1.pdf",
+    "fileSha256": "3df79d34abbca99308e79cb94461c1893582604d68329a41fd4bec1885e6adb4"
+  },
+  "improvementAndFollowUp": "This proves the real extension and Chrome downloads API path on a repeated public unauthenticated PDF target."
+}

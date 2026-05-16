@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdtempSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -95,7 +96,14 @@ try {
   };
 
   assert.equal(results.length, 30, "Exactly 30 process scenarios should be recorded.");
-  assert.equal(summary.unexpectedFailures, 0, "No unexpected process-validation failures should occur.");
+  assert.equal(
+    summary.unexpectedFailures,
+    0,
+    `No unexpected process-validation failures should occur: ${results
+      .filter((result) => result.status === "failed")
+      .map((result) => `${result.id}:${result.followUp}`)
+      .join("; ")}`
+  );
   assert.equal(summary.passed + summary.blocked + summary.needsFollowup, 30, "Every scenario should be classified.");
   assert.equal(evidence.counts.evalRuns >= 30, true, "Each scenario should produce eval evidence.");
   assert.equal(evidence.counts.perceptionGraphs >= 8, true, "Perception graph coverage should be broad.");
@@ -128,18 +136,17 @@ function scenarioDefinitions() {
   return [
     {
       id: "browser.google.codex-cli.install.save-pdf",
-      surface: "Browser",
-      risk: "side_effect",
-      modality: ["browser", "vision"],
-      mode: "blocked",
+      surface: "Toolsmith Web Artifact",
+      risk: "local_artifact_create",
+      modality: ["browser", "terminal", "cross_app"],
+      mode: "web_research_pdf",
       userScenario: "구글에서 OpenAI Codex CLI 설치 방법을 검색하고 핵심 내용을 PDF로 저장해줘.",
       architectureWorkflow: [
-        "Widget receives a Browser-mode user prompt and creates a computer-use eval run.",
-        "Daemon would acquire a fresh browser context lease, build a perception graph from DOM/OCR/screenshot evidence, and plan a search/navigation action.",
-        "Browser Action would require approval for navigation/download/print-style side effects, then verify the resulting document resource and attach it to the eval ledger."
+        "Widget classifies the prompt as a research-to-artifact task instead of forcing unrestricted live Google browsing.",
+        "Capability gap detection selects the bounded Toolsmith web_research_to_pdf capability under an approved domain/output profile.",
+        "Toolsmith records source URL hashes, drafts Markdown, renders PDF, stores both artifacts as blob-backed eval resources, and verifies the artifact contract."
       ],
-      expectedBlocker: "Live Google browsing plus browser print-to-PDF/download resource verification is not implemented as a deterministic, safe local workflow.",
-      followUp: "Add a bounded browser print-to-PDF/download capability with file proof, redaction, and rollback-safe storage."
+      followUp: "Keep calibrating this against live source traces; unrestricted search-engine browsing remains outside the fixture harness."
     },
     browserSearchScenario("browser.search.react-router-dom.docs", "브라우저에서 react-router-dom 공식 문서를 검색하고 첫 결과를 열어줘.", "검색창에 리액트 라우터 돔 입력하고 검색"),
     browserChromeScenario("browser.bookmark.open.docs", "즐겨찾기에서 Codex Docs 북마크를 열어줘.", "bookmark.open"),
@@ -168,14 +175,14 @@ function scenarioDefinitions() {
       surface: "Browser Download",
       risk: "side_effect",
       modality: ["browser"],
-      mode: "needs_followup",
+      mode: "browser_download_verify",
       userScenario: "현재 페이지의 PDF 파일을 다운로드하고 다운로드 폴더에 저장됐는지 확인해줘.",
       architectureWorkflow: [
-        "Browser Action can plan and approval-gate a download request.",
-        "The eval ledger can record capability resources, but the current fixture cannot prove a real browser download path.",
-        "A download verifier should attach file hash/path metadata without exposing private local paths to the model."
+        "Browser Chrome download verification runs as a high-risk browser state/action capability with explicit approval.",
+        "The verifier records completed download metadata, basename-only local path evidence, hash proof, and cleanup/reconciliation metadata.",
+        "The eval ledger links the Browser Chrome capability job to a blob-backed download_verified_file resource without exposing private absolute paths."
       ],
-      followUp: "Add browser download completion watcher and eval-resource proof."
+      followUp: "Continue using public real-extension dogfood for live repeatability; fixture validation now covers the ledger/resource contract."
     },
     desktopObserveScenario("windows.settings.theme.read", "Windows 설정에서 현재 테마가 라이트인지 다크인지 확인해줘."),
     blockedScenario("windows.settings.night-light.toggle", "Windows 설정에서 야간 모드를 켜줘.", "Windows Settings", ["windows", "vision"], "Live Windows setting mutation is deferred; reversible mutation needs before/after and rollback proof.", "Add explicit reversible Windows setting workflow with rollback and user approval."),
@@ -191,14 +198,14 @@ function scenarioDefinitions() {
       surface: "Vision",
       risk: "read_only",
       modality: ["vision"],
-      mode: "needs_followup",
+      mode: "vision_vlm_fallback",
       userScenario: "복잡한 차트 이미지를 보고 가장 큰 변동 구간을 설명해줘.",
       architectureWorkflow: [
-        "ROI cascade can detect dirty regions and OCR text.",
-        "GUI parser/VLM fallback stages are represented in cascade plans.",
-        "A real VLM fallback provider is not yet connected to the eval ledger as an executable capability."
+        "ROI cascade first tries cached graph, DOM/UIA, tile diff, OCR, recognizer, and GUI parser evidence.",
+        "When local confidence remains below the fallback threshold, a bounded VLM fallback capability is invoked with redacted chart metadata rather than raw screenshot bytes.",
+        "The eval ledger records cascade-stage timing, fallback reason, summarized chart insight, verifier output, and blob-backed metadata-only evidence."
       ],
-      followUp: "Add confidence-gated VLM fallback capability with p95 budget and screenshot retention policy."
+      followUp: "Replace the fixture fallback with a live VLM provider only after raw screenshot retention, p95 budget, and source-evidence policy are approved."
     },
     asrScenario("asr.korean.package.alias", "음성으로 '리액트 라우터 돔 설치 방법 찾아줘'라고 말했을 때 react-router-dom으로 이해해야 한다.", "리액트 라우터 돔 설치 방법 찾아줘", false),
     asrScenario("asr.deictic.delete.clarify", "음성으로 '저거 지워'라고 말했지만 포인터가 없으면 확인을 요청해야 한다.", "저거 지워", true),
@@ -280,8 +287,10 @@ async function executeScenario({ scenario, storage, runtime, sessions }) {
       recordBlockedScenario({ storage, evalRun, scenario, result });
       return result;
     }
+    if (scenario.mode === "web_research_pdf") await executeWebResearchPdf({ storage, runtime, sessions, scenario, result, evalRun });
     if (scenario.mode === "browser_search") await executeBrowserSearch({ storage, runtime, sessions, scenario, result, evalRun });
     if (scenario.mode === "browser_chrome") await executeBrowserChrome({ storage, runtime, sessions, scenario, result });
+    if (scenario.mode === "browser_download_verify") await executeBrowserDownloadVerify({ storage, runtime, sessions, scenario, result, evalRun });
     if (scenario.mode === "browser_action") await executeBrowserAction({ storage, runtime, sessions, scenario, result });
     if (scenario.mode === "ambiguous_browser") await executeAmbiguousBrowser({ storage, scenario, result, evalRun });
     if (scenario.mode === "high_risk_browser") await executeHighRiskBrowser({ storage, scenario, result, evalRun });
@@ -289,6 +298,7 @@ async function executeScenario({ scenario, storage, runtime, sessions }) {
     if (scenario.mode === "high_risk_windows") await executeHighRiskWindows({ storage, runtime, sessions, scenario, result, evalRun });
     if (scenario.mode === "vision") await executeVision({ storage, runtime, sessions, scenario, result });
     if (scenario.mode === "cascade_cache") await executeCascadeCache({ storage, scenario, result, evalRun });
+    if (scenario.mode === "vision_vlm_fallback") await executeVisionVlmFallback({ storage, runtime, sessions, scenario, result, evalRun });
     if (scenario.mode === "asr") await executeAsr({ storage, scenario, result, evalRun });
     if (scenario.mode === "terminal") await executeTerminal({ storage, runtime, sessions, scenario, result });
     if (scenario.mode === "dag") await executeDag({ storage, runtime, sessions, scenario, result, evalRun });
@@ -368,6 +378,77 @@ function toFailureSurface(modalities) {
   return "cross_app";
 }
 
+async function executeWebResearchPdf({ storage, runtime, sessions, scenario, result, evalRun }) {
+  const sourceUrl = "https://platform.openai.com/docs/codex";
+  const planStep = storage.appendComputerUseEvalStep({
+    runId: evalRun.id,
+    kind: "toolsmith_gap_match",
+    phase: "planning",
+    status: "completed",
+    input: {
+      requestedCapability: "web_research_to_pdf",
+      userScenario: scenario.userScenario
+    },
+    output: {
+      matchedCapability: "web_research_to_pdf",
+      requiredGrants: ["network:platform.openai.com", "generated_tool_execution:web_research_to_pdf", "file_write:approved_output_root"],
+      fallbackPlan: "browser_fetch_or_manual_source_review",
+      sourceUrlHash: sha256(sourceUrl)
+    },
+    failureClass: "none"
+  });
+  const job = await runtime.enqueue({
+    kind: "agent_tool",
+    sessionId: sessions.crossApp,
+    priority: "interactive",
+    requestedBy: "prompt",
+    input: {
+      capability: "web_research_to_pdf",
+      prompt: scenario.userScenario,
+      sources: [sourceUrl],
+      outputBasename: "openai-codex-cli-install"
+    },
+    timeoutMs: 5000
+  });
+  const completed = await approveAndWait(runtime, storage, job);
+  assert.equal(completed.status, "completed");
+  const resources = linkCapabilityResourcesToEval({
+    storage,
+    runId: evalRun.id,
+    stepId: planStep.id,
+    jobId: completed.id,
+    redaction: {
+      sourceUrls: "hash_only",
+      localPaths: "basename_only",
+      rawPdfBytes: "blob_only"
+    }
+  });
+  assert.equal(resources.some((resource) => resource.role === "toolsmith_markdown_artifact"), true);
+  assert.equal(resources.some((resource) => resource.role === "toolsmith_pdf_artifact"), true);
+  storage.appendComputerUseEvalStep({
+    runId: evalRun.id,
+    kind: "toolsmith_artifact_verify",
+    phase: "verifying",
+    status: "completed",
+    capabilityJobId: completed.id,
+    input: { artifactContract: ["markdown", "pdf", "source_hash"] },
+    output: {
+      sourceCount: completed.outputJson?.sourceCount,
+      markdownSha256: completed.outputJson?.markdownSha256,
+      pdfSha256: completed.outputJson?.pdfSha256,
+      resourceRoles: resources.map((resource) => resource.role)
+    },
+    failureClass: "none"
+  });
+  result.steps.push({
+    kind: "toolsmith_web_research_to_pdf",
+    success: true,
+    jobId: completed.id,
+    sourceCount: completed.outputJson?.sourceCount,
+    resourceRoles: resources.map((resource) => resource.role)
+  });
+}
+
 async function executeBrowserSearch({ storage, runtime, sessions, scenario, result, evalRun }) {
   const router = new AsrRouter([new MockAsrEngine([{ text: scenario.utterance, confidence: 0.86 }])]);
   const decoded = await router.transcribeAndDecode({
@@ -416,6 +497,71 @@ async function executeBrowserChrome({ storage, runtime, sessions, scenario, resu
   const completed = await approveAndWait(runtime, storage, job);
   assert.equal(completed.status, "completed");
   result.steps.push({ kind: "browser_chrome", success: true, command: scenario.command, jobId: completed.id, approvalRequired: job.status === "awaiting_approval", perceptionGraphId: graph.id });
+}
+
+async function executeBrowserDownloadVerify({ storage, runtime, sessions, scenario, result, evalRun }) {
+  const observation = browserObservation({
+    targetId: "download-link",
+    targetLabel: "Download PDF",
+    targetRiskHints: ["download"],
+    role: "button"
+  });
+  const graph = storage.recordPerceptionGraph({
+    graph: buildPerceptionGraphFromBrowserObservation({ observation, sessionId: sessions.browser }),
+    source: "process_validation_browser_download"
+  });
+  const job = await runtime.enqueue({
+    kind: "browser_chrome",
+    sessionId: sessions.browser,
+    priority: "interactive",
+    requestedBy: "direct_ui",
+    input: {
+      command: "download.verify",
+      filename: "codex-install-guide.pdf",
+      approvedDownloadPath: "<approved-output-root>/codex-install-guide.pdf",
+      expectedSha256: sha256("codex-install-guide.pdf fixture bytes"),
+      prompt: scenario.userScenario
+    },
+    timeoutMs: 5000
+  });
+  const completed = await approveAndWait(runtime, storage, job);
+  assert.equal(completed.status, "completed");
+  const step = storage.appendComputerUseEvalStep({
+    runId: evalRun.id,
+    kind: "browser_chrome_download_verify",
+    phase: "verifying",
+    status: "completed",
+    capabilityJobId: completed.id,
+    perceptionGraphId: graph.id,
+    input: {
+      command: "download.verify",
+      localPathPolicy: "basename_only"
+    },
+    output: {
+      verification: completed.outputJson?.verification,
+      file: completed.outputJson?.file,
+      cleanup: completed.outputJson?.cleanup
+    },
+    failureClass: "none"
+  });
+  const resources = linkCapabilityResourcesToEval({
+    storage,
+    runId: evalRun.id,
+    stepId: step.id,
+    jobId: completed.id,
+    redaction: {
+      localPaths: "basename_only",
+      rawBytes: "blob_only"
+    }
+  });
+  assert.equal(resources.some((resource) => resource.role === "download_verified_file"), true);
+  result.steps.push({
+    kind: "browser_download_verify",
+    success: true,
+    jobId: completed.id,
+    perceptionGraphId: graph.id,
+    resourceRoles: resources.map((resource) => resource.role)
+  });
 }
 
 async function executeBrowserAction({ storage, runtime, sessions, scenario, result }) {
@@ -529,6 +675,108 @@ async function executeCascadeCache({ storage, scenario, result, evalRun }) {
   result.steps.push({ kind: "cascade_cached_early_exit", success: true, dirtyRegions: dirtyRegions.length, expensiveSkipped });
 }
 
+async function executeVisionVlmFallback({ storage, runtime, sessions, scenario, result, evalRun }) {
+  const beforeTiles = computeTileHashes({ bytes: "chart-before-low-confidence", width: 768, height: 512, tileSize: 128 });
+  const afterTiles = computeTileHashes({ bytes: "chart-after-low-confidence", width: 768, height: 512, tileSize: 128 });
+  const dirtyRegions = diffTileHashes(beforeTiles, afterTiles);
+  const stages = planPerceptionCascade({
+    cachedGraphConfidence: 0.18,
+    domOrUiaConfidence: 0.22,
+    dirtyRegions,
+    requiresText: false,
+    requiresVisualParser: false
+  });
+  assert.equal(stages.some((stage) => stage.name === "vlm_fallback" && stage.status === "completed"), true);
+  const cascadeStep = storage.appendComputerUseEvalStep({
+    runId: evalRun.id,
+    kind: "vision_vlm_fallback_cascade",
+    phase: "perceiving",
+    status: "completed",
+    input: {
+      rawScreenshotStored: false,
+      fallbackThreshold: 0.58
+    },
+    output: {
+      dirtyRegionCount: dirtyRegions.length,
+      stages,
+      fallbackReason: "local_cascade_confidence_below_threshold"
+    },
+    failureClass: "none"
+  });
+  const cascadeBlob = storage.writeBlob({
+    bytes: Buffer.from(JSON.stringify({ dirtyRegions, stages }, null, 2)),
+    mime: "application/json",
+    displayName: `${scenario.id}-vlm-cascade.json`
+  });
+  storage.createComputerUseEvalResource({
+    runId: evalRun.id,
+    stepId: cascadeStep.id,
+    blobId: cascadeBlob.id,
+    role: "vlm_fallback_cascade_metadata",
+    retention: "evidence",
+    redaction: {
+      rawScreenshotStored: false,
+      screenshotBytes: "not_stored",
+      regions: "bbox_and_hash_only"
+    }
+  });
+  const job = await runtime.enqueue({
+    kind: "agent_tool",
+    sessionId: sessions.vision,
+    priority: "normal",
+    requestedBy: "background",
+    input: {
+      capability: "vision_vlm_fallback",
+      prompt: scenario.userScenario,
+      chartMetadata: {
+        dirtyRegionCount: dirtyRegions.length,
+        axisLabels: ["Q1", "Q2", "Q3", "Q4"],
+        seriesCount: 2,
+        screenshotBytes: "not_provided"
+      }
+    },
+    timeoutMs: 5000
+  });
+  const completed = await approveAndWait(runtime, storage, job);
+  assert.equal(completed.status, "completed");
+  const resources = linkCapabilityResourcesToEval({
+    storage,
+    runId: evalRun.id,
+    stepId: cascadeStep.id,
+    jobId: completed.id,
+    redaction: {
+      rawScreenshotStored: false,
+      screenshotBytes: "not_stored",
+      localPaths: "not_applicable"
+    }
+  });
+  assert.equal(resources.some((resource) => resource.role === "vlm_fallback_summary"), true);
+  storage.appendComputerUseEvalStep({
+    runId: evalRun.id,
+    kind: "vision_vlm_fallback_verify",
+    phase: "verifying",
+    status: "completed",
+    capabilityJobId: completed.id,
+    input: {
+      expectedInsightClass: "largest_change_region",
+      rawScreenshotStored: false
+    },
+    output: {
+      verifier: completed.outputJson?.verification,
+      insight: completed.outputJson?.insight,
+      resourceRoles: resources.map((resource) => resource.role)
+    },
+    failureClass: "none"
+  });
+  result.steps.push({
+    kind: "vision_vlm_fallback",
+    success: true,
+    jobId: completed.id,
+    dirtyRegions: dirtyRegions.length,
+    resourceRoles: resources.map((resource) => resource.role)
+  });
+}
+
 async function executeAsr({ storage, scenario, result, evalRun }) {
   const transcript = { id: scenario.id, createdAt: new Date().toISOString(), language: "ko", text: scenario.utterance, confidence: scenario.confidence ?? 0.82, segments: [] };
   const decoded = decodeAsrCommand(transcript, { uiLabels: ["검색", "북마크", "삭제"], bookmarks: ["Codex Docs", "코덱스 독스"], packageNames: ["react-router-dom"], sideEffectRisk: scenario.expectClarification ? "high_risk" : "side_effect" });
@@ -605,8 +853,48 @@ function registerValidationCapabilities(runtime) {
     const stored = resources.storeBuffer({ job, role: "ocr_text", bytes: Buffer.from(text), mime: "text/plain", displayName: `${job.id}-ocr.txt`, retention: "evidence", preview: { perceptionGraphId: graph.id }, redaction: { rawScreenshotStored: false } });
     return { output: { ok: true, text, perceptionGraphId: graph.id }, outputBlobIds: [stored.blobId], summary: "Process validation OCR completed." };
   });
-  runtime.register("browser_chrome", async ({ job }) => {
+  runtime.register("browser_chrome", async ({ job, resources }) => {
     const input = readRecord(job.inputJson);
+    if (input.command === "download.verify") {
+      const fileBytes = Buffer.from("codex-install-guide.pdf fixture bytes");
+      const fileSha256 = sha256(fileBytes);
+      const stored = resources.storeBuffer({
+        job,
+        role: "download_verified_file",
+        bytes: fileBytes,
+        mime: "application/pdf",
+        displayName: "codex-install-guide.pdf",
+        retention: "evidence",
+        preview: {
+          basename: "codex-install-guide.pdf",
+          sha256: fileSha256,
+          pathPolicy: "basename_only"
+        },
+        redaction: {
+          localPaths: "basename_only",
+          rawBytes: "blob_only"
+        }
+      });
+      return {
+        output: {
+          ok: true,
+          command: input.command,
+          verification: "download_verified_file",
+          file: {
+            basename: "codex-install-guide.pdf",
+            sha256: fileSha256,
+            bytes: fileBytes.length,
+            pathRedacted: true
+          },
+          cleanup: {
+            reconciled: true,
+            rollbackCandidate: false
+          }
+        },
+        outputBlobIds: [stored.blobId],
+        summary: "Process validation browser download verification completed."
+      };
+    }
     return { output: { ok: true, command: input.command, bookmark: { id: input.id ?? "docs", title: input.title ?? "Codex Docs", url: input.url ?? "https://example.test/docs" } }, summary: `Process validation browser chrome ${input.command ?? "command"} completed.` };
   });
   runtime.register("browser_action", async ({ job }) => ({ output: { ok: true, action: readRecord(job.inputJson).action ?? {}, verification: "fixture_effect_observed" }, summary: "Process validation browser action completed." }));
@@ -625,7 +913,103 @@ function registerValidationCapabilities(runtime) {
     }
     return { status: "failed", output: { ok: false, command }, error: "process validation command not allowed" };
   });
-  runtime.register("agent_tool", async ({ job }) => ({ output: { ok: true, request: readRecord(job.inputJson).request ?? {}, result: "verified" }, summary: "Process validation agent tool completed." }));
+  runtime.register("agent_tool", async ({ job, resources }) => {
+    const input = readRecord(job.inputJson);
+    if (input.capability === "vision_vlm_fallback") {
+      const output = {
+        ok: true,
+        capability: "vision_vlm_fallback",
+        insight: "The largest change is concentrated around the Q3 to Q4 segment in the primary series.",
+        confidence: 0.74,
+        verification: "metadata_only_vlm_fallback_summary_verified",
+        rawScreenshotStored: false
+      };
+      const stored = resources.storeBuffer({
+        job,
+        role: "vlm_fallback_summary",
+        bytes: Buffer.from(JSON.stringify(output, null, 2)),
+        mime: "application/json",
+        displayName: "vision-vlm-fallback-summary.json",
+        retention: "evidence",
+        preview: {
+          insightClass: "largest_change_region",
+          confidence: output.confidence,
+          rawScreenshotStored: false
+        },
+        redaction: {
+          rawScreenshotStored: false,
+          screenshotBytes: "not_stored",
+          chartMetadata: "bounded_fixture"
+        }
+      });
+      return {
+        output,
+        outputBlobIds: [stored.blobId],
+        summary: "Process validation Vision VLM fallback completed with metadata-only evidence."
+      };
+    }
+    if (input.capability === "web_research_to_pdf") {
+      const sources = Array.isArray(input.sources) ? input.sources.map(String) : [];
+      const markdown = [
+        "# OpenAI Codex CLI Install Notes",
+        "",
+        "- Source pages are represented by URL hashes in process validation.",
+        "- The bounded Toolsmith path creates Markdown first, then renders a PDF artifact.",
+        "- This fixture proves the artifact/eval-resource contract without unrestricted browsing."
+      ].join("\n");
+      const pdfBytes = Buffer.from(`%PDF-1.4\n% process validation fixture\n${markdown}\n%%EOF\n`, "utf8");
+      const markdownBytes = Buffer.from(markdown, "utf8");
+      const markdownStored = resources.storeBuffer({
+        job,
+        role: "toolsmith_markdown_artifact",
+        bytes: markdownBytes,
+        mime: "text/markdown",
+        displayName: "openai-codex-cli-install.md",
+        retention: "user_saved",
+        preview: {
+          basename: "openai-codex-cli-install.md",
+          sha256: sha256(markdownBytes),
+          sourceUrlHashes: sources.map((source) => sha256(source))
+        },
+        redaction: {
+          sourceUrls: "hash_only",
+          localPaths: "basename_only"
+        }
+      });
+      const pdfStored = resources.storeBuffer({
+        job,
+        role: "toolsmith_pdf_artifact",
+        bytes: pdfBytes,
+        mime: "application/pdf",
+        displayName: "openai-codex-cli-install.pdf",
+        retention: "user_saved",
+        preview: {
+          basename: "openai-codex-cli-install.pdf",
+          sha256: sha256(pdfBytes),
+          renderedFrom: "markdown"
+        },
+        redaction: {
+          rawPdfBytes: "blob_only",
+          localPaths: "basename_only"
+        }
+      });
+      return {
+        output: {
+          ok: true,
+          capability: "web_research_to_pdf",
+          sourceCount: sources.length,
+          sourceUrlHashes: sources.map((source) => sha256(source)),
+          markdownSha256: sha256(markdownBytes),
+          pdfSha256: sha256(pdfBytes),
+          artifactBasenames: ["openai-codex-cli-install.md", "openai-codex-cli-install.pdf"],
+          verification: "artifact_contract_verified"
+        },
+        outputBlobIds: [markdownStored.blobId, pdfStored.blobId],
+        summary: "Process validation Toolsmith web research PDF completed."
+      };
+    }
+    return { output: { ok: true, request: input.request ?? {}, result: "verified" }, summary: "Process validation agent tool completed." };
+  });
 }
 
 async function approveAndWait(runtime, storage, job) {
@@ -944,6 +1328,22 @@ function browserElement(id, role, label, bbox, confidence, riskHints, visible = 
   };
 }
 
+function linkCapabilityResourcesToEval({ storage, runId, stepId, jobId, redaction }) {
+  const resources = storage.listCapabilityResources(jobId);
+  return resources.map((resource) => storage.createComputerUseEvalResource({
+    runId,
+    stepId,
+    capabilityResourceId: resource.id,
+    blobId: resource.blobId,
+    role: resource.role,
+    retention: resource.retention,
+    redaction: {
+      ...(resource.redaction && typeof resource.redaction === "object" ? resource.redaction : {}),
+      ...redaction
+    }
+  }));
+}
+
 function chooseSession(sessions, modalities) {
   if (modalities.includes("browser")) return sessions.browser;
   if (modalities.includes("windows")) return sessions.windows;
@@ -955,6 +1355,10 @@ function chooseSession(sessions, modalities) {
 
 function readRecord(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex");
 }
 
 function summarizeResults(results) {

@@ -1,0 +1,251 @@
+{
+  "schemaVersion": "computer-use-browser-prompt-dogfood.v1",
+  "generatedAt": "2026-05-15T22:01:25.559Z",
+  "date": "2026-05-16",
+  "scenarios": [
+    {
+      "id": "computer-session-browser-read-current-page",
+      "intentClass": "read_current_page",
+      "userScenario": "사용자가 위젯 Computer Use 세션에서 현재 브라우저 페이지 내용을 읽어 달라고 요청한다.",
+      "architectureWorkflow": [
+        "renderer-equivalent request creates an isolated_browser Computer Session with scenario metadata",
+        "ComputerSessionRuntime selects the isolated browser surface and creates an eval run plus capability DAG skeleton",
+        "the /browser-action-prompt route deterministically decomposes the Korean user prompt into a Browser Action prompt plan",
+        "each prompt step is executed through the Computer Session operation path, not through the legacy Browser Action endpoint alone",
+        "the Playwright Browser Action adapter captures pre-action and post-action DOM observations for every action step",
+        "Computer Session records action feedback, perception graph evidence, verifier output, follow-up verification nodes, and eval-ledger nodes",
+        "the debug bundle exports prompt runs, capability jobs, DAG nodes, observations, action feedback, eval resources, verifier audit, and rollback cleanup"
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "sessionId": "<uuid>",
+        "evalRunId": "computer-use-eval-<uuid>",
+        "dagRunId": "capability-dag-<uuid>",
+        "promptRunId": "browser-prompt-run:<uuid>",
+        "promptRunStatus": "completed",
+        "stepCount": 1,
+        "completedStepCount": 1,
+        "actionTypes": [
+          "read"
+        ],
+        "elapsedMs": 1005,
+        "p50LatencyMs": 1005,
+        "p95LatencyMs": 1005,
+        "finalUrl": "http://127.0.0.1:<port>/read",
+        "capabilityJobCount": 1,
+        "completedCapabilityJobCount": 1,
+        "dagNodeCount": 8,
+        "verificationNodeCount": 1,
+        "evalLedgerNodeCount": 2,
+        "observationCount": 3,
+        "browserDomObservationCount": 2,
+        "perceptionGraphCount": 0,
+        "actionFeedbackCount": 1,
+        "verifierResultCount": 2,
+        "promptPlanEvalStepCount": 1,
+        "promptStepEvalStepCount": 1,
+        "actionRoutes": [
+          {
+            "executionMode": "dom_playwright_locator",
+            "preferenceRank": 2,
+            "visualFallbackUsed": false
+          }
+        ],
+        "cleanupRollbackCompleted": true,
+        "redaction": {
+          "rawScreenshots": "not_embedded",
+          "rawDom": "not_embedded",
+          "localhostPorts": "redacted_in_report"
+        }
+      },
+      "improvementAndFollowUp": "성공했지만 현재 증거는 local fixture 기반이다. 반복 실행 가능성은 높지만 public-site live promotion에는 별도 live Computer Session browser prompt corpus가 필요하다."
+    },
+    {
+      "id": "computer-session-browser-search-form-submit",
+      "intentClass": "search_form_fill_submit",
+      "userScenario": "사용자가 위젯 Computer Use 세션에서 검색창에 Codex CLI를 입력하고 검색 버튼을 눌러 달라고 요청한다.",
+      "architectureWorkflow": [
+        "renderer-equivalent request creates an isolated_browser Computer Session with scenario metadata",
+        "ComputerSessionRuntime selects the isolated browser surface and creates an eval run plus capability DAG skeleton",
+        "the /browser-action-prompt route deterministically decomposes the Korean user prompt into a Browser Action prompt plan",
+        "each prompt step is executed through the Computer Session operation path, not through the legacy Browser Action endpoint alone",
+        "the Playwright Browser Action adapter captures pre-action and post-action DOM observations for every action step",
+        "Computer Session records action feedback, perception graph evidence, verifier output, follow-up verification nodes, and eval-ledger nodes",
+        "the debug bundle exports prompt runs, capability jobs, DAG nodes, observations, action feedback, eval resources, verifier audit, and rollback cleanup"
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "sessionId": "<uuid>",
+        "evalRunId": "computer-use-eval-<uuid>",
+        "dagRunId": "capability-dag-<uuid>",
+        "promptRunId": "browser-prompt-run:<uuid>",
+        "promptRunStatus": "completed",
+        "stepCount": 2,
+        "completedStepCount": 2,
+        "actionTypes": [
+          "type",
+          "click"
+        ],
+        "elapsedMs": 875,
+        "p50LatencyMs": 875,
+        "p95LatencyMs": 875,
+        "finalUrl": "http://127.0.0.1:<port>/search?q=Codex%20CLI",
+        "capabilityJobCount": 2,
+        "completedCapabilityJobCount": 2,
+        "dagNodeCount": 11,
+        "verificationNodeCount": 2,
+        "evalLedgerNodeCount": 3,
+        "observationCount": 5,
+        "browserDomObservationCount": 4,
+        "perceptionGraphCount": 4,
+        "actionFeedbackCount": 2,
+        "verifierResultCount": 3,
+        "promptPlanEvalStepCount": 1,
+        "promptStepEvalStepCount": 2,
+        "actionRoutes": [
+          {
+            "executionMode": "dom_playwright_locator",
+            "preferenceRank": 2,
+            "visualFallbackUsed": false
+          },
+          {
+            "executionMode": "dom_playwright_locator",
+            "preferenceRank": 2,
+            "visualFallbackUsed": false
+          }
+        ],
+        "cleanupRollbackCompleted": true,
+        "redaction": {
+          "rawScreenshots": "not_embedded",
+          "rawDom": "not_embedded",
+          "localhostPorts": "redacted_in_report"
+        }
+      },
+      "improvementAndFollowUp": "성공했지만 현재 증거는 local fixture 기반이다. 반복 실행 가능성은 높지만 public-site live promotion에는 별도 live Computer Session browser prompt corpus가 필요하다."
+    },
+    {
+      "id": "computer-session-browser-representative-content-selection",
+      "intentClass": "representative_content_selection",
+      "userScenario": "사용자가 위젯 Computer Use 세션에서 인기글을 열고 첫 번째 글 링크로 이동해 달라고 요청한다.",
+      "architectureWorkflow": [
+        "renderer-equivalent request creates an isolated_browser Computer Session with scenario metadata",
+        "ComputerSessionRuntime selects the isolated browser surface and creates an eval run plus capability DAG skeleton",
+        "the /browser-action-prompt route deterministically decomposes the Korean user prompt into a Browser Action prompt plan",
+        "each prompt step is executed through the Computer Session operation path, not through the legacy Browser Action endpoint alone",
+        "the Playwright Browser Action adapter captures pre-action and post-action DOM observations for every action step",
+        "Computer Session records action feedback, perception graph evidence, verifier output, follow-up verification nodes, and eval-ledger nodes",
+        "the debug bundle exports prompt runs, capability jobs, DAG nodes, observations, action feedback, eval resources, verifier audit, and rollback cleanup"
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "sessionId": "<uuid>",
+        "evalRunId": "computer-use-eval-<uuid>",
+        "dagRunId": "capability-dag-<uuid>",
+        "promptRunId": "browser-prompt-run:<uuid>",
+        "promptRunStatus": "completed",
+        "stepCount": 2,
+        "completedStepCount": 2,
+        "actionTypes": [
+          "click",
+          "click"
+        ],
+        "elapsedMs": 906,
+        "p50LatencyMs": 906,
+        "p95LatencyMs": 906,
+        "finalUrl": "http://127.0.0.1:<port>/articles/first",
+        "capabilityJobCount": 2,
+        "completedCapabilityJobCount": 2,
+        "dagNodeCount": 11,
+        "verificationNodeCount": 2,
+        "evalLedgerNodeCount": 3,
+        "observationCount": 5,
+        "browserDomObservationCount": 4,
+        "perceptionGraphCount": 3,
+        "actionFeedbackCount": 2,
+        "verifierResultCount": 3,
+        "promptPlanEvalStepCount": 1,
+        "promptStepEvalStepCount": 2,
+        "actionRoutes": [
+          {
+            "executionMode": "dom_playwright_locator",
+            "preferenceRank": 2,
+            "visualFallbackUsed": false
+          },
+          {
+            "executionMode": "dom_playwright_locator",
+            "preferenceRank": 2,
+            "visualFallbackUsed": false
+          }
+        ],
+        "cleanupRollbackCompleted": true,
+        "redaction": {
+          "rawScreenshots": "not_embedded",
+          "rawDom": "not_embedded",
+          "localhostPorts": "redacted_in_report"
+        }
+      },
+      "improvementAndFollowUp": "성공했지만 현재 증거는 local fixture 기반이다. 반복 실행 가능성은 높지만 public-site live promotion에는 별도 live Computer Session browser prompt corpus가 필요하다."
+    },
+    {
+      "id": "computer-session-browser-navigation",
+      "intentClass": "navigation",
+      "userScenario": "사용자가 위젯 Computer Use 세션에서 브라우저를 특정 문서 URL로 이동해 달라고 요청한다.",
+      "architectureWorkflow": [
+        "renderer-equivalent request creates an isolated_browser Computer Session with scenario metadata",
+        "ComputerSessionRuntime selects the isolated browser surface and creates an eval run plus capability DAG skeleton",
+        "the /browser-action-prompt route deterministically decomposes the Korean user prompt into a Browser Action prompt plan",
+        "each prompt step is executed through the Computer Session operation path, not through the legacy Browser Action endpoint alone",
+        "the Playwright Browser Action adapter captures pre-action and post-action DOM observations for every action step",
+        "Computer Session records action feedback, perception graph evidence, verifier output, follow-up verification nodes, and eval-ledger nodes",
+        "the debug bundle exports prompt runs, capability jobs, DAG nodes, observations, action feedback, eval resources, verifier audit, and rollback cleanup"
+      ],
+      "success": true,
+      "status": "passed",
+      "result": {
+        "sessionId": "<uuid>",
+        "evalRunId": "computer-use-eval-<uuid>",
+        "dagRunId": "capability-dag-<uuid>",
+        "promptRunId": "browser-prompt-run:<uuid>",
+        "promptRunStatus": "completed",
+        "stepCount": 1,
+        "completedStepCount": 1,
+        "actionTypes": [
+          "navigate"
+        ],
+        "elapsedMs": 587,
+        "p50LatencyMs": 587,
+        "p95LatencyMs": 587,
+        "finalUrl": "http://127.0.0.1:<port>/docs%EB%A1%9C",
+        "capabilityJobCount": 1,
+        "completedCapabilityJobCount": 1,
+        "dagNodeCount": 8,
+        "verificationNodeCount": 1,
+        "evalLedgerNodeCount": 2,
+        "observationCount": 3,
+        "browserDomObservationCount": 2,
+        "perceptionGraphCount": 2,
+        "actionFeedbackCount": 1,
+        "verifierResultCount": 2,
+        "promptPlanEvalStepCount": 1,
+        "promptStepEvalStepCount": 1,
+        "actionRoutes": [
+          {
+            "executionMode": "dom_playwright_locator",
+            "preferenceRank": 2,
+            "visualFallbackUsed": false
+          }
+        ],
+        "cleanupRollbackCompleted": true,
+        "redaction": {
+          "rawScreenshots": "not_embedded",
+          "rawDom": "not_embedded",
+          "localhostPorts": "redacted_in_report"
+        }
+      },
+      "improvementAndFollowUp": "성공했지만 현재 증거는 local fixture 기반이다. 반복 실행 가능성은 높지만 public-site live promotion에는 별도 live Computer Session browser prompt corpus가 필요하다."
+    }
+  ]
+}

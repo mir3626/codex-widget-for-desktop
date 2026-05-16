@@ -7,6 +7,7 @@ import type { ProviderRegistry } from "../../providers/providerRegistry.js";
 import type { SemanticMemoryStore } from "../../semantic-interface/index.js";
 import type { StorageService } from "../../storage/storage.js";
 import type { CapabilityRuntime } from "../../capability-runtime/index.js";
+import type { ComputerSessionRuntime } from "../../computer-use/index.js";
 import type { BrowserActionCommandWaiter } from "../browser-action/commandWaiters.js";
 import type { BrowserExtensionBridgeStore } from "../browser-bridge/store.js";
 
@@ -21,6 +22,7 @@ export type HttpRouteContext = {
   clients: Set<WebSocket>;
   storage: StorageService;
   capabilityRuntime: CapabilityRuntime;
+  computerSessionRuntime: ComputerSessionRuntime;
   semanticMemory: SemanticMemoryStore;
   browserActionCommandWaiters: Map<string, BrowserActionCommandWaiter>;
 };

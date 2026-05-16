@@ -15,6 +15,8 @@ assertPlan("Summarize the attached selection.", "browser", ["read"]);
 assertPlan("현재 페이지에서 Learn more 링크 눌러줘", "browser", ["click"]);
 assertPlan("새 채팅 눌러줘", "browser", ["click"], undefined, "새 채팅");
 assertPlan("개념글 눌러서 재밌어보이는 글 보여줘", "browser", ["click", "click"], undefined, "개념글");
+assertPlan("개념글 버튼 눌러달라는 뜻이야", "browser", ["click"], undefined, "button: 개념글");
+assertPlan("글쓰기 버튼 누르고 특갤러들에게 소개하는 글을 써줘", "browser", ["click"], undefined, "button: 글쓰기");
 assertPlan("재밌어보이는 글 아무거나 보여줘", "browser", ["click"], undefined, "link: 재밌어보이는 글");
 assertPlan("재밌어보이는 글 누르기", "browser", ["click"], undefined, "link: 재밌어보이는 글");
 assertPlan("검색창에 \"codex app-server\" 입력하고 검색해줘", "browser", ["type", "click"]);

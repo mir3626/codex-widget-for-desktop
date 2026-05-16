@@ -1,0 +1,56 @@
+[
+  {
+    "title": "CLI – Codex | OpenAI Developers",
+    "url": "https://help.openai.com/en/articles/11096431-openai-codex-ci-getting-started",
+    "text": "Home API Codex ChatGPT Resources Start searching API Dashboard Getting Started Overview Quickstart Explore use cases Migrate Pricing Concepts Using Codex App IDE Extension CLI Overview Features Command Line Options Slash commands Web Integrations Codex Security Configuration Config File Speed Rules Hooks AGENTS.md MCP Plugins Skills Subagents Administration Authentication Agent approvals & security Remote connections Enterprise Windows Automation Non-interactive Mode Codex SDK App Server MCP Server GitHub Action Learn Best practices Videos Community Blog Cookbooks Building AI Teams Releases Changelog Feature Maturity Open Source CLI setup Work with the Codex CLI Copy Page Codex CLI Pair with Codex in your terminal Copy Page Codex CLI is OpenAI’s coding agent that you can run locally from your terminal. It can read, change, and run code on your machine in the selected directory. It’s open source and built in Rust for speed and efficiency. ChatGPT Plus, Pro, Business, Edu, and Enterprise plans include Codex. Learn more about what’s included. CLI setup Choose your package manager npm Homebrew 1 Install Install the Codex CLI with npm. npm install command npm i -g @openai/codex Copy 2 Run Run Codex in a terminal. It can inspect your repository, edit files, and run commands. Run Codex command codex Copy The first time you run Codex, you'll be prompted to sign in. Authenticate with your ChatGPT account or an API key. See the pricing page if you're not sure which plans include Codex access. 3 Upgrade New versions of the Codex CLI are released regularly. See the changelog for release notes. To upgrade with npm, run: npm upgrade command npm i -g @openai/codex@latest Copy The Codex CLI is available on macOS, Windows, and Linux. On Windows, run Codex natively in PowerShell with the Windows sandbox, or use WSL2 when you need a Linux-native environment. For setup details, see the Windows setup guide. If you’re new to Codex, read the best practices guide. Work with the Codex CLI Run Codex interactively Run codex to start an interactive terminal UI (TUI) session. Control model and reasoning Use /model to switch between GPT-5.4, GPT-5.3-Codex, and other available models, or adjust reasoning levels. Image inputs Attach screenshots or design specs so Codex reads them alongside your prompt. Image generation Generate or edit images directly in the CLI, and attach references when you want Codex to iterate on an existing asset. Run local code review Get your code reviewed by a separate Codex agent before you commit or push your changes. Use subagents Use subagents to parallelize complex tasks. Web search Use Codex to search the web and get up-to-date information for your task. Codex Cloud tasks Launch a Codex Cloud task, choose environments, and apply the resulting diffs without leaving your terminal. Scripting Codex Automate repeatable workflows by scripting Codex with the exec command. Model Context Protocol Give Codex access to additional third-party tools and context with Model Context Protocol (MCP). Approval modes Choose the approval mode that matches your comfort level before Codex edits or runs commands. Next Features",
+    "fetched": false,
+    "status": "browser_fallback",
+    "browserFallback": true,
+    "fallbackReason": "http_status_403",
+    "capture": {
+      "command": "playwright.browser_capture",
+      "status": 200,
+      "title": "CLI – Codex | OpenAI Developers",
+      "chars": 3201,
+      "textSha256": "4e9109d64290483b0d45b9488081098cb3a852ca5c9f5c05314a3ddb5273636c",
+      "capturedAt": "2026-05-15T21:10:20.345Z",
+      "dataOmitted": "[omitted]"
+    }
+  },
+  {
+    "title": "Web – Codex | OpenAI Developers",
+    "url": "https://platform.openai.com/docs/codex/overview",
+    "text": "Home API Codex ChatGPT Resources Start searching API Dashboard Getting Started Overview Quickstart Explore use cases Migrate Pricing Concepts Using Codex App IDE Extension CLI Web Overview Environments Internet Access Integrations Codex Security Configuration Config File Speed Rules Hooks AGENTS.md MCP Plugins Skills Subagents Administration Authentication Agent approvals & security Remote connections Enterprise Windows Automation Non-interactive Mode Codex SDK App Server MCP Server GitHub Action Learn Best practices Videos Community Blog Cookbooks Building AI Teams Releases Changelog Feature Maturity Open Source Codex web setup Work with Codex web Copy Page Codex web Delegate to Codex in the cloud Copy Page Codex is OpenAI’s coding agent that can read, edit, and run code. It helps you build faster, fix bugs, and understand unfamiliar code. With Codex cloud, Codex can work on tasks in the background (including in parallel) using its own cloud environment. Codex web setup Go to Codex and connect your GitHub account. This lets Codex work with the code in your repositories and create pull requests from its work. Your Plus, Pro, Business, Edu, or Enterprise plan includes Codex. Learn more about what’s included. Some Enterprise workspaces may require admin setup before you can access Codex. Work with Codex web Learn about prompting Write clearer prompts, add constraints, and choose the right level of detail to get better results. Common workflows Start with proven patterns for delegating tasks, reviewing changes, and turning results into PRs. Configuring environments Choose the repo, setup steps, and tools Codex should use when it runs tasks in the cloud. Delegate work from the IDE extension Kick off a cloud task from your editor, then monitor progress and apply the resulting diffs locally. Delegating from GitHub Tag @codex on issues and pull requests to spin up tasks and propose changes directly from GitHub. Control internet access Decide whether Codex can reach the public internet from cloud environments, and when to enable it. Next Environments",
+    "fetched": false,
+    "status": "browser_fallback",
+    "browserFallback": true,
+    "fallbackReason": "http_status_403",
+    "capture": {
+      "command": "playwright.browser_capture",
+      "status": 200,
+      "title": "Web – Codex | OpenAI Developers",
+      "chars": 2097,
+      "textSha256": "1c383c491125efbd48f26cbbc7cf0c1974810d4e2d4b674cc9576a7b6ae7ba06",
+      "capturedAt": "2026-05-15T21:10:21.687Z",
+      "dataOmitted": "[omitted]"
+    }
+  },
+  {
+    "title": "Docs MCP | OpenAI Developers",
+    "url": "https://platform.openai.com/docs/docs-mcp",
+    "text": "Home API Codex ChatGPT Resources Start searching API Dashboard Home OpenAI Developers plugin Docs MCP Categories Demo apps Videos Topics Agents Audio & Voice Computer Use Codex Evals gpt-oss Fine-tuning Image generation Scaling Tools Video generation What it provides Quickstart Tips OpenAI Docs Skill Copy Page Docs MCP Search and read OpenAI developer docs from your editor using MCP. Copy Page OpenAI hosts a public Model Context Protocol (MCP) server for developer documentation on developers.openai.com and platform.openai.com. Server URL (streamable HTTP): https://developers.openai.com/mcp What it provides Read-only access to OpenAI developer documentation (search + page content). A way to pull documentation into your agent’s context while you work. This MCP server is documentation-only. It does not call the OpenAI API on your behalf. Quickstart Choose an option Codex VS Code Cursor Claude Code You can connect Codex to MCP servers in the CLI or IDE extension. The configuration is shared between both so you only have to set it up once. Add the server using the Codex CLI: codex mcp add openaiDeveloperDocs --url https://developers.openai.com/mcp Verify it’s configured: codex mcp list Alternatively, you can add it in ~/.codex/config.toml directly: [mcp_servers.openaiDeveloperDocs] url = \"https://developers.openai.com/mcp\" To have Codex reliably use the MCP server, add this snippet to your AGENTS.md: Always use the OpenAI developer documentation MCP server if you need to work with the OpenAI API, ChatGPT Apps SDK, Codex,… without me having to explicitly ask. Tips If you don’t have the snippet in the AGENTS.md file, you need to explicitly tell your agent to consult the Docs MCP server for the answer. If you have more than one MCP server, keep server names short and descriptive to aid the agent in selecting the server. OpenAI Docs Skill If you use skills in your AI tooling, pair this MCP server with the OpenAI Docs Skill. It tells the agent to use Docs MCP tools first for OpenAI questions, then fall back to official OpenAI domains. Install the skill from the OpenAI skills repository. Confirm you configured this Docs MCP server at https://developers.openai.com/mcp. Enable the skill for your project or session in your agent tooling. Ask OpenAI product/API questions and request citations so answers stay traceable to docs sources.",
+    "fetched": false,
+    "status": "browser_fallback",
+    "browserFallback": true,
+    "fallbackReason": "http_status_403",
+    "capture": {
+      "command": "playwright.browser_capture",
+      "status": 200,
+      "title": "Docs MCP | OpenAI Developers",
+      "chars": 2379,
+      "textSha256": "c616e7100cb77212e01d68e291b263b8a7bdb2eb3cccac68350c60e084d46e2a",
+      "capturedAt": "2026-05-15T21:10:22.905Z",
+      "dataOmitted": "[omitted]"
+    }
+  }
+]

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "S1",
+    "title": "OpenAI Codex fixture",
+    "url": "https://openai.com/codex/",
+    "fetched": false,
+    "status": "fixture",
+    "browserFallback": false,
+    "fallbackReason": "",
+    "chars": 103,
+    "excerpt": "Codex supports repository-aware command execution, code edits, tests, summaries, and handoff reporting."
+  },
+  {
+    "id": "S2",
+    "title": "openai.com",
+    "url": "https://openai.com/codex/",
+    "fetched": true,
+    "status": "403",
+    "browserFallback": false,
+    "fallbackReason": "",
+    "chars": 41,
+    "excerpt": "Enable JavaScript and cookies to continue"
+  },
+  {
+    "id": "S3",
+    "title": "platform.openai.com",
+    "url": "https://platform.openai.com/docs/codex",
+    "fetched": true,
+    "status": "403",
+    "browserFallback": false,
+    "fallbackReason": "",
+    "chars": 41,
+    "excerpt": "Enable JavaScript and cookies to continue"
+  }
+]

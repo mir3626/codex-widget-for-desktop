@@ -1,0 +1,162 @@
+{
+  "generatedAt": "2026-05-16T10:18:59.473Z",
+  "scenarios": [
+    {
+      "id": "self-implementation-full-dag-web-pdf",
+      "userScenario": "사용자가 OpenAI/Codex 관련 내용을 조사해 PDF 파일로 달라고 요청한다.",
+      "architectureWorkflow": [
+        "permission_check validates scoped_yolo grants before implementation",
+        "capability_gap decomposes the request into crawl/extract/verify/draft/render/store/verify operations",
+        "implement_capability materializes web_research_to_pdf.v2 under daemon runtime workspace",
+        "first smoke is intentionally failed, then Toolsmith revises generated source and retries",
+        "smoke_test activates the generated tool only after deterministic artifact checks pass",
+        "DAG executes each web/PDF stage as a separate generated-tool command",
+        "eval ledger and debug bundle record source hashes, commands, artifacts, timings, and resources"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-d7b07830-42c8-44d3-a9d8-e4afb7f328cb",
+        "toolSpecId": "tool-web-research-to-pdf",
+        "capability": "web_research_to_pdf",
+        "outputDir": "docs/reports/assets/scoped-autonomy-self-implementation-2026-05-16/full-dag-web-pdf/autonomy-run-d7b07830-42c8-44d3-a9d8-e4afb7f328cb",
+        "dagCompleted": 14,
+        "evalStepCount": 13,
+        "rerunRunId": "autonomy-tool-run-525200ce-0ef9-49af-8b91-9b4e21f71c24",
+        "rerunMatched": true,
+        "rerunArtifactMatched": true,
+        "dagElapsedMs": 1245,
+        "executeElapsedMs": 821,
+        "executeStageP95LatencyMs": 259,
+        "rerunElapsedMs": 75
+      },
+      "followUp": [
+        "Repeat live runs before promoting any latency or stability claim.",
+        "Renderer can now display profile/gaps/DAG/tools but still needs visual polish during real user trials."
+      ]
+    },
+    {
+      "id": "self-implementation-local-document-conversion",
+      "userScenario": "사용자가 제공한 Markdown 내용을 로컬에서 PDF 문서로 변환해 달라고 요청한다.",
+      "architectureWorkflow": [
+        "permission_check validates read-only generated-tool and output-root grants",
+        "capability_gap classifies local_document_conversion instead of web_research_to_pdf",
+        "Toolsmith materializes local_document_conversion.v1 under daemon runtime workspace",
+        "smoke_test activates the converter only after Markdown/PDF artifact checks pass",
+        "DAG skips crawl/extract/source verification and runs draft/render/store/verify stages",
+        "eval ledger records artifact blobs, source hash evidence, timings, and rerun comparison"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-e005affa-785b-48ca-abb3-5fbb10344ef0",
+        "toolSpecId": "tool-local-document-conversion",
+        "capability": "local_document_conversion",
+        "outputDir": "docs/reports/assets/scoped-autonomy-self-implementation-2026-05-16/local-document-conversion/autonomy-run-e005affa-785b-48ca-abb3-5fbb10344ef0",
+        "dagCompleted": 11,
+        "skippedWebStages": 3,
+        "evalStepCount": 8,
+        "rerunRunId": "autonomy-tool-run-37b69f90-10e8-4d6e-bfb2-68a9ac46d181",
+        "rerunMatched": true,
+        "rerunArtifactMatched": true,
+        "dagElapsedMs": 698,
+        "executeElapsedMs": 450,
+        "rerunElapsedMs": 85,
+        "pdfSha256": "68f0d9663d646d2ca466eb6d6b54aeb85b5b1e74939e68b16729bf418b7096dd",
+        "reportSha256": "8b149e72664f3afa4b81a49cdb214acf449ffff7216a44e808d17fedf39f1c06"
+      },
+      "followUp": [
+        "Pandoc remains optional; builtin PDF rendering is the default unless a profile grants pandoc.",
+        "Future promotion should add source-file conversion cases with explicit filesystem_read grants."
+      ]
+    },
+    {
+      "id": "self-implementation-terminal-generated-tool",
+      "userScenario": "사용자가 안전한 로컬 스크립트 도구를 만들어 node 버전을 확인해 달라고 요청한다.",
+      "architectureWorkflow": [
+        "gap detector classifies terminal_generated_tool",
+        "Toolsmith writes a no-shell Node wrapper in runtime workspace",
+        "smoke test writes deterministic stdout artifacts",
+        "execution evaluates command prefix grants before spawning node without shell expansion",
+        "stdout/stderr artifacts and command provenance are recorded"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-f1d979f7-873a-4e0f-828b-7d8c82792af8",
+        "toolSpecId": "tool-terminal-generated",
+        "capability": "terminal_generated_tool",
+        "executionRunId": "autonomy-tool-run-5b7d8c98-378e-4bd8-9fd9-0d1aa2e37c72",
+        "rerunRunId": "autonomy-tool-run-cd16f69f-a433-45d3-8a01-f6b5c2a1f879",
+        "rerunMatched": true,
+        "rerunArtifactMatched": true,
+        "executeElapsedMs": 118,
+        "rerunElapsedMs": 116,
+        "stdoutSha256": "bbaee59f4c2e17c63d523fae1efcfe19819b7e91a365332fce7d2f7ab2202d16"
+      },
+      "followUp": [
+        "Complex generated scripts should require promotion review before becoming repo source.",
+        "Command splitting intentionally avoids shell features; richer command models need explicit parser tests."
+      ]
+    },
+    {
+      "id": "self-implementation-browser-download-verify",
+      "userScenario": "사용자가 브라우저에서 받은 파일이 실제로 저장됐는지 검증해 달라고 요청한다.",
+      "architectureWorkflow": [
+        "gap detector classifies browser_download_verify",
+        "Toolsmith materializes a bounded local file verifier",
+        "smoke test verifies a deterministic fixture file",
+        "execution checks filesystem_read grant for the supplied path",
+        "file size and SHA-256 evidence are stored as artifact JSON"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-17615e99-a234-412d-984e-64a325280c44",
+        "toolSpecId": "tool-browser-download-verify",
+        "capability": "browser_download_verify",
+        "executionRunId": "autonomy-tool-run-cb56cd1b-db22-4b1e-b7ac-6e75053856d1",
+        "rerunRunId": "autonomy-tool-run-f1bea4be-6913-41bb-b4b0-913bd9fdb7bb",
+        "rerunMatched": true,
+        "rerunArtifactMatched": true,
+        "executeElapsedMs": 80,
+        "rerunElapsedMs": 83,
+        "verificationPath": "docs/reports/assets/scoped-autonomy-self-implementation-2026-05-16/download-verify/download-verification.json"
+      },
+      "followUp": [
+        "Actual browser download shelf observation still requires browser bridge or native helper integration.",
+        "Verifier should later correlate browser download transaction IDs with local files."
+      ]
+    },
+    {
+      "id": "self-implementation-native-windows-blocked",
+      "userScenario": "사용자가 Windows 설정 변경처럼 고위험 native workflow를 요청한다.",
+      "architectureWorkflow": [
+        "gap detector classifies native_windows_workflow",
+        "permission evaluator requires high_risk and os_mutation grants",
+        "run is blocked before materialization or execution",
+        "blocker stays explicit rather than bypassing through OCR or generated code"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-a015cbc0-b0b3-4077-9f91-284755c5d0cc",
+        "requestedCapability": "native_windows_workflow",
+        "missingRequirements": [
+          {
+            "type": "risk_class",
+            "value": "high_risk",
+            "reason": "Windows Settings changes are high risk."
+          },
+          {
+            "type": "os_mutation",
+            "value": "windows_settings_or_app_surface",
+            "reason": "Windows Settings or app workflow may mutate OS/app state."
+          }
+        ],
+        "blockers": [
+          "signed_native_helper_scope_required"
+        ]
+      },
+      "followUp": [
+        "Unattended high-risk Windows mutation remains blocked by policy.",
+        "Signed bounded helper and release signing hardening are required before resuming this slice."
+      ]
+    }
+  ]
+}

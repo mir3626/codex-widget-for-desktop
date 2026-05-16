@@ -581,7 +581,7 @@ try {
   await page.getByText("Provider history").waitFor();
   await page.getByText("DOM Smoke Page").waitFor();
   await page.getByText("Vision Smoke Snapshot").waitFor();
-  await page.getByRole("button", { name: "Activity details" }).click();
+  await page.getByRole("button", { name: "Activity details" }).click({ force: true });
   await page.setViewportSize({ width: 500, height: 820 });
   await page.waitForTimeout(120);
   await page.getByRole("button", { name: "Settings" }).click();
@@ -1042,16 +1042,25 @@ async function assertVisionStatusPanel(page, title, live) {
   const result = await page.evaluate((expectedTitle) => {
     const panel = document.querySelector(".vision-status-panel");
     const dot = panel?.querySelector(".vision-status-dot");
+    const panelRect = panel?.getBoundingClientRect();
+    const conversationRect = document.querySelector(".conversation")?.getBoundingClientRect();
     return {
       title: panel?.querySelector("strong")?.textContent ?? "",
       className: panel?.className ?? "",
       dotClassName: dot?.className ?? "",
       dotAnimation: dot ? window.getComputedStyle(dot).animationName : "",
-      toolbarCount: document.querySelectorAll(".vision-toolbar").length
+      toolbarCount: document.querySelectorAll(".vision-toolbar").length,
+      panelHeight: panelRect?.height ?? 0,
+      panelBottom: panelRect?.bottom ?? 0,
+      conversationTop: conversationRect?.top ?? 0,
+      reservedGap: conversationRect && panelRect ? conversationRect.top - panelRect.bottom : 0
     };
   }, title);
   if (result.title !== title || !result.className.includes("is-visible") || result.toolbarCount !== 0) {
     throw new Error(`Vision status panel should be visible below the Mode bar: ${JSON.stringify(result)}`);
+  }
+  if (result.panelHeight > 58 || result.reservedGap > 12) {
+    throw new Error(`Vision status panel should only cover its banner height: ${JSON.stringify(result)}`);
   }
   if (live && (!result.className.includes("is-live") || !result.dotClassName.includes("live") || result.dotAnimation !== "vision-live-dot")) {
     throw new Error(`Live Vision status should use the blinking red indicator: ${JSON.stringify(result)}`);

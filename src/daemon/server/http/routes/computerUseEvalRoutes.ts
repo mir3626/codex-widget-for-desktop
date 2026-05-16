@@ -1,5 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { createReleaseReadinessSummary, rollupComputerUseEvalMetrics } from "../../../computer-use-eval/index.js";
+import { createReadStream, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { basename, extname, join, resolve, sep } from "node:path";
+import { auditComputerUseVerifier, createReleaseReadinessSummary, rollupComputerUseEvalMetrics } from "../../../computer-use-eval/index.js";
 import { listEffectiveAutonomyCapabilities, ScopedAutonomyRuntime } from "../../../scoped-autonomy/index.js";
 import { readRequestBody, writeJsonResponse } from "../../http.js";
 import type { HttpRouteContext } from "../context.js";
@@ -54,9 +56,133 @@ export async function handleComputerUseEvalRoute(
     return true;
   }
 
+  const runVerifierAuditMatch = /^\/computer-use\/eval\/runs\/([^/]+)\/verifier-audit$/.exec(url.pathname);
+  if (runVerifierAuditMatch && request.method === "GET") {
+    const audit = auditComputerUseVerifier({
+      storage: context.storage,
+      runId: decodeURIComponent(runVerifierAuditMatch[1]),
+      includePassing: url.searchParams.get("includePassing") === "1"
+    });
+    if (audit.runsAudited === 0) {
+      writeJsonResponse(response, 404, { ok: false, error: "Eval run not found." });
+      return true;
+    }
+    writeJsonResponse(response, 200, { ok: true, audit });
+    return true;
+  }
+
+  const resourceContentMatch = /^\/computer-use\/eval\/runs\/([^/]+)\/resources\/([^/]+)\/content$/.exec(url.pathname);
+  if (resourceContentMatch && request.method === "GET") {
+    const runId = decodeURIComponent(resourceContentMatch[1]);
+    const resourceId = decodeURIComponent(resourceContentMatch[2]);
+    const resource = context.storage.listComputerUseEvalResources(runId).find((candidate) => candidate.id === resourceId);
+    if (!resource) {
+      writeJsonResponse(response, 404, { ok: false, error: "Eval resource not found." });
+      return true;
+    }
+    if (!isDownloadableEvalResource(resource.role)) {
+      writeJsonResponse(response, 403, { ok: false, error: "Eval resource content is not downloadable." });
+      return true;
+    }
+    if (!resource.blobId) {
+      writeJsonResponse(response, 404, { ok: false, error: "Eval resource has no blob content." });
+      return true;
+    }
+    const blob = context.storage.readBlob(resource.blobId);
+    if (!blob || !existsSync(blob.path)) {
+      writeJsonResponse(response, 404, { ok: false, error: "Eval resource blob is missing." });
+      return true;
+    }
+    if (blob.size > 25 * 1024 * 1024) {
+      writeJsonResponse(response, 413, { ok: false, error: "Eval resource blob is too large for direct download." });
+      return true;
+    }
+    const disposition = url.searchParams.get("download") === "1" ? "attachment" : "inline";
+    response.writeHead(200, {
+      "Content-Type": blob.mime,
+      "Content-Length": String(blob.size),
+      "Content-Disposition": `${disposition}; filename="${artifactFilename(resource.role, blob.mime)}"`,
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+      "Access-Control-Allow-Headers": "content-type",
+      "X-Content-Type-Options": "nosniff"
+    });
+    createReadStream(blob.path).pipe(response);
+    return true;
+  }
+
   if (url.pathname === "/computer-use/eval/readiness" && request.method === "GET") {
     const runs = context.storage.listComputerUseEvalRuns({ limit: readLimit(url.searchParams.get("limit")) });
-    writeJsonResponse(response, 200, { ok: true, readiness: createReleaseReadinessSummary(runs) });
+    writeJsonResponse(response, 200, {
+      ok: true,
+      readiness: {
+        ...createReleaseReadinessSummary(runs),
+        verifierAudit: auditComputerUseVerifier({
+          storage: context.storage,
+          limit: readLimit(url.searchParams.get("limit"))
+        })
+      }
+    });
+    return true;
+  }
+
+  if (url.pathname === "/computer-use/eval/promotion-gate" && request.method === "GET") {
+    const promotionGate = readLatestPromotionGateEvidence();
+    if (!promotionGate) {
+      writeJsonResponse(response, 404, { ok: false, error: "Computer Use promotion gate evidence not found." });
+      return true;
+    }
+    writeJsonResponse(response, 200, { ok: true, ...promotionGate });
+    return true;
+  }
+
+  if (url.pathname === "/computer-use/eval/dogfood-reports" && request.method === "GET") {
+    writeJsonResponse(response, 200, {
+      ok: true,
+      reports: listLatestDogfoodReports(readLimit(url.searchParams.get("limit")))
+    });
+    return true;
+  }
+
+  if (url.pathname === "/computer-use/eval/dogfood-reports/content" && request.method === "GET") {
+    const reportPath = resolveDogfoodReportPath(url.searchParams.get("path"));
+    if (!reportPath) {
+      writeJsonResponse(response, 400, { ok: false, error: "Dogfood report path is not allowed." });
+      return true;
+    }
+    if (!existsSync(reportPath)) {
+      writeJsonResponse(response, 404, { ok: false, error: "Dogfood report not found." });
+      return true;
+    }
+    const stat = statSync(reportPath);
+    if (stat.size > 10 * 1024 * 1024) {
+      writeJsonResponse(response, 413, { ok: false, error: "Dogfood report is too large for direct viewing." });
+      return true;
+    }
+    response.writeHead(200, {
+      "Content-Type": dogfoodReportContentType(reportPath),
+      "Content-Length": String(stat.size),
+      "Content-Disposition": `inline; filename="${basename(reportPath)}"`,
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+      "Access-Control-Allow-Headers": "content-type",
+      "X-Content-Type-Options": "nosniff"
+    });
+    createReadStream(reportPath).pipe(response);
+    return true;
+  }
+
+  if (url.pathname === "/computer-use/eval/verifier-audit" && request.method === "GET") {
+    writeJsonResponse(response, 200, {
+      ok: true,
+      audit: auditComputerUseVerifier({
+        storage: context.storage,
+        sessionId: url.searchParams.get("sessionId") ?? undefined,
+        scenarioId: url.searchParams.get("scenarioId") ?? undefined,
+        limit: readLimit(url.searchParams.get("limit")),
+        includePassing: url.searchParams.get("includePassing") === "1"
+      })
+    });
     return true;
   }
 
@@ -329,6 +455,175 @@ export async function handleComputerUseEvalRoute(
   }
 
   return false;
+}
+
+function isDownloadableEvalResource(role: string): boolean {
+  return /artifact|file|toolsmith|report|pdf|citation|markdown|download/i.test(role) &&
+    role !== "perception_graph" &&
+    !/screenshot|screen|ocr_region|raw_audio|microphone/i.test(role);
+}
+
+function artifactFilename(role: string, mime: string): string {
+  const extension = extensionForMime(mime);
+  const stem = role.replace(/[^a-z0-9_.-]+/gi, "_").replace(/^_+|_+$/g, "") || "computer-use-artifact";
+  return `${stem}${extension}`;
+}
+
+function readLatestPromotionGateEvidence(): { promotionGate: unknown; evidencePath: string; reportPath: string } | null {
+  const assetsRoot = join(process.cwd(), "docs", "reports", "assets");
+  if (!existsSync(assetsRoot)) {
+    return null;
+  }
+  const latest = readdirSync(assetsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => {
+      const match = /^computer-use-promotion-gate-(\d{4}-\d{2}-\d{2})$/.exec(entry.name);
+      if (!match) {
+        return null;
+      }
+      const evidencePath = join(assetsRoot, entry.name, "evidence.json");
+      if (!existsSync(evidencePath)) {
+        return null;
+      }
+      return {
+        date: match[1],
+        evidencePath,
+        reportPath: join(process.cwd(), "docs", "reports", `computer-use-promotion-gate-${match[1]}.md`)
+      };
+    })
+    .filter((entry): entry is { date: string; evidencePath: string; reportPath: string } => entry !== null)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .at(-1);
+  if (!latest) {
+    return null;
+  }
+  return {
+    promotionGate: JSON.parse(readFileSync(latest.evidencePath, "utf8")),
+    evidencePath: relativeRepoPath(latest.evidencePath),
+    reportPath: relativeRepoPath(latest.reportPath)
+  };
+}
+
+type DogfoodReportSummary = {
+  id: string;
+  title: string;
+  date: string;
+  kind: string;
+  reportPath: string;
+  evidencePath?: string;
+  dogfoodPath?: string;
+};
+
+function listLatestDogfoodReports(limit: number): DogfoodReportSummary[] {
+  const reportsRoot = join(process.cwd(), "docs", "reports");
+  if (!existsSync(reportsRoot)) {
+    return [];
+  }
+  return readdirSync(reportsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+    .map((entry): DogfoodReportSummary | null => {
+      const match = /^(.*)-(\d{4}-\d{2}-\d{2})\.md$/.exec(entry.name);
+      if (!match) {
+        return null;
+      }
+      const stem = match[1];
+      const date = match[2];
+      if (!isComputerUseReportStem(stem)) {
+        return null;
+      }
+      const reportPath = join(reportsRoot, entry.name);
+      const evidencePath = join(process.cwd(), "docs", "reports", "assets", `${stem}-${date}`, "evidence.json");
+      const dogfoodPath = join(process.cwd(), "docs", "dogfood", `${stem}-${date}.json`);
+      const report: DogfoodReportSummary = {
+        id: `${stem}-${date}`,
+        title: dogfoodReportTitle(stem),
+        date,
+        kind: dogfoodReportKind(stem),
+        reportPath: relativeRepoPath(reportPath)
+      };
+      if (existsSync(evidencePath)) {
+        report.evidencePath = relativeRepoPath(evidencePath);
+      }
+      if (existsSync(dogfoodPath)) {
+        report.dogfoodPath = relativeRepoPath(dogfoodPath);
+      }
+      return report;
+    })
+    .filter((entry): entry is DogfoodReportSummary => entry !== null)
+    .sort((a, b) => `${b.date}:${b.id}`.localeCompare(`${a.date}:${a.id}`))
+    .slice(0, limit);
+}
+
+function isComputerUseReportStem(stem: string): boolean {
+  return stem.startsWith("computer-use-") ||
+    stem.startsWith("scoped-autonomy-") ||
+    stem === "windows-codex-computer-use-parity-audit";
+}
+
+function dogfoodReportKind(stem: string): string {
+  if (stem.includes("promotion-gate")) return "promotion_gate";
+  if (stem.includes("parity-audit")) return "parity_audit";
+  if (stem.includes("browser-chrome")) return "browser_chrome";
+  if (stem.includes("browser-prompt") || stem.includes("browser-live")) return "browser_action";
+  if (stem.includes("scoped-autonomy") || stem.includes("toolsmith")) return "toolsmith";
+  return "dogfood";
+}
+
+function dogfoodReportTitle(stem: string): string {
+  return stem
+    .replace(/^computer-use-/, "")
+    .replace(/^scoped-autonomy-/, "toolsmith-")
+    .replaceAll("-", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function resolveDogfoodReportPath(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+  const normalized = value.replace(/\\/g, "/");
+  if (
+    normalized.includes("\0") ||
+    normalized.startsWith("/") ||
+    /^[A-Za-z]:/.test(normalized) ||
+    normalized.split("/").includes("..")
+  ) {
+    return null;
+  }
+  const allowedPrefix = normalized.startsWith("docs/reports/") || normalized.startsWith("docs/dogfood/");
+  if (!allowedPrefix) {
+    return null;
+  }
+  const extension = extname(normalized).toLowerCase();
+  if (extension !== ".md" && extension !== ".json" && extension !== ".jsonl" && extension !== ".txt") {
+    return null;
+  }
+  const root = resolve(process.cwd());
+  const resolved = resolve(root, normalized);
+  return resolved === root || !resolved.startsWith(`${root}${sep}`) ? null : resolved;
+}
+
+function dogfoodReportContentType(path: string): string {
+  const extension = extname(path).toLowerCase();
+  if (extension === ".md") return "text/markdown; charset=utf-8";
+  if (extension === ".json" || extension === ".jsonl") return "application/json; charset=utf-8";
+  return "text/plain; charset=utf-8";
+}
+
+function relativeRepoPath(path: string): string {
+  const root = process.cwd().replace(/\\/g, "/");
+  const normalized = path.replace(/\\/g, "/");
+  return normalized.startsWith(`${root}/`) ? normalized.slice(root.length + 1) : normalized;
+}
+
+function extensionForMime(mime: string): string {
+  const normalized = mime.toLowerCase();
+  if (normalized === "application/pdf") return ".pdf";
+  if (normalized === "application/json") return ".json";
+  if (normalized === "text/markdown") return ".md";
+  if (normalized.startsWith("text/")) return ".txt";
+  if (normalized === "text/x-diff") return ".diff";
+  return ".bin";
 }
 
 function readLimit(value: string | null): number {
