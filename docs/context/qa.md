@@ -96,12 +96,15 @@ template, or missing-capability handling changes:
 
 ```powershell
 npm run smoke:scoped-autonomy-toolsmith
+npm run smoke:scoped-autonomy-self-implementation
+npm run smoke:scoped-autonomy-generated-tool-live-breadth
 ```
 
-This verifies schema v5, scoped autonomy permission profiles, capability gap
-detection, reviewed template materialization, smoke-before-execute gating,
-Markdown/PDF artifact generation, credential redaction, blocked missing-grant
-behavior, and eval ledger/resource recording.
+This verifies schema v5 scoped autonomy state, schema v7 Computer Session
+snapshots where relevant, permission profiles, capability gap detection,
+runtime tool materialization, smoke-before-execute gating, rerun manifests,
+Markdown/PDF/download/terminal artifacts, credential redaction, blocked
+missing-grant behavior, and eval ledger/resource recording.
 
 Run this for realistic safe computer-use scenario coverage across Browser,
 Windows, ASR, Vision, Terminal, and cross-app DAG paths:
@@ -110,6 +113,8 @@ Windows, ASR, Vision, Terminal, and cross-app DAG paths:
 npm run dogfood:research-computer-use
 npm run dogfood:computer-use-process-30
 npm run dogfood:scoped-autonomy-toolsmith
+npm run dogfood:scoped-autonomy-self-implementation
+npm run dogfood:scoped-autonomy-generated-tool-live-breadth
 ```
 
 These write dated scenario catalogs under `docs/dogfood/`, JSON evidence under

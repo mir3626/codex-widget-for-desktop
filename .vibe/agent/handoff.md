@@ -4,6 +4,46 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Docs Cleanup And Evidence Archive
+
+Cleaned up non-harness docs after the Windows Codex Computer Use parity push.
+
+Changed:
+
+- Updated current-state docs that still described the pushed parity work as an
+  intentionally dirty worktree:
+  - `docs/plans/windows-codex-computer-use-parity/README.md`
+  - `docs/plans/windows-codex-computer-use-parity/08-implementation-resumption-handoff.md`
+  - `docs/plans/windows-codex-computer-use-parity/09-approved-execution-handoff/07-current-status-ledger.md`
+  - `docs/plans/windows-codex-computer-use-parity/10-macos-parity-implementation-handoff/08-implementation-backlog.md`
+- Updated Toolsmith/current architecture docs from the old schema-v5
+  `web_research_to_pdf`-only description to the current schema-v7 Computer
+  Session and generated-tool breadth state:
+  - `docs/architecture/research-performance-architecture.md`
+  - `docs/architecture/open-blockers.md`
+  - `docs/context/architecture.md`
+  - `docs/context/qa.md`
+  - `docs/plans/scoped-autonomy-self-implementation-handoff.md`
+- Archived superseded 2026-05-14 dogfood/report/evidence files under
+  `docs/archive/2026-05-14-superseded-evidence/`.
+- Deleted the old `docs/plans/deprecated/` tombstone folder after its content
+  had already been consolidated into `docs/architecture/`.
+- Updated references in `docs/architecture/deprecated-plans.md`,
+  `docs/architecture/README.md`, `docs/plans/README.md`,
+  `docs/plans/browser-action-reliability-foundation-handoff.md`, and
+  `docs/plans/sprint-roadmap.md` so the removed deprecated folder is no longer
+  treated as an active location.
+
+Interpretation:
+
+- Archived JSON files are not random test leftovers. They are historical
+  dogfood/eval outputs: scenario catalogs, evidence ledgers, generated artifact
+  metadata, command/output summaries, and report backing data.
+- Current evidence should use the 2026-05-16 dogfood/report files and the
+  parity audit/promotion gate, not the archived 2026-05-14 files.
+- The archived files may still contain historical absolute local paths from the
+  original run; treat them as audit history, not current redaction examples.
+
 ## Latest Update: Dirty Worktree Review Hardening Handoff
 
 The current dirty worktree implements the Windows Codex Computer Use parity

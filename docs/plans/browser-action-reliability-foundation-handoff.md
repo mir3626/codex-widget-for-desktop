@@ -24,8 +24,10 @@ freshness, semantic candidate generation, action verification, UX feedback, and
 test coverage are not yet treated as one product-quality control loop.
 
 This handoff was the authority for completing the reliability foundation.
-Historical Browser Action and Semantic handoffs under
-`docs/plans/deprecated/` remain baseline context only.
+Historical Browser Action and Semantic handoffs that used to live under
+`docs/plans/deprecated/` have been consolidated into `docs/architecture/` and
+removed from the working tree. Use the architecture shards and git history for
+baseline context.
 
 ## Live Findings That Motivate This Goal
 

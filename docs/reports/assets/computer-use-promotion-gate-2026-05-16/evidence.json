@@ -14,11 +14,11 @@
   },
   "inputs": {
     "processValidationEvidence": [
-      "docs/reports/assets/computer-use-process-validation-30-2026-05-14/evidence.json",
+      "docs/archive/2026-05-14-superseded-evidence/reports/assets/computer-use-process-validation-30-2026-05-14/evidence.json",
       "docs/reports/assets/computer-use-process-validation-30-2026-05-16/evidence.json"
     ],
     "scopedAutonomyLiveEvidence": [
-      "docs/reports/assets/scoped-autonomy-web-research-live-2026-05-14/evidence.json",
+      "docs/archive/2026-05-14-superseded-evidence/reports/assets/scoped-autonomy-web-research-live-2026-05-14/evidence.json",
       "docs/reports/assets/scoped-autonomy-web-research-live-2026-05-16/evidence.json"
     ],
     "scopedAutonomyLiveSampleLedger": "docs/reports/assets/scoped-autonomy-web-research-live-runs.jsonl",
@@ -52,7 +52,7 @@
     "computerSessionBrowserChromePublicExtensionSampleLedger": "docs/reports/assets/computer-use-browser-chrome-public-extension-runs.jsonl",
     "computerSessionBrowserChromePublicExtensionSampleCount": 104,
     "scopedAutonomySelfImplementationEvidence": [
-      "docs/reports/assets/scoped-autonomy-self-implementation-2026-05-14/evidence.json",
+      "docs/archive/2026-05-14-superseded-evidence/reports/assets/scoped-autonomy-self-implementation-2026-05-14/evidence.json",
       "docs/reports/assets/scoped-autonomy-self-implementation-2026-05-16/evidence.json"
     ],
     "scopedAutonomySelfImplementationSampleLedger": "docs/reports/assets/scoped-autonomy-self-implementation-runs.jsonl",
@@ -91,7 +91,7 @@
         "fixture_success_never_promotes_live_computer_use_without_live_trace_gate"
       ],
       "latestEvidencePath": "docs/reports/assets/computer-use-process-validation-30-2026-05-16/evidence.json",
-      "baselineEvidencePath": "docs/reports/assets/computer-use-process-validation-30-2026-05-14/evidence.json",
+      "baselineEvidencePath": "docs/archive/2026-05-14-superseded-evidence/reports/assets/computer-use-process-validation-30-2026-05-14/evidence.json",
       "metrics": {
         "taskSuccessRate": 0.7857142857142857,
         "proofRate": 0.40476190476190477,
@@ -118,7 +118,7 @@
       ],
       "latestEvidencePath": "docs/reports/assets/scoped-autonomy-web-research-live-2026-05-16/evidence.json",
       "evidencePaths": [
-        "docs/reports/assets/scoped-autonomy-web-research-live-2026-05-14/evidence.json",
+        "docs/archive/2026-05-14-superseded-evidence/reports/assets/scoped-autonomy-web-research-live-2026-05-14/evidence.json",
         "docs/reports/assets/scoped-autonomy-web-research-live-2026-05-16/evidence.json"
       ],
       "sampleLedgerPath": "docs/reports/assets/scoped-autonomy-web-research-live-runs.jsonl",

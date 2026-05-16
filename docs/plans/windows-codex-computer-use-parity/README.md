@@ -52,8 +52,9 @@ Then read, in order:
 8. `10-macos-parity-implementation-handoff/09-resume-protocol.md`
 9. The domain shard for the file you are about to edit
 
-Do not trust memory over these files. The worktree is intentionally dirty and
-contains many generated implementation, dogfood, and report artifacts.
+Do not trust memory over these files. Always check `git status --short` before
+editing. The parity implementation, dogfood evidence, and report artifacts were
+committed on `main`; later sessions may still add unrelated local changes.
 
 ## Shard Map
 
@@ -192,7 +193,7 @@ exists. They are never proof of current UI state.
 Work one vertical slice at a time:
 
 1. Read the current files before patching.
-2. Preserve unrelated dirty worktree changes.
+2. Preserve unrelated worktree changes if `git status --short` shows any.
 3. Add or strengthen smoke coverage.
 4. Add dogfood evidence for user-visible behavior.
 5. Update the relevant shard, `09-approved-execution-handoff/07-current-status-ledger.md`,

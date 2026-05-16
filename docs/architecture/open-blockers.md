@@ -84,18 +84,23 @@ This file records items that should not be silently downgraded to complete.
 
 ## Scoped Autonomy Toolsmith
 
-- Status: foundation implemented for reviewed built-in templates. The daemon can
-  store scoped permission profiles, detect missing capability gaps, materialize
-  the initial `web_research_to_pdf` template into the runtime workspace, require
-  smoke success, execute it, and link Markdown/PDF artifacts into eval evidence.
+- Status: implemented for bounded generated-tool workflows, with hardening still
+  required before broader YOLO-style generation. The daemon can store scoped
+  permission profiles, detect capability gaps, materialize runtime tools, require
+  smoke success, execute staged DAG nodes, rerun from generated-tool manifests,
+  and link Markdown/PDF/download/terminal artifacts into eval evidence.
 - Current path: `src/daemon/scoped-autonomy/`,
-  `src/shared/protocol/scopedAutonomy.ts`, storage schema v5, and
-  `npm run smoke:scoped-autonomy-toolsmith`.
-- Required scope expansion: arbitrary generated code synthesis, package
-  installation by generated tools, unattended Windows settings mutation, live
-  authenticated crawling, credential access, and renderer permission-profile UX
-  remain blocked or deferred until sandboxing, signing, review, and user-facing
-  grant controls are stronger.
+  `src/shared/protocol/scopedAutonomy.ts`, storage schema v5, Computer Session
+  schema v7 snapshots, `npm run smoke:scoped-autonomy-self-implementation`, and
+  `npm run smoke:scoped-autonomy-generated-tool-live-breadth`.
+- Implemented capability classes: `web_research_to_pdf`,
+  `local_document_conversion`, `terminal_generated_tool`, and
+  `browser_download_verify`, with 2026-05-16 dogfood evidence.
+- Required scope expansion: unrestricted arbitrary code synthesis, unsandboxed
+  external package installation, unattended Windows settings mutation, live
+  authenticated crawling, credential access, and native high-risk mutation remain
+  blocked or deferred until sandboxing, signing, review, and user-facing grant
+  controls are stronger.
 
 ## Mascot Motion Assets
 

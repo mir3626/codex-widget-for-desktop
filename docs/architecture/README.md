@@ -34,8 +34,8 @@ is defined here.
   and debug bundle requirements.
 - `open-blockers.md` records external-contract or asset-quality blockers that
   should not be silently treated as complete.
-- `deprecated-plans.md` lists completed handoffs that were tombstoned after their
-  current architecture content was consolidated.
+- `deprecated-plans.md` lists retired handoff tombstones that were removed after
+  their current architecture content was consolidated.
 
 ## Current Direction
 

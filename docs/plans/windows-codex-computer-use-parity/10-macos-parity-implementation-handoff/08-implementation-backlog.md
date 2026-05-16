@@ -5,7 +5,7 @@
 Implement one vertical slice at a time:
 
 1. Read the current files before patching.
-2. Preserve unrelated dirty worktree changes.
+2. Preserve unrelated worktree changes if `git status --short` shows any.
 3. Add or strengthen smoke coverage.
 4. Add dogfood evidence when behavior is user-visible.
 5. Update this handoff and `.vibe/agent/*`.

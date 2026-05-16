@@ -1,6 +1,6 @@
 # Scoped Autonomy Self-Implementation Handoff
 
-Date: 2026-05-14
+Date: 2026-05-16
 
 ## Goal
 
@@ -13,6 +13,7 @@ Deliver scoped YOLO computer-use behavior without unrestricted YOLO. The daemon 
 - Gap detector decomposes requests into operations and emits required grants, risk class, evidence needs, fallback plan, proposed tool spec, and blocker classification.
 - Toolsmith runtime supports:
   - reviewed `web_research_to_pdf.v2`
+  - `local_document_conversion.v1`
   - ad hoc `terminal_generated_tool.v1`
   - generated `browser_download_verify.v1`
   - bounded iteration with smoke failure parsing and retry
@@ -35,15 +36,22 @@ Deliver scoped YOLO computer-use behavior without unrestricted YOLO. The daemon 
 ## Vertical Dogfood
 
 - `npm run smoke:scoped-autonomy-self-implementation`
+- `npm run smoke:scoped-autonomy-generated-tool-live-breadth`
 - `npm run dogfood:scoped-autonomy-self-implementation`
 - `npm run dogfood:scoped-autonomy-web-research-live`
+- `npm run dogfood:scoped-autonomy-generated-tool-live-breadth`
 
 Generated evidence:
 
-- `docs/dogfood/scoped-autonomy-self-implementation-2026-05-14.json`
-- `docs/reports/scoped-autonomy-self-implementation-2026-05-14.md`
-- `docs/dogfood/scoped-autonomy-web-research-live-2026-05-14.json`
-- `docs/reports/scoped-autonomy-web-research-live-2026-05-14.md`
+- `docs/dogfood/scoped-autonomy-self-implementation-2026-05-16.json`
+- `docs/reports/scoped-autonomy-self-implementation-2026-05-16.md`
+- `docs/dogfood/scoped-autonomy-web-research-live-2026-05-16.json`
+- `docs/reports/scoped-autonomy-web-research-live-2026-05-16.md`
+- `docs/dogfood/scoped-autonomy-generated-tool-live-breadth-2026-05-16.json`
+- `docs/reports/scoped-autonomy-generated-tool-live-breadth-2026-05-16.md`
+
+The older 2026-05-14 evidence set was superseded by the 2026-05-16 schema v7
+and generated-tool breadth runs.
 
 ## Known External Blockers
 
@@ -57,8 +65,9 @@ Generated evidence:
 
 ## Follow-Up
 
-- Run repeated live web dogfood to establish p50/p95 and rerun stability before promotion.
-- Add browser-backed fetch fallback for upstream sites that block daemon-side HTTP clients.
+- Continue repeated live web dogfood to protect p50/p95 and rerun stability.
+- Keep direct-fetch and browser-backed source capture calibration separate for
+  upstream sites that block daemon-side HTTP clients.
 - Promote generated tools to repo source only through an explicit reviewed promotion workflow.
 - Add package-install helper only after isolated runtime install directories and lock/provenance enforcement are dogfooded.
 - Continue renderer polish for profile creation, narrower one-time approval, and artifact preview.

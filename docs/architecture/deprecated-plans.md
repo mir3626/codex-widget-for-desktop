@@ -1,12 +1,12 @@
-# Deprecated Plan Tombstones
+# Retired Plan Tombstones
 
-Completed sprint handoffs are tombstoned under `docs/plans/deprecated/` after
-their current architectural content is consolidated into this directory.
+Completed sprint handoffs were previously tombstoned under
+`docs/plans/deprecated/` after their current architectural content was
+consolidated into this directory. That folder has now been removed to reduce
+dead documentation weight; use git history if one of the retired handoffs is
+needed for archaeology.
 
-The deprecated folder is intentionally delete-friendly: it keeps historical
-handoffs in one place so they can be removed later in a single cleanup pass.
-
-Current architecture shards supersede these handoff categories:
+Current architecture shards supersede these retired handoff categories:
 
 - Browser Action interface, control surface, end-to-end control, extension
   bridge, View Graph v2, Browser Perception, and Browser Interaction
@@ -15,14 +15,14 @@ Current architecture shards supersede these handoff categories:
   architecture is represented by `capability-transaction.md`,
   `prepared-context.md`, and future Semantic architecture shards.
 
-## Tombstoned Files
+## Removed Tombstone Files
 
-- `docs/plans/deprecated/browser-action-interface-handoff.md`
-- `docs/plans/deprecated/browser-action-end-to-end-control-handoff.md`
 - `docs/plans/deprecated/browser-action-control-surface-handoff.md`
+- `docs/plans/deprecated/browser-action-end-to-end-control-handoff.md`
+- `docs/plans/deprecated/browser-action-interface-handoff.md`
 - `docs/plans/deprecated/browser-extension-bridge-handoff.md`
-- `docs/plans/deprecated/browser-view-graph-v2-handoff.md`
-- `docs/plans/deprecated/browser-perception-interface-handoff.md`
 - `docs/plans/deprecated/browser-interaction-transaction-handoff.md`
+- `docs/plans/deprecated/browser-perception-interface-handoff.md`
+- `docs/plans/deprecated/browser-view-graph-v2-handoff.md`
 - `docs/plans/deprecated/semantic-interface-handoff.md`
 - `docs/plans/deprecated/semantic-memory-handoff.md`

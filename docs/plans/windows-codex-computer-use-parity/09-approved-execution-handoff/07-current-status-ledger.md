@@ -62,7 +62,9 @@ When resuming broad parity implementation after reading this ledger, read that
 `10` pack before patching architecture, browser, native, Toolsmith, safety, or
 promotion-gate code.
 
-The worktree is intentionally dirty. Do not revert unrelated files.
+The implementation and evidence artifacts were pushed to `main` on 2026-05-16.
+Run `git status --short` before editing and do not revert unrelated local
+changes if any are present.
 
 ## Latest Stable Boundary
 
@@ -516,7 +518,7 @@ npm run vibe:checkpoint
 
 Known non-failing notes:
 
-- `git diff --check` can emit CRLF warnings for already-dirty files:
+- `git diff --check` can emit CRLF normalization warnings for these files:
   - `.vibe/agent/session-log.md`
   - `src/daemon/server.ts`
   - `src/daemon/storage/storage.ts`

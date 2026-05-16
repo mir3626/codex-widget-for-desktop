@@ -52,7 +52,7 @@ Before editing:
    - `.vibe/agent/sprint-status.json` exists and project name is
      `codex-widget-for-desktop`.
 2. Run `git status --short`.
-3. Do not revert unrelated dirty worktree changes.
+3. Do not revert unrelated worktree changes if `git status --short` shows any.
 4. Read the files you intend to edit; several large files already contain
    product-owner edits and multi-day generated changes.
 5. Keep work in Codex Orchestrator maintenance mode unless a Sprint prompt with
@@ -86,9 +86,10 @@ Known non-failing notes from current aggregate verification:
 
 ## Current Implementation Snapshot
 
-The parity migration has moved beyond design-only state. Current dirty worktree
-contains a large Computer Use runtime implementation. Do not assume these files
-are committed unless `git status` proves it.
+The parity migration has moved beyond design-only state. The large Computer Use
+runtime implementation and its dogfood/report artifacts were committed to
+`main` on 2026-05-16. Still run `git status --short` before editing because
+later sessions may introduce unrelated local changes.
 
 Implemented or materially started:
 
@@ -382,8 +383,8 @@ Current evidence snapshot:
   and 0 unexpected failures. It now treats Codex research-to-PDF, browser PDF
   download verification, and complex-chart VLM fallback as implemented fixture
   paths with blob-backed eval resources rather than as missing features.
-- Scoped autonomy live OpenAI research-to-PDF has live evidence from 2026-05-14
-  and 2026-05-16 plus repeated redacted samples in
+- Scoped autonomy live OpenAI research-to-PDF has archived 2026-05-14 baseline
+  evidence and current 2026-05-16 evidence plus repeated redacted samples in
   `docs/reports/assets/scoped-autonomy-web-research-live-runs.jsonl`.
 - Parent Computer Session Toolsmith live OpenAI research-to-PDF has repeated
   redacted samples in

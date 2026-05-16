@@ -4,8 +4,10 @@ This directory now keeps active planning state and historical tombstones.
 
 - `sprint-roadmap.md` and `project-milestones.md` remain the current project
   planning ledgers.
-- `browser-action-reliability-foundation-handoff.md` is the active handoff for
-  the next Browser Action reliability/foundation goal.
+- `browser-action-reliability-foundation-handoff.md` is a completed historical
+  handoff for the Browser Action reliability/foundation goal. Current Browser
+  Action follow-up work is tracked by the Computer Use parity shards and
+  promotion-gate reports.
 - `windows-computer-use-daemon-foundation-handoff.md` is the implemented
   and audited daemon-side foundation handoff for broader Windows computer-use
   work.
@@ -35,5 +37,6 @@ This directory now keeps active planning state and historical tombstones.
   macOS Computer Use benchmark migration after context loss.
 - `../reports/local-asr-cpu-benchmark-2026-05-13.md` records the first
   faster-whisper CPU comparison and the current GPU runtime blocker.
-- Completed handoff documents that have been consolidated into
-  `docs/architecture/` live under `docs/plans/deprecated/`.
+- Completed handoff tombstones that had already been consolidated into
+  `docs/architecture/` were removed from `docs/plans/deprecated/`; use
+  `docs/architecture/` and git history instead of relying on deleted tombstones.

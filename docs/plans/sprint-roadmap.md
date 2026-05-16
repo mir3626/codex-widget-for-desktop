@@ -940,9 +940,9 @@ Carryover: Iteration 20 completed the Browser Interaction Transaction pipeline, 
 
 Goal: create durable architecture shards and tombstone completed handoffs.
 
-Expected scope: `docs/architecture/` system map, runtime boundaries, capability transaction, prepared context, safety policy, agent tool runtime, renderer boundary, semantic interface, testing/observability, deprecated plan list, and `docs/plans/deprecated/` tombstones.
+Expected scope: `docs/architecture/` system map, runtime boundaries, capability transaction, prepared context, safety policy, agent tool runtime, renderer boundary, semantic interface, testing/observability, and retired plan tombstone tracking.
 
-Status: complete. Added sharded architecture docs under `docs/architecture/`, added `docs/plans/README.md`, and moved completed Browser Action/Semantic handoff files into `docs/plans/deprecated/` so they remain delete-friendly historical references instead of active architecture authority.
+Status: complete. Added sharded architecture docs under `docs/architecture/`, added `docs/plans/README.md`, and consolidated completed Browser Action/Semantic handoff content into architecture shards. The old `docs/plans/deprecated/` tombstone folder was later removed to reduce dead documentation weight.
 
 ### iter-21-sprint-02-shared-foundation-modules
 

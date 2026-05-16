@@ -99,17 +99,21 @@ promotion evidence.
   permission-scoped self-implementation path for Codex-YOLO-like computer use.
 - `src/shared/protocol/scopedAutonomy.ts` and storage schema v5 add permission
   profiles, autonomy runs, capability gaps, generated tool specs, and generated
-  tool runs.
+  tool runs. The broader Computer Session runtime now also uses schema v7
+  session snapshots for resume/restart reconciliation.
 - `src/daemon/scoped-autonomy/` implements deterministic gap detection,
   scoped permission evaluation, redaction, and a Toolsmith runtime that
   materializes reviewed built-in templates into the daemon runtime workspace.
-- Initial Toolsmith support covers `web_research_to_pdf`: a missing workflow is
-  detected, required grants are checked, a Node tool template is materialized,
-  fixture smoke must pass, and execution emits Markdown/PDF artifacts linked to
-  eval resources.
-- Generated tools currently use reviewed templates only. Arbitrary generated
-  code synthesis remains deferred until there is stronger sandboxing, signing,
-  review, and rollback policy.
+- Toolsmith support now covers the implemented generated-tool breadth:
+  `web_research_to_pdf`, `local_document_conversion`,
+  `terminal_generated_tool`, and `browser_download_verify`. Missing workflows
+  are detected, required grants are checked, runtime tools are materialized or
+  selected, smoke must pass before activation, and execution emits artifacts
+  linked to eval resources.
+- Generated tools run from daemon runtime workspaces and can be rerun from
+  manifests with stability evidence. Arbitrary unrestricted code synthesis is
+  still not a completed safety boundary; the next hardening target is sandboxed
+  execution with scrubbed environment, bounded cwd, and explicit path grants.
 - HTTP debug/execution surfaces under `/computer-use/autonomy/*` expose profiles,
   runs, gaps, generated tool specs, and tool runs, and can drive
   plan/materialize/smoke/execute from the daemon surface.
@@ -134,6 +138,8 @@ Focused smoke:
 ```powershell
 npm run smoke:research-performance-architecture
 npm run smoke:scoped-autonomy-toolsmith
+npm run smoke:scoped-autonomy-self-implementation
+npm run smoke:scoped-autonomy-generated-tool-live-breadth
 ```
 
 Computer-use scenario dogfood:
@@ -142,6 +148,8 @@ Computer-use scenario dogfood:
 npm run dogfood:research-computer-use
 npm run dogfood:computer-use-process-30
 npm run dogfood:scoped-autonomy-toolsmith
+npm run dogfood:scoped-autonomy-self-implementation
+npm run dogfood:scoped-autonomy-generated-tool-live-breadth
 ```
 
 These generate dated scenario catalogs under `docs/dogfood/`, write JSON
@@ -164,9 +172,13 @@ npm run smoke:vision-context
 npm run smoke:asr-runtime-candidates
 npm run smoke:research-performance-architecture
 npm run smoke:scoped-autonomy-toolsmith
+npm run smoke:scoped-autonomy-self-implementation
+npm run smoke:scoped-autonomy-generated-tool-live-breadth
 npm run dogfood:research-computer-use
 npm run dogfood:computer-use-process-30
 npm run dogfood:scoped-autonomy-toolsmith
+npm run dogfood:scoped-autonomy-self-implementation
+npm run dogfood:scoped-autonomy-generated-tool-live-breadth
 npm run smoke:all
 git diff --check
 ```
