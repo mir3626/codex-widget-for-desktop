@@ -147,7 +147,26 @@ function isCommandAllowed(grants: AutonomyPermissionGrants, command: string): bo
   if (grants.commands.denyPatterns.some((pattern) => new RegExp(escapeRegExp(pattern), "i").test(normalized))) {
     return false;
   }
-  return grants.commands.allowPrefixes.some((prefix) => normalized.toLowerCase().startsWith(prefix.trim().toLowerCase()));
+  return grants.commands.allowPrefixes.some((prefix) => matchesCommandGrant(prefix, normalized));
+}
+
+function matchesCommandGrant(prefix: string, command: string): boolean {
+  const normalizedPrefix = prefix.trim().toLowerCase();
+  const normalizedCommand = command.trim().toLowerCase();
+  if (!normalizedPrefix) {
+    return false;
+  }
+  if (normalizedPrefix.endsWith("*")) {
+    const wildcardPrefix = normalizedPrefix.slice(0, -1).trimEnd();
+    return Boolean(wildcardPrefix) && (
+      normalizedCommand === wildcardPrefix ||
+      normalizedCommand.startsWith(`${wildcardPrefix} `)
+    );
+  }
+  if (normalizedCommand === normalizedPrefix) {
+    return true;
+  }
+  return !/\s/.test(normalizedPrefix) && normalizedCommand.startsWith(`${normalizedPrefix} `);
 }
 
 function isPackageInstallAllowed(grants: AutonomyPermissionGrants, value: string): boolean {

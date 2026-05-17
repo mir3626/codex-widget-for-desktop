@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-const evidence = readLatestEvidence();
+const latestEvidence = readLatestEvidence();
+const evidence = latestEvidence.data;
+assertLatestEvidenceFresh(latestEvidence);
 const ledgerPath = join("docs", "reports", "assets", "scoped-autonomy-generated-tool-live-breadth-runs.jsonl");
-const latestEvidencePath = join("docs", "reports", "assets", `scoped-autonomy-generated-tool-live-breadth-${formatSeoulDate(new Date())}`, "evidence.json").replace(/\\/g, "/");
+const latestEvidencePath = latestEvidence.path.replace(/\\/g, "/");
 assert.equal(evidence.schemaVersion, "scoped-autonomy-generated-tool-live-breadth-dogfood.v1");
 assert.equal(evidence.redaction?.absolutePathLeakCount, 0);
 assert.equal(evidence.metrics?.requiredGeneratedClassesPresent, true);
@@ -42,11 +44,35 @@ assert.equal(/(^|[^A-Za-z])[A-Z]:[\\/]/.test(serialized), false, "live breadth s
 console.log(`scoped autonomy generated-tool live breadth smoke ok: scenarios=${evidence.scenarios.length} samples=${samples.length}`);
 
 function readLatestEvidence() {
-  const datedPath = join("docs", "reports", "assets", `scoped-autonomy-generated-tool-live-breadth-${formatSeoulDate(new Date())}`, "evidence.json");
-  if (existsSync(datedPath)) {
-    return JSON.parse(readFileSync(datedPath, "utf8"));
+  const root = join("docs", "reports", "assets");
+  const prefix = "scoped-autonomy-generated-tool-live-breadth-";
+  const latest = readdirSync(root, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith(prefix))
+    .map((entry) => join(root, entry.name, "evidence.json"))
+    .filter((path) => existsSync(path))
+    .sort((a, b) => a.localeCompare(b))
+    .at(-1);
+  if (latest) {
+    return {
+      path: latest,
+      data: JSON.parse(readFileSync(latest, "utf8"))
+    };
   }
-  throw new Error(`Missing generated-tool live breadth evidence: ${datedPath}`);
+  throw new Error(`Missing generated-tool live breadth evidence under ${root}`);
+}
+
+function assertLatestEvidenceFresh(latestEvidence) {
+  const maxAgeDays = Number(process.env.CODEX_WIDGET_DOGFOOD_MAX_EVIDENCE_AGE_DAYS ?? 3);
+  const generatedAt = Date.parse(latestEvidence.data.generatedAt ?? "");
+  const pathDate = /scoped-autonomy-generated-tool-live-breadth-(\d{4}-\d{2}-\d{2})/.exec(latestEvidence.path.replace(/\\/g, "/"))?.[1];
+  const evidenceTime = Number.isFinite(generatedAt)
+    ? generatedAt
+    : pathDate
+      ? Date.parse(`${pathDate}T00:00:00Z`)
+      : Number.NaN;
+  assert.equal(Number.isFinite(evidenceTime), true, "generated-tool live breadth evidence must include a parseable generatedAt or dated path");
+  const ageDays = (Date.now() - evidenceTime) / 86_400_000;
+  assert.equal(ageDays <= maxAgeDays, true, `generated-tool live breadth evidence is stale: ${latestEvidence.path}`);
 }
 
 function readJsonl(path) {
@@ -55,13 +81,4 @@ function readJsonl(path) {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => JSON.parse(line));
-}
-
-function formatSeoulDate(value) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(value);
 }

@@ -37,7 +37,7 @@ try {
       browserDomains: [],
       filesystem: { readRoots: [], writeRoots: [] },
       commands: {
-        allowPrefixes: [isWindows ? "reg query" : "echo"],
+        allowPrefixes: [isWindows ? "reg query *" : "echo"],
         denyPatterns: ["password", "token", "secret", "cookie", "reg add", "Set-ItemProperty", "Remove-Item", "format"]
       },
       packageInstall: false,

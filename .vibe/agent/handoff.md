@@ -4,6 +4,113 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Post-Review Permission And Toolsmith Hardening
+
+Closed the code-review fixes found after the architecture decomposition and
+promotion-gate sharding pass.
+
+Changed in this continuation:
+
+- Renderer permission-profile drafts now turn `network_domain` into the parent
+  `network` grant and `browser_domain` into the parent `browserAutomation`
+  grant in both Computer Use profile helpers and Autonomy Toolsmith helpers.
+- One-time permission profiles now default missing `maxUses` to `1`, and the
+  renderer draft validator rejects one-time drafts with any other max-use
+  value.
+- Command allowlist matching is no longer an accidental multi-token prefix
+  match. Exact grants match exactly, single-token grants still allow argument
+  suffixes, and broad multi-token prefixes must opt in with a trailing `*`.
+  Smokes that intentionally allow `node -e ...` or `reg query ...` now use
+  explicit wildcard grants.
+- Toolsmith local `file:` npm dependencies now require an approved
+  `filesystem_read` root for the local package path before dependency
+  preparation can proceed.
+- Generated Node tools now run with Node's permission model, bounded
+  `--allow-fs-read` and `--allow-fs-write` roots, generated-tool cwd, focused
+  child-process opt-in, and a scrubbed environment instead of inheriting daemon
+  env wholesale.
+- Generated tool templates use the same command-grant wildcard semantics as the
+  daemon permission evaluator.
+- Scoped Autonomy generated-tool live breadth and npm-dependency dogfood smokes
+  now require fresh evidence, defaulting to a maximum age of 3 days via
+  `CODEX_WIDGET_DOGFOOD_MAX_EVIDENCE_AGE_DAYS`.
+- Refreshed 2026-05-17 generated-tool live breadth, npm dependency, promotion
+  gate, and Windows parity audit evidence/report files.
+
+Verification passed after the hardening fixes:
+
+- `npm run build:daemon`
+- `npm run lint`
+- `npm run smoke:scoped-autonomy-npm-dependency-prepare`
+- `npm run smoke:computer-use-terminal-parity`
+- `npm run smoke:computer-use-windows-settings`
+- `npm run smoke:renderer-computer-use-profile-draft`
+- `npm run smoke:scoped-autonomy-generated-tool-live-breadth`
+- `npm run smoke:scoped-autonomy-npm-dependency-dogfood`
+- `npm run dogfood:scoped-autonomy-npm-dependency`
+- `npm run dogfood:scoped-autonomy-generated-tool-live-breadth`
+- `npm run smoke:scoped-autonomy-self-implementation`
+- `npm run gate:computer-use-promotion`
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+  (`implemented_with_guarded_boundaries`, passed=61, guarded=7, blocked=0,
+  missing=0)
+- `git diff --check` with only known CRLF normalization warnings.
+- Strict UTF-8 decode over 88 changed/new text files and mojibake scan both
+  passed; no `.cs` files were touched.
+
+Known non-failing aggregate output remains unchanged: the promotion gate is
+`blocked` only for the existing fixture 30-case baseline gate, unsigned native
+helper development allowance remains expected, and one Windows temp cleanup
+retry was deferred.
+
+## Latest Update: Architecture Decomposition Verification Closure
+
+Closed the active Architecture File Decomposition resume slice and hardened the
+verification scripts that became stale after the split.
+
+Changed in this continuation:
+
+- Updated `scripts/lib/computer-use-promotion-gates.mjs` so renderer,
+  foreground-watch, and Windows-settings gates inspect the new focused shard
+  files instead of only the former monoliths.
+- Updated `scripts/audit-windows-codex-computer-use-parity.mjs` so parity audit
+  evidence spans the new Computer Session, Toolsmith, terminal, renderer helper,
+  and promotion-summary modules.
+- Updated `scripts/smoke-scoped-autonomy-generated-tool-live-breadth.mjs` and
+  `scripts/smoke-scoped-autonomy-npm-dependency-dogfood.mjs` to read the latest
+  available dated evidence instead of requiring a same-day dogfood rerun.
+- Regenerated 2026-05-17 Computer Use promotion-gate and Windows parity-audit
+  report/evidence files.
+
+Verification passed after the continuation:
+
+- `node --check scripts/lib/computer-use-promotion-gates.mjs`
+- `node --check scripts/audit-windows-codex-computer-use-parity.mjs`
+- `node --check scripts/smoke-scoped-autonomy-generated-tool-live-breadth.mjs`
+- `node --check scripts/smoke-scoped-autonomy-npm-dependency-dogfood.mjs`
+- `node scripts/gate-computer-use-promotion.mjs --dry-run --json`
+- `npm run gate:computer-use-promotion`
+- Focused smokes:
+  - `node scripts/smoke-computer-use-promotion-gate-route.mjs`
+  - `node scripts/smoke-renderer-computer-use-profile-draft.mjs`
+  - `node scripts/smoke-renderer-computer-use-browser-chrome-evidence.mjs`
+  - `node scripts/smoke-computer-use-native-watch-boundary.mjs`
+  - `node scripts/smoke-computer-use-windows-settings.mjs`
+  - `node scripts/smoke-scoped-autonomy-generated-tool-live-breadth.mjs`
+  - `node scripts/smoke-scoped-autonomy-npm-dependency-dogfood.mjs`
+- `npm run lint`
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+  (`implemented_with_guarded_boundaries`, passed=61, guarded=7, blocked=0,
+  missing=0)
+- `git diff --check` with only known CRLF normalization warnings.
+- Strict UTF-8 scan over 49 changed/new text files: bad UTF-8 0, suspicious
+  question-mark literals 0, `.cs` touched files 0.
+
+Known non-failing aggregate output remains unchanged: unsigned native helper
+development allowance and Windows temp cleanup deferred retry.
+
 ## Latest Update: Docs Cleanup And Evidence Archive
 
 Cleaned up non-harness docs after the Windows Codex Computer Use parity push.
@@ -6369,22 +6476,129 @@ Verification passed:
 Known non-failing aggregate output remained: unsigned helper development
 allowance and Windows temp cleanup deferred retry.
 
+## Latest Update: Promotion Gate Library Sharding
+
+Closed the requested 800+ line refactor slice for the Computer Use promotion
+gate library:
+
+- `scripts/lib/computer-use-promotion-gates.mjs` is now a small barrel file.
+- Gate readers, shared helpers, process gates, Browser Action gates, Scoped
+  Autonomy gates, Browser Chrome gates, and system boundary gates are split into
+  `scripts/lib/computer-use-promotion-gates/`.
+- The formerly 2,248-line gate library is now split into focused modules; the
+  largest new module is 757 lines.
+- Existing imports through `scripts/lib/computer-use-promotion-gates.mjs`
+  remain stable.
+
+Verification passed:
+
+- `node --check` for the barrel and all new promotion-gate modules
+- `node scripts/gate-computer-use-promotion.mjs --dry-run --json`
+- `npm run gate:computer-use-promotion`
+- `node scripts/smoke-computer-use-promotion-gate-route.mjs`
+- `npm run lint`
+- `npm run audit:computer-use-parity`
+  (`implemented_with_guarded_boundaries`, passed=61, guarded=7, missing=0)
+- `npm run smoke:all`
+- `git diff --check` with only known CRLF normalization warnings
+- strict UTF-8/mojibake scan over 56 dirty/new text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remained: unsigned helper development
+allowance and one Windows temp cleanup deferred retry.
+
+## Latest Update: Post-Review Permission Error Fixes
+
+Closed the follow-up review findings from the permission/Toolsmith hardening
+slice:
+
+- `one_time` autonomy profiles are now clamped to `maxUses=1` on create and
+  update, even when callers pass larger values or clear the field with `null`.
+- One-time profile use is now consumed for Computer Session terminal/profile
+  approvals and direct Toolsmith execute/rerun paths, while scoped-autonomy DAG
+  runs still consume at the end of the DAG so multi-stage generated tools can
+  finish one approved request.
+- Toolsmith permission requirements now include the generated tool `outputDir`
+  read/write root for direct execute, rerun, stage, and smoke paths.
+- Local `file:` npm dependency preparation now rejects local packages that
+  declare transitive dependency fields and runs `npm install` with a scrubbed,
+  workspace-local npm environment.
+- Generated Node tools now get a process-level network guard for
+  `fetch`, `http`, `https`, `net`, and `tls`; non-allowlisted hosts fail with
+  `ERR_NETWORK_ACCESS_DENIED`.
+- The Computer Use Toolsmith artifact smoke now uses a persistent profile
+  because it intentionally verifies artifact generation plus rerun/rollback in
+  one scenario. Dedicated one-time profile coverage remains in
+  `smoke:computer-use-one-time-profile`.
+
+Verification passed:
+
+- `npm run build:daemon`
+- `npm run smoke:computer-use-one-time-profile`
+- `npm run smoke:scoped-autonomy-npm-dependency-prepare`
+- `npm run smoke:computer-use-terminal-parity`
+- `npm run smoke:scoped-autonomy-generated-tool-live-breadth`
+- `npm run dogfood:scoped-autonomy-generated-tool-live-breadth`
+- `npm run smoke:scoped-autonomy-npm-dependency-dogfood`
+- `npm run dogfood:scoped-autonomy-npm-dependency`
+- `npm run smoke:scoped-autonomy-self-implementation`
+- `npm run lint`
+- `npm run smoke:all`
+- `npm run audit:computer-use-parity`
+  (`implemented_with_guarded_boundaries`, passed=61, guarded=7, blocked=0,
+  missing=0)
+- `git diff --check` with only known CRLF normalization warnings for
+  `.vibe/agent/session-log.md`, `scripts/gate-computer-use-promotion.mjs`, and
+  `src/renderer/styles/activity-capability.css`
+- strict UTF-8/mojibake scan over 94 changed/new text files with 0 bad UTF-8,
+  0 suspicious question-mark literals, and no `.cs` files touched
+
+Known non-failing aggregate output remains: the Computer Use promotion gate is
+`blocked` only for the fixture 30-case process-validation previous-baseline
+gate, the native helper is unsigned in development mode, and one Windows temp
+cleanup retry was deferred.
+
 ## Current Resume Point
 
-Latest completed implementation slice is **Terminal Artifact Delta Manifest And
-Rollback**:
+Latest local slice **Post-Review Permission Error Fixes** is verified through
+aggregate smoke and parity audit:
 
-- parity audit status: `implemented_with_guarded_boundaries`
-- parity audit counts: passed=59, guarded=6, missing=0
-- final verification: `npm run lint`, `npm run smoke:computer-use-session`,
-  `npm run smoke:all`, `npm run audit:computer-use-parity`, `git diff
-  --check`, UTF-8/mojibake scan
-- known non-failing outputs: unsigned helper development allowance, Windows temp
-  cleanup deferred retry, known CRLF warnings for `.vibe/agent/session-log.md`,
-  `src/daemon/server.ts`, and `src/daemon/storage/storage.ts`
+- The prior Architecture File Decomposition / Promotion Gate Library Sharding
+  slice remains intact and verified.
+- Renderer profile drafts now include parent grants for domain-scoped network
+  and browser permissions, and one-time drafts are constrained to `maxUses=1`.
+- Daemon create/update paths also force `one_time` profile `maxUses=1`, and
+  one-time profiles are consumed after approved Computer Session terminal/profile
+  usage plus direct Toolsmith execute/rerun usage.
+- Command grants now distinguish exact, single-token prefix, and explicit
+  wildcard multi-token prefix matching. Intentional multi-token prefix smoke
+  grants were updated to include `*`.
+- Toolsmith generated Node tools now run with bounded Node permission flags,
+  approved read/write roots including output directories, generated-tool cwd,
+  focused child-process opt-in, scrubbed env inheritance, and allowlisted
+  network hosts.
+- Local `file:` npm dependency preparation now requires the corresponding local
+  package path to be covered by a granted `filesystem_read` root and blocks
+  local package manifests that declare transitive dependency fields.
+- Generated-tool live breadth and npm-dependency dogfood smokes reject stale
+  evidence older than the configured/default 3-day freshness window.
+- Verification now covers focused permission/Toolsmith smokes,
+  `npm run smoke:all`, and `npm run audit:computer-use-parity` with no missing
+  parity requirements.
+- The promotion gate remains `blocked` only because the existing fixture
+  30-case process-validation gate lacks a previous same-class baseline; all
+  hardening-related gates pass.
+- Remaining intentionally large/tightly coupled files after this pass include
+  `src/daemon/computer-use/sessionRuntime.ts`,
+  `src/daemon/scoped-autonomy/toolsmithRuntime.ts`,
+  `src/renderer/components/ComputerUseSessionsPanel.tsx`, selected dogfood
+  collectors, helper bridge code, Rust/Tauri entrypoints, and storage modules.
+  Further splitting should be done as behavioral slices with focused smoke
+  coverage rather than mechanical movement only.
 
-Do not mark the active goal complete yet. Guarded boundaries remain: official
-app-server client-tool contract, production signing certificate/service,
-unrestricted credential flows, unattended high-risk Windows mutation,
-authenticated browser profile/cookie access, GPU ASR validation, and human
+Do not mark the global product goal complete. Guarded boundaries remain:
+official app-server client-tool contract, production signing
+certificate/service, unrestricted credential flows, unattended high-risk Windows
+mutation, authenticated browser profile/cookie access, signed watch-mode/file
+picker helper v2, real VM/RDP/sandbox backend, GPU ASR validation, and human
 microphone corpus benchmark.

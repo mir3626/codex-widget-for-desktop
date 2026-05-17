@@ -92,6 +92,95 @@ try {
     step.output.profileScope === "one_time"
   ), true);
 
+  const terminalProfilePayload = await postJson("/computer-use/autonomy/profiles", {
+    name: "One-time terminal consume smoke",
+    mode: "scoped_yolo",
+    scope: "one_time",
+    status: "active",
+    maxUses: 5,
+    grants: {
+      network: false,
+      networkDomains: [],
+      browserAutomation: false,
+      browserDomains: [],
+      filesystem: { readRoots: [], writeRoots: [] },
+      commands: { allowPrefixes: ["echo"], denyPatterns: [] },
+      packageInstall: false,
+      osMutation: false,
+      generatedToolMaterialization: false,
+      generatedToolExecution: false,
+      generatedCode: false,
+      credentialAccess: "never",
+      riskClasses: ["read_only", "reversible"],
+      maxRuntimeMs: 30000,
+      maxOutputBytes: 2097152,
+      maxIterations: 1
+    }
+  });
+  assert.equal(terminalProfilePayload.ok, true);
+  assert.equal(terminalProfilePayload.profile.scope, "one_time");
+  assert.equal(terminalProfilePayload.profile.maxUses, 1, "daemon must force one-time profile maxUses to 1");
+
+  const terminalProfileUpdate = await postJson(`/computer-use/autonomy/profiles/${encodeURIComponent(terminalProfilePayload.profile.id)}`, {
+    scope: "one_time",
+    maxUses: null
+  });
+  assert.equal(terminalProfileUpdate.ok, true);
+  assert.equal(terminalProfileUpdate.profile.maxUses, 1, "daemon must not allow clearing maxUses on one-time profiles");
+
+  const terminalStarted = await postJson("/computer-use/sessions", {
+    userRequest: "Run one terminal command with a one-time profile.",
+    requestedSurface: "pty_workspace",
+    profileId: terminalProfilePayload.profile.id,
+    metadata: {
+      requiresTerminal: true
+    }
+  });
+  assert.equal(terminalStarted.ok, true);
+  const terminalSessionId = terminalStarted.result.session.sessionId;
+  const terminalOperation = await postJson(`/computer-use/sessions/${encodeURIComponent(terminalSessionId)}/operations`, {
+    operation: {
+      kind: "terminal",
+      input: {
+        command: "echo one-time-profile-consumed",
+        cwd: process.cwd(),
+        expectedOutcome: "one-time profile command completes once"
+      }
+    },
+    waitMs: 8000
+  });
+  assert.equal(terminalOperation.ok, true);
+  assert.equal(terminalOperation.result.job?.status, "completed", JSON.stringify(terminalOperation.result));
+
+  const profilesAfterUse = await getJson("/computer-use/autonomy/profiles?limit=100");
+  const consumedProfile = profilesAfterUse.profiles.find((profile) => profile.id === terminalProfilePayload.profile.id);
+  assert.equal(consumedProfile?.usedCount, 1);
+  assert.equal(consumedProfile?.maxUses, 1);
+  assert.equal(consumedProfile?.status, "expired");
+
+  const secondTerminalOperation = await postJson(`/computer-use/sessions/${encodeURIComponent(terminalSessionId)}/operations`, {
+    operation: {
+      kind: "terminal",
+      input: {
+        command: "echo one-time-profile-reuse-blocked",
+        cwd: process.cwd(),
+        expectedOutcome: "one-time profile reuse must be blocked"
+      }
+    },
+    waitMs: 8000
+  });
+  assert.equal(secondTerminalOperation.ok, true);
+  assert.equal(secondTerminalOperation.result.job, undefined);
+  assert.equal(secondTerminalOperation.result.dagNode.status, "failed");
+  assert.equal(
+    String(secondTerminalOperation.result.dagNode.lastError).includes("use limit") ||
+      String(secondTerminalOperation.result.dagNode.lastError).includes("expired") ||
+      JSON.stringify(secondTerminalOperation.result.dagNode.output).includes("use limit") ||
+      JSON.stringify(secondTerminalOperation.result.dagNode.output).includes("expired"),
+    true,
+    JSON.stringify(secondTerminalOperation.result)
+  );
+
   console.log(`computer use one-time profile smoke ok on port ${daemon.port}`);
 } finally {
   await daemon.close();

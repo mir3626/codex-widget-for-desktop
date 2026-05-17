@@ -225,16 +225,19 @@ export function createAutonomyPermissionProfile(
   input: AutonomyPermissionProfileCreateInput
 ): AutonomyPermissionProfile {
   const now = input.createdAt ?? new Date().toISOString();
+  const scope = input.scope ?? "persistent";
   const profile: AutonomyPermissionProfile = {
     id: input.id?.trim() || `autonomy-profile-${randomUUID()}`,
     name: input.name.trim() || "Scoped autonomy",
     mode: input.mode ?? "ask",
-    scope: input.scope ?? "persistent",
+    scope,
     status: input.status ?? "active",
     grants: normalizeGrants(input.grants),
     safetyBoundaries: normalizeStringArray(input.safetyBoundaries, defaultSafetyBoundaries()),
     usedCount: normalizeNonNegativeInteger(input.usedCount, 0),
-    maxUses: input.maxUses === undefined ? undefined : normalizePositiveInteger(input.maxUses, 1),
+    maxUses: scope === "one_time"
+      ? 1
+      : input.maxUses === undefined ? undefined : normalizePositiveInteger(input.maxUses, 1),
     expiresAt: normalizeOptionalString(input.expiresAt),
     createdAt: now,
     updatedAt: now
@@ -295,16 +298,19 @@ export function updateAutonomyPermissionProfile(
   if (!current) {
     throw new Error(`Autonomy permission profile not found: ${input.id}`);
   }
+  const nextScope = input.scope ?? current.scope;
   const updated: AutonomyPermissionProfile = {
     ...current,
     name: input.name?.trim() || current.name,
     mode: input.mode ?? current.mode,
-    scope: input.scope ?? current.scope,
+    scope: nextScope,
     status: input.status ?? current.status,
     grants: input.grants ? normalizeGrants({ ...current.grants, ...input.grants }) : current.grants,
     safetyBoundaries: input.safetyBoundaries ? normalizeStringArray(input.safetyBoundaries, current.safetyBoundaries) : current.safetyBoundaries,
     usedCount: input.usedCount === undefined ? current.usedCount : normalizeNonNegativeInteger(input.usedCount, current.usedCount),
-    maxUses: input.maxUses === undefined ? current.maxUses : input.maxUses === null ? undefined : normalizePositiveInteger(input.maxUses, 1),
+    maxUses: nextScope === "one_time"
+      ? 1
+      : input.maxUses === undefined ? current.maxUses : input.maxUses === null ? undefined : normalizePositiveInteger(input.maxUses, 1),
     expiresAt: input.expiresAt === undefined ? current.expiresAt : input.expiresAt ?? undefined,
     updatedAt: input.updatedAt ?? new Date().toISOString()
   };

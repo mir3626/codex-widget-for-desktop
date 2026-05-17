@@ -1,0 +1,259 @@
+.autonomy-select-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.autonomy-select-row label {
+  min-width: 0;
+  height: 30px;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  padding: 0 6px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.autonomy-select-row select {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  color: #303b45;
+  background: transparent;
+  font-size: 10.5px;
+  font-weight: 760;
+}
+
+.autonomy-actions-row {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.autonomy-actions-row button {
+  min-width: 0;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 6px;
+  color: #32404a;
+  background: rgba(232, 237, 239, 0.78);
+  font-size: 10px;
+  font-weight: 790;
+}
+
+.autonomy-actions-row button:hover {
+  color: #123f36;
+  background: var(--accent-soft);
+}
+
+.autonomy-actions-row button:disabled {
+  color: #a2acb6;
+  background: rgba(232, 237, 239, 0.46);
+}
+
+.autonomy-profile-editor {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 96px;
+  max-height: 140px;
+  resize: vertical;
+  padding: 7px;
+  border: 1px solid rgba(36, 42, 50, 0.1);
+  border-radius: 7px;
+  color: #26323d;
+  background: rgba(255, 255, 255, 0.78);
+  font-family: "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.autonomy-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.autonomy-metrics div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 5px 6px;
+  border-radius: 7px;
+  background: rgba(240, 246, 246, 0.72);
+}
+
+.autonomy-metrics dt,
+.autonomy-metrics dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autonomy-metrics dt {
+  color: #7a8591;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.autonomy-metrics dd {
+  color: #303b45;
+  font-size: 10.5px;
+  font-weight: 760;
+}
+
+.autonomy-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.autonomy-evidence-card {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 2px 6px;
+  padding: 6px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.autonomy-evidence-card small {
+  grid-column: 2;
+}
+
+.autonomy-evidence-card strong,
+.autonomy-evidence-card small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autonomy-evidence-card strong {
+  color: #303b45;
+  font-size: 10.5px;
+  font-weight: 780;
+}
+
+.autonomy-evidence-card small {
+  color: #7a8591;
+  font-size: 9.5px;
+  font-weight: 760;
+}
+
+.autonomy-blocked-grants {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.autonomy-blocked-grants span {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 4px 6px;
+  border-radius: 999px;
+  color: var(--danger);
+  background: rgba(179, 72, 72, 0.08);
+  font-size: 9.5px;
+  font-weight: 780;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autonomy-dag-list {
+  display: grid;
+  gap: 4px;
+}
+
+.autonomy-rerun-history {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.autonomy-rerun-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.autonomy-rerun-row div {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.autonomy-rerun-row strong,
+.autonomy-rerun-row small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autonomy-rerun-row strong {
+  color: #303b45;
+  font-size: 10.5px;
+  font-weight: 760;
+}
+
+.autonomy-rerun-row small {
+  color: #7a8591;
+  font-size: 9.5px;
+  font-weight: 760;
+}
+
+.autonomy-dag-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.autonomy-dag-row strong,
+.autonomy-dag-row small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autonomy-dag-row strong {
+  color: #303b45;
+  font-size: 10.5px;
+  font-weight: 760;
+}
+
+.autonomy-dag-row small,
+.autonomy-updated {
+  color: #7a8591;
+  font-size: 9.5px;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+.widget-shell.is-maximized .log-list {
+  padding-right: 158px;
+}

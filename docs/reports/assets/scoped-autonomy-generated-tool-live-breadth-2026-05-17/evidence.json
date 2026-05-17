@@ -1,0 +1,498 @@
+{
+  "schemaVersion": "scoped-autonomy-generated-tool-live-breadth-dogfood.v1",
+  "generatedAt": "2026-05-17T11:27:14.556Z",
+  "storageSchemaVersion": 7,
+  "scenarios": [
+    {
+      "id": "generated-tool-live-web-research-to-pdf-1",
+      "capability": "web_research_to_pdf",
+      "sourceClass": "official_openai_browser_captured_web",
+      "userScenario": "사용자가 공식 OpenAI Codex 문서를 조사해 PDF 파일로 달라고 요청한다.",
+      "architectureWorkflow": [
+        "permission profile grants only official OpenAI domains, generated code, generated-tool execution, and the dogfood output root",
+        "Toolsmith materializes web_research_to_pdf in the runtime workspace and runs smoke before execution",
+        "live official OpenAI pages are browser-captured when daemon-side HTTP is blocked",
+        "generated tool creates Markdown/PDF/citation artifacts and records source hash evidence",
+        "rerun uses the stored generated-tool manifest and compares stable output fingerprints"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-04defbf1-3d01-4ebd-a745-5ee63d9da0a3",
+        "toolSpecId": "tool-web-research-to-pdf",
+        "capability": "web_research_to_pdf",
+        "sourceClass": "official_openai_browser_captured_web",
+        "outputDir": "docs/reports/assets/scoped-autonomy-generated-tool-live-breadth-2026-05-17/web-research-live-1/autonomy-run-04defbf1-3d01-4ebd-a745-5ee63d9da0a3",
+        "elapsedMs": 5113,
+        "executeElapsedMs": 1141,
+        "rerunElapsedMs": 81,
+        "rerunMatched": true,
+        "rerunArtifactMatched": true,
+        "validLiveSourceCount": 3,
+        "sourceQualityReview": "accepted",
+        "sourceQualityEvidence": {
+          "status": "accepted",
+          "officialSourceCount": 3,
+          "totalChars": 7599,
+          "codexMentioned": true,
+          "directFetchedSourceCount": 0,
+          "fallbackSourceCount": 3,
+          "fallbackOnly": true,
+          "basis": [
+            "requires at least two official OpenAI sources over 300 chars",
+            "requires total extracted source text over 1000 chars",
+            "requires Codex to appear in generated report or source metadata",
+            "records fallbackOnly separately so accepted content quality does not imply direct-fetch promotion"
+          ]
+        },
+        "browserFallbackCalibration": {
+          "schemaVersion": "browser-fallback-calibration.v1",
+          "status": "accepted",
+          "captureCount": 3,
+          "captures": [
+            {
+              "origin": "https://help.openai.com",
+              "urlHash": "4a149b79f038ad3b70f4bae8d7650255fb41541bf9d27f240e314184d4ce2c9d",
+              "status": 200,
+              "chars": 3160,
+              "titleSha256": "4780972d52a3a7682dad05e4230b6c0b916e59f2d37addf9f0e26c18ce62bc51",
+              "textSha256": "4e9109d64290483b0d45b9488081098cb3a852ca5c9f5c05314a3ddb5273636c"
+            },
+            {
+              "origin": "https://platform.openai.com",
+              "urlHash": "e8a7deb65d78dd3bc4486368fbe6a8259f456dd44c7f8801d97f5efed79b792f",
+              "status": 200,
+              "chars": 2078,
+              "titleSha256": "16e29357caffd2131cd73f226accd70586603874487cfe05e257093f225c7835",
+              "textSha256": "1c383c491125efbd48f26cbbc7cf0c1974810d4e2d4b674cc9576a7b6ae7ba06"
+            },
+            {
+              "origin": "https://platform.openai.com",
+              "urlHash": "75849823b21faf3252c5b7f704059e6b3eb0e9310aaff7c15f317237d4347551",
+              "status": 200,
+              "chars": 2361,
+              "titleSha256": "cfb8a9dcb206fc4133d9a47d1f38e877f517e53529c908b58dd880d3f5259c28",
+              "textSha256": "c616e7100cb77212e01d68e291b263b8a7bdb2eb3cccac68350c60e084d46e2a"
+            }
+          ],
+          "basis": [
+            "requires at least two browser-captured official sources",
+            "requires HTTP 2xx/3xx browser response status for every capture",
+            "stores text hashes and lengths only"
+          ]
+        },
+        "sourceHashes": [
+          {
+            "origin": "https://help.openai.com",
+            "urlHash": "4a149b79f038ad3b70f4bae8d7650255fb41541bf9d27f240e314184d4ce2c9d",
+            "status": 200,
+            "chars": 3160,
+            "titleSha256": "4780972d52a3a7682dad05e4230b6c0b916e59f2d37addf9f0e26c18ce62bc51",
+            "textSha256": "4e9109d64290483b0d45b9488081098cb3a852ca5c9f5c05314a3ddb5273636c"
+          },
+          {
+            "origin": "https://platform.openai.com",
+            "urlHash": "e8a7deb65d78dd3bc4486368fbe6a8259f456dd44c7f8801d97f5efed79b792f",
+            "status": 200,
+            "chars": 2078,
+            "titleSha256": "16e29357caffd2131cd73f226accd70586603874487cfe05e257093f225c7835",
+            "textSha256": "1c383c491125efbd48f26cbbc7cf0c1974810d4e2d4b674cc9576a7b6ae7ba06"
+          },
+          {
+            "origin": "https://platform.openai.com",
+            "urlHash": "75849823b21faf3252c5b7f704059e6b3eb0e9310aaff7c15f317237d4347551",
+            "status": 200,
+            "chars": 2361,
+            "titleSha256": "cfb8a9dcb206fc4133d9a47d1f38e877f517e53529c908b58dd880d3f5259c28",
+            "textSha256": "c616e7100cb77212e01d68e291b263b8a7bdb2eb3cccac68350c60e084d46e2a"
+          }
+        ],
+        "pdfSha256": "29c40db28bbf604af8b94c6d7a826750f2475bf7434ac59c8f307d14c1b27b02",
+        "reportSha256": "75e24beaee4f413b64072b0673defabf47ebc0b043c7bf364fbb58b4b7875b9b"
+      },
+      "followUp": [
+        "Keep direct-fetch and browser-fallback calibration separate; fallback content quality does not imply direct HTTP stability.",
+        "Do not promote high-risk native workflows based on web/PDF success."
+      ]
+    },
+    {
+      "id": "generated-tool-live-local-document-conversion-1",
+      "capability": "local_document_conversion",
+      "sourceClass": "approved_local_markdown_file",
+      "userScenario": "사용자가 승인된 로컬 Markdown 파일을 PDF 문서로 변환해 달라고 요청한다.",
+      "architectureWorkflow": [
+        "permission profile grants only generated-tool execution and the dogfood read/write roots",
+        "gap detector classifies local_document_conversion instead of web_research_to_pdf",
+        "Toolsmith materializes local_document_conversion in the runtime workspace and runs smoke before execution",
+        "execution reads only the approved Markdown source path and skips crawl/extract/source-verify DAG nodes",
+        "generated tool creates Markdown/PDF artifacts and records source/content hashes plus rerun fingerprints"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-89c3841f-b692-44b0-9288-3139af24ae71",
+        "toolSpecId": "tool-local-document-conversion",
+        "capability": "local_document_conversion",
+        "sourceClass": "approved_local_markdown_file",
+        "outputDir": "docs/reports/assets/scoped-autonomy-generated-tool-live-breadth-2026-05-17/local-conversion-live-1/outputs/autonomy-run-89c3841f-b692-44b0-9288-3139af24ae71",
+        "elapsedMs": 763,
+        "executeElapsedMs": 476,
+        "rerunElapsedMs": 84,
+        "rerunMatched": true,
+        "rerunArtifactMatched": true,
+        "localConversionReview": {
+          "status": "accepted",
+          "sourceBasename": "conversion-source.md",
+          "sourceSha256": "0e8fe8f9d3e5c9928c53867154e71707dbbde630c3e0e4b3695043b3ddaa447e",
+          "reportSha256": "0e8fe8f9d3e5c9928c53867154e71707dbbde630c3e0e4b3695043b3ddaa447e",
+          "pdfSha256": "e7b97c23203dd6abcfcadb8a052f5fc917ed571e83fec46cafc4e096bc710684",
+          "skippedWebStages": 3
+        }
+      },
+      "followUp": [
+        "Add non-Markdown text and large-document cases before claiming broad local conversion coverage.",
+        "Pandoc remains optional and should stay profile-gated for renderer differences."
+      ]
+    },
+    {
+      "id": "generated-tool-live-terminal-node-version-1",
+      "capability": "terminal_generated_tool",
+      "sourceClass": "local_node_runtime",
+      "userScenario": "사용자가 안전한 generated local script로 Node 런타임 버전을 확인해 달라고 요청한다.",
+      "architectureWorkflow": [
+        "gap detector classifies terminal_generated_tool",
+        "Toolsmith writes a no-shell Node wrapper in the runtime workspace",
+        "permission profile allows only the node command prefix and dogfood output root",
+        "execution spawns node without shell expansion and stores stdout/stderr artifacts",
+        "rerun compares stable generated-tool output fingerprints"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-f279eda8-b32b-4afa-9d24-01ac508aa9f0",
+        "toolSpecId": "tool-terminal-generated",
+        "capability": "terminal_generated_tool",
+        "sourceClass": "local_node_runtime",
+        "executeElapsedMs": 117,
+        "rerunElapsedMs": 122,
+        "rerunMatched": true,
+        "rerunArtifactMatched": true,
+        "stdoutStartsWithVersion": true,
+        "stdoutSha256": "bbaee59f4c2e17c63d523fae1efcfe19819b7e91a365332fce7d2f7ab2202d16"
+      },
+      "followUp": [
+        "Richer terminal generated tools still need explicit command parser tests and promotion review.",
+        "Shell features remain unavailable unless a future profile explicitly grants a safe shell parser."
+      ]
+    },
+    {
+      "id": "generated-tool-live-browser-download-verify-1",
+      "capability": "browser_download_verify",
+      "sourceClass": "public_browser_backed_download",
+      "userScenario": "사용자가 공개 웹 리소스로 받은 파일이 실제로 저장됐는지 generated verifier로 확인해 달라고 요청한다.",
+      "architectureWorkflow": [
+        "browser-backed public fetch creates a deterministic local downloaded file under the approved dogfood root",
+        "gap detector classifies browser_download_verify",
+        "Toolsmith materializes a bounded file verifier in the runtime workspace",
+        "execution checks filesystem_read grant for the approved file path and writes size/SHA-256 evidence",
+        "rerun compares stable generated-tool output fingerprints without storing raw local paths"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-fe3b5104-556e-4625-8869-15010d959d58",
+        "toolSpecId": "tool-browser-download-verify",
+        "capability": "browser_download_verify",
+        "sourceClass": "public_browser_backed_download",
+        "executeElapsedMs": 85,
+        "rerunElapsedMs": 89,
+        "rerunMatched": true,
+        "rerunArtifactMatched": true,
+        "publicDownload": {
+          "ok": true,
+          "sourceOrigin": "https://example.com",
+          "urlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+          "status": 200,
+          "bytes": 528,
+          "sha256": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+          "basename": "w3c-public-sample.txt"
+        },
+        "verification": {
+          "ok": true,
+          "size": 528,
+          "sha256": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a"
+        }
+      },
+      "followUp": [
+        "This validates a public browser-backed downloaded file; browser shelf/download transaction correlation remains covered by the Browser Chrome public-extension dogfood.",
+        "Keep local file paths basename-only or redacted in debug surfaces."
+      ]
+    },
+    {
+      "id": "generated-tool-live-web-research-to-pdf-2",
+      "capability": "web_research_to_pdf",
+      "sourceClass": "official_openai_browser_captured_web",
+      "userScenario": "사용자가 공식 OpenAI Codex 문서를 조사해 PDF 파일로 달라고 요청한다.",
+      "architectureWorkflow": [
+        "permission profile grants only official OpenAI domains, generated code, generated-tool execution, and the dogfood output root",
+        "Toolsmith materializes web_research_to_pdf in the runtime workspace and runs smoke before execution",
+        "live official OpenAI pages are browser-captured when daemon-side HTTP is blocked",
+        "generated tool creates Markdown/PDF/citation artifacts and records source hash evidence",
+        "rerun uses the stored generated-tool manifest and compares stable output fingerprints"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-fadb9cdf-3d18-48a2-8154-618c400e854b",
+        "toolSpecId": "tool-web-research-to-pdf",
+        "capability": "web_research_to_pdf",
+        "sourceClass": "official_openai_browser_captured_web",
+        "outputDir": "docs/reports/assets/scoped-autonomy-generated-tool-live-breadth-2026-05-17/web-research-live-2/autonomy-run-fadb9cdf-3d18-48a2-8154-618c400e854b",
+        "elapsedMs": 4633,
+        "executeElapsedMs": 729,
+        "rerunElapsedMs": 80,
+        "rerunMatched": true,
+        "rerunArtifactMatched": true,
+        "validLiveSourceCount": 3,
+        "sourceQualityReview": "accepted",
+        "sourceQualityEvidence": {
+          "status": "accepted",
+          "officialSourceCount": 3,
+          "totalChars": 7599,
+          "codexMentioned": true,
+          "directFetchedSourceCount": 0,
+          "fallbackSourceCount": 3,
+          "fallbackOnly": true,
+          "basis": [
+            "requires at least two official OpenAI sources over 300 chars",
+            "requires total extracted source text over 1000 chars",
+            "requires Codex to appear in generated report or source metadata",
+            "records fallbackOnly separately so accepted content quality does not imply direct-fetch promotion"
+          ]
+        },
+        "browserFallbackCalibration": {
+          "schemaVersion": "browser-fallback-calibration.v1",
+          "status": "accepted",
+          "captureCount": 3,
+          "captures": [
+            {
+              "origin": "https://help.openai.com",
+              "urlHash": "4a149b79f038ad3b70f4bae8d7650255fb41541bf9d27f240e314184d4ce2c9d",
+              "status": 200,
+              "chars": 3160,
+              "titleSha256": "4780972d52a3a7682dad05e4230b6c0b916e59f2d37addf9f0e26c18ce62bc51",
+              "textSha256": "4e9109d64290483b0d45b9488081098cb3a852ca5c9f5c05314a3ddb5273636c"
+            },
+            {
+              "origin": "https://platform.openai.com",
+              "urlHash": "e8a7deb65d78dd3bc4486368fbe6a8259f456dd44c7f8801d97f5efed79b792f",
+              "status": 200,
+              "chars": 2078,
+              "titleSha256": "16e29357caffd2131cd73f226accd70586603874487cfe05e257093f225c7835",
+              "textSha256": "1c383c491125efbd48f26cbbc7cf0c1974810d4e2d4b674cc9576a7b6ae7ba06"
+            },
+            {
+              "origin": "https://platform.openai.com",
+              "urlHash": "75849823b21faf3252c5b7f704059e6b3eb0e9310aaff7c15f317237d4347551",
+              "status": 200,
+              "chars": 2361,
+              "titleSha256": "cfb8a9dcb206fc4133d9a47d1f38e877f517e53529c908b58dd880d3f5259c28",
+              "textSha256": "c616e7100cb77212e01d68e291b263b8a7bdb2eb3cccac68350c60e084d46e2a"
+            }
+          ],
+          "basis": [
+            "requires at least two browser-captured official sources",
+            "requires HTTP 2xx/3xx browser response status for every capture",
+            "stores text hashes and lengths only"
+          ]
+        },
+        "sourceHashes": [
+          {
+            "origin": "https://help.openai.com",
+            "urlHash": "4a149b79f038ad3b70f4bae8d7650255fb41541bf9d27f240e314184d4ce2c9d",
+            "status": 200,
+            "chars": 3160,
+            "titleSha256": "4780972d52a3a7682dad05e4230b6c0b916e59f2d37addf9f0e26c18ce62bc51",
+            "textSha256": "4e9109d64290483b0d45b9488081098cb3a852ca5c9f5c05314a3ddb5273636c"
+          },
+          {
+            "origin": "https://platform.openai.com",
+            "urlHash": "e8a7deb65d78dd3bc4486368fbe6a8259f456dd44c7f8801d97f5efed79b792f",
+            "status": 200,
+            "chars": 2078,
+            "titleSha256": "16e29357caffd2131cd73f226accd70586603874487cfe05e257093f225c7835",
+            "textSha256": "1c383c491125efbd48f26cbbc7cf0c1974810d4e2d4b674cc9576a7b6ae7ba06"
+          },
+          {
+            "origin": "https://platform.openai.com",
+            "urlHash": "75849823b21faf3252c5b7f704059e6b3eb0e9310aaff7c15f317237d4347551",
+            "status": 200,
+            "chars": 2361,
+            "titleSha256": "cfb8a9dcb206fc4133d9a47d1f38e877f517e53529c908b58dd880d3f5259c28",
+            "textSha256": "c616e7100cb77212e01d68e291b263b8a7bdb2eb3cccac68350c60e084d46e2a"
+          }
+        ],
+        "pdfSha256": "1c2c3b1a36686a236a7044fe161a9a750d169dc181408e5c26dad1c6b10be0e3",
+        "reportSha256": "1f944df5405ffca9cc5aeff85cb0b2c9103ea55cb301fd60028c48c2a9575d46"
+      },
+      "followUp": [
+        "Keep direct-fetch and browser-fallback calibration separate; fallback content quality does not imply direct HTTP stability.",
+        "Do not promote high-risk native workflows based on web/PDF success."
+      ]
+    },
+    {
+      "id": "generated-tool-live-local-document-conversion-2",
+      "capability": "local_document_conversion",
+      "sourceClass": "approved_local_markdown_file",
+      "userScenario": "사용자가 승인된 로컬 Markdown 파일을 PDF 문서로 변환해 달라고 요청한다.",
+      "architectureWorkflow": [
+        "permission profile grants only generated-tool execution and the dogfood read/write roots",
+        "gap detector classifies local_document_conversion instead of web_research_to_pdf",
+        "Toolsmith materializes local_document_conversion in the runtime workspace and runs smoke before execution",
+        "execution reads only the approved Markdown source path and skips crawl/extract/source-verify DAG nodes",
+        "generated tool creates Markdown/PDF artifacts and records source/content hashes plus rerun fingerprints"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-b2639126-8677-4714-9563-e8451e4b779f",
+        "toolSpecId": "tool-local-document-conversion",
+        "capability": "local_document_conversion",
+        "sourceClass": "approved_local_markdown_file",
+        "outputDir": "docs/reports/assets/scoped-autonomy-generated-tool-live-breadth-2026-05-17/local-conversion-live-2/outputs/autonomy-run-b2639126-8677-4714-9563-e8451e4b779f",
+        "elapsedMs": 574,
+        "executeElapsedMs": 336,
+        "rerunElapsedMs": 80,
+        "rerunMatched": true,
+        "rerunArtifactMatched": true,
+        "localConversionReview": {
+          "status": "accepted",
+          "sourceBasename": "conversion-source.md",
+          "sourceSha256": "31bbaf2b68014ebce5154c60cd678b7de8c7e51630343e0f259925e5dcc1d6c2",
+          "reportSha256": "31bbaf2b68014ebce5154c60cd678b7de8c7e51630343e0f259925e5dcc1d6c2",
+          "pdfSha256": "6323400564dffb417307151775511e183ef379b09161ad1a02f151b3cf17bb8d",
+          "skippedWebStages": 3
+        }
+      },
+      "followUp": [
+        "Add non-Markdown text and large-document cases before claiming broad local conversion coverage.",
+        "Pandoc remains optional and should stay profile-gated for renderer differences."
+      ]
+    },
+    {
+      "id": "generated-tool-live-terminal-node-version-2",
+      "capability": "terminal_generated_tool",
+      "sourceClass": "local_node_runtime",
+      "userScenario": "사용자가 안전한 generated local script로 Node 런타임 버전을 확인해 달라고 요청한다.",
+      "architectureWorkflow": [
+        "gap detector classifies terminal_generated_tool",
+        "Toolsmith writes a no-shell Node wrapper in the runtime workspace",
+        "permission profile allows only the node command prefix and dogfood output root",
+        "execution spawns node without shell expansion and stores stdout/stderr artifacts",
+        "rerun compares stable generated-tool output fingerprints"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-3aeb7d7b-7801-4607-8360-cad66381096d",
+        "toolSpecId": "tool-terminal-generated",
+        "capability": "terminal_generated_tool",
+        "sourceClass": "local_node_runtime",
+        "executeElapsedMs": 103,
+        "rerunElapsedMs": 102,
+        "rerunMatched": true,
+        "rerunArtifactMatched": true,
+        "stdoutStartsWithVersion": true,
+        "stdoutSha256": "bbaee59f4c2e17c63d523fae1efcfe19819b7e91a365332fce7d2f7ab2202d16"
+      },
+      "followUp": [
+        "Richer terminal generated tools still need explicit command parser tests and promotion review.",
+        "Shell features remain unavailable unless a future profile explicitly grants a safe shell parser."
+      ]
+    },
+    {
+      "id": "generated-tool-live-browser-download-verify-2",
+      "capability": "browser_download_verify",
+      "sourceClass": "public_browser_backed_download",
+      "userScenario": "사용자가 공개 웹 리소스로 받은 파일이 실제로 저장됐는지 generated verifier로 확인해 달라고 요청한다.",
+      "architectureWorkflow": [
+        "browser-backed public fetch creates a deterministic local downloaded file under the approved dogfood root",
+        "gap detector classifies browser_download_verify",
+        "Toolsmith materializes a bounded file verifier in the runtime workspace",
+        "execution checks filesystem_read grant for the approved file path and writes size/SHA-256 evidence",
+        "rerun compares stable generated-tool output fingerprints without storing raw local paths"
+      ],
+      "success": true,
+      "result": {
+        "runId": "autonomy-run-e7686da3-6100-460b-80cc-90947b16e5eb",
+        "toolSpecId": "tool-browser-download-verify",
+        "capability": "browser_download_verify",
+        "sourceClass": "public_browser_backed_download",
+        "executeElapsedMs": 79,
+        "rerunElapsedMs": 81,
+        "rerunMatched": true,
+        "rerunArtifactMatched": true,
+        "publicDownload": {
+          "ok": true,
+          "sourceOrigin": "https://example.com",
+          "urlHash": "0f115db062b7c0dd030b16878c99dea5c354b49dc37b38eb8846179c7783e9d7",
+          "status": 200,
+          "bytes": 528,
+          "sha256": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a",
+          "basename": "w3c-public-sample.txt"
+        },
+        "verification": {
+          "ok": true,
+          "size": 528,
+          "sha256": "fb91d75a6bb430787a61b0aec5e374f580030f2878e1613eab5ca6310f7bbb9a"
+        }
+      },
+      "followUp": [
+        "This validates a public browser-backed downloaded file; browser shelf/download transaction correlation remains covered by the Browser Chrome public-extension dogfood.",
+        "Keep local file paths basename-only or redacted in debug surfaces."
+      ]
+    }
+  ],
+  "metrics": {
+    "totalScenarios": 8,
+    "successfulScenarios": 8,
+    "generatedCapabilityClasses": [
+      "browser_download_verify",
+      "local_document_conversion",
+      "terminal_generated_tool",
+      "web_research_to_pdf"
+    ],
+    "requiredGeneratedClasses": [
+      "browser_download_verify",
+      "local_document_conversion",
+      "terminal_generated_tool",
+      "web_research_to_pdf"
+    ],
+    "requiredGeneratedClassesPresent": true,
+    "sampleCount": 16,
+    "executeSampleCount": 8,
+    "sampleCountByClass": {
+      "browser_download_verify": 2,
+      "local_document_conversion": 2,
+      "terminal_generated_tool": 2,
+      "web_research_to_pdf": 2
+    },
+    "repeatedLiveRunsPresent": true,
+    "p95LatencySampleCount": 16,
+    "p95LatencyMs": 1141,
+    "rerunMatchedCount": 8,
+    "rerunArtifactMatchedCount": 8,
+    "webSourceQualityAccepted": true,
+    "localDocumentConversionVerified": true,
+    "terminalCommandVerified": true,
+    "publicDownloadVerified": true,
+    "pathRedactionPresent": true
+  },
+  "sampleLedger": "docs/reports/assets/scoped-autonomy-generated-tool-live-breadth-runs.jsonl",
+  "improvementItems": [
+    "This is repeated live/local-live generated-tool breadth evidence, not unrestricted desktop automation.",
+    "web_research_to_pdf uses live official OpenAI browser-captured source evidence when daemon-side HTTP is blocked.",
+    "local_document_conversion converts an approved local Markdown source file and records only source hash/artifact evidence.",
+    "terminal_generated_tool uses a real local Node runtime command with shell expansion disabled.",
+    "browser_download_verify validates a file produced from a public browser-backed fetch and records only hash/size/source metadata.",
+    "Promotion remains a review decision; high-risk native Windows mutation is still covered by the separate non-promoting boundary gate."
+  ],
+  "redaction": {
+    "rawPathsRedacted": true,
+    "repoPathsRelative": true,
+    "absolutePathLeakCount": 0
+  }
+}

@@ -165,7 +165,7 @@ dd{margin:0;min-width:0;word-break:break-word;color:var(--secondary);font-size:1
   <div class="nav-meta">
     <span>iter-25</span>
     <span>/</span>
-    <span>2026-05-12</span>
+    <span>2026-05-17</span>
   </div>
 </nav>
 <main id="content" class="container">
@@ -174,7 +174,7 @@ dd{margin:0;min-width:0;word-break:break-word;color:var(--secondary);font-size:1
   <h1>Product Context</h1>
   <p class="subtitle">Codex Widget for Desktop is a resident desktop assistant widget: a small mascot-style Tauri app that stays off the taskbar, streams agent responses in real time, and can grow into browser, screen, terminal, and local-workspace automation.</p>
   <div class="meta-row" aria-label="Report metadata">
-    <span>Generated 2026-05-12 09:47:20 KST</span>
+    <span>Generated 2026-05-17 12:13:22 KST</span>
     <span>Platform: unspecified</span>
     <span>Status: <span class="status-badge" data-status="in-progress">iter-25-in-progress</span></span>
   </div>
@@ -537,7 +537,7 @@ dd{margin:0;min-width:0;word-break:break-word;color:var(--secondary);font-size:1
     <section id="next-steps" data-section="next-steps" class="report-section wrap"><div class="section-heading"><h2>Next Steps</h2></div><ol class="next-steps"><li>Continue iter-25 with the next roadmap slot.</li></ol></section>
   </div>
   <aside class="col-side">
-    <section id="decisions" data-section="decisions" class="report-section wrap decisions-section"><div class="section-heading"><h2>Key Decisions</h2><span>20 entries</span></div><div class="decision-tools" aria-label="Decision filters">
+    <section id="decisions" data-section="decisions" class="report-section wrap decisions-section"><div class="section-heading"><h2>Key Decisions</h2><span>26 entries</span></div><div class="decision-tools" aria-label="Decision filters">
       <div class="filter-list" role="group" aria-label="Filter key decisions"><button class="filter-chip" type="button" data-filter="all" aria-pressed="true">All</button><button class="filter-chip" type="button" data-filter="decision" aria-pressed="false">decision</button><button class="filter-chip" type="button" data-filter="failure" aria-pressed="false">failure</button><button class="filter-chip" type="button" data-filter="sprint-complete" aria-pressed="false">sprint-complete</button><button class="filter-chip" type="button" data-filter="user-directive" aria-pressed="false">user-directive</button><button class="filter-chip" type="button" data-filter="audit" aria-pressed="false">audit</button><button class="filter-chip" type="button" data-filter="planner-skip" aria-pressed="false">planner-skip</button><button class="filter-chip" type="button" data-filter="drift-observed" aria-pressed="false">drift-observed</button></div>
       <div class="expand-actions">
         <button type="button" data-decision-action="expand">Expand all</button>
@@ -639,12 +639,48 @@ dd{margin:0;min-width:0;word-break:break-word;color:var(--secondary);font-size:1
                 <span class="status-badge" data-status="idle">audit</span>
                 <div><details><summary>Wrote `docs/reports/browser-action-reliability-completion-audit-2026-05-11.md`, mapping all ten requ...</summary><p>Wrote `docs/reports/browser-action-reliability-completion-audit-2026-05-11.md`, mapping all ten requested workstreams to implementation files, smoke commands, dogfood evidence, durable context updates, and known non-blocking follow-ups. Official app-server client-tool and live Windows UI Automation/browser-chrome execution were explicitly BLOCKED external integrations at iter-24 closure; the UIA helper item is superseded by iter-25&#39;s bounded helper implementation.</p></details></div>
               </article>
+        </section><section class="decision-date-group" aria-label="Decisions for 2026-05-12">
+          <h3>2026-05-12</h3>
+          <article class="decision-entry" data-tag="audit">
+                <time>16:55:00</time>
+                <span class="status-badge" data-status="idle">audit</span>
+                <div><details><summary>Completed the required prompt-to-artifact audit against `docs/plans/windows-computer-use-daemon-foun...</summary><p>Completed the required prompt-to-artifact audit against `docs/plans/windows-computer-use-daemon-foundation-handoff.md` and wrote `docs/reports/windows-computer-use-daemon-foundation-completion-audit-2026-05-12.md`. Closed audit gaps with durable capability lock APIs/diagnostics, priority dispatch, context lease expiry/mismatch checks, approval deadline expiry, daemon OCR capability, persisted-input redaction plus terminal credential-command rejection, ledger activity records, prompt waiter shutdown resolution, and stricter effect-specific desktop verification.</p></details></div>
+              </article>
+        </section><section class="decision-date-group" aria-label="Decisions for 2026-05-14">
+          <h3>2026-05-14</h3>
+          <article class="decision-entry" data-tag="decision">
+                <time>00:26:08</time>
+                <span class="status-badge" data-status="idle">decision</span>
+                <div><details><summary>Product owner deferred CUDA DLL installation and local ASR GPU validation. Updated local ASR plan/re...</summary><p>Product owner deferred CUDA DLL installation and local ASR GPU validation. Updated local ASR plan/report/handoff so the next ASR work is human microphone CPU corpus collection plus persistent-worker latency, while GPU candidates remain dormant benchmark options for a later explicit pass.</p></details></div>
+              </article><article class="decision-entry" data-tag="decision">
+                <time>01:12:34</time>
+                <span class="status-badge" data-status="idle">decision</span>
+                <div><details><summary>Product owner deferred recording `.runtime/asr/human-mic-corpus/` WAV files and running the human-co...</summary><p>Product owner deferred recording `.runtime/asr/human-mic-corpus/` WAV files and running the human-corpus `--persistent` benchmark. Kept the scaffold and worker harness implemented, with SAPI persistent worker baseline as current local evidence.</p></details></div>
+              </article>
+        </section><section class="decision-date-group" aria-label="Decisions for 2026-05-15">
+          <h3>2026-05-15</h3>
+          <article class="decision-entry" data-tag="audit">
+                <time>01:57:09</time>
+                <span class="status-badge" data-status="idle">audit</span>
+                <div><details><summary>Audited live widget session `4749a65b-8799-4408-b401-d6951ea7c852` (`특갤켜줘`) and confirmed the histor...</summary><p>Audited live widget session `4749a65b-8799-4408-b401-d6951ea7c852` (`특갤켜줘`) and confirmed the historical mismatch: Browser Action extension events succeeded while prompt eval runs were finalized as failed before extension results arrived. Added `npm run audit:real-use-session` for real chat-session/event/eval/activity inspection.</p></details></div>
+              </article>
+        </section><section class="decision-date-group" aria-label="Decisions for 2026-05-16">
+          <h3>2026-05-16</h3>
+          <article class="decision-entry" data-tag="audit">
+                <time>14:22:40</time>
+                <span class="status-badge" data-status="idle">audit</span>
+                <div><details><summary>Added `npm run audit:computer-use-parity`, which generates a prompt-to-artifact checklist report/evi...</summary><p>Added `npm run audit:computer-use-parity`, which generates a prompt-to-artifact checklist report/evidence for the Windows Codex Computer Use parity handoff. The first run produced `implemented_with_guarded_boundaries` with passed=41, guarded=4, missing=0; guarded means intentionally non-promoting native/release boundaries, not completed native execution.</p></details></div>
+              </article><article class="decision-entry" data-tag="audit">
+                <time>14:43:00</time>
+                <span class="status-badge" data-status="idle">audit</span>
+                <div><details><summary>Extended `audit:computer-use-parity` with a native helper-v2 capability-manifest check covering Rust...</summary><p>Extended `audit:computer-use-parity` with a native helper-v2 capability-manifest check covering Rust status metadata, daemon diagnostics, smoke assertions, and disabled guarded input. The audit now reports `implemented_with_guarded_boundaries` with passed=42, guarded=4, missing=0.</p></details></div>
+              </article>
         </section></div></section>
   </aside>
 </div>
 </main>
 <footer class="site-footer">
-  <div class="container">Generated by vibe-doctor 0.1.0 / 2026-05-12 09:47:20 KST</div>
+  <div class="container">Generated by vibe-doctor 0.1.0 / 2026-05-17 12:13:22 KST</div>
 </footer>
 </div>
 <script>

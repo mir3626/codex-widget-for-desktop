@@ -15,8 +15,7 @@ try {
   const profile = await postJson("/computer-use/autonomy/profiles", {
     name: "Computer Use Toolsmith smoke",
     mode: "scoped_yolo",
-    scope: "one_time",
-    maxUses: 3,
+    scope: "persistent",
     grants: {
       network: true,
       networkDomains: ["example.com", "openai.com", "*.openai.com", "127.0.0.1"],

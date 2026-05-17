@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-const evidence = readLatestEvidence();
+const latestEvidence = readLatestEvidence();
+const evidence = latestEvidence.data;
+assertLatestEvidenceFresh(latestEvidence);
 const ledgerPath = join("docs", "reports", "assets", "scoped-autonomy-npm-dependency-runs.jsonl");
-const latestEvidencePath = join("docs", "reports", "assets", `scoped-autonomy-npm-dependency-${formatSeoulDate(new Date())}`, "evidence.json").replace(/\\/g, "/");
+const latestEvidencePath = latestEvidence.path.replace(/\\/g, "/");
 
 assert.equal(evidence.schemaVersion, "scoped-autonomy-npm-dependency-dogfood.v1");
 assert.equal(evidence.evidenceClass, "local_npm_dependency");
@@ -45,11 +47,35 @@ assert.equal(/file:(\/\/\/)?[A-Z]:[\\/]/i.test(serialized), false, "npm dependen
 console.log(`scoped autonomy npm dependency dogfood smoke ok: scenarios=${evidence.scenarios.length} samples=${samples.length}`);
 
 function readLatestEvidence() {
-  const datedPath = join("docs", "reports", "assets", `scoped-autonomy-npm-dependency-${formatSeoulDate(new Date())}`, "evidence.json");
-  if (existsSync(datedPath)) {
-    return JSON.parse(readFileSync(datedPath, "utf8"));
+  const root = join("docs", "reports", "assets");
+  const prefix = "scoped-autonomy-npm-dependency-";
+  const latest = readdirSync(root, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith(prefix))
+    .map((entry) => join(root, entry.name, "evidence.json"))
+    .filter((path) => existsSync(path))
+    .sort((a, b) => a.localeCompare(b))
+    .at(-1);
+  if (latest) {
+    return {
+      path: latest,
+      data: JSON.parse(readFileSync(latest, "utf8"))
+    };
   }
-  throw new Error(`Missing scoped autonomy npm dependency evidence: ${datedPath}`);
+  throw new Error(`Missing scoped autonomy npm dependency evidence under ${root}`);
+}
+
+function assertLatestEvidenceFresh(latestEvidence) {
+  const maxAgeDays = Number(process.env.CODEX_WIDGET_DOGFOOD_MAX_EVIDENCE_AGE_DAYS ?? 3);
+  const generatedAt = Date.parse(latestEvidence.data.generatedAt ?? "");
+  const pathDate = /scoped-autonomy-npm-dependency-(\d{4}-\d{2}-\d{2})/.exec(latestEvidence.path.replace(/\\/g, "/"))?.[1];
+  const evidenceTime = Number.isFinite(generatedAt)
+    ? generatedAt
+    : pathDate
+      ? Date.parse(`${pathDate}T00:00:00Z`)
+      : Number.NaN;
+  assert.equal(Number.isFinite(evidenceTime), true, "npm dependency dogfood evidence must include a parseable generatedAt or dated path");
+  const ageDays = (Date.now() - evidenceTime) / 86_400_000;
+  assert.equal(ageDays <= maxAgeDays, true, `npm dependency dogfood evidence is stale: ${latestEvidence.path}`);
 }
 
 function readJsonl(path) {
@@ -58,13 +84,4 @@ function readJsonl(path) {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => JSON.parse(line));
-}
-
-function formatSeoulDate(value) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(value);
 }

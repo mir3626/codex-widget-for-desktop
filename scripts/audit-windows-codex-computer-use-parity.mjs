@@ -158,7 +158,11 @@ function checkSurfacesPermissionsSafety() {
 function checkObservationPerceptionAction() {
   const perception = readText("src/daemon/perception-graph/index.ts");
   const runtime = readText("src/daemon/computer-use/sessionRuntime.ts");
+  const screenObservationRuntime = readText("src/daemon/computer-use/screenObservationRuntime.ts");
+  const operationRouting = readText("src/daemon/computer-use/operationRouting.ts");
   const sessionSmoke = readText("scripts/smoke-computer-use-session.mjs");
+  const roiRuntimeSource = [runtime, screenObservationRuntime, sessionSmoke].join("\n");
+  const actionFallbackSource = [runtime, operationRouting, sessionSmoke].join("\n");
   return [
     containsCheck("perception:graph-sources", perception, [
       "buildPerceptionGraphFromBrowserObservation",
@@ -166,12 +170,16 @@ function checkObservationPerceptionAction() {
       "buildPerceptionGraphFromOcr",
       "buildPerceptionGraphFromScreenObservation"
     ], "Perception graph accepts Browser DOM, native/UIA, OCR, and screen observations.", ["src/daemon/perception-graph/index.ts"]),
-    containsCheck("perception:roi-cascade-evidence", runtime, [
+    containsCheck("perception:roi-cascade-evidence", roiRuntimeSource, [
       "screenTileCache",
       "previousTileHashes",
       "roi",
       "perceptionGraphId"
-    ], "Computer Session records ROI/tile cache and graph evidence in observation/action flows.", ["src/daemon/computer-use/sessionRuntime.ts"]),
+    ], "Computer Session records ROI/tile cache and graph evidence in observation/action flows.", [
+      "src/daemon/computer-use/sessionRuntime.ts",
+      "src/daemon/computer-use/screenObservationRuntime.ts",
+      "scripts/smoke-computer-use-session.mjs"
+    ]),
     containsCheck("action:freshness-and-feedback", runtime, [
       "evaluateOperationFreshnessRequirement",
       "recordBrowserActionFeedback",
@@ -179,7 +187,7 @@ function checkObservationPerceptionAction() {
       "pre_action",
       "post_action"
     ], "Action execution records freshness checks and before/after feedback evidence.", ["src/daemon/computer-use/sessionRuntime.ts"]),
-    containsCheck("action:browser-adapter-fallback", [runtime, sessionSmoke].join("\n"), [
+    containsCheck("action:browser-adapter-fallback", actionFallbackSource, [
       "computer-session-browser-action-adapter-fallback.v1",
       "browser_action_adapter_fallback",
       "createBrowserActionAdapterFallbackPlan",
@@ -189,6 +197,7 @@ function checkObservationPerceptionAction() {
       "fallbackCalls"
     ], "Browser Action execution can reroute one retryable adapter failure to a bounded alternate browser adapter with DAG/eval/debug evidence.", [
       "src/daemon/computer-use/sessionRuntime.ts",
+      "src/daemon/computer-use/operationRouting.ts",
       "scripts/smoke-computer-use-session.mjs"
     ])
   ];
@@ -196,19 +205,27 @@ function checkObservationPerceptionAction() {
 
 function checkBrowserToolTerminalSlices() {
   const runtime = readText("src/daemon/computer-use/sessionRuntime.ts");
+  const terminalArtifactDelta = readText("src/daemon/computer-use/terminalArtifactDelta.ts");
+  const terminalSafetyPolicy = readText("src/daemon/computer-use/terminalSafetyPolicy.ts");
   const terminalSmoke = readText("scripts/smoke-computer-use-terminal-parity.mjs");
   const toolsmithRuntime = readText("src/daemon/scoped-autonomy/toolsmithRuntime.ts");
+  const toolsmithRedaction = readText("src/daemon/scoped-autonomy/toolsmithRedaction.ts");
+  const toolsmithDependencies = readText("src/daemon/scoped-autonomy/toolsmithDependencies.ts");
+  const localDocumentConversion = readText("src/daemon/scoped-autonomy/tool-templates/localDocumentConversion.ts");
   const npmDependencySmoke = readText("scripts/smoke-scoped-autonomy-npm-dependency-prepare.mjs");
   const npmDependencyDogfood = readText("scripts/collect-scoped-autonomy-npm-dependency-dogfood.mjs");
+  const generatedToolLiveBreadthDogfood = readText("scripts/collect-scoped-autonomy-generated-tool-live-breadth-dogfood.mjs");
   const selfImplementationDogfood = readText("scripts/collect-scoped-autonomy-self-implementation-dogfood.mjs");
   const promotionGate = readText("scripts/gate-computer-use-promotion.mjs");
+  const terminalSource = [runtime, terminalArtifactDelta, terminalSafetyPolicy, terminalSmoke].join("\n");
+  const toolsmithSource = [toolsmithRuntime, toolsmithRedaction, toolsmithDependencies].join("\n");
   return [
     packageScriptCheck("slice:browser-parity-smoke", "smoke:computer-use-browser-parity", "Browser parity smoke is registered."),
     packageScriptCheck("slice:browser-live-dogfood", "dogfood:computer-use-browser-live", "Browser live dogfood collector is registered."),
     packageScriptCheck("slice:browser-chrome-public-dogfood", "dogfood:computer-use-browser-chrome-public-extension", "Public real-extension Browser Chrome dogfood is registered."),
     gateCheck("gate:browser-chrome-public-extension", "browser_chrome_public_extension_dogfood", "passed", "Public real-extension Browser Chrome promotion gate has passed evidence."),
     packageScriptCheck("slice:terminal-parity", "smoke:computer-use-terminal-parity", "Terminal parity smoke is registered."),
-    containsCheck("slice:terminal-artifact-delta-manifest", [runtime, terminalSmoke].join("\n"), [
+    containsCheck("slice:terminal-artifact-delta-manifest", terminalSource, [
       "computer-session-terminal-artifact-delta.v1",
       "terminal_output_root_delta_manifest",
       "readTerminalArtifactRollbackTargets",
@@ -223,6 +240,8 @@ function checkBrowserToolTerminalSlices() {
       "terminalRollback"
     ], "Terminal output-root tracking records path-redacted create/modify/delete delta manifests and keeps generated artifact deletion behind explicit rollback confirmation.", [
       "src/daemon/computer-use/sessionRuntime.ts",
+      "src/daemon/computer-use/terminalArtifactDelta.ts",
+      "src/daemon/computer-use/terminalSafetyPolicy.ts",
       "scripts/smoke-computer-use-terminal-parity.mjs"
     ]),
     packageScriptCheck("slice:toolsmith-artifact", "smoke:computer-use-toolsmith-artifact", "Toolsmith artifact smoke is registered."),
@@ -232,7 +251,7 @@ function checkBrowserToolTerminalSlices() {
     packageScriptCheck("slice:scoped-autonomy-generated-tool-live-breadth-smoke", "smoke:scoped-autonomy-generated-tool-live-breadth", "Scoped autonomy generated-tool live breadth smoke is registered."),
     packageScriptCheck("slice:scoped-autonomy-npm-dependency-dogfood", "dogfood:scoped-autonomy-npm-dependency", "Scoped autonomy npm dependency dogfood is registered."),
     packageScriptCheck("slice:scoped-autonomy-npm-dependency-dogfood-smoke", "smoke:scoped-autonomy-npm-dependency-dogfood", "Scoped autonomy npm dependency dogfood smoke is registered."),
-    containsCheck("slice:scoped-autonomy-npm-dependency-redaction", [toolsmithRuntime, npmDependencySmoke].join("\n"), [
+    containsCheck("slice:scoped-autonomy-npm-dependency-redaction", [toolsmithSource, npmDependencySmoke].join("\n"), [
       "redactPathLikeString",
       "file:<redacted>",
       "hasAbsolutePathLeak",
@@ -240,9 +259,10 @@ function checkBrowserToolTerminalSlices() {
       "dependency prepare eval step must not expose absolute local paths"
     ], "Scoped autonomy npm dependency preparation redacts package file paths from tool-run and eval evidence.", [
       "src/daemon/scoped-autonomy/toolsmithRuntime.ts",
+      "src/daemon/scoped-autonomy/toolsmithRedaction.ts",
       "scripts/smoke-scoped-autonomy-npm-dependency-prepare.mjs"
     ]),
-    containsCheck("slice:scoped-autonomy-npm-dependency-execution", [toolsmithRuntime, npmDependencySmoke].join("\n"), [
+    containsCheck("slice:scoped-autonomy-npm-dependency-execution", [toolsmithSource, npmDependencySmoke].join("\n"), [
       "CODEX_WIDGET_TOOL_DEPENDENCY_ROOT",
       "installedPackages",
       "toolsmith-npm-dependency-execute.v1",
@@ -250,9 +270,10 @@ function checkBrowserToolTerminalSlices() {
       "generated tool execution eval step must not expose dependency workspace paths"
     ], "Scoped autonomy npm dependency preparation installs isolated node_modules and generated tool execution can consume it without leaking workspace paths.", [
       "src/daemon/scoped-autonomy/toolsmithRuntime.ts",
+      "src/daemon/scoped-autonomy/toolsmithDependencies.ts",
       "scripts/smoke-scoped-autonomy-npm-dependency-prepare.mjs"
     ]),
-    containsCheck("slice:scoped-autonomy-npm-package-allowlist-policy", [toolsmithRuntime, npmDependencySmoke, npmDependencyDogfood, promotionGate].join("\n"), [
+    containsCheck("slice:scoped-autonomy-npm-package-allowlist-policy", [toolsmithSource, npmDependencySmoke, npmDependencyDogfood, promotionGate].join("\n"), [
       "packageAllowlist",
       "toolsmith-dependency-policy-review.v1",
       "dependencyPolicyReviewPresent",
@@ -264,9 +285,10 @@ function checkBrowserToolTerminalSlices() {
       "src/shared/protocol/scopedAutonomy.ts",
       "src/daemon/scoped-autonomy/permissionProfile.ts",
       "src/daemon/scoped-autonomy/toolsmithRuntime.ts",
+      "src/daemon/scoped-autonomy/toolsmithDependencies.ts",
       "scripts/smoke-scoped-autonomy-npm-dependency-prepare.mjs"
     ]),
-    containsCheck("slice:scoped-autonomy-local-document-conversion", [toolsmithRuntime, selfImplementationDogfood, promotionGate].join("\n"), [
+    containsCheck("slice:scoped-autonomy-local-document-conversion", [toolsmithRuntime, localDocumentConversion, selfImplementationDogfood, generatedToolLiveBreadthDogfood, promotionGate].join("\n"), [
       "local_document_conversion.v1",
       "stage_not_required_for_capability",
       "self-implementation-local-document-conversion",
@@ -274,6 +296,7 @@ function checkBrowserToolTerminalSlices() {
       "local_document_conversion"
     ], "Scoped autonomy local document conversion is a dedicated generated-tool slice with skipped web stages, artifact evidence, and promotion-gate coverage.", [
       "src/daemon/scoped-autonomy/toolsmithRuntime.ts",
+      "src/daemon/scoped-autonomy/tool-templates/localDocumentConversion.ts",
       "scripts/collect-scoped-autonomy-self-implementation-dogfood.mjs",
       "scripts/gate-computer-use-promotion.mjs"
     ]),
@@ -394,7 +417,10 @@ function checkNativeWatchMode() {
 
 function checkEvalDebugUxDogfood() {
   const renderer = readText("src/renderer/components/ComputerUseSessionsPanel.tsx");
+  const permissionEvidenceHelpers = readText("src/renderer/components/computer-use/permissionEvidenceHelpers.ts");
+  const promotionGateSummary = readText("src/renderer/components/computer-use/promotionGateSummary.ts");
   const evalRoutes = readText("src/daemon/server/http/routes/computerUseEvalRoutes.ts");
+  const rendererProofSource = [renderer, permissionEvidenceHelpers, promotionGateSummary].join("\n");
   return [
     packageScriptCheck("eval:promotion-gate", "gate:computer-use-promotion", "Computer Use promotion gate writer is registered."),
     packageScriptCheck("eval:promotion-gate-route", "smoke:computer-use-promotion-gate-route", "Promotion gate route smoke is registered."),
@@ -411,7 +437,7 @@ function checkEvalDebugUxDogfood() {
       "src/daemon/server/http/routes/computerUseEvalRoutes.ts",
       "src/renderer/components/ComputerUseSessionsPanel.tsx"
     ]),
-    containsCheck("renderer:proof-panels", renderer, [
+    containsCheck("renderer:proof-panels", rendererProofSource, [
       "Public extension proof",
       "Toolsmith breadth proof",
       "Toolsmith live breadth proof",
@@ -428,7 +454,11 @@ function checkEvalDebugUxDogfood() {
       "scoped_autonomy_self_implementation_breadth",
       "foregroundWatchExecutorDisabledPresent",
       "Executor"
-    ], "Renderer exposes dedicated public-extension, Toolsmith breadth, native-boundary, and terminal artifact-delta proof panels.", ["src/renderer/components/ComputerUseSessionsPanel.tsx"]),
+    ], "Renderer exposes dedicated public-extension, Toolsmith breadth, native-boundary, and terminal artifact-delta proof panels.", [
+      "src/renderer/components/ComputerUseSessionsPanel.tsx",
+      "src/renderer/components/computer-use/permissionEvidenceHelpers.ts",
+      "src/renderer/components/computer-use/promotionGateSummary.ts"
+    ]),
     gateCheck("gate:future-vm-boundary", "future_vm_sandbox_boundary", "passed", "Future VM/sandbox boundary is represented as a non-promoting gate."),
     gateCheck("gate:windows-settings-boundary", "windows_settings_reversible_dogfood_boundary", "passed", "Windows settings reversible dogfood boundary is represented as a non-promoting gate.")
   ];

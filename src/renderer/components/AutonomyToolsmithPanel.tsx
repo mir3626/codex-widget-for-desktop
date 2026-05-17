@@ -489,9 +489,15 @@ function grantsFromMissingRequirements(requirements: AutonomyPermissionRequireme
   };
   for (const requirement of requirements) {
     if (requirement.type === "network") grants.network = true;
-    if (requirement.type === "network_domain") grants.networkDomains.push(requirement.value);
+    if (requirement.type === "network_domain") {
+      grants.network = true;
+      grants.networkDomains.push(requirement.value);
+    }
     if (requirement.type === "browser_automation") grants.browserAutomation = true;
-    if (requirement.type === "browser_domain") grants.browserDomains.push(requirement.value);
+    if (requirement.type === "browser_domain") {
+      grants.browserAutomation = true;
+      grants.browserDomains.push(requirement.value);
+    }
     if (requirement.type === "filesystem_read") grants.filesystem.readRoots.push(requirement.value);
     if (requirement.type === "filesystem_write") grants.filesystem.writeRoots.push(requirement.value);
     if (requirement.type === "command") grants.commands.allowPrefixes.push(requirement.value);

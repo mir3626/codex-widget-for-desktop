@@ -1,0 +1,10 @@
+.autonomy-panel {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  margin-bottom: 3px;
+  padding: 8px;
+  border: 1px solid rgba(36, 42, 50, 0.1);
+  border-radius: 8px;
+  background: rgba(248, 249, 246, 0.84);
+}

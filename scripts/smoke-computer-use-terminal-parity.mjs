@@ -135,7 +135,7 @@ try {
       browserDomains: [],
       filesystem: { readRoots: [smokeAppData.dir], writeRoots: [smokeAppData.dir] },
       commands: {
-        allowPrefixes: ["echo", "node -e"],
+        allowPrefixes: ["echo", "node -e *"],
         denyPatterns: ["password", "token", "secret", "cookie", "rm -rf", "format"]
       },
       packageInstall: false,

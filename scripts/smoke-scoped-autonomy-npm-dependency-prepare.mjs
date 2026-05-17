@@ -11,6 +11,7 @@ const tempRoot = mkdtempSync(join(tmpdir(), "codex-widget-autonomy-npm-"));
 let storage;
 
 try {
+  process.env.CODEX_WIDGET_SMOKE_SECRET_TOKEN = "generated-tool-must-not-inherit-this";
   const runtimeRoot = join(tempRoot, ".runtime", "autonomy");
   const outputRoot = join(tempRoot, "outputs");
   const localPackageDir = join(tempRoot, "local-npm-package");
@@ -22,6 +23,8 @@ try {
     main: "index.js"
   }, null, 2), "utf8");
   writeFileSync(join(localPackageDir, "index.js"), "export const probe = true;\n", "utf8");
+  const forbiddenReadPath = join(tempRoot, "outside-generated-tool-read-secret.txt");
+  writeFileSync(forbiddenReadPath, "generated tool must not read this file\n", "utf8");
 
   storage = createStorageService({ appDataDir: tempRoot });
   const runtime = new ScopedAutonomyRuntime(storage, { runtimeRoot });
@@ -54,6 +57,66 @@ try {
     true,
     "blocked dependency prepare should name the missing package_install grant"
   );
+
+  const missingLocalReadProfile = createProfile({
+    name: "npm local dependency read-root blocked smoke",
+    packageInstall: true,
+    generatedToolExecution: false,
+    packageAllowlist: ["file:*"],
+    tempRoot,
+    readRoots: [join(outputRoot, "read-only-approved")]
+  });
+  const missingLocalReadRun = createRun({ profileId: missingLocalReadProfile.id, tempRoot, toolSpecId: spec.id });
+  const missingLocalRead = runtime.prepareToolDependencies({
+    autonomyRunId: missingLocalReadRun.id,
+    toolSpecId: spec.id,
+    outputDir: join(outputRoot, "missing-local-read")
+  });
+  assert.equal(missingLocalRead.status, "blocked", JSON.stringify(missingLocalRead.output));
+  assert.equal(
+    missingLocalRead.output.permission.missingRequirements.some((requirement) => requirement.type === "filesystem_read" && String(requirement.value).includes("local-npm-package")),
+    true,
+    "local file npm dependencies should require an approved filesystem_read root"
+  );
+
+  const transitivePackageDir = join(tempRoot, "local-npm-package-with-transitive-deps");
+  mkdirSync(transitivePackageDir, { recursive: true });
+  writeFileSync(join(transitivePackageDir, "package.json"), JSON.stringify({
+    name: "codex-widget-local-npm-probe",
+    version: "0.0.2",
+    type: "module",
+    main: "index.js",
+    dependencies: {
+      "left-pad": "1.3.0"
+    }
+  }, null, 2), "utf8");
+  writeFileSync(join(transitivePackageDir, "index.js"), "export const probe = true;\n", "utf8");
+  const transitiveSpec = storage.upsertAutonomyToolSpec(createNpmProbeSpec({
+    id: "tool-npm-dependency-transitive-policy-probe",
+    dependencySpec: `file:${transitivePackageDir.replaceAll("\\", "/")}`,
+    runtimeRoot
+  }));
+  const transitiveProfile = createProfile({
+    name: "npm local dependency transitive blocked smoke",
+    packageInstall: true,
+    generatedToolExecution: false,
+    packageAllowlist: ["file:*"],
+    tempRoot
+  });
+  const transitiveRun = createRun({ profileId: transitiveProfile.id, tempRoot, toolSpecId: transitiveSpec.id });
+  const transitiveBlocked = runtime.prepareToolDependencies({
+    autonomyRunId: transitiveRun.id,
+    toolSpecId: transitiveSpec.id,
+    outputDir: join(outputRoot, "transitive-blocked")
+  });
+  assert.equal(transitiveBlocked.status, "failed", JSON.stringify(transitiveBlocked.output));
+  assert.equal(transitiveBlocked.lastError, "local_file_dependency_transitive_dependencies_blocked");
+  assert.equal(
+    transitiveBlocked.output.localDependencyPolicy?.blocked?.some((item) => item.reason === "local_file_package_declares_transitive_dependencies"),
+    true,
+    "local file npm packages with transitive dependencies must fail before npm install"
+  );
+  assert.equal(existsSync(join(runtimeRoot, "tools", transitiveSpec.id, "dependencies", "package-lock.json")), false, "blocked transitive local dependency must not create npm lockfiles");
 
   const allowedProfile = createProfile({
     name: "npm dependency prepare allowed smoke",
@@ -101,19 +164,44 @@ try {
     status: "active"
   });
 
+  const outsideOutputDir = join(tempRoot, "..", `codex-widget-forbidden-output-${Date.now()}`);
+  const outsideOutputRun = createRun({ profileId: allowedProfile.id, tempRoot, toolSpecId: spec.id });
+  const outsideOutputExecute = await runtime.execute({
+    autonomyRunId: outsideOutputRun.id,
+    toolSpecId: spec.id,
+    request: {
+      outputDir: outsideOutputDir
+    }
+  });
+  assert.equal(outsideOutputExecute.status, "blocked", JSON.stringify(outsideOutputExecute.output));
+  assert.equal(
+    outsideOutputExecute.output.permission?.missingRequirements?.some((requirement) =>
+      (requirement.type === "filesystem_write" || requirement.type === "filesystem_read") &&
+        String(requirement.value).includes("codex-widget-forbidden-output")
+    ),
+    true,
+    "generated tool execution must require outputDir read/write grants before runner fs flags are granted"
+  );
+  assert.equal(existsSync(outsideOutputDir), false, "blocked generated tool execution must not create an unapproved outputDir");
+
   const executed = await runtime.execute({
     autonomyRunId: allowedRun.id,
     toolSpecId: spec.id,
     request: {
-      outputDir: join(outputRoot, "execute")
+      outputDir: join(outputRoot, "execute"),
+      forbiddenReadPath,
+      forbiddenNetworkUrl: "https://example.com/"
     }
   });
 
-  assert.equal(executed.status, "completed", JSON.stringify(executed.output));
+  assert.equal(executed.status, "completed", JSON.stringify({ output: executed.output, lastError: executed.lastError }));
   assert.equal(executed.output.schemaVersion, "toolsmith-npm-dependency-execute.v1");
   assert.equal(executed.output.dependencyWorkspaceProvided, true);
   assert.equal(executed.output.dependencyImported, true);
   assert.equal(executed.output.probeValue, true);
+  assert.equal(executed.output.sandbox?.forbiddenReadBlocked, true, "generated tool must be blocked from reading outside declared roots");
+  assert.equal(executed.output.sandbox?.forbiddenNetworkBlocked, true, "generated tool must be blocked from fetching outside declared network domains");
+  assert.equal(executed.output.sandbox?.fullProcessEnvInherited, false, "generated tool must not inherit the daemon process environment wholesale");
   assert.equal(executed.output.artifacts.some((artifact) => artifact.role === "report" && artifact.blobId && artifact.resourceId && artifact.sha256), true);
   assert.equal(hasAbsolutePathLeak(executed.output), false, "generated tool execution output must not expose dependency workspace paths");
 
@@ -214,8 +302,8 @@ function createProfile(input) {
       network: false,
       networkDomains: [],
       filesystem: {
-        readRoots: [input.tempRoot],
-        writeRoots: [input.tempRoot]
+        readRoots: input.readRoots ?? [input.tempRoot],
+        writeRoots: input.writeRoots ?? [input.tempRoot]
       },
       commands: {
         allowPrefixes: ["npm", "node"],
@@ -338,7 +426,7 @@ function hasAbsolutePathLeak(value) {
 }
 
 function npmProbeEntrypointSource() {
-  return `import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+  return `import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -354,6 +442,10 @@ process.stdin.on("end", async () => {
   let dependencyImported = false;
   let probeValue = false;
   let dependencyImportError = null;
+  let forbiddenReadBlocked = false;
+  let forbiddenReadError = null;
+  let forbiddenNetworkBlocked = false;
+  let forbiddenNetworkError = null;
   if (dependencyRoot) {
     try {
       const modulePath = join(dependencyRoot, "node_modules", "codex-widget-local-npm-probe", "index.js");
@@ -368,6 +460,30 @@ process.stdin.on("end", async () => {
         : "dependency_import_failed";
     }
   }
+  if (typeof input.forbiddenReadPath === "string" && input.forbiddenReadPath) {
+    try {
+      readFileSync(input.forbiddenReadPath, "utf8");
+      forbiddenReadBlocked = false;
+    } catch (error) {
+      forbiddenReadError = error && typeof error === "object" && "code" in error
+        ? String(error.code)
+        : "forbidden_read_failed";
+      forbiddenReadBlocked = forbiddenReadError === "ERR_ACCESS_DENIED";
+    }
+  }
+  if (typeof input.forbiddenNetworkUrl === "string" && input.forbiddenNetworkUrl) {
+    try {
+      await fetch(input.forbiddenNetworkUrl);
+      forbiddenNetworkBlocked = false;
+    } catch (error) {
+      forbiddenNetworkError = error && typeof error === "object" && "code" in error
+        ? String(error.code)
+        : error && typeof error === "object" && "message" in error
+          ? String(error.message)
+          : "forbidden_network_failed";
+      forbiddenNetworkBlocked = forbiddenNetworkError === "ERR_NETWORK_ACCESS_DENIED" || forbiddenNetworkError.includes("network_access_denied");
+    }
+  }
   const outputDir = typeof input.outputDir === "string" ? input.outputDir : "";
   const artifacts = [];
   if (outputDir) {
@@ -376,7 +492,13 @@ process.stdin.on("end", async () => {
     writeFileSync(reportPath, JSON.stringify({
       dependencyWorkspaceProvided: Boolean(dependencyRoot),
       dependencyImported,
-      probeValue
+      probeValue,
+      sandbox: {
+        forbiddenReadBlocked,
+        forbiddenReadError,
+        forbiddenNetworkBlocked,
+        forbiddenNetworkError
+      }
     }, null, 2), "utf8");
     artifacts.push({ role: "report", path: reportPath, mime: "application/json" });
   }
@@ -387,6 +509,14 @@ process.stdin.on("end", async () => {
     dependencyImported,
     probeValue,
     dependencyImportError,
+    sandbox: {
+      forbiddenReadBlocked,
+      forbiddenReadError,
+      forbiddenNetworkBlocked,
+      forbiddenNetworkError,
+      envKeys: Object.keys(process.env).sort(),
+      fullProcessEnvInherited: Object.keys(process.env).some((key) => /TOKEN|SECRET|PASSWORD|COOKIE|CREDENTIAL/i.test(key))
+    },
     artifacts
   }));
 });
