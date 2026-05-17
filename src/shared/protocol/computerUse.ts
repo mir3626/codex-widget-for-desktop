@@ -130,6 +130,7 @@ export type ComputerSessionEvent =
 export type ComputerSessionObservationKind =
   | "session_skeleton"
   | "browser_dom"
+  | "uia"
   | "screen"
   | "ocr"
   | "terminal"
@@ -338,12 +339,99 @@ export type ForegroundWatchExecutorState = {
   disabledReason: string;
 };
 
+export type ComputerUseSemanticRefRole =
+  | "window"
+  | "button"
+  | "textbox"
+  | "menu"
+  | "menuitem"
+  | "list"
+  | "listitem"
+  | "checkbox"
+  | "radio"
+  | "tab"
+  | "link"
+  | "text"
+  | "image"
+  | "group"
+  | "unknown";
+
+export type ComputerUseSemanticBounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+export type ComputerUseSemanticRefSummary = {
+  ref: string;
+  role: ComputerUseSemanticRefRole;
+  name?: string;
+  text?: string;
+  placeholder?: string;
+  windowRef?: string;
+  parentRef?: string;
+  childrenRefs?: string[];
+  bounds?: ComputerUseSemanticBounds;
+  visible?: boolean;
+  enabled?: boolean;
+  editable?: boolean;
+  selected?: boolean;
+  checked?: boolean;
+  confidence?: number;
+  riskHints?: string[];
+  valuePresent?: boolean;
+  valueRedacted?: true;
+  source?: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type ComputerUseSemanticTreeSummary = {
+  schemaVersion: "computer-use-semantic-tree.v1";
+  capturedAt: string;
+  source: "native_helper_uia" | "native_helper_snapshot" | "fixture" | "unavailable";
+  surface?: ExecutionSurfaceKind;
+  rootRefs: string[];
+  windowRefs: string[];
+  refs: Record<string, ComputerUseSemanticRefSummary>;
+  stats: {
+    windowCount: number;
+    elementCount: number;
+    roleCounts: Record<string, number>;
+  };
+  redaction: {
+    credentials: "redacted";
+    values: "redacted_when_sensitive";
+    screenshots: "not_stored";
+  };
+  warnings: string[];
+};
+
+export type ComputerUseFindElementsQuery = {
+  role?: ComputerUseSemanticRefRole;
+  text?: string;
+  name?: string;
+  placeholder?: string;
+  visibleOnly?: boolean;
+  enabledOnly?: boolean;
+  limit?: number;
+};
+
+export type ComputerUseSnapshotResult = {
+  snapshot: ComputerUseSemanticTreeSummary;
+  matches?: ComputerUseSemanticRefSummary[];
+  observationId?: string;
+  evalStepId?: string;
+};
+
 export type ComputerStructuredOperation =
   | { kind: "browser_action"; input: Record<string, unknown> }
   | { kind: "browser_chrome"; input: Record<string, unknown> }
   | { kind: "terminal"; input: Record<string, unknown> }
   | { kind: "toolsmith"; input: Record<string, unknown> }
   | { kind: "screen_observe"; input: Record<string, unknown> }
+  | { kind: "computer_use_snapshot"; input: Record<string, unknown> }
+  | { kind: "find_elements"; input: Record<string, unknown> }
   | { kind: "ocr"; input: Record<string, unknown> }
   | { kind: "native_browser_window_action"; input: Record<string, unknown> }
   | { kind: "browser_permission_bubble_action"; input: Record<string, unknown> }

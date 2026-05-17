@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-28",
+  "currentIteration": "iter-34",
   "iterations": [
     {
       "id": "iter-1",
@@ -943,6 +943,141 @@
       },
       "summary": "Iteration 28 completed the feasible local scope. Credential handling now uses expiring/revocable consent leases, reference-only vault handles, strict redaction policy, fail-closed permission evaluation, renderer validation/evidence, and focused smokes. A dedicated implementation-ready parity audit reports local readiness while keeping production signing, official app-server contract, VM/cloud, and ASR corpus inputs deferred.",
       "completedAt": "2026-05-17T23:55:00.000+09:00"
+    },
+    {
+      "id": "iter-29",
+      "label": "Computer Use UIA Semantic Tree",
+      "startedAt": "2026-05-18T00:30:00.000+09:00",
+      "completedAt": "2026-05-18T00:44:00.000+09:00",
+      "goal": "Use vibe-iterate for Windows UI Automation semantic tree support: refs map, snapshot/find-elements API, read-only observe, and smoke/debug evidence.",
+      "plannedSprints": [
+        "iter-29-sprint-01-uia-semantic-tree-observe-api"
+      ],
+      "completedSprints": [
+        "iter-29-sprint-01-uia-semantic-tree-observe-api"
+      ],
+      "carryover": "Iter-28 left UIA semantic refs as a parity improvement item beyond credential consent. This iteration scopes it to read-only semantic observation and evidence, not native input.",
+      "openRisks": [
+        "Live UIA helper availability still depends on the native helper environment; fixture and unavailable modes remain fail-closed.",
+        "Sensitive element values must stay out of debug bundles and DAG inputs."
+      ],
+      "milestoneProgress": {
+        "windows-codex-computer-use-parity": 0.88,
+        "computer-use-uia-semantic-tree": 0.82
+      },
+      "summary": "Iteration 29 added Computer Use semantic tree protocol types, UIA/native-helper snapshot normalization, refs map generation for windows/buttons/textboxes/menus/lists, read-only snapshot and find-elements HTTP/session/operation APIs, redacted debug-bundle evidence, and smoke coverage."
+    },
+    {
+      "id": "iter-30",
+      "label": "Browser Profile Permission Model",
+      "startedAt": "2026-05-18T00:30:00.000+09:00",
+      "completedAt": "2026-05-18T00:44:00.000+09:00",
+      "goal": "Use vibe-iterate for authenticated browser profile/cookie access policy with domain/session/account leases, revoke, redaction, audit trail, and default deny semantics.",
+      "plannedSprints": [
+        "iter-30-sprint-01-browser-profile-lease-policy"
+      ],
+      "completedSprints": [
+        "iter-30-sprint-01-browser-profile-lease-policy"
+      ],
+      "carryover": "Credential consent leases existed, but browser profile, session, account, and cookie-jar access needed an explicit policy layer that cannot become default-allow.",
+      "openRisks": [
+        "The model authorizes local policy only; browser or enterprise policies are not bypassed.",
+        "Cookie values remain never-store and helper-dependent access remains guarded."
+      ],
+      "milestoneProgress": {
+        "computer-use-credential-consent": 0.9,
+        "computer-use-browser-profile-policy": 0.86
+      },
+      "summary": "Iteration 30 added explicit browser_profile/session/account/cookie_jar permission requirements, browser profile policy evaluation over consent leases, account hints, browser-profile lease revoke route/audit output, redaction summaries, and focused smoke coverage for default-deny, allow, revoke, and route behavior."
+    },
+    {
+      "id": "iter-31",
+      "label": "Computer Use Live Task Benchmark Harness",
+      "startedAt": "2026-05-18T00:30:00.000+09:00",
+      "completedAt": "2026-05-18T00:44:00.000+09:00",
+      "goal": "Use vibe-iterate for a Windows app/browser/terminal live task benchmark harness with corpus format, success/latency/rollback/evidence metrics, reports, and promotion gate integration.",
+      "plannedSprints": [
+        "iter-31-sprint-01-live-task-benchmark-and-gate"
+      ],
+      "completedSprints": [
+        "iter-31-sprint-01-live-task-benchmark-and-gate"
+      ],
+      "carryover": "Process validation gates existed, but there was no dedicated live task benchmark harness for the requested Windows app/browser/terminal corpus format.",
+      "openRisks": [
+        "The checked-in corpus is fixture-only; real promotion still requires user-captured traces.",
+        "Fixture pass is evidence that the harness works, not evidence of real-world task success."
+      ],
+      "milestoneProgress": {
+        "computer-use-live-benchmark-harness": 0.8
+      },
+      "summary": "Iteration 31 added a live task corpus fixture, benchmark runner, report/evidence output, smoke coverage, and a promotion-gate evaluator that passes the harness while marking fixture data as non-promotable until user-captured live data exists."
+    },
+    {
+      "id": "iter-32",
+      "label": "Native Helper V2 Dev Contract",
+      "startedAt": "2026-05-18T00:30:00.000+09:00",
+      "completedAt": "2026-05-18T00:44:00.000+09:00",
+      "goal": "Use vibe-iterate for native helper v2 contract/dev mode coverage: foreground preflight, active-window lock, abort-on-user-input, screenshot metadata, disabled commands, and unsigned smoke.",
+      "plannedSprints": [
+        "iter-32-sprint-01-helper-v2-dev-contract-smoke"
+      ],
+      "completedSprints": [
+        "iter-32-sprint-01-helper-v2-dev-contract-smoke"
+      ],
+      "carryover": "Foreground watch and disabled helper-v2 contracts existed, but the requested dev/unsigned contract needed a direct smoke tying protocol, helper client, adapter, and contract verifier together.",
+      "openRisks": [
+        "Production native input remains blocked on Authenticode signing or CI signing service.",
+        "The dev contract intentionally proves no actual native input is sent for disabled v2 commands."
+      ],
+      "milestoneProgress": {
+        "browser-native-desktop-helper-hardening": 0.92,
+        "native-helper-v2-dev-contract": 0.84
+      },
+      "summary": "Iteration 32 added a native helper v2 dev contract smoke that verifies foreground preflight fields, active-window/user-input guards, pre/post evidence readiness, disabled command contract coverage, screenshot metadata fields, and unsigned/signed-helper blocker semantics."
+    },
+    {
+      "id": "iter-33",
+      "label": "VM Sandbox Adapter Boundary",
+      "startedAt": "2026-05-18T00:30:00.000+09:00",
+      "completedAt": "2026-05-18T00:44:00.000+09:00",
+      "goal": "Use vibe-iterate for future_vm_session adapter-shaped VM/sandbox abstraction with mock/local unavailable/dev boundaries and fail-closed smoke coverage.",
+      "plannedSprints": [
+        "iter-33-sprint-01-vm-sandbox-adapter-boundary"
+      ],
+      "completedSprints": [
+        "iter-33-sprint-01-vm-sandbox-adapter-boundary"
+      ],
+      "carryover": "The future_vm_session boundary existed as a direct runtime block; this iteration promotes it into an adapter-shaped contract for future Hyper-V, Windows Sandbox, RDP, and cloud implementations.",
+      "openRisks": [
+        "Actual VM execution remains environment-dependent and unconfigured.",
+        "Adapters remain non-promotable until isolation, lifecycle cleanup, and redacted evidence are proven."
+      ],
+      "milestoneProgress": {
+        "computer-use-vm-sandbox-boundary": 0.86
+      },
+      "summary": "Iteration 33 added a VM sandbox adapter contract module, mock/windows_sandbox/hyper_v/rdp/cloud adapter descriptors, runtime boundary evidence, selected adapter metadata, and smoke coverage proving fail-closed behavior with no VM creation or host mutation."
+    },
+    {
+      "id": "iter-34",
+      "label": "ASR Benchmark Harness",
+      "startedAt": "2026-05-18T00:30:00.000+09:00",
+      "completedAt": "2026-05-18T00:44:00.000+09:00",
+      "goal": "Use vibe-iterate for ASR benchmark harness support: audio metadata, expected transcript, WER, command accuracy, CPU fixture smoke, and report/evidence output.",
+      "plannedSprints": [
+        "iter-34-sprint-01-asr-benchmark-corpus-harness"
+      ],
+      "completedSprints": [
+        "iter-34-sprint-01-asr-benchmark-corpus-harness"
+      ],
+      "carryover": "ASR candidate benchmarking existed, but user-test corpus validation needed a standalone corpus/report harness that can run on CPU fixtures before GPU/user audio is available.",
+      "openRisks": [
+        "GPU ASR performance validation still requires a GPU environment.",
+        "Real microphone accuracy still requires user-provided audio corpus."
+      ],
+      "milestoneProgress": {
+        "computer-use-asr-benchmark-harness": 0.8
+      },
+      "summary": "Iteration 34 added an ASR benchmark corpus fixture, WER and command accuracy computation, report/evidence output, and smoke coverage for CPU fixture metrics while explicitly preserving GPU and user-corpus validation as future external/user-test work."
     }
   ]
 }

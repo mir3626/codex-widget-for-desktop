@@ -281,6 +281,35 @@ export async function handleComputerUseEvalRoute(
     return true;
   }
 
+  const autonomyBrowserProfileLeaseRevokeMatch = /^\/computer-use\/autonomy\/profiles\/([^/]+)\/browser-profile-leases\/([^/]+)\/revoke$/.exec(url.pathname);
+  if (autonomyBrowserProfileLeaseRevokeMatch && request.method === "POST") {
+    try {
+      const bodyText = await readRequestBody(request, 64 * 1024);
+      const body = bodyText.trim() ? JSON.parse(bodyText) : {};
+      const profile = context.storage.revokeAutonomyCredentialLease({
+        profileId: decodeURIComponent(autonomyBrowserProfileLeaseRevokeMatch[1]),
+        leaseId: decodeURIComponent(autonomyBrowserProfileLeaseRevokeMatch[2]),
+        reason: typeof body.reason === "string" ? body.reason : "browser_profile_lease_revoked"
+      });
+      writeJsonResponse(response, 200, {
+        ok: true,
+        profile,
+        audit: {
+          schemaVersion: "browser-profile-lease-revoke-audit.v1",
+          leaseId: decodeURIComponent(autonomyBrowserProfileLeaseRevokeMatch[2]),
+          redaction: {
+            cookies: "never_store",
+            credentials: "redacted",
+            browserHistory: "domain_only"
+          }
+        }
+      });
+    } catch (error) {
+      writeJsonResponse(response, 400, { ok: false, error: error instanceof Error ? error.message : "Invalid browser profile lease revoke request." });
+    }
+    return true;
+  }
+
   if (url.pathname === "/computer-use/autonomy/inventory" && request.method === "GET") {
     writeJsonResponse(response, 200, {
       ok: true,

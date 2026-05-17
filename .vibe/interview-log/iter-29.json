@@ -1,0 +1,12 @@
+{
+  "mode": "iterate",
+  "iterationId": "iter-29",
+  "createdAt": "2026-05-18T00:30:00.000+09:00",
+  "carryover": "Iter-28 left Windows UI Automation semantic refs as a feasible implementation-ready parity improvement.",
+  "confirmedDecisions": [
+    "Start with read-only observe and refs map evidence.",
+    "Do not send native input from the semantic tree API.",
+    "Redact sensitive element values from observations, DAG inputs, and debug bundles."
+  ],
+  "newGoal": "Implement Computer Use UIA semantic tree support with snapshot/find-elements APIs and smoke/debug evidence."
+}

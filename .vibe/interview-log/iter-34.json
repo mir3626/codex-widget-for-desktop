@@ -1,0 +1,12 @@
+{
+  "mode": "iterate",
+  "iterationId": "iter-34",
+  "createdAt": "2026-05-18T00:30:00.000+09:00",
+  "carryover": "ASR candidate benchmarking existed, but user-test corpus evaluation needed a standalone benchmark harness with WER and command accuracy metrics.",
+  "confirmedDecisions": [
+    "CPU fixture data can validate benchmark math and report/evidence structure.",
+    "GPU performance remains environment-dependent.",
+    "Real microphone accuracy requires user-provided audio corpus."
+  ],
+  "newGoal": "Implement the ASR benchmark corpus harness with WER, command accuracy, CPU fixture smoke, and report/evidence output."
+}

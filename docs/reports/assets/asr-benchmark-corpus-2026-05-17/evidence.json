@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "asr-benchmark-corpus-report.v1",
+  "generatedAt": "2026-05-17T15:43:50.498Z",
+  "date": "2026-05-17",
+  "corpus": {
+    "path": "docs/eval/asr-benchmark-corpus.fixture.json",
+    "schemaVersion": "asr-benchmark-corpus.v1",
+    "fixtureOnly": true,
+    "sampleCount": 3
+  },
+  "metrics": {
+    "sampleCount": 3,
+    "averageWer": 0,
+    "maxWer": 0,
+    "commandAccuracy": 1,
+    "cpuFixtureSampleCount": 3
+  },
+  "results": [
+    {
+      "id": "ko-open-browser",
+      "audioPath": "fixtures/asr/ko-open-browser.wav",
+      "durationMs": 1800,
+      "language": "ko",
+      "device": "cpu",
+      "expectedTranscript": "브라우저에서 예제 페이지를 열어줘",
+      "actualTranscript": "브라우저에서 예제 페이지를 열어줘",
+      "wer": 0,
+      "expectedCommand": "open_browser",
+      "actualCommand": "open_browser",
+      "commandCorrect": true
+    },
+    {
+      "id": "ko-click-submit",
+      "audioPath": "fixtures/asr/ko-click-submit.wav",
+      "durationMs": 1600,
+      "language": "ko",
+      "device": "cpu",
+      "expectedTranscript": "제출 버튼을 눌러줘",
+      "actualTranscript": "제출 버튼을 눌러줘",
+      "wer": 0,
+      "expectedCommand": "click_submit",
+      "actualCommand": "click_submit",
+      "commandCorrect": true
+    },
+    {
+      "id": "en-type-title",
+      "audioPath": "fixtures/asr/en-type-title.wav",
+      "durationMs": 1700,
+      "language": "en",
+      "device": "cpu",
+      "expectedTranscript": "type the report title",
+      "actualTranscript": "type the report title",
+      "wer": 0,
+      "expectedCommand": "type_text",
+      "actualCommand": "type_text",
+      "commandCorrect": true
+    }
+  ]
+}

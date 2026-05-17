@@ -84,6 +84,9 @@ export function routeComputerOperation(
   if (operation.kind === "screen_observe") {
     return actionRoute("screen_observe_roi_cascade", 8, operation.kind, surface, "Screen observation uses the ROI/cascade perception path.");
   }
+  if (operation.kind === "computer_use_snapshot" || operation.kind === "find_elements") {
+    return actionRoute("uia_semantic_tree_observe", 1, operation.kind, surface, "Computer Use semantic tree observation is read-only and resolves stable UI refs before visual fallbacks.");
+  }
   if (operation.kind === "ocr") {
     return actionRoute("roi_ocr", 8, operation.kind, surface, "OCR uses the bounded ROI/text recognition path.");
   }

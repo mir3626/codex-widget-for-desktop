@@ -1,0 +1,12 @@
+{
+  "mode": "iterate",
+  "iterationId": "iter-31",
+  "createdAt": "2026-05-18T00:30:00.000+09:00",
+  "carryover": "Computer Use process gates existed, but there was no focused live task corpus harness for Windows app, browser, and terminal tasks.",
+  "confirmedDecisions": [
+    "A fixture corpus can validate the harness and report contract.",
+    "Fixture evidence must not promote real Computer Use capability by itself.",
+    "Promotion gate integration should explicitly require future user-captured live data."
+  ],
+  "newGoal": "Implement a live task benchmark harness with corpus, metrics, report/evidence, smoke, and promotion gate integration."
+}

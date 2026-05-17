@@ -26,6 +26,22 @@ export async function handleComputerUseSessionRoute(
     return true;
   }
 
+  if ((url.pathname === "/computer-use/snapshot" || url.pathname === "/computer-use/find-elements") && request.method === "POST") {
+    try {
+      const bodyText = await readRequestBody(request, 512 * 1024);
+      const body = bodyText.trim() ? JSON.parse(bodyText) : {};
+      const result = context.computerSessionRuntime.captureComputerUseSnapshot({
+        fixture: body.fixture ?? body.snapshot,
+        query: url.pathname === "/computer-use/find-elements" ? readFindElementsQuery(body.query ?? body) : readFindElementsQuery(body.query),
+        source: readSnapshotSource(body.source)
+      });
+      writeJsonResponse(response, 200, { ok: true, result });
+    } catch (error) {
+      writeJsonResponse(response, 400, { ok: false, error: error instanceof Error ? error.message : "Invalid Computer Use snapshot request." });
+    }
+    return true;
+  }
+
   if (url.pathname === "/computer-use/sessions" && request.method === "POST") {
     try {
       const body = JSON.parse(await readRequestBody(request, 512 * 1024));
@@ -56,6 +72,24 @@ export async function handleComputerUseSessionRoute(
       writeJsonResponse(response, 200, { ok: true, bundle });
     } catch (error) {
       writeJsonResponse(response, 404, { ok: false, error: error instanceof Error ? error.message : "Computer session debug bundle not found." });
+    }
+    return true;
+  }
+
+  const snapshotMatch = /^\/computer-use\/sessions\/([^/]+)\/(snapshot|find-elements)$/.exec(url.pathname);
+  if (snapshotMatch && request.method === "POST") {
+    try {
+      const bodyText = await readRequestBody(request, 512 * 1024);
+      const body = bodyText.trim() ? JSON.parse(bodyText) : {};
+      const result = context.computerSessionRuntime.captureComputerUseSnapshot({
+        sessionId: decodeURIComponent(snapshotMatch[1]),
+        fixture: body.fixture ?? body.snapshot,
+        query: snapshotMatch[2] === "find-elements" ? readFindElementsQuery(body.query ?? body) : readFindElementsQuery(body.query),
+        source: readSnapshotSource(body.source)
+      });
+      writeJsonResponse(response, 200, { ok: true, result });
+    } catch (error) {
+      writeJsonResponse(response, 400, { ok: false, error: error instanceof Error ? error.message : "Invalid Computer Use session snapshot request." });
     }
     return true;
   }
@@ -211,6 +245,21 @@ function readRiskClass(value: unknown): RiskClass | undefined {
     value === "os_settings_mutation" ||
     value === "credential_or_secret" ||
     value === "security_boundary"
+    ? value
+    : undefined;
+}
+
+function readFindElementsQuery(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
+}
+
+function readSnapshotSource(value: unknown): "native_helper_uia" | "native_helper_snapshot" | "fixture" | "unavailable" | undefined {
+  return value === "native_helper_uia" ||
+    value === "native_helper_snapshot" ||
+    value === "fixture" ||
+    value === "unavailable"
     ? value
     : undefined;
 }

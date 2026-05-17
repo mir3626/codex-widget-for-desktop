@@ -9,6 +9,10 @@ import {
   evaluateCredentialRequirement,
   summarizeCredentialPolicy
 } from "./credentialPolicy.js";
+import {
+  evaluateBrowserProfileRequirement,
+  summarizeBrowserProfilePolicy
+} from "./browserProfilePolicy.js";
 
 export function evaluateAutonomyPermission(input: {
   profile?: AutonomyPermissionProfile | null;
@@ -49,6 +53,11 @@ export function evaluateAutonomyPermission(input: {
     requirements: input.requirements,
     now: input.now
   });
+  const browserProfilePolicy = summarizeBrowserProfilePolicy({
+    grants: profile.grants,
+    requirements: input.requirements,
+    now: input.now
+  });
   return {
     allowed: missing.length === 0,
     mode: profile.mode,
@@ -64,6 +73,18 @@ export function evaluateAutonomyPermission(input: {
       activeLeaseCount: credentialPolicy.activeLeaseCount,
       redactionPolicy: credentialPolicy.redactionPolicy,
       vaultAccess: credentialPolicy.vaultAccess
+    },
+    browserProfilePolicy: {
+      status: browserProfilePolicy.status,
+      reason: browserProfilePolicy.reason,
+      matchedLeaseIds: browserProfilePolicy.matchedLeaseIds,
+      activeLeaseCount: browserProfilePolicy.activeLeaseCount,
+      redactionPolicy: browserProfilePolicy.redactionPolicy,
+      defaultDeny: browserProfilePolicy.defaultDeny,
+      profileAccess: browserProfilePolicy.profileAccess,
+      cookieAccess: browserProfilePolicy.cookieAccess,
+      auditTrail: browserProfilePolicy.auditTrail,
+      leaseScopes: browserProfilePolicy.leaseScopes
     }
   };
 }
@@ -126,6 +147,11 @@ export function isRequirementAllowed(
       return grants.riskClasses.includes(requirement.value);
     case "credential_access":
       return evaluateCredentialRequirement({ grants, requirement, now: options.now }).allowed;
+    case "browser_profile_access":
+    case "browser_session_access":
+    case "browser_account_access":
+    case "cookie_jar_access":
+      return evaluateBrowserProfileRequirement({ grants, requirement, now: options.now }).allowed;
   }
 }
 

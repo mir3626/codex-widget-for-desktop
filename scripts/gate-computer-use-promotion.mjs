@@ -12,6 +12,7 @@ import {
   evaluateComputerSessionBrowserPromptDogfoodGate,
   evaluateComputerSessionBrowserPromptLiveGate,
   evaluateFutureVmSandboxBoundaryGate,
+  evaluateLiveTaskBenchmarkHarnessGate,
   evaluateLiveWebResearchGate,
   evaluateProcessValidationGate,
   evaluateRendererPermissionProfileUxGate,
@@ -45,6 +46,7 @@ const computerBrowserPromptLiveRuns = readDatedEvidence("docs/reports/assets", /
 const computerBrowserChromeDogfoodRuns = readDatedEvidence("docs/reports/assets", /^computer-use-browser-chrome-dogfood-(\d{4}-\d{2}-\d{2})$/, "evidence.json");
 const computerBrowserChromeLiveExtensionRuns = readDatedEvidence("docs/reports/assets", /^computer-use-browser-chrome-live-extension-(\d{4}-\d{2}-\d{2})$/, "evidence.json");
 const computerBrowserChromePublicExtensionRuns = readDatedEvidence("docs/reports/assets", /^computer-use-browser-chrome-public-extension-(\d{4}-\d{2}-\d{2})$/, "evidence.json");
+const computerUseLiveTaskBenchmarkRuns = readDatedEvidence("docs/reports/assets", /^computer-use-live-task-benchmark-(\d{4}-\d{2}-\d{2})$/, "evidence.json");
 const scopedAutonomySelfImplementationRuns = readDatedEvidence("docs/reports/assets", /^scoped-autonomy-self-implementation-(\d{4}-\d{2}-\d{2})$/, "evidence.json");
 const scopedAutonomyGeneratedToolLiveBreadthRuns = readDatedEvidence("docs/reports/assets", /^scoped-autonomy-generated-tool-live-breadth-(\d{4}-\d{2}-\d{2})$/, "evidence.json");
 const scopedAutonomyNpmDependencyRuns = readDatedEvidence("docs/reports/assets", /^scoped-autonomy-npm-dependency-(\d{4}-\d{2}-\d{2})$/, "evidence.json");
@@ -71,6 +73,7 @@ const gates = [
   evaluateLiveWebResearchGate("computer_session_live_web_research", computerLiveRuns, computerLiveSamples),
   evaluateComputerSessionBrowserPromptDogfoodGate(computerBrowserPromptRuns),
   evaluateComputerSessionBrowserPromptLiveGate(computerBrowserPromptLiveRuns, computerBrowserPromptLiveSamples),
+  evaluateLiveTaskBenchmarkHarnessGate(computerUseLiveTaskBenchmarkRuns),
   evaluateBrowserActionSemanticCorpusGate(browserActionSemanticCorpus),
   evaluateBrowserActionRecoveryCorpusGate(browserActionRecoveryCorpus),
   evaluateScopedAutonomySelfImplementationBreadthGate(scopedAutonomySelfImplementationRuns, scopedAutonomySelfImplementationSamples),
@@ -119,6 +122,7 @@ const output = {
     computerSessionBrowserChromeLiveExtensionSampleLedger: computerBrowserChromeLiveExtensionSamples.path,
     computerSessionBrowserChromeLiveExtensionSampleCount: computerBrowserChromeLiveExtensionSamples.samples.length,
     computerSessionBrowserChromePublicExtensionEvidence: computerBrowserChromePublicExtensionRuns.map((run) => run.path),
+    computerUseLiveTaskBenchmarkEvidence: computerUseLiveTaskBenchmarkRuns.map((run) => run.path),
     computerSessionBrowserChromePublicExtensionSampleLedger: computerBrowserChromePublicExtensionSamples.path,
     computerSessionBrowserChromePublicExtensionSampleCount: computerBrowserChromePublicExtensionSamples.samples.length,
     scopedAutonomySelfImplementationEvidence: scopedAutonomySelfImplementationRuns.map((run) => run.path),

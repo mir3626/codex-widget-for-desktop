@@ -50,7 +50,7 @@ const existingProfile = {
   safetyBoundaries: ["history_debugger_file_upload_are_one_time"],
   usedCount: 0,
   maxUses: 5,
-  expiresAt: "2026-05-16T05:00:00.000Z",
+  expiresAt: "2999-05-16T05:00:00.000Z",
   createdAt: now,
   updatedAt: now
 };

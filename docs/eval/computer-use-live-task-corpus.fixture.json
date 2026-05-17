@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "computer-use-live-task-corpus.v1",
+  "fixtureOnly": true,
+  "description": "Deterministic fixture corpus for the Computer Use live task benchmark harness. Real promotion requires user-captured Windows app, browser, and terminal traces.",
+  "tasks": [
+    {
+      "id": "browser.read.account-page",
+      "surface": "browser",
+      "prompt": "Inspect an authenticated account page without storing cookies.",
+      "expectedStatus": "passed",
+      "latencyMs": 820,
+      "rollback": { "required": false, "covered": true },
+      "evidence": ["semantic_snapshot", "redacted_debug_bundle"],
+      "verification": {
+        "success": true,
+        "notes": "Fixture verifies policy/evidence plumbing only."
+      }
+    },
+    {
+      "id": "windows.settings.read-theme",
+      "surface": "windows_app",
+      "prompt": "Read the current Windows theme setting.",
+      "expectedStatus": "passed",
+      "latencyMs": 640,
+      "rollback": { "required": false, "covered": true },
+      "evidence": ["desktop_observe", "eval_step"],
+      "verification": {
+        "success": true,
+        "notes": "Read-only host observation path."
+      }
+    },
+    {
+      "id": "terminal.create-report-artifact",
+      "surface": "terminal",
+      "prompt": "Create a bounded report artifact in the approved workspace.",
+      "expectedStatus": "passed",
+      "latencyMs": 1040,
+      "rollback": { "required": true, "covered": true },
+      "evidence": ["terminal_output_root_delta", "rollback_manifest"],
+      "verification": {
+        "success": true,
+        "notes": "Fixture covers artifact evidence and rollback accounting."
+      }
+    }
+  ]
+}

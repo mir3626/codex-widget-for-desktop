@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "computer-use-live-task-benchmark.v1",
+  "generatedAt": "2026-05-17T15:43:50.329Z",
+  "date": "2026-05-17",
+  "corpus": {
+    "path": "docs/eval/computer-use-live-task-corpus.fixture.json",
+    "schemaVersion": "computer-use-live-task-corpus.v1",
+    "fixtureOnly": true,
+    "taskCount": 3
+  },
+  "metrics": {
+    "taskCount": 3,
+    "successCount": 3,
+    "successRate": 1,
+    "p50LatencyMs": 820,
+    "p95LatencyMs": 1040,
+    "rollbackCoverage": 1,
+    "evidenceCoverage": 1
+  },
+  "promotionGate": {
+    "schemaVersion": "computer-use-live-task-benchmark-gate.v1",
+    "gateId": "live_task_benchmark_harness",
+    "status": "fixture_only",
+    "promotable": false,
+    "reasons": [
+      "fixture_corpus_does_not_promote_live_computer_use",
+      "all_tasks_succeeded",
+      "rollback_coverage_complete",
+      "evidence_coverage_complete"
+    ]
+  },
+  "results": [
+    {
+      "id": "browser.read.account-page",
+      "surface": "browser",
+      "status": "passed",
+      "success": true,
+      "latencyMs": 820,
+      "rollbackRequired": false,
+      "rollbackCovered": true,
+      "evidenceCovered": true,
+      "evidence": [
+        "semantic_snapshot",
+        "redacted_debug_bundle"
+      ],
+      "notes": "Fixture verifies policy/evidence plumbing only."
+    },
+    {
+      "id": "windows.settings.read-theme",
+      "surface": "windows_app",
+      "status": "passed",
+      "success": true,
+      "latencyMs": 640,
+      "rollbackRequired": false,
+      "rollbackCovered": true,
+      "evidenceCovered": true,
+      "evidence": [
+        "desktop_observe",
+        "eval_step"
+      ],
+      "notes": "Read-only host observation path."
+    },
+    {
+      "id": "terminal.create-report-artifact",
+      "surface": "terminal",
+      "status": "passed",
+      "success": true,
+      "latencyMs": 1040,
+      "rollbackRequired": true,
+      "rollbackCovered": true,
+      "evidenceCovered": true,
+      "evidence": [
+        "terminal_output_root_delta",
+        "rollback_manifest"
+      ],
+      "notes": "Fixture covers artifact evidence and rollback accounting."
+    }
+  ]
+}

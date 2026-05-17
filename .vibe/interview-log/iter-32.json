@@ -1,0 +1,12 @@
+{
+  "mode": "iterate",
+  "iterationId": "iter-32",
+  "createdAt": "2026-05-18T00:30:00.000+09:00",
+  "carryover": "Foreground watch and disabled helper-v2 boundaries existed, but the native helper v2 dev/unsigned contract needed direct smoke coverage.",
+  "confirmedDecisions": [
+    "Unsigned/dev helper v2 must prove disabled native input paths, not execute them.",
+    "Foreground preflight, active-window lock, abort-on-user-input, and before/after evidence fields are required contract evidence.",
+    "Production native input remains blocked on signing."
+  ],
+  "newGoal": "Add native helper v2 dev contract smoke coverage for foreground preflight, guard fields, screenshot metadata, and disabled commands."
+}

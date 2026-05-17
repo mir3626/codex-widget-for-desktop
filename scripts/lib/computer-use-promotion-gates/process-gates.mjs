@@ -51,6 +51,52 @@ export function evaluateProcessValidationGate(latest, previous) {
   };
 }
 
+export function evaluateLiveTaskBenchmarkHarnessGate(runs) {
+  const latest = runs.at(-1);
+  const reasons = [];
+  if (!latest) {
+    return blockedGate("live_task_benchmark_harness", "missing_live_task_benchmark_evidence", ["missing_live_task_benchmark_evidence"], {});
+  }
+  const data = latest.data ?? {};
+  const metrics = data.metrics ?? {};
+  const gate = data.promotionGate ?? {};
+  const corpus = data.corpus ?? {};
+  const taskCount = Number(metrics.taskCount ?? 0);
+  const successRate = Number(metrics.successRate ?? 0);
+  const rollbackCoverage = Number(metrics.rollbackCoverage ?? 0);
+  const evidenceCoverage = Number(metrics.evidenceCoverage ?? 0);
+  const fixtureOnly = corpus.fixtureOnly === true;
+  reasons.push(data.schemaVersion === "computer-use-live-task-benchmark.v1" ? "live_task_benchmark_schema_present" : "live_task_benchmark_schema_missing");
+  reasons.push(taskCount >= 3 ? "windows_browser_terminal_task_fixture_present" : "insufficient_task_fixture_count");
+  reasons.push(successRate >= 1 ? "all_benchmark_tasks_succeeded" : "benchmark_task_failure_present");
+  reasons.push(rollbackCoverage >= 1 ? "rollback_coverage_complete" : "rollback_coverage_incomplete");
+  reasons.push(evidenceCoverage >= 1 ? "evidence_coverage_complete" : "evidence_coverage_incomplete");
+  reasons.push(fixtureOnly ? "fixture_corpus_requires_user_captured_live_data_for_promotion" : "user_captured_live_corpus_present");
+  const passed = data.schemaVersion === "computer-use-live-task-benchmark.v1" &&
+    taskCount >= 3 &&
+    successRate >= 1 &&
+    rollbackCoverage >= 1 &&
+    evidenceCoverage >= 1;
+  return {
+    id: "live_task_benchmark_harness",
+    evidenceClass: fixtureOnly ? "fixture_live_task_harness" : "live_task_benchmark",
+    status: passed ? "passed" : "blocked",
+    promotable: gate.promotable === true && !fixtureOnly,
+    promotionClass: fixtureOnly ? "fixture_gate_passed_live_data_required" : gate.promotable === true ? "eligible_for_promotion_review" : "live_task_gate_blocked",
+    reasons,
+    latestEvidencePath: latest.path,
+    evidencePaths: runs.map((run) => run.path),
+    metrics: {
+      taskCount,
+      successRate,
+      p95LatencyMs: metrics.p95LatencyMs,
+      rollbackCoverage,
+      evidenceCoverage,
+      fixtureOnly
+    }
+  };
+}
+
 export function evaluateLiveWebResearchGate(id, runs, sampleLedger) {
   const reasons = [];
   if (!runs.length && !sampleLedger.samples.length) {

@@ -12,6 +12,8 @@ import type {
   ComputerSessionCreateInput,
   ComputerSessionDebugBundle,
   ComputerSessionEvent,
+  ComputerUseFindElementsQuery,
+  ComputerUseSnapshotResult,
   ComputerSessionObservationResourceSummary,
   ComputerSessionObservationSummary,
   ComputerSessionRollbackActionSummary,
@@ -161,6 +163,8 @@ import type {
   TerminalOutputRootDeltaResult,
   TerminalOutputRootSnapshot
 } from "./sessionRuntimeTypes.js";
+import { captureComputerUseSnapshot as captureSemanticSnapshot } from "./sessionSemanticSnapshotRuntime.js";
+import { buildFutureVmSessionBoundary } from "./vmSandboxAdapter.js";
 
 export type {
   ComputerSessionOperationExecutor,
@@ -442,6 +446,19 @@ export class ComputerSessionRuntime {
     recordObservation(this.createEvidenceRecorderHost(), sessionId, observation);
   }
 
+  captureComputerUseSnapshot(input: {
+    sessionId?: string;
+    fixture?: unknown;
+    query?: ComputerUseFindElementsQuery;
+    source?: "native_helper_uia" | "native_helper_snapshot" | "fixture" | "unavailable";
+  }): ComputerUseSnapshotResult {
+    return captureSemanticSnapshot({
+      storage: this.options.storage,
+      requireSession: (sessionId) => this.requireSession(sessionId),
+      recordObservation: (sessionId, observation) => this.recordObservation(sessionId, observation)
+    }, input);
+  }
+
   recordBrowserActionResultObservation(input: {
     result: BrowserActionResult;
     capabilityJobId?: string;
@@ -518,6 +535,7 @@ export class ComputerSessionRuntime {
       executeVisualDesktopWatchOperation: (sessionId, operation) => this.executeVisualDesktopWatchOperation(sessionId, operation),
       executeBrowserPermissionBubbleBoundaryOperation: (sessionId, operation) => this.executeBrowserPermissionBubbleBoundaryOperation(sessionId, operation),
       executeNativeFilePickerBoundaryOperation: (sessionId, operation) => this.executeNativeFilePickerBoundaryOperation(sessionId, operation),
+      captureComputerUseSnapshot: (input) => this.captureComputerUseSnapshot(input),
       evaluateTerminalOperationPermission: (sessionId, input) => this.evaluateTerminalOperationPermission(sessionId, input),
       consumeOneTimePermissionProfile: (state, phase) => this.consumeOneTimePermissionProfile(state, phase),
       captureTerminalOutputRootSnapshots: (sessionId, input) => this.captureTerminalOutputRootSnapshots(sessionId, input),
@@ -1683,7 +1701,8 @@ export class ComputerSessionRuntime {
   }): ComputerSessionStartResult {
     const state = this.requireSession(input.sessionId);
     const now = new Date().toISOString();
-    const reason = "future_vm_session_backend_not_available";
+    const boundary = buildFutureVmSessionBoundary(input.input);
+    const reason = boundary.reason;
     const preconditions = buildFutureVmSessionPreconditions(input.input);
     const output = {
       ok: false,
@@ -1694,6 +1713,7 @@ export class ComputerSessionRuntime {
       hostMutationAllowed: false,
       networkOpened: false,
       rawScreenshotRetained: false,
+      vmSandboxAdapterBoundary: boundary,
       missingPreconditions: preconditions,
       requiredGrants: input.surfaceDecision.requiredGrants,
       safetyBoundaries: [
@@ -1774,6 +1794,7 @@ export class ComputerSessionRuntime {
       selectedSurface: input.surfaceDecision.surface.kind,
       requiredGrants: input.surfaceDecision.requiredGrants,
       missingPreconditions: preconditions.map((precondition) => precondition.id),
+      vmSandboxAdapterBoundary: boundary,
       vmCreated: false,
       hostMutationAllowed: false
     });
@@ -1833,6 +1854,7 @@ export class ComputerSessionRuntime {
         vmCreated: false,
         hostMutationAllowed: false,
         networkOpened: false,
+        vmSandboxAdapterBoundary: boundary,
         missingPreconditions: preconditions
       },
       redaction: {
@@ -1859,6 +1881,7 @@ export class ComputerSessionRuntime {
       reason: "Future VM session did not start because VM backend isolation and lifecycle preconditions are unavailable.",
       vmCreated: false,
       hostMutationAllowed: false,
+      vmSandboxAdapterBoundary: boundary,
       missingPreconditions: preconditions.map((precondition) => precondition.id)
     });
     this.options.storage.updateComputerUseEvalRun({

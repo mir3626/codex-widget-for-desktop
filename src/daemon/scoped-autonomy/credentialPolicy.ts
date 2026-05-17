@@ -147,6 +147,7 @@ export function normalizeCredentialLease(value: unknown): AutonomyCredentialLeas
       ? record.scope
       : "browser_profile",
     domains: normalizeStringArray(record.domains),
+    accountHints: normalizeStringArray(record.accountHints),
     purposes: normalizeStringArray(record.purposes),
     vaultRefs: normalizeVaultRefs(record.vaultRefs),
     maxUses: normalizePositiveInteger(record.maxUses),

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "asr-benchmark-corpus.v1",
+  "fixtureOnly": true,
+  "description": "CPU fixture corpus for ASR benchmark metric plumbing. Replace fixtureTranscript with real engine output for user-captured audio.",
+  "samples": [
+    {
+      "id": "ko-open-browser",
+      "audioPath": "fixtures/asr/ko-open-browser.wav",
+      "durationMs": 1800,
+      "language": "ko",
+      "expectedTranscript": "브라우저에서 예제 페이지를 열어줘",
+      "fixtureTranscript": "브라우저에서 예제 페이지를 열어줘",
+      "expectedCommand": "open_browser",
+      "fixtureCommand": "open_browser",
+      "device": "cpu"
+    },
+    {
+      "id": "ko-click-submit",
+      "audioPath": "fixtures/asr/ko-click-submit.wav",
+      "durationMs": 1600,
+      "language": "ko",
+      "expectedTranscript": "제출 버튼을 눌러줘",
+      "fixtureTranscript": "제출 버튼을 눌러줘",
+      "expectedCommand": "click_submit",
+      "fixtureCommand": "click_submit",
+      "device": "cpu"
+    },
+    {
+      "id": "en-type-title",
+      "audioPath": "fixtures/asr/en-type-title.wav",
+      "durationMs": 1700,
+      "language": "en",
+      "expectedTranscript": "type the report title",
+      "fixtureTranscript": "type the report title",
+      "expectedCommand": "type_text",
+      "fixtureCommand": "type_text",
+      "device": "cpu"
+    }
+  ]
+}

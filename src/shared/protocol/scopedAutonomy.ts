@@ -34,6 +34,7 @@ export type AutonomyCredentialLeaseGrant = {
   status: AutonomyCredentialLeaseStatus;
   scope: AutonomyCredentialLeaseScope;
   domains: string[];
+  accountHints?: string[];
   purposes: string[];
   vaultRefs: AutonomyCredentialVaultRef[];
   maxUses?: number;
@@ -112,7 +113,11 @@ export type AutonomyPermissionRequirement =
   | { type: "generated_tool_execution"; value: string; reason: string }
   | { type: "generated_code"; value: string; reason: string }
   | { type: "risk_class"; value: AutonomyRiskClass; reason: string }
-  | { type: "credential_access"; value: string; reason: string };
+  | { type: "credential_access"; value: string; reason: string }
+  | { type: "browser_profile_access"; value: string; reason: string }
+  | { type: "browser_session_access"; value: string; reason: string }
+  | { type: "browser_account_access"; value: string; reason: string }
+  | { type: "cookie_jar_access"; value: string; reason: string };
 
 export type AutonomyPermissionDecision = {
   allowed: boolean;
@@ -129,6 +134,18 @@ export type AutonomyPermissionDecision = {
     activeLeaseCount: number;
     redactionPolicy: AutonomyCredentialRedactionPolicy;
     vaultAccess: "reference_only";
+  };
+  browserProfilePolicy?: {
+    status: "not_requested" | "allowed" | "blocked";
+    reason: string;
+    matchedLeaseIds: string[];
+    activeLeaseCount: number;
+    redactionPolicy: AutonomyCredentialRedactionPolicy;
+    defaultDeny: true;
+    profileAccess: "explicit_lease_only";
+    cookieAccess: "metadata_only_or_user_approved_helper";
+    auditTrail: "decision_summary_only";
+    leaseScopes: AutonomyCredentialLeaseScope[];
   };
 };
 

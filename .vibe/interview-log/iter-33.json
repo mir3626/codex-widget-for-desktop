@@ -1,0 +1,12 @@
+{
+  "mode": "iterate",
+  "iterationId": "iter-33",
+  "createdAt": "2026-05-18T00:30:00.000+09:00",
+  "carryover": "The future_vm_session boundary existed as a direct block; it needed an adapter-shaped contract for future Windows Sandbox, Hyper-V, RDP, and cloud backends.",
+  "confirmedDecisions": [
+    "No VM may be created without an approved backend.",
+    "Host mutation must remain false while adapters are unavailable.",
+    "Adapter contracts should document required isolation, lifecycle, network, and redaction preconditions."
+  ],
+  "newGoal": "Implement the VM/sandbox abstraction boundary and fail-closed smoke evidence."
+}

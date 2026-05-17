@@ -6,7 +6,8 @@ import type {
   CapabilityJobSummary,
   ComputerSessionState,
   ComputerSessionSummary,
-  ComputerStructuredOperation
+  ComputerStructuredOperation,
+  ComputerUseSnapshotResult
 } from "../../shared/protocol.js";
 import type { CapabilityRuntime } from "../capability-runtime/index.js";
 import type { StorageService } from "../storage/storage.js";
@@ -21,6 +22,10 @@ import {
   readOperationTimeoutMs,
   waitForCapabilityJobIfRunning
 } from "./sessionRuntimeHelpers.js";
+import {
+  executeSemanticSnapshotOperation,
+  isSemanticSnapshotOperation
+} from "./sessionSemanticOperationRuntime.js";
 import type {
   ComputerSessionOperationResult,
   RuntimeSessionState,
@@ -69,6 +74,12 @@ export type ComputerSessionOperationRuntimeHost = {
     sessionId: string,
     operation: Extract<ComputerStructuredOperation, { kind: "native_file_picker_action" }>
   ) => ComputerSessionOperationResult;
+  captureComputerUseSnapshot: (input: {
+    sessionId: string;
+    fixture?: unknown;
+    query?: Record<string, unknown>;
+    source?: "native_helper_uia" | "native_helper_snapshot" | "fixture" | "unavailable";
+  }) => ComputerUseSnapshotResult;
   evaluateTerminalOperationPermission: (sessionId: string, input: Record<string, unknown>) => TerminalOperationPermissionResult;
   consumeOneTimePermissionProfile: (state: RuntimeSessionState, phase: string) => unknown;
   captureTerminalOutputRootSnapshots: (sessionId: string, input: Record<string, unknown>) => TerminalOutputRootSnapshot[];
@@ -121,6 +132,12 @@ export async function executeOperation(
   }
   if (input.operation.kind === "native_file_picker_action") {
     return host.executeNativeFilePickerBoundaryOperation(input.sessionId, input.operation);
+  }
+  if (isSemanticSnapshotOperation(input.operation)) {
+    return executeSemanticSnapshotOperation(host, {
+      sessionId: input.sessionId,
+      operation: input.operation
+    }, state);
   }
   const bridge = bridgeOperationToCapability(input.operation);
   if (!bridge) {

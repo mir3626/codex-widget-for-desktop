@@ -1,0 +1,13 @@
+{
+  "mode": "iterate",
+  "iterationId": "iter-30",
+  "createdAt": "2026-05-18T00:30:00.000+09:00",
+  "carryover": "Credential consent leases existed, but authenticated browser profile, session, account, and cookie-jar access needed explicit default-deny policy semantics.",
+  "confirmedDecisions": [
+    "Browser profile/cookie access must be blocked by default.",
+    "Explicit domain/session/account leases may allow bounded access.",
+    "Cookie values and credentials remain redacted or never stored.",
+    "Revocation must immediately make the same requirement fail."
+  ],
+  "newGoal": "Implement the browser profile permission model over consent leases with revoke, redaction, audit, and smoke coverage."
+}

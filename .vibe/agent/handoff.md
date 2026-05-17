@@ -105,3 +105,53 @@ instead of re-expanding the active roadmap.
   authenticated browser profile/cookie access remain blocked by policy.
 - The current credential implementation uses reference-only vault handles; it
   does not retrieve raw secrets from Windows Credential Manager or DPAPI.
+
+## Latest Update: Computer Use Parity Improvement Batch
+
+Completed iter-29 through iter-34 for the user's feasible Computer Use
+improvement list.
+
+Implemented:
+
+- UIA semantic tree read-only observe support with refs maps, snapshot and
+  find-elements APIs, operation handling, redacted debug-bundle evidence, and
+  `smoke:computer-use-uia-semantic-tree`.
+- Browser profile/session/account/cookie permission policy on top of explicit
+  consent leases, including account hints, revoke alias/audit response, default
+  deny behavior, and `smoke:computer-use-browser-profile-permission`.
+- Live task benchmark fixture corpus, benchmark runner, report/evidence output,
+  and `live_task_benchmark_harness` promotion gate integration. It is passed as
+  fixture evidence but non-promotable until user-captured live traces exist.
+- Native helper v2 dev-contract smoke for foreground preflight, active-window
+  and user-input guards, before/after evidence readiness, screenshot metadata,
+  disabled command contracts, and unsigned-helper blocker semantics.
+- VM/sandbox adapter-shaped boundary for mock, Windows Sandbox, Hyper-V, RDP,
+  and cloud providers, wired into `future_vm_session` evidence with fail-closed
+  smoke coverage.
+- ASR benchmark corpus harness with audio metadata, WER, command accuracy,
+  CPU fixture report/evidence, and `smoke:asr-benchmark-harness`.
+
+Verification passed:
+
+- `npm run build:daemon`
+- `npm run lint`
+- `npm run smoke:computer-use-uia-semantic-tree`
+- `npm run smoke:computer-use-browser-profile-permission`
+- `npm run smoke:computer-use-live-task-benchmark`
+- `npm run smoke:browser-native-desktop-helper-v2-dev-contract`
+- `npm run smoke:computer-use-vm-sandbox-boundary`
+- `npm run smoke:computer-use-vm-sandbox-adapter`
+- `npm run smoke:computer-use-credential-consent`
+- `npm run smoke:asr-benchmark-harness`
+- `npm run smoke:computer-use-promotion-gate`
+- `npm run smoke:all`
+
+Encoding checks passed with strict UTF-8 validation over 42 touched text files
+and mojibake scan reporting 0 suspicious matches. The Unix `file` utility is
+not installed in this PowerShell environment, so strict UTF-8 validation was
+used as the local fallback.
+
+Current resume point: active sprint pointer is idle after iter-34. Remaining
+production blockers are still external signing, official app-server client-tool
+contract, real VM backend configuration, GPU ASR environment, and user-provided
+live task/audio corpora.

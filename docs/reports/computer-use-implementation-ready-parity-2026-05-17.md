@@ -1,6 +1,6 @@
 # Computer Use Implementation-Ready Parity Audit
 
-Generated: 2026-05-17T15:04:35.818Z
+Generated: 2026-05-17T15:56:58.206Z
 
 Status: implementation_ready_with_external_deferred
 
