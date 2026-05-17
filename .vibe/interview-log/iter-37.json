@@ -1,0 +1,12 @@
+{
+  "mode": "iterate",
+  "iterationId": "iter-37",
+  "createdAt": "2026-05-18T04:33:33.562+09:00",
+  "carryover": "Iteration 36 finalized explicit navigation success when Chrome reaches the requested URL. The next real-use blocker is compound prompts that combine a destination and an in-page action, for example asking to open Gmail and then click the spam folder.",
+  "confirmedDecisions": [
+    "Treat this as a generic prompt decomposition problem, not a test-only Gmail special case.",
+    "Use existing known-destination resolution for the first step and keep the remaining action target as the second step.",
+    "Do not collapse the whole utterance into a single click target because that cannot match the actual page affordance."
+  ],
+  "newGoal": "Decompose known-destination Browser Action prompts into navigate-then-action plans."
+}

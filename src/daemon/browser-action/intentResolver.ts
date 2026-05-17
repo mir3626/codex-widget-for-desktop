@@ -61,6 +61,11 @@ export function resolveBrowserActionIntent(text: string): BrowserActionIntent {
     });
   }
 
+  const compoundKnownDestination = resolveKnownDestinationCompoundIntent(utterance);
+  if (compoundKnownDestination) {
+    return compoundKnownDestination;
+  }
+
   if (historyCommand) {
     actionType = historyCommand;
     actions.push({ type: historyCommand });
@@ -210,6 +215,62 @@ function isExplicitSearchNavigationRequest(text: string): boolean {
 
 function buildSearchNavigationUrl(value: string): string {
   return `https://www.google.com/search?q=${encodeURIComponent(value.trim())}`;
+}
+
+function resolveKnownDestinationCompoundIntent(text: string): BrowserActionIntent | undefined {
+  const split = splitKnownDestinationCompoundRequest(text);
+  if (!split) {
+    return undefined;
+  }
+  const url = extractUrl(split.destinationPhrase) ?? resolveKnownBrowserDestinationUrl(split.destinationPhrase);
+  if (!url) {
+    return undefined;
+  }
+  if (!isExecutableBrowserCommand(split.actionText)) {
+    return undefined;
+  }
+  const followup = resolveBrowserActionIntent(split.actionText);
+  const followupActions = followup.actions.filter((action) => !isBrowserNavigationControlAction(action));
+  if (followupActions.length === 0) {
+    return undefined;
+  }
+  return createIntent({
+    utterance: text.trim(),
+    actionType: "navigate",
+    actions: [{ type: "navigate", url }, ...followupActions],
+    targetPhrase: followup.targetPhrase,
+    targetRole: followup.targetRole,
+    value: url,
+    confidence: Math.max(0.82, Math.min(0.92, followup.confidence)),
+    reason: "Resolved compound Browser Action intent into known-destination navigation followed by an in-page action."
+  });
+}
+
+function splitKnownDestinationCompoundRequest(text: string): { destinationPhrase: string; actionText: string } | undefined {
+  const patterns = [
+    /^\s*(.{1,100}?)(?:\s*(?:에|로|으로))?\s*(?:들어가서|들어간\s*(?:뒤|후|다음)|열고|연\s*(?:뒤|후|다음)|이동해서|이동하고|접속해서|접속하고|가서|간\s*(?:뒤|후|다음))\s+(.{1,180})$/i,
+    /^\s*(?:go\s*to|open|navigate\s*to)\s+(.{1,100}?)(?:\s*(?:,|and|then)\s+)(.{1,180})$/i
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const destinationPhrase = (match?.[1] ?? "").trim();
+    const actionText = normalizeCompoundFollowupActionText(match?.[2] ?? "");
+    if (destinationPhrase && actionText) {
+      return { destinationPhrase, actionText };
+    }
+  }
+  return undefined;
+}
+
+function normalizeCompoundFollowupActionText(text: string): string {
+  return text
+    .replace(/^(?:그리고|그다음|다음|then|and)\s+/i, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isBrowserNavigationControlAction(action: BrowserAction): boolean {
+  return action.type === "navigate" || action.type === "back" || action.type === "forward" || action.type === "reload";
 }
 
 function createIntent(input: Omit<BrowserActionIntent, "id" | "alternatives"> & { alternatives?: string[] }): BrowserActionIntent {

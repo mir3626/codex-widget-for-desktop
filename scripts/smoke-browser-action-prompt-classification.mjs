@@ -26,6 +26,7 @@ assertNavigate("구글 홈페이지 열어줘", "browser", "https://www.google.c
 assertNavigate("왜 엉뚱한 답변하고있어. 구글 홈페이지 켜달라고했잖아.", "browser", "https://www.google.com/");
 assertNavigate("특갤로 이동해줘", "browser", "https://gall.dcinside.com/mgallery/board/lists/?id=thesingularity");
 assertNavigate("특이점이온다 갤러리로 이동해줘", "browser", "https://gall.dcinside.com/mgallery/board/lists/?id=thesingularity");
+assertCompoundNavigateClick("gmail 들어가서 스팸편지함 눌러줘", "browser", "https://mail.google.com/", "스팸편지함");
 assertNoPlan("특이저 ㅁ 갤러리로 이동해줘", "browser");
 assertNoPlan("즐겨찾기에 특이점이온다 갤러리로 이동해줘", "browser");
 assertPlan("뒤로가기", "browser", ["back"]);
@@ -92,5 +93,23 @@ function assertNavigate(text, mode, url) {
   const action = plan.steps[0]?.action;
   if (action?.type !== "navigate" || action.url !== url) {
     throw new Error(`Navigation prompt did not resolve expected URL for ${text}: ${JSON.stringify(plan)}`);
+  }
+}
+
+function assertCompoundNavigateClick(text, mode, url, targetSummary) {
+  const plan = planBrowserActionFromPrompt({ text, mode });
+  if (!plan) {
+    throw new Error(`Compound prompt did not produce a plan: ${text}`);
+  }
+  const actual = plan.steps.map((step) => step.action.type);
+  if (JSON.stringify(actual) !== JSON.stringify(["navigate", "click"])) {
+    throw new Error(`Compound prompt did not decompose into navigate+click for ${text}: ${JSON.stringify(plan)}`);
+  }
+  const first = plan.steps[0]?.action;
+  if (first?.type !== "navigate" || first.url !== url) {
+    throw new Error(`Compound prompt did not navigate to expected URL for ${text}: ${JSON.stringify(plan)}`);
+  }
+  if (plan.steps[1]?.targetSummary !== targetSummary) {
+    throw new Error(`Compound prompt click target should be ${targetSummary}, got ${plan.steps[1]?.targetSummary}: ${JSON.stringify(plan)}`);
   }
 }

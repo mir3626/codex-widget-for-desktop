@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-36",
+  "currentIteration": "iter-37",
   "iterations": [
     {
       "id": "iter-1",
@@ -1124,6 +1124,29 @@
         "browser-perception-interface": 1
       },
       "summary": "Iteration 36 added a Browser Bridge explicit-navigate finalizer that accepts lightweight Chrome tab-state proof only when the active tab reaches the requested destination URL and full DOM after-observation is unavailable. Extension and Browser Action real-use smokes cover destination matching, mismatch rejection, and no loosening for history navigation."
+    },
+    {
+      "id": "iter-37",
+      "label": "Browser Action Multi-Step Prompt Decomposition",
+      "startedAt": "2026-05-18T04:33:33.562+09:00",
+      "completedAt": "2026-05-18T04:36:06.086+09:00",
+      "goal": "Use vibe-iterate to decompose known-destination Browser Action prompts into navigate-then-action plans so compound real-use prompts do not become unusable single click targets.",
+      "plannedSprints": [
+        "iter-37-sprint-01-multi-step-prompt-decomposition"
+      ],
+      "completedSprints": [
+        "iter-37-sprint-01-multi-step-prompt-decomposition"
+      ],
+      "carryover": "Iteration 36 fixed explicit navigation false negatives. The remaining real-use prompt-planning blocker is compound prompts such as opening Gmail and then clicking the spam folder, which should plan navigation plus an in-page click.",
+      "openRisks": [
+        "Known-destination decomposition should stay conservative and abstain when the destination cannot be resolved.",
+        "In-page target execution still depends on actual Browser Perception matching after navigation."
+      ],
+      "milestoneProgress": {
+        "browser-action-end-to-end-control": 0.93,
+        "browser-action-prompt-planning": 0.86
+      },
+      "summary": "Iteration 37 added known-destination compound prompt decomposition. Browser Action now plans a conservative navigate-then-follow-up action for prompts such as opening Gmail and clicking the spam folder, while abstaining when the destination cannot be resolved. Focused prompt classification, Browser Action, real-use regression, lint, and diff checks passed."
     }
   ]
 }

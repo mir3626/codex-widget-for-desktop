@@ -22,6 +22,7 @@ export function resolveKnownBrowserDestinationUrl(value: string | undefined): st
   const normalized = normalizeBrowserDestinationAlias(value);
   const aliases: Array<[RegExp, string]> = [
     [/^(google|구글)$/, "https://www.google.com/"],
+    [/^(gmail|googlemail|지메일|구글메일)$/, "https://mail.google.com/"],
     [/^(naver|네이버)$/, "https://www.naver.com/"],
     [/^(youtube|유튜브|유튭)$/, "https://www.youtube.com/"],
     [/^(github|깃허브|기트허브)$/, "https://github.com/"],
@@ -47,5 +48,6 @@ function normalizeBrowserDestinationAlias(value: string): string {
     .toLowerCase()
     .replace(/\s+/g, "")
     .replace(/[.,!?。！？]+$/g, "")
+    .replace(/(?:홈페이지|웹사이트|사이트|페이지)$/gi, "")
     .replace(/(?:즐겨찾기|북마크|bookmark|favorite)(?:에|에서|의|로|으로)?/gi, "");
 }

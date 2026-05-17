@@ -5,12 +5,40 @@
 Codex Widget for Desktop is a Tauri + React + Node daemon desktop widget. The
 daemon listens on `127.0.0.1:4128`; the renderer is served by Vite in dev.
 
-The latest completed product work is Browser Action explicit navigation
-finalization through `iter-36`. Active sprint pointer is idle. Current active roadmap file is
+The latest completed product work is Browser Action multi-step prompt
+decomposition through `iter-37`. Active sprint pointer is idle. Current active roadmap file is
 compacted to the current iteration only; historical roadmaps live under
 `docs/plans/archive/roadmaps/`.
 
-## Latest Update: Browser Action Navigation Verifier Finalization
+## Latest Update: Browser Action Multi-Step Prompt Decomposition
+
+Completed `$vibe-iterate` iteration `iter-37`.
+
+Applied:
+
+- Known-destination compound Browser Action prompts now decompose into a
+  destination navigation step followed by the follow-up in-page action.
+- `gmail 들어가서 스팸편지함 눌러줘` resolves to `navigate
+  https://mail.google.com/` plus `click 스팸편지함`, instead of a single
+  unusable click target containing the destination phrase.
+- The decomposition stays conservative: if the destination is not a URL or a
+  known alias, the resolver falls back to existing behavior rather than guessing
+  a navigation target.
+
+Verification passed:
+
+- `npm run smoke:browser-action:prompt-classification`
+- `npm run smoke:browser-action`
+- `npm run smoke:browser-action:real-use-regressions`
+- `npm run lint`
+- `git diff --check`
+
+Remaining product follow-ups:
+
+- OS/global-hotkey conflicts and background browser chrome actions remain the
+  next Windows-control improvement.
+
+## Previous Update: Browser Action Navigation Verifier Finalization
 
 Completed `$vibe-iterate` iteration `iter-36`.
 
@@ -34,13 +62,6 @@ Verification passed:
 - `npm run smoke:browser-action:real-use-regressions`
 - `npm run lint`
 - `node scripts/audit-real-use-widget-session.mjs --since 2026-05-18T02:55:59+09:00 --json`
-
-Remaining product follow-ups:
-
-- Multi-step prompts such as "Gmail open then spam folder" still need prompt
-  decomposition beyond a single click target.
-- OS/global-hotkey conflicts and background browser chrome actions remain
-  separate Windows-control improvements.
 
 ## Previous Update: Browser Action Real-Use Feedback Reliability
 
@@ -112,8 +133,8 @@ idle.
 
 ## Current Resume Point
 
-Worktree should be clean after the iter-36 commit/push. Next useful work is the
-remaining Browser Action decomposition/background-control follow-up listed
+Worktree should be clean after the iter-37 commit/push. Next useful work is the
+remaining Browser Action background/browser chrome control follow-up listed
 above.
 
 ## Product Boundaries
