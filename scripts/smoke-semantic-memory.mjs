@@ -248,6 +248,43 @@ async function verifyDebugFeedbackSemanticCorrection() {
     debugStorage.close();
     rmSync(debugAppDataDir, { recursive: true, force: true });
   }
+
+  const successAppDataDir = mkdtempSync(join(tmpdir(), "codex-widget-semantic-debug-feedback-success-"));
+  const successStorage = createStorageService({ appDataDir: successAppDataDir });
+  const successMemory = createSemanticMemoryStore({ appDataDir: successAppDataDir });
+  try {
+    const handled = await handleDebugFeedbackMessage({
+      type: "debug.feedback.save",
+      messageId: "semantic-debug-success-1",
+      reason: "정상적으로 동작 수행했는데 failed로 기록됨",
+      userText: "특갤 열어줘",
+      assistantText: "브라우저 동작을 완료했습니다. 실행: navigate https://gall.dcinside.com/mgallery/board/lists/?id=programming 현재 페이지: 프로그래밍 갤러리 (https://gall.dcinside.com/mgallery/board/lists/?id=programming) 검증: Action changed the browser route or URL.",
+      mode: "browser",
+      tags: ["assistant-response", "manual-debug"]
+    }, {
+      storage: successStorage,
+      semanticMemory: successMemory,
+      clients: new Set()
+    });
+    if (!handled) {
+      throw new Error("Debug feedback handler should accept successful debug feedback save messages.");
+    }
+    for (const phrase of ["특갤 열어줘", "특갤"]) {
+      const readSet = successMemory.readMemory({
+        phrase,
+        scope: { surface: "browser_page", origin: "https://gall.dcinside.com" },
+        limit: 20
+      });
+      const avoid = readSet.edges.find((edge) => edge.relation === "avoid_target" && edge.source === "user_correction");
+      if (avoid) {
+        throw new Error(`Successful manual debug feedback must not create avoid-target semantic memory: ${JSON.stringify(readSet)}`);
+      }
+    }
+  } finally {
+    successMemory.close();
+    successStorage.close();
+    rmSync(successAppDataDir, { recursive: true, force: true });
+  }
 }
 
 async function verifyExtensionCompletionFeedbackWrite() {

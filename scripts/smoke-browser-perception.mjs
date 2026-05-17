@@ -148,6 +148,54 @@ async function verifyStabilization() {
   assertEqual(result.status, "ready", "side-effect waits for stable observe");
   assert(result.context?.routeKey, "SPA transition should retain route identity");
   assertEqual(result.context?.mutationRevision, "view-2", "mutation revision updates after SPA transition");
+
+  const retryService = new BrowserPerceptionService();
+  const retryProviders = new ProviderRegistry();
+  retryProviders.setDomSnapshot(createSnapshot({ url: "https://example.test/spa?view=retry", mutationQuietMs: 70, mutationRevision: "retry-mutating-1" }));
+  const retryWait = retryService.ensureFreshContext({
+    providers: retryProviders,
+    bridgeStatus: createBridgeStatus("https://example.test/spa?view=retry"),
+    request: {
+      requestId: "settling-side-effect-retry",
+      reason: "before_step",
+      requiredFreshness: "stable",
+      actionRisk: "side_effect",
+      timeoutMs: 2_000
+    }
+  });
+  const firstRetryCommand = retryService.pollExtensionCommand();
+  assertEqual(firstRetryCommand?.kind, "observe_now", "side-effect retry starts with observe command");
+  retryService.completeObserveResult({
+    providers: retryProviders,
+    bridgeStatus: createBridgeStatus("https://example.test/spa?view=retry"),
+    payload: {
+      commandId: firstRetryCommand.commandId,
+      status: "succeeded",
+      snapshot: createSnapshot({ url: "https://example.test/spa?view=retry", mutationQuietMs: 90, mutationRevision: "retry-mutating-2" }),
+      mutationRevision: "retry-mutating-2",
+      mutationQuietMs: 90,
+      readyState: "complete"
+    }
+  });
+  const secondRetryCommand = retryService.pollExtensionCommand();
+  assertEqual(secondRetryCommand?.kind, "observe_now", "side-effect retries observe when result is still mutating");
+  assertEqual(secondRetryCommand?.requestId, "settling-side-effect-retry", "retry keeps the original request id");
+  retryService.completeObserveResult({
+    providers: retryProviders,
+    bridgeStatus: createBridgeStatus("https://example.test/spa?view=retry"),
+    payload: {
+      commandId: secondRetryCommand.commandId,
+      status: "succeeded",
+      snapshot: createSnapshot({ url: "https://example.test/spa?view=retry", mutationQuietMs: 900, mutationRevision: "retry-stable" }),
+      mutationRevision: "retry-stable",
+      mutationQuietMs: 900,
+      readyState: "complete"
+    }
+  });
+  const retryResult = await retryWait;
+  assertEqual(retryResult.status, "ready", "side-effect retry eventually resolves stable context");
+  assertEqual(retryResult.context?.stability, "stable", "side-effect retry result should be stable");
+  assertEqual(retryResult.context?.mutationRevision, "retry-stable", "side-effect retry returns latest stable mutation revision");
 }
 
 async function verifyBackgroundScheduler() {

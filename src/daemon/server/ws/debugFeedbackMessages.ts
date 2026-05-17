@@ -9,6 +9,8 @@ import { broadcastLedgerSnapshot } from "../clientEvents.js";
 import { recordRuntimeActivity } from "../runtimeActivity.js";
 import type { MessageRouterContext } from "./context.js";
 
+type DebugFeedbackOutcome = "success" | "failure" | "partial" | "ux_issue" | "unknown";
+
 export async function handleDebugFeedbackMessage(message: ClientMessage, context: MessageRouterContext): Promise<boolean> {
   if (message.type !== "debug.feedback.save") {
     return false;
@@ -18,6 +20,7 @@ export async function handleDebugFeedbackMessage(message: ClientMessage, context
   const reason = normalizeOptionalText(message.reason, 2000);
   const userText = normalizeOptionalText(message.userText, 4000);
   const assistantText = normalizeOptionalText(message.assistantText, 8000);
+  const outcome = classifyDebugFeedbackOutcome(reason, assistantText);
   recordRuntimeActivity(
     context.storage,
     sessionId,
@@ -25,11 +28,12 @@ export async function handleDebugFeedbackMessage(message: ClientMessage, context
     "debug-feedback",
     reason ? `Debug feedback: ${reason}` : "Debug feedback saved",
     {
-      schemaVersion: "debug-feedback.v1",
+      schemaVersion: "debug-feedback.v2",
       messageId: message.messageId,
       reason,
       userText,
       assistantText,
+      outcome,
       mode: message.mode,
       tags: Array.isArray(message.tags) ? message.tags.slice(0, 12) : [],
       capturedAt: new Date().toISOString()
@@ -41,7 +45,8 @@ export async function handleDebugFeedbackMessage(message: ClientMessage, context
     message,
     reason,
     userText,
-    assistantText
+    assistantText,
+    outcome
   });
   broadcastLedgerSnapshot(context.clients, context.storage, sessionId);
   return true;
@@ -54,8 +59,12 @@ function recordDebugFeedbackSemanticCorrection(input: {
   reason?: string;
   userText?: string;
   assistantText?: string;
+  outcome: DebugFeedbackOutcome;
 }): void {
   if (!isManualBrowserDebugCorrection(input.message, input.reason, input.assistantText)) {
+    return;
+  }
+  if (!shouldRecordDebugFeedbackSemanticCorrection(input.outcome)) {
     return;
   }
   const phrases = readDebugFeedbackPhrases(input.userText, input.assistantText);
@@ -99,6 +108,39 @@ function recordDebugFeedbackSemanticCorrection(input: {
   } catch {
     // Debug feedback must remain available even if advisory semantic memory is unavailable.
   }
+}
+
+export function classifyDebugFeedbackOutcome(reason: string | undefined, assistantText: string | undefined): DebugFeedbackOutcome {
+  const reasonText = normalizeOptionalText(reason, 2000) ?? "";
+  const combinedText = `${reasonText} ${normalizeOptionalText(assistantText, 2000) ?? ""}`;
+  const successPattern = /(정상적으로\s*동작|완전한\s*성공|최종적으로는?.{0,40}성공|결과적으로.{0,40}성공|success|succeeded|worked)/i;
+  const uxPattern = /(fallback|폴백|과다|정확|background|백그라운드|직접\s*마우스|개선|느림|지연|UX|사용성)/i;
+  const partialPattern = /(부분|partial|의도는\s*파악|fallback|폴백)/i;
+  const failurePattern = /((?:polling|pooling)\s*실패|동작\s*수행\s*실패|실패|failed|not\s+work|안\s*됨|못\s*함|잘못|엉뚱|가버림|달라고\s*했는데|했는데.*(?:누름|열림|이동)|대신|다른\s*(?:페이지|탭|대상)|wrong)/i;
+
+  if (successPattern.test(reasonText)) {
+    return uxPattern.test(reasonText) ? "ux_issue" : "success";
+  }
+  if (failurePattern.test(reasonText) && partialPattern.test(reasonText)) {
+    return "partial";
+  }
+  if (failurePattern.test(reasonText)) {
+    return "failure";
+  }
+  if (partialPattern.test(reasonText) && failurePattern.test(combinedText)) {
+    return "partial";
+  }
+  if (uxPattern.test(reasonText)) {
+    return "ux_issue";
+  }
+  if (failurePattern.test(combinedText) && !successPattern.test(combinedText)) {
+    return "failure";
+  }
+  return "unknown";
+}
+
+function shouldRecordDebugFeedbackSemanticCorrection(outcome: DebugFeedbackOutcome): boolean {
+  return outcome === "failure" || outcome === "partial";
 }
 
 function isManualBrowserDebugCorrection(

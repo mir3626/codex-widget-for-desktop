@@ -305,6 +305,15 @@ export class BrowserPerceptionService {
       bridgeStatus: input.bridgeStatus,
       reason: pending.request.reason
     });
+    const retry = this.retryPendingObserveIfContextNotReady({
+      pending,
+      context,
+      bridgeStatus: input.bridgeStatus,
+      commandId: input.payload.commandId
+    });
+    if (retry) {
+      return retry;
+    }
     const result: BrowserPerceptionObserveResult = {
       status: context?.freshness === "settling" ? "settling_ready" : "ready",
       context,
@@ -417,6 +426,109 @@ export class BrowserPerceptionService {
         resolve
       });
     });
+  }
+
+  private retryPendingObserveIfContextNotReady(input: {
+    pending: PendingObserve;
+    context: PreparedBrowserViewContext | undefined;
+    bridgeStatus?: BrowserExtensionBridgeStatus;
+    commandId: string;
+  }): BrowserPerceptionObserveResult | undefined {
+    if (!input.context) {
+      return undefined;
+    }
+    const request = normalizeObserveRequest(input.pending.request);
+    if (contextSatisfiesFreshness({
+      context: input.context,
+      requiredFreshness: request.requiredFreshness,
+      maxAgeMs: request.maxAgeMs,
+      allowSettlingForRead: request.allowSettlingForRead,
+      minCapturedAt: input.bridgeStatus?.connected && input.bridgeStatus.activeTab?.permission === "allowed"
+        ? request.minCapturedAt
+        : undefined
+    })) {
+      return undefined;
+    }
+
+    const now = Date.now();
+    const deadlineAt = Date.parse(input.pending.command.deadlineAt);
+    const remainingMs = Number.isFinite(deadlineAt) ? Math.max(0, deadlineAt - now) : 0;
+    const minimumRetryMs = Math.max(150, request.settleQuietMs);
+    if (!input.bridgeStatus || remainingMs <= minimumRetryMs) {
+      const result: BrowserPerceptionObserveResult = {
+        status: "blocked",
+        commandId: input.commandId,
+        ack: input.pending.ack,
+        wait: {
+          waitedMs: Date.now() - Date.parse(input.pending.command.createdAt),
+          timeoutMs: Date.parse(input.pending.command.deadlineAt) - Date.parse(input.pending.command.createdAt)
+        },
+        diagnostics: {
+          reason: "observe_result_did_not_satisfy_freshness",
+          requestId: request.requestId,
+          requiredFreshness: request.requiredFreshness,
+          actionRisk: request.actionRisk,
+          contextFreshness: input.context.freshness,
+          contextStability: input.context.stability,
+          mutationRevision: input.context.mutationRevision,
+          routeKey: input.context.routeKey,
+          remainingMs
+        },
+        userRecovery: "Wait for the page to finish updating, then retry the Browser Action."
+      };
+      this.cleanupBackgroundCommand(input.commandId);
+      this.resolvePending(input.commandId, result);
+      return result;
+    }
+
+    const retryRequest: RequiredObserveRequest = {
+      ...request,
+      reason: "retry",
+      timeoutMs: remainingMs
+    };
+    const previousAck = input.pending.ack;
+    const retryCommand = this.createObserveCommand({ request: retryRequest, bridgeStatus: input.bridgeStatus });
+    clearTimeout(input.pending.timer);
+    this.pending.delete(input.commandId);
+    input.pending.command = retryCommand;
+    input.pending.request = retryRequest;
+    delete input.pending.ack;
+    input.pending.timer = setTimeout(() => {
+      this.pending.delete(retryCommand.commandId);
+      input.pending.resolve({
+        status: "timeout",
+        commandId: retryCommand.commandId,
+        wait: {
+          waitedMs: Date.now() - Date.parse(retryCommand.createdAt),
+          timeoutMs: retryRequest.timeoutMs
+        },
+        diagnostics: {
+          reason: "observe_retry_timeout",
+          requestId: retryRequest.requestId,
+          previousCommandId: input.commandId
+        }
+      });
+    }, retryRequest.timeoutMs);
+    this.pending.set(retryCommand.commandId, input.pending);
+    this.pendingCommands.push(retryCommand);
+    this.cleanupBackgroundCommand(input.commandId);
+    return {
+      status: "blocked",
+      commandId: input.commandId,
+      ack: previousAck,
+      diagnostics: {
+        reason: "observe_result_requeued_for_stability",
+        requestId: request.requestId,
+        retryCommandId: retryCommand.commandId,
+        requiredFreshness: request.requiredFreshness,
+        actionRisk: request.actionRisk,
+        contextFreshness: input.context.freshness,
+        contextStability: input.context.stability,
+        mutationRevision: input.context.mutationRevision,
+        routeKey: input.context.routeKey,
+        remainingMs
+      }
+    };
   }
 
   private resolvePending(commandId: string, result: BrowserPerceptionObserveResult): void {

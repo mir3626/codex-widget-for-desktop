@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-34",
+  "currentIteration": "iter-35",
   "iterations": [
     {
       "id": "iter-1",
@@ -1078,6 +1078,29 @@
         "computer-use-asr-benchmark-harness": 0.8
       },
       "summary": "Iteration 34 added an ASR benchmark corpus fixture, WER and command accuracy computation, report/evidence output, and smoke coverage for CPU fixture metrics while explicitly preserving GPU and user-corpus validation as future external/user-test work."
+    },
+    {
+      "id": "iter-35",
+      "label": "Browser Action Real-Use Feedback Reliability",
+      "startedAt": "2026-05-18T04:07:20.373+09:00",
+      "completedAt": "2026-05-18T04:13:01.674+09:00",
+      "goal": "Use vibe-iterate to improve Browser Action real-use reliability from direct widget debug logs: classify manual debug feedback outcomes, prevent success notes from becoming negative semantic memory, correlate eval/debug by request ids, normalize audit time ranges, and retry mutating Browser Perception contexts before side-effect execution.",
+      "plannedSprints": [
+        "iter-35-sprint-01-real-use-feedback-reliability"
+      ],
+      "completedSprints": [
+        "iter-35-sprint-01-real-use-feedback-reliability"
+      ],
+      "carryover": "The 2026-05-18 KST real-use widget session exposed false eval/debug mismatches, prompt-only audit ambiguity for repeated requests, positive manual feedback being learned as avoid_target corrections, and mutating active-tab observations reaching the Browser Action lease path.",
+      "openRisks": [
+        "This iteration fixes generic reliability plumbing; site-specific prompt decomposition and OS/global-hotkey conflicts remain separate improvement areas.",
+        "Historical debug feedback rows without request ids can only be correlated conservatively."
+      ],
+      "milestoneProgress": {
+        "browser-action-end-to-end-control": 0.91,
+        "semantic-memory-generalization": 0.86
+      },
+      "summary": "Iteration 35 added debug feedback outcome labels, guarded Semantic Memory correction writes so success/UX notes do not become avoid_target edges, stored prompt request/message ids in eval metrics, made real-use audit ranges timezone-safe and request-id-first, and retried mutating Browser Perception observe results before side-effect execution."
     }
   ]
 }

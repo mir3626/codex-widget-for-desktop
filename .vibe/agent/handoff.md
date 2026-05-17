@@ -5,12 +5,55 @@
 Codex Widget for Desktop is a Tauri + React + Node daemon desktop widget. The
 daemon listens on `127.0.0.1:4128`; the renderer is served by Vite in dev.
 
-The latest completed product work is the Computer Use parity improvement batch
-through `iter-34`. Active sprint pointer is idle. Current active roadmap file is
+The latest completed product work is Browser Action real-use feedback
+reliability through `iter-35`. Active sprint pointer is idle. Current active roadmap file is
 compacted to the current iteration only; historical roadmaps live under
 `docs/plans/archive/roadmaps/`.
 
-## Latest Update: Harness Sync v1.7.18
+## Latest Update: Browser Action Real-Use Feedback Reliability
+
+Completed `$vibe-iterate` iteration `iter-35` after reviewing the latest direct
+widget debug logs.
+
+Applied:
+
+- Manual debug feedback now records an `outcome`
+  (`success`/`failure`/`partial`/`ux_issue`/`unknown`).
+- Successful and UX-only manual debug notes no longer write negative Semantic
+  Memory `avoid_target` corrections; wrong-target/failure notes still do.
+- Prompt Browser Action eval metrics now include `requestId`, `messageId`,
+  `actionSessionId`, and `transactionId`.
+- `audit-real-use-widget-session.mjs` normalizes timezone-bearing `--since`
+  values to UTC and correlates debug feedback to eval runs by request ids first,
+  only falling back to prompt text when the prompt is unique.
+- Browser Perception now requeues a fresh observe for side-effect requests when
+  the extension returns a still-mutating context instead of handing that context
+  to action execution.
+
+Verification passed:
+
+- `npm run build:daemon`
+- `node scripts/audit-real-use-widget-session.mjs --self-test`
+- `node scripts/smoke-semantic-memory.mjs`
+- `node scripts/smoke-browser-perception.mjs stabilization`
+- `node scripts/smoke-browser-action-real-use-regressions.mjs`
+- `npm run lint`
+- `git diff --check`
+- Actual session audit with `--since 2026-05-18T02:55:59+09:00` now normalizes
+  to `2026-05-17T17:55:59.000Z` and reports 26 messages / 10 manual debug
+  entries instead of an empty range.
+
+Remaining product follow-ups:
+
+- The broad success/eval mismatch class still needs verifier finalization work
+  for navigation cases where the browser visibly changed but observation proof
+  was not captured.
+- Multi-step prompts such as "Gmail open then spam folder" still need prompt
+  decomposition beyond a single click target.
+- OS/global-hotkey conflicts and background browser chrome actions remain
+  separate Windows-control improvements.
+
+## Previous Update: Harness Sync v1.7.18
 
 Ran `$vibe-sync` from `vibe-doctor` `v1.7.17` to `v1.7.18`.
 
@@ -47,8 +90,9 @@ idle.
 
 ## Current Resume Point
 
-Commit and push the v1.7.18 sync after final checkpoint, encoding checks, and a
-clean-worktree preflight rerun.
+Worktree should be clean after the iter-35 commit/push. Next useful work is the
+remaining Browser Action verifier/decomposition/background-control follow-up
+listed above.
 
 ## Product Boundaries
 

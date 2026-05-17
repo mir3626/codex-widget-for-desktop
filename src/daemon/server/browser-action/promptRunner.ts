@@ -107,6 +107,10 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
       tags: ["browser_action", "prompt"]
     },
     metrics: {
+      requestId: input.message.id,
+      messageId: input.message.id,
+      actionSessionId: session.id,
+      transactionId: transaction.transactionId,
       plannedSteps: promptPlan.steps.length,
       firstAction: promptPlan.steps[0]?.action.type
     }

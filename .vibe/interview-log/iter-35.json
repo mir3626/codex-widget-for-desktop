@@ -1,0 +1,13 @@
+{
+  "mode": "iterate",
+  "iterationId": "iter-35",
+  "createdAt": "2026-05-18T04:07:20.373+09:00",
+  "carryover": "Direct widget Browser Action test logs showed false success/failure mismatches, polling/stability failures, and manual debug feedback being learned as negative semantic corrections even when the user marked the action successful.",
+  "confirmedDecisions": [
+    "Treat user manual debug feedback as labeled runtime evidence before semantic-memory training.",
+    "Only failure or partial wrong-target feedback may create avoid_target correction edges.",
+    "Real-use audit matching must prefer request/message ids and avoid repeated-prompt prompt-only false positives.",
+    "Side-effect Browser Action execution should retry Browser Perception when the observed context is still mutating."
+  ],
+  "newGoal": "Improve Browser Action real-use reliability by adding regressions and fixes for feedback outcome classification, eval/debug correlation, timezone-safe audits, and mutating-context stabilization."
+}
