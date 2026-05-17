@@ -81,6 +81,7 @@ export async function executeViaAdapter(input: {
       expected: result.expected,
       before: observation,
       after,
+      target: result.target,
       ok: finalExecution.ok,
       error: finalExecution.error
     });

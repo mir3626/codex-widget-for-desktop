@@ -36,6 +36,7 @@ export async function handleVisionContextCompleteMessage(
     browserPerception,
     visionContext,
     browserActions,
+    browserChromeCommands,
     browserExtensionBridge,
     semanticClarifications,
     browserActionCommandWaiters
@@ -99,6 +100,7 @@ export async function handleVisionContextCompleteMessage(
         providers,
         browserPerception,
         browserActions,
+        browserChromeCommands,
         browserExtensionBridge,
         semanticClarifications,
         browserActionCommandWaiters

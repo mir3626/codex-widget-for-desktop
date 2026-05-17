@@ -177,7 +177,10 @@ export class BrowserActionSessionManager {
       pendingCommands: this.pendingCommands,
       commandResultIds: this.commandResultIds,
       results: this.results,
-      requireSession: (id) => this.requireSession(id)
+      requireSession: (id) => this.requireSession(id),
+      semanticMemoryEnabled: this.semanticMemoryEnabled,
+      semanticMemory: this.semanticMemory,
+      resolveInteraction: (id) => this.interactions.get(id)
     });
   }
 

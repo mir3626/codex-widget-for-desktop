@@ -28,7 +28,7 @@ import {
 import { refreshPromptBrowserActionSnapshotAfterCommand } from "./promptSnapshotRefresh.js";
 
 export const BROWSER_ACTION_PROMPT_COMMAND_WAIT_MS = 25_000;
-const BROWSER_ACTION_PROMPT_NAVIGATION_WAIT_MS = 7_000;
+const BROWSER_ACTION_PROMPT_NAVIGATION_WAIT_MS = 25_000;
 
 export function readBrowserActionPromptCommandWaitMs(action: BrowserQueuedCommand["action"]): number {
   return action.type === "back" || action.type === "forward" || action.type === "reload" || action.type === "navigate"
@@ -123,7 +123,8 @@ export async function continuePromptBrowserActionPlan(input: {
       input.browserActions.markInteractionTiming(execution.result.transaction?.transactionId, "extension_followup_wait_started", "executing", {
         requestId: execution.command.requestId,
         action: execution.command.action.type,
-        stepId: nextStep.id
+        stepId: nextStep.id,
+        bridgeStatus: summarizeBridgeStatus(input.browserExtensionBridge.snapshot())
       });
       nextStep.status = "awaiting_extension";
       nextStep.completedAt = new Date().toISOString();
@@ -177,7 +178,14 @@ export async function continuePromptBrowserActionPlan(input: {
           waitedMs,
           planId: plan.id,
           stepId: nextStep.id,
-          cancelled: Boolean(failedResult)
+          cancelled: Boolean(failedResult),
+          bridgeStatus: summarizeBridgeStatus(input.browserExtensionBridge.snapshot()),
+          command: {
+            createdAt: execution.command.createdAt,
+            expiresAt: execution.command.expiresAt,
+            deliveredAt: execution.command.deliveredAt,
+            deliveryAttempts: execution.command.deliveryAttempts
+          }
         });
         return { plan, results };
       }
@@ -224,4 +232,23 @@ export async function continuePromptBrowserActionPlan(input: {
   }
 
   return { plan, results };
+}
+
+function summarizeBridgeStatus(status: ReturnType<BrowserExtensionBridgeStore["snapshot"]>): Record<string, unknown> {
+  return {
+    connected: status.connected,
+    mode: status.mode,
+    reason: status.reason,
+    updatedAt: status.updatedAt,
+    lastError: status.lastError,
+    activeTab: status.activeTab
+      ? {
+          tabId: status.activeTab.tabId,
+          windowId: status.activeTab.windowId,
+          url: status.activeTab.url,
+          title: status.activeTab.title,
+          permission: status.activeTab.permission
+        }
+      : undefined
+  };
 }

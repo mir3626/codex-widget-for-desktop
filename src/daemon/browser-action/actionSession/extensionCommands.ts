@@ -2,6 +2,9 @@ import { buildBrowserObservation } from "../browserObservation.js";
 import { createTimelineEvent } from "../actionTimeline.js";
 import { auditActionResult } from "../auditLog.js";
 import { verifyBrowserAction } from "../resultVerifier.js";
+import { publishBrowserInteractionFeedback } from "../interaction/feedbackPublisher.js";
+import type { BrowserInteractionTransaction } from "../interaction/types.js";
+import type { SemanticMemoryStore } from "../../semantic-interface/memory/types.js";
 import type {
   BrowserActionApproval,
   BrowserActionAuditEntry,
@@ -134,6 +137,9 @@ export function completeBrowserExtensionCommand(input: {
   commandResultIds: Map<string, string>;
   results: Map<string, BrowserActionResult>;
   requireSession: (id: string) => BrowserActionSession;
+  semanticMemoryEnabled?: boolean;
+  semanticMemory?: SemanticMemoryStore;
+  resolveInteraction?: (id: string | undefined) => BrowserInteractionTransaction | undefined;
 }): { session: BrowserActionSession; result: BrowserActionResult; audit: BrowserActionAuditEntry } {
   const commandResultId = input.commandResultIds.get(input.execution.requestId);
   const commandResult = commandResultId ? input.results.get(commandResultId) : undefined;
@@ -156,6 +162,7 @@ export function completeBrowserExtensionCommand(input: {
     expected: commandResult.expected,
     before: commandResult.before,
     after,
+    target: commandResult.target,
     ok: input.execution.ok,
     error: input.execution.error
   });
@@ -171,6 +178,19 @@ export function completeBrowserExtensionCommand(input: {
   if (after) {
     session.latestObservation = after;
     session.source = { ...session.source, url: after.url, title: after.title };
+  }
+  const transaction = input.resolveInteraction?.(commandResult.transaction?.transactionId);
+  try {
+    publishBrowserInteractionFeedback({
+      enabled: Boolean(input.semanticMemoryEnabled),
+      semanticMemory: input.semanticMemory,
+      transaction,
+      intentFrame: transaction?.intentFrame,
+      result: commandResult,
+      utterance: transaction?.utterance
+    });
+  } catch {
+    // Semantic Memory is advisory. A feedback write failure must not hide the browser result.
   }
   session.timeline.push(createTimelineEvent({
     startedAt: session.startedAt,

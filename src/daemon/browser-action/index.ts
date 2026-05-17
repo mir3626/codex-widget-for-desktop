@@ -8,6 +8,7 @@ export { buildBrowserActionPlanFromCommand, isBrowserActionDirectExecutionComman
 export { inspectEvaluateCode, summarizeEvaluatePreview } from "./evaluatePolicy.js";
 export { buildElementGraph } from "./elementGraph.js";
 export { extractTargetPhrase, isInformationalBrowserActionQuestion, resolveBrowserActionIntent } from "./intentResolver.js";
+export { resolveBookmarkOpenTarget, resolveKnownBrowserDestinationUrl } from "./intentResolver/navigationTargets.js";
 export { inferBrowserActionFromText } from "./intentToAction.js";
 export {
   BROWSER_ACTION_POLICY_SETTING_KEY,

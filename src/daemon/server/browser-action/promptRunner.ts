@@ -4,11 +4,14 @@ import {
   createBrowserViewContextLease,
   classifyBrowserActionRisk,
   planBrowserActionFromPrompt,
+  resolveBookmarkOpenTarget,
   summarizeBrowserActionSession,
   summarizeBrowserObservation,
   type BrowserActionResult
 } from "../../browser-action/index.js";
+import type { CapabilityJobSummary } from "../../../shared/protocol.js";
 import { broadcast } from "../events.js";
+import { broadcastLedgerSnapshot } from "../clientEvents.js";
 import { recordRuntimeActivity } from "../runtimeActivity.js";
 import {
   normalizeBrowserActionPlan,
@@ -41,6 +44,10 @@ import {
 } from "./promptEvalLedger.js";
 
 export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput): Promise<boolean> {
+  if (await tryRunBookmarkOpenPrompt(input)) {
+    return true;
+  }
+
   const promptPlan = planBrowserActionFromPrompt({
     text: input.message.text,
     mode: input.message.mode,
@@ -369,6 +376,74 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
       evalRunId: evalRun.id
     });
   }
+  return true;
+}
+
+async function tryRunBookmarkOpenPrompt(input: BrowserActionPromptInput): Promise<boolean> {
+  const target = resolveBookmarkOpenTarget(input.message.text);
+  if (!target) {
+    return false;
+  }
+  const now = Date.now();
+  const timeoutMs = 25_000;
+  const job: CapabilityJobSummary = {
+    id: `browser-chrome-bookmark-open-${input.message.id}`,
+    transactionId: `browser-chrome-bookmark-open:${input.message.id}`,
+    sessionId: input.sessionId,
+    kind: "browser_chrome",
+    status: "running",
+    priority: "interactive",
+    requestedBy: "prompt",
+    inputJson: { command: "bookmark.open", url: target.url, prompt: input.message.text },
+    inputBlobIds: [],
+    outputBlobIds: [],
+    timeoutMs,
+    deadlineAt: new Date(now + timeoutMs).toISOString(),
+    retryCount: 0,
+    maxRetries: 0,
+    createdAt: new Date(now).toISOString(),
+    updatedAt: new Date(now).toISOString()
+  };
+  input.emit({ type: "session.state", state: "tooling", id: input.message.id });
+  recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", "Routing bookmark navigation prompt through Browser Chrome", {
+    requestId: input.message.id,
+    command: "bookmark.open",
+    phrase: target.phrase,
+    url: target.url
+  });
+  broadcast(input.clients, {
+    type: "browserAction.progress",
+    actionSessionId: job.id,
+    status: "plan_paused_for_extension",
+    detail: { requestId: job.id, action: "bookmark.open", url: target.url }
+  });
+  const result = await input.browserChromeCommands.run({
+    job,
+    command: "bookmark.open",
+    payload: { url: target.url, prompt: input.message.text }
+  });
+  const korean = /[가-힣]/.test(input.message.text);
+  recordRuntimeActivity(input.storage, input.sessionId, result.ok ? "info" : "warn", "browser-action", result.ok ? "Browser Chrome bookmark open completed" : "Browser Chrome bookmark open failed", {
+    requestId: job.id,
+    phrase: target.phrase,
+    url: target.url,
+    output: result.output,
+    error: result.error,
+    metadata: result.metadata
+  });
+  input.emit({
+    type: "message.completed",
+    id: input.message.id,
+    text: result.ok
+      ? korean
+        ? `즐겨찾기에서 ${target.phrase} 북마크를 열었습니다.`
+        : `Opened the ${target.phrase} bookmark.`
+      : korean
+        ? `즐겨찾기에서 ${target.phrase} 북마크를 열지 못했습니다: ${result.error ?? "북마크를 찾지 못했습니다."}`
+        : `Could not open the ${target.phrase} bookmark: ${result.error ?? "bookmark not found."}`
+  });
+  input.emit({ type: "session.state", state: "idle", id: input.message.id });
+  broadcastLedgerSnapshot(input.clients, input.storage, input.sessionId);
   return true;
 }
 

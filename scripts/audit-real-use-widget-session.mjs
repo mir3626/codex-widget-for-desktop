@@ -37,6 +37,7 @@ const activityCounts = db.prepare(`
   ORDER BY category, level
 `).all(session.id, since);
 const browserActionStats = summarizeBrowserActionActivity(session.id, since);
+const debugFeedback = summarizeDebugFeedback(session.id, since);
 const toolCommands = db.prepare(`
   SELECT created_at, summary
   FROM activity_log
@@ -59,9 +60,10 @@ const report = {
   messages: summarizeMessages(messages),
   evalRuns: summarizeEvalRuns(evalRuns),
   browserAction: browserActionStats,
+  debugFeedback,
   activityCounts,
   toolCommands: summarizeToolCommands(toolCommands),
-  findings: buildFindings({ evalRuns, browserActionStats, toolCommands })
+  findings: buildFindings({ evalRuns, browserActionStats, debugFeedback, toolCommands })
 };
 
 if (args.json) {
@@ -151,6 +153,29 @@ function summarizeBrowserActionActivity(sessionId, since) {
   };
 }
 
+function summarizeDebugFeedback(sessionId, since) {
+  const rows = db.prepare(`
+    SELECT created_at, summary, detail_json
+    FROM activity_log
+    WHERE session_id = ? AND created_at >= ? AND category = 'debug-feedback'
+    ORDER BY created_at ASC
+  `).all(sessionId, since);
+  return {
+    total: rows.length,
+    manualDebug: rows.filter((row) => String(row.detail_json ?? "").includes("manual-debug")).length,
+    entries: rows.map((row) => {
+      const detail = safeJson(row.detail_json, {});
+      return {
+        createdAt: row.created_at,
+        reason: String(detail.reason ?? row.summary ?? "").replace(/\s+/g, " ").slice(0, 300),
+        userText: String(detail.userText ?? "").replace(/\s+/g, " ").slice(0, 220),
+        assistantText: String(detail.assistantText ?? "").replace(/\s+/g, " ").slice(0, 220),
+        tags: Array.isArray(detail.tags) ? detail.tags.slice(0, 8) : []
+      };
+    })
+  };
+}
+
 function summarizeToolCommands(rows) {
   const powershell = rows.filter((row) => /powershell|pwsh|npm\.ps1/i.test(row.summary));
   return {
@@ -163,7 +188,7 @@ function summarizeToolCommands(rows) {
   };
 }
 
-function buildFindings({ evalRuns, browserActionStats, toolCommands }) {
+function buildFindings({ evalRuns, browserActionStats, debugFeedback, toolCommands }) {
   const findings = [];
   const failedEvalRuns = evalRuns.filter((run) => run.task_success === "failed");
   if (browserActionStats.succeeded > 0 && failedEvalRuns.length > 0) {
@@ -171,6 +196,22 @@ function buildFindings({ evalRuns, browserActionStats, toolCommands }) {
       severity: "high",
       title: "Browser Action success/eval mismatch",
       detail: `${browserActionStats.succeeded} Browser Action success event(s) were present while ${failedEvalRuns.length} eval run(s) were failed.`
+    });
+  }
+  const passedPrompts = new Set(evalRuns.filter((run) => run.task_success === "passed").map((run) => normalizePrompt(run.prompt)));
+  const feedbackOnPassedRuns = debugFeedback.entries.filter((entry) => passedPrompts.has(normalizePrompt(entry.userText)));
+  if (feedbackOnPassedRuns.length > 0) {
+    findings.push({
+      severity: "high",
+      title: "Manual debug feedback contradicts passed eval runs",
+      detail: `${feedbackOnPassedRuns.length} manual debug note(s) matched prompt(s) that the eval ledger marked passed. Treat these as verifier false positives until replayed.`
+    });
+  }
+  if (debugFeedback.total > 0 && browserActionStats.debugBundles === 0) {
+    findings.push({
+      severity: "medium",
+      title: "Manual debug feedback lacks Browser Action debug bundles",
+      detail: `${debugFeedback.total} manual debug note(s) were present, but no Browser Action debug bundle activity was recorded in the selected range.`
     });
   }
   const npmLike = toolCommands.filter((row) => /npm\.ps1/i.test(row.summary));
@@ -198,6 +239,7 @@ function printMarkdown(report) {
     needsClarification: report.browserAction.needsClarification,
     debugBundles: report.browserAction.debugBundles
   })}`);
+  console.log(`- Debug feedback: ${report.debugFeedback.total} total, ${report.debugFeedback.manualDebug} manual-debug`);
   console.log(`- Tool commands: ${report.toolCommands.total}, PowerShell/npm-like: ${report.toolCommands.powershellLike}`);
   if (report.findings.length) {
     console.log(`\n## Findings`);
@@ -209,6 +251,16 @@ function printMarkdown(report) {
   for (const turn of report.messages.latestTurns) {
     console.log(`- ${turn.createdAt} ${turn.role}/${turn.status}: ${turn.text}`);
   }
+  if (report.debugFeedback.entries.length) {
+    console.log(`\n## Debug Feedback`);
+    for (const entry of report.debugFeedback.entries.slice(-10)) {
+      console.log(`- ${entry.createdAt}: ${entry.userText} :: ${entry.reason}`);
+    }
+  }
+}
+
+function normalizePrompt(value) {
+  return String(value ?? "").replace(/\s+/g, " ").trim();
 }
 
 function safeJson(value, fallback) {

@@ -24,7 +24,7 @@ export function publishBrowserInteractionFeedback(input: {
     scope: {
       surface: "browser_page",
       origin: safeOrigin(observation?.url),
-      viewPattern: observation?.viewGraph?.identity.routeKey ?? observation?.source.routeKey
+      viewPattern: readSemanticMemoryViewPattern(observation)
     },
     utterance: input.utterance ?? input.transaction?.utterance,
     redactedUtterance: redactShort(input.utterance ?? input.transaction?.utterance),
@@ -48,6 +48,25 @@ function safeOrigin(value: string | undefined): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+function readSemanticMemoryViewPattern(observation: BrowserActionResult["after"] | BrowserActionResult["before"]): string | undefined {
+  const route = observation?.viewGraph?.identity.route;
+  if (route?.trim()) {
+    try {
+      return new URL(route).pathname || undefined;
+    } catch {
+      return route;
+    }
+  }
+  if (observation?.url) {
+    try {
+      return new URL(observation.url).pathname || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return observation?.source.routeKey;
 }
 
 function redactShort(value: string | undefined): string | undefined {

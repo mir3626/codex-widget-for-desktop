@@ -18,6 +18,10 @@ import {
   readScrollAmount,
   stripBrowserActionSuffix
 } from "./intentResolver/parsing.js";
+import {
+  isBookmarkNavigationRequest,
+  resolveKnownBrowserDestinationUrl
+} from "./intentResolver/navigationTargets.js";
 
 export {
   extractTargetPhrase,
@@ -37,7 +41,7 @@ export function resolveBrowserActionIntent(text: string): BrowserActionIntent {
   const navigationTargetPhrase = extractNavigationTargetPhrase(utterance);
   const typedText = extractQuotedText(utterance) ?? extractTextAfterKeyword(utterance, ["입력", "type", "검색어", "search for"]);
   const requestedNavigationUrl = isNavigationRequest(utterance)
-    ? extractUrl(utterance) ?? resolveKnownWebsiteUrl(navigationTargetPhrase ?? utterance)
+    ? extractUrl(utterance) ?? resolveKnownBrowserDestinationUrl(navigationTargetPhrase ?? utterance)
     : undefined;
   const historyCommand = readHistoryCommand(utterance);
   const actions: BrowserAction[] = [];
@@ -45,6 +49,17 @@ export function resolveBrowserActionIntent(text: string): BrowserActionIntent {
   let targetRole: string | undefined;
   let value: string | undefined = typedText;
   let reason = "Resolved Browser Action intent from deterministic command rules.";
+
+  if (isBookmarkNavigationRequest(utterance)) {
+    return createIntent({
+      utterance,
+      actionType: "unknown",
+      actions: [],
+      targetPhrase: navigationTargetPhrase,
+      confidence: 0.7,
+      reason: "Bookmark navigation is routed through Browser Chrome bookmark handling instead of generic Browser Action search fallback."
+    });
+  }
 
   if (historyCommand) {
     actionType = historyCommand;
@@ -71,11 +86,13 @@ export function resolveBrowserActionIntent(text: string): BrowserActionIntent {
     actions.push({ type: "scroll", direction: /위로|up/i.test(utterance) ? "up" : "down", amount: readScrollAmount(utterance) });
   } else if (isNavigationRequest(utterance)) {
     actionType = "navigate";
-    if (navigationTargetPhrase) {
+    if (navigationTargetPhrase && isExplicitSearchNavigationRequest(utterance)) {
       const searchUrl = buildSearchNavigationUrl(navigationTargetPhrase);
       value = searchUrl;
       actions.push({ type: "navigate", url: searchUrl });
       reason = "Resolved URL-less navigation request as a search navigation instead of clicking an unrelated current-page link.";
+    } else {
+      reason = "URL-less navigation did not resolve to a known destination and was not downgraded to search.";
     }
   } else if (/검색|search/i.test(utterance) && typedText) {
     actionType = "type";
@@ -187,21 +204,8 @@ function isExecutableBrowserCommand(text: string): boolean {
   return /눌러|누르|클릭|입력|검색|스크롤|뒤로|앞으로|새로고침|이동|접속|열어|켜|펼쳐|체크|선택|click|type|search|scroll|navigate|open|go\s*to|reload|back|forward/i.test(text);
 }
 
-function resolveKnownWebsiteUrl(value: string): string | undefined {
-  const normalized = value
-    .toLowerCase()
-    .replace(/\s+/g, "")
-    .replace(/[.,!?。！？]+$/g, "");
-  const aliases: Array<[RegExp, string]> = [
-    [/^(google|구글)$/, "https://www.google.com/"],
-    [/^(naver|네이버)$/, "https://www.naver.com/"],
-    [/^(youtube|유튜브|유튭)$/, "https://www.youtube.com/"],
-    [/^(github|깃허브|기트허브)$/, "https://github.com/"],
-    [/^(dcinside|디시|디시인사이드)$/, "https://www.dcinside.com/"],
-    [/^(fmkorea|펨코|에펨코리아)$/, "https://www.fmkorea.com/"],
-    [/^(chzzk|치지직)$/, "https://chzzk.naver.com/"]
-  ];
-  return aliases.find(([pattern]) => pattern.test(normalized))?.[1];
+function isExplicitSearchNavigationRequest(text: string): boolean {
+  return /검색|search/i.test(text) && /열어|이동|접속|navigate|open|go\s*to/i.test(text);
 }
 
 function buildSearchNavigationUrl(value: string): string {

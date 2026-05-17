@@ -77,6 +77,7 @@ export async function handleMessage(raw: string, context: MessageRouterContext):
     providers: context.providers,
     browserPerception: context.browserPerception,
     browserActions: context.browserActions,
+    browserChromeCommands: context.browserChromeCommands,
     browserExtensionBridge: context.browserExtensionBridge,
     semanticClarifications: context.semanticClarifications,
     browserActionCommandWaiters: context.browserActionCommandWaiters

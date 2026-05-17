@@ -24,7 +24,7 @@ export function createBrowserViewContextLease(input: {
   ttlMs?: number;
 }): BrowserViewContextLease {
   const now = Date.now();
-  const ttlMs = input.ttlMs ?? (input.requiredRiskClass === "read" ? 10_000 : 6_000);
+  const ttlMs = input.ttlMs ?? (input.requiredRiskClass === "read" ? 10_000 : 15_000);
   const leaseId = `browser-view-lease-${randomUUID()}`;
   const preparedContextLease: PreparedContextLease = {
     leaseId,
@@ -91,7 +91,7 @@ export function isBrowserViewContextLeaseFresh(lease: BrowserViewContextLease, n
   if (lease.freshness === "stale" || lease.freshness === "blocked" || lease.freshness === "unavailable") {
     return false;
   }
-  if (lease.requiredRiskClass !== "read" && lease.stability !== "stable") {
+  if (lease.requiredRiskClass !== "read" && lease.stability !== "stable" && lease.stability !== "unknown") {
     return false;
   }
   return true;

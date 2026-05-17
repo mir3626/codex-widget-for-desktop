@@ -4,6 +4,54 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Browser Action Real-Use Debug Fixes
+
+Fixed the direct widget debug-log regressions from the 2026-05-16 KST
+manual Browser Action test window.
+
+Changed in this continuation:
+
+- Added real-use regression coverage for the five manual debug cases:
+  `특갤 첫번째 글`, `특갤로 이동`, `특이점이온다 갤러리 이동`,
+  `즐겨찾기 ... 이동`, and `개념글 버튼`.
+- URL-less navigation no longer silently downgrades unknown direct navigation
+  requests into Google search. Known aliases now resolve `특갤` and
+  `특이점이온다 갤러리` directly to
+  `https://gall.dcinside.com/mgallery/board/lists/?id=thesingularity`.
+- Bookmark/favorite navigation prompts are routed through Browser Chrome
+  `bookmark.open` handling instead of generic Browser Action planning/search.
+- Ordinal content candidate selection scopes board/list posts to the current
+  explicit content section when the active URL has a board id, preventing
+  sidebar/realtime-best links from counting as the current board's first post.
+- Browser Action verification now rejects ordinal/content clicks that navigate
+  to a different board/content section and checks selected link href mismatch
+  when a click changes URL.
+- Prompt Browser Action navigation waits now use the same 25s pickup window as
+  other prompt actions, and timeout diagnostics include Browser Bridge
+  connection, active-tab, delivery, and command-expiry details.
+- Fresh extension contexts with unknown mutation stability remain usable for
+  explicit actions; side-effect leases now default to 15s instead of 6s.
+- `scripts/audit-real-use-widget-session.mjs` now reports manual
+  `debug-feedback` entries and flags passed eval runs contradicted by manual
+  debug notes.
+
+Verification passed:
+
+- `npm run lint`
+- `npm run smoke:browser-action:prompt-classification`
+- `node scripts/smoke-browser-interaction-transaction.mjs core`
+- `node scripts/smoke-browser-interaction-transaction.mjs clarification`
+- `node scripts/smoke-browser-interaction-transaction.mjs verification`
+- `node scripts/smoke-browser-interaction-transaction.mjs concurrency`
+- `node scripts/smoke-browser-action-real-use-regressions.mjs`
+- `node scripts/smoke-browser-chrome-capability.mjs`
+- `npm run smoke:browser-perception:extension-command`
+- `node scripts/audit-real-use-widget-session.mjs --since 2026-05-15T15:00:00.000Z --json`
+
+Encoding checks: `file` reports touched/new source files as ASCII or UTF-8
+text, and the mojibake grep pattern returned no file hits for touched/new
+files. No `.cs` files were touched.
+
 ## Latest Update: Post-Review Permission And Toolsmith Hardening
 
 Closed the code-review fixes found after the architecture decomposition and
@@ -6558,11 +6606,53 @@ Known non-failing aggregate output remains: the Computer Use promotion gate is
 gate, the native helper is unsigned in development mode, and one Windows temp
 cleanup retry was deferred.
 
+## Latest Update: Browser Action Semantic Feedback Loop
+
+Closed the real-use learning-loop gap found in the 2026-05-16 KST direct widget
+Browser Action test analysis:
+
+- Manual browser `debug-feedback` notes tagged `manual-debug` now write
+  advisory Semantic Memory `user_correction` feedback when they contain a
+  Browser Action result and a reason. The writer extracts reusable phrase
+  variants such as the full user utterance, target phrase, content ordinal, and
+  executed target phrase, then records an `avoid_target` edge for the wrong
+  page/target URL under a broad browser origin scope.
+- Browser extension command completion now publishes semantic interaction
+  feedback after final verification, so actual extension-backed clicks and
+  navigations can produce `verified_success`/`verification_failure` memory
+  instead of only writing capability/eval rows.
+- Browser Action feedback scope now uses the same route/path normalization as
+  runtime Semantic Memory reads. This fixes the routeKey-vs-path mismatch where
+  feedback edges were recorded but later excluded as `scope_mismatch`.
+- `scripts/smoke-semantic-memory.mjs` now has regressions for both paths:
+  manual debug feedback must create an origin-scoped `avoid_target` correction,
+  and extension completion must write a reusable `verified_success` edge.
+
+Verification passed:
+
+- Initial regression run failed as expected before implementation because
+  manual debug feedback did not create any Semantic Memory edges.
+- `npm run lint`
+- `npm run smoke:semantic-memory`
+- `npm run smoke:browser-action:real-use-regressions`
+- `node scripts/smoke-browser-interaction-transaction.mjs verification`
+- `npm run smoke:browser-action:prompt-classification`
+
 ## Current Resume Point
 
-Latest local slice **Post-Review Permission Error Fixes** is verified through
-aggregate smoke and parity audit:
+Latest local slice **Browser Action Semantic Feedback Loop** is verified through
+focused Semantic Memory and Browser Action smokes:
 
+- The prior Browser Action real-use debug fixes remain intact and verified.
+- Direct widget manual debug notes now become Semantic Memory corrections only
+  when they are browser-mode `manual-debug` notes with Browser Action output
+  and a reason; ordinary debug notes remain ledger-only.
+- Extension-backed Browser Action completions now feed verified/failure
+  feedback into Semantic Memory without blocking the browser result if the
+  advisory write fails.
+- Runtime read/write Semantic Memory scopes are aligned on route/path
+  normalization, preventing routeKey/path `scope_mismatch` exclusions for new
+  feedback.
 - The prior Architecture File Decomposition / Promotion Gate Library Sharding
   slice remains intact and verified.
 - Renderer profile drafts now include parent grants for domain-scoped network

@@ -1,11 +1,12 @@
 import { verifyExpectedBrowserEffects } from "./interaction/verificationResolver.js";
-import type { BrowserAction, BrowserActionResult, BrowserExpectedState, BrowserObservation, BrowserVerificationResult } from "./types.js";
+import type { BrowserAction, BrowserActionResult, BrowserElement, BrowserExpectedState, BrowserObservation, BrowserVerificationResult } from "./types.js";
 
 export function verifyBrowserAction(input: {
   action: BrowserAction;
   expected?: BrowserExpectedState[];
   before?: BrowserObservation;
   after?: BrowserObservation;
+  target?: BrowserElement;
   ok?: boolean;
   error?: string;
 }): BrowserVerificationResult {

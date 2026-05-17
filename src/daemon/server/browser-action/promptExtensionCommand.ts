@@ -39,7 +39,8 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
   const transactionId = detail.results.at(-1)?.transaction?.transactionId;
   input.browserActions.markInteractionTiming(transactionId, "extension_command_wait_started", "executing", {
     requestId: detail.command.requestId,
-    action: detail.command.action.type
+    action: detail.command.action.type,
+    bridgeStatus: summarizeBridgeStatus(input.browserExtensionBridge.snapshot())
   });
   const commandResultPromise = waitForBrowserActionCommandResult({
     requestId: detail.command.requestId,
@@ -84,7 +85,14 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
       action: detail.command.action.type,
       waitedMs,
       planId: detail.plan.id,
-      cancelled: Boolean(failedResult)
+      cancelled: Boolean(failedResult),
+      bridgeStatus: summarizeBridgeStatus(input.browserExtensionBridge.snapshot()),
+      command: {
+        createdAt: detail.command.createdAt,
+        expiresAt: detail.command.expiresAt,
+        deliveredAt: detail.command.deliveredAt,
+        deliveryAttempts: detail.command.deliveryAttempts
+      }
     });
     completePromptWithResult(input, {
       plan: detail.plan,
@@ -160,6 +168,25 @@ export async function handlePromptExtensionCommand(input: BrowserActionPromptInp
   }
   recordPromptFinalEval(input, detail.evalContext, continued.plan, continued.results, transactionId);
   return true;
+}
+
+function summarizeBridgeStatus(status: ReturnType<BrowserActionPromptInput["browserExtensionBridge"]["snapshot"]>): Record<string, unknown> {
+  return {
+    connected: status.connected,
+    mode: status.mode,
+    reason: status.reason,
+    updatedAt: status.updatedAt,
+    lastError: status.lastError,
+    activeTab: status.activeTab
+      ? {
+          tabId: status.activeTab.tabId,
+          windowId: status.activeTab.windowId,
+          url: status.activeTab.url,
+          title: status.activeTab.title,
+          permission: status.activeTab.permission
+        }
+      : undefined
+  };
 }
 
 function recordPromptFinalEval(

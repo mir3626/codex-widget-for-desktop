@@ -9,6 +9,7 @@ import type { BrowserActionSessionManager } from "../../browser-action/index.js"
 import type { BrowserPerceptionService } from "../../browser-perception/index.js";
 import type { ClientMessage, ServerEvent } from "../../../shared/protocol.js";
 import type { BrowserExtensionBridgeStore } from "../browser-bridge/store.js";
+import type { BrowserChromeCommandBridge } from "../../browser-chrome/index.js";
 import type { BrowserActionCommandWaiter } from "../browser-action/commandWaiters.js";
 import type { PendingSemanticClarification } from "../browser-action/clarification.js";
 import type { RetainedMessage } from "../events.js";
@@ -37,6 +38,7 @@ export async function runAskMessage(input: {
   providers: ProviderRegistry;
   browserPerception: BrowserPerceptionService;
   browserActions: BrowserActionSessionManager;
+  browserChromeCommands: BrowserChromeCommandBridge;
   browserExtensionBridge: BrowserExtensionBridgeStore;
   semanticClarifications: Map<string, PendingSemanticClarification>;
   browserActionCommandWaiters: Map<string, BrowserActionCommandWaiter>;
@@ -55,6 +57,7 @@ export async function runAskMessage(input: {
     providers,
     browserPerception,
     browserActions,
+    browserChromeCommands,
     browserExtensionBridge,
     semanticClarifications,
     browserActionCommandWaiters
@@ -94,6 +97,7 @@ export async function runAskMessage(input: {
       providers,
       browserPerception,
       browserActions,
+      browserChromeCommands,
       browserExtensionBridge,
       semanticClarifications,
       browserActionCommandWaiters

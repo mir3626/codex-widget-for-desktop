@@ -10,6 +10,8 @@ import {
 } from "../dist/daemon/semantic-interface/index.js";
 import { BrowserActionSessionManager } from "../dist/daemon/browser-action/index.js";
 import { startDaemon } from "../dist/daemon/server.js";
+import { createStorageService } from "../dist/daemon/storage/storage.js";
+import { handleDebugFeedbackMessage } from "../dist/daemon/server/ws/debugFeedbackMessages.js";
 import { useSmokeAppData } from "./smoke-isolation.mjs";
 
 const appDataDir = mkdtempSync(join(tmpdir(), "codex-widget-semantic-memory-"));
@@ -21,6 +23,8 @@ try {
   verifyRankerMemoryIntegration();
   verifySafetyBoundaryExclusion();
   await verifyBrowserActionLiveMemoryReadSet();
+  await verifyDebugFeedbackSemanticCorrection();
+  await verifyExtensionCompletionFeedbackWrite();
   verifyReportAndReset();
   await verifyDaemonEndpoints();
 } finally {
@@ -206,6 +210,130 @@ async function verifyBrowserActionLiveMemoryReadSet() {
   const semanticMemory = execution.result.safety.metadata?.semanticMemory;
   if (!semanticMemory || typeof semanticMemory !== "object" || !("readSetId" in semanticMemory)) {
     throw new Error(`Browser Action safety metadata should include memory read-set provenance: ${JSON.stringify(execution.result.safety)}`);
+  }
+}
+
+async function verifyDebugFeedbackSemanticCorrection() {
+  const debugAppDataDir = mkdtempSync(join(tmpdir(), "codex-widget-semantic-debug-feedback-"));
+  const debugStorage = createStorageService({ appDataDir: debugAppDataDir });
+  const debugMemory = createSemanticMemoryStore({ appDataDir: debugAppDataDir });
+  try {
+    const handled = await handleDebugFeedbackMessage({
+      type: "debug.feedback.save",
+      messageId: "semantic-debug-1",
+      reason: "특갤 첫번째글 눌러달라고했는데 실시간 베스트 갤러리 글을 누름",
+      userText: "특갤 첫번째 글 눌러줘",
+      assistantText: "브라우저 동작을 완료했습니다. 실행: click link: 1번째 글 현재 페이지: 대만 1일차 카페투어 결과 - 실시간 베스트 갤러리 (https://gall.dcinside.com/board/view/?id=dcbest&no=429653) 검증: Action changed the browser route or URL.",
+      mode: "browser",
+      tags: ["assistant-response", "manual-debug"]
+    }, {
+      storage: debugStorage,
+      semanticMemory: debugMemory,
+      clients: new Set()
+    });
+    if (!handled) {
+      throw new Error("Debug feedback handler should accept debug feedback save messages.");
+    }
+    const readSet = debugMemory.readMemory({
+      phrase: "1번째 글",
+      scope: { surface: "browser_page", origin: "https://gall.dcinside.com" },
+      limit: 20
+    });
+    const avoid = readSet.edges.find((edge) => edge.relation === "avoid_target" && edge.source === "user_correction");
+    if (!avoid || !avoid.toKey.includes("dcbest")) {
+      throw new Error(`Manual debug feedback should create avoid-target semantic memory for the wrong page: ${JSON.stringify(readSet)}`);
+    }
+  } finally {
+    debugMemory.close();
+    debugStorage.close();
+    rmSync(debugAppDataDir, { recursive: true, force: true });
+  }
+}
+
+async function verifyExtensionCompletionFeedbackWrite() {
+  const manager = new BrowserActionSessionManager(undefined, store);
+  const session = manager.start({
+    id: "semantic-memory-extension-completion-smoke",
+    mode: "auto_safe_actions",
+    source: { kind: "active_tab", url: "https://example.test/list", title: "Extension Completion Smoke" }
+  });
+  const snapshot = {
+    url: "https://example.test/list",
+    title: "Extension Completion Smoke",
+    readyState: "complete",
+    viewport: { width: 1024, height: 768, scrollX: 0, scrollY: 0, devicePixelRatio: 1 },
+    text: "첫번째 글",
+    elements: [
+      {
+        id: "first-post",
+        role: "link",
+        tagName: "a",
+        label: "첫번째 글",
+        text: "첫번째 글",
+        href: "https://example.test/post/1",
+        selector: "a[href=\"/post/1\"]",
+        bbox: { x: 120, y: 120, w: 180, h: 32 },
+        visible: true,
+        enabled: true,
+        editable: false,
+        confidence: 0.96,
+        riskHints: []
+      }
+    ]
+  };
+  manager.observe({ actionSessionId: session.id, snapshot });
+  let transaction = manager.beginInteraction({
+    requestId: "semantic-extension-1",
+    actionSessionId: session.id,
+    sessionId: "semantic-extension-session",
+    utterance: "첫번째 글 눌러줘",
+    source: "prompt",
+    mode: "auto_safe_actions",
+    browserSource: session.source
+  });
+  transaction = manager.recordInteractionIntent(transaction.transactionId, {
+    utterance: "첫번째 글 눌러줘",
+    actionFamily: "click",
+    targetPhrase: "첫번째 글",
+    targetRole: "link",
+    sideEffect: true,
+    confidence: 0.9,
+    locale: "ko"
+  }) ?? transaction;
+  const execution = await manager.execute({
+    actionSessionId: session.id,
+    snapshot,
+    action: { type: "click", target: { kind: "text", role: "link", text: "첫번째 글" } },
+    targetHint: "첫번째 글",
+    transaction,
+    approved: true
+  });
+  if (!execution.command) {
+    throw new Error(`Browser action should queue an extension command: ${JSON.stringify(execution)}`);
+  }
+  const completed = manager.completeExtensionCommand({
+    requestId: execution.command.requestId,
+    adapterId: "extension",
+    ok: true,
+    after: {
+      url: "https://example.test/post/1",
+      title: "첫번째 글",
+      readyState: "complete",
+      viewport: snapshot.viewport,
+      text: "첫번째 글 본문",
+      elements: []
+    }
+  });
+  if (completed.result.verification.status !== "passed") {
+    throw new Error(`Extension completion should verify successfully: ${JSON.stringify(completed.result)}`);
+  }
+  const readSet = store.readMemory({
+    phrase: "첫번째 글",
+    scope: { surface: "browser_page", origin: "https://example.test", viewPattern: "/post/1" },
+    limit: 20
+  });
+  if (!readSet.edges.some((edge) => edge.source === "verified_success" && edge.relation === "phrase_alias")) {
+    throw new Error(`Extension completion should write verified-success semantic feedback: ${JSON.stringify(readSet)}`);
   }
 }
 

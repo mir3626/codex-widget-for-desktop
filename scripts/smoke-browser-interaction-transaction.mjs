@@ -8,6 +8,8 @@ import {
   createBrowserViewContextLease,
   decideCandidatePlanningGate,
   generateCandidateSteps,
+  isBrowserViewContextLeaseUsableForAction,
+  planBrowserActionFromPrompt,
   resolveBrowserActionIntent,
   verifyBrowserAction
 } from "../dist/daemon/browser-action/index.js";
@@ -84,6 +86,9 @@ async function verifyTransactionCore() {
   verifyContentIdentifierIntentAndGate({ graph, lease });
   verifyRepresentativeContentAvoidsNavigation({ graph, lease });
   verifySemanticMemoryAdvisoryRanking({ graph, lease });
+  verifyDcinsideRealUseRegressions();
+  verifyNavigationIntentRegressions();
+  verifyUnknownStabilityLeaseUsability({ lease });
 }
 
 function verifyExplicitControlRoleIntentAndGate({ graph, lease }) {
@@ -214,6 +219,77 @@ function verifySemanticMemoryAdvisoryRanking({ graph, lease }) {
   assertEqual(memorySelected?.element?.id, "post-2", "semantic memory may advisably reorder equally supported current-view candidates");
   assert(memorySelected?.reasonCodes.includes("semantic_memory_phrase_alias"), "memory-selected candidate should record memory reason code");
   assert(memorySelected?.scoreBreakdown.semantic_memory > 0, "memory-selected candidate should expose bounded memory score contribution");
+}
+
+function verifyDcinsideRealUseRegressions() {
+  const before = buildBrowserObservation({ snapshot: createDcinsideSnapshot() });
+  const graph = buildElementGraph({
+    observationId: before.id,
+    focusedElementId: before.focusedElementId,
+    elements: before.elements
+  });
+  const intent = resolveBrowserActionIntent("특갤 첫번째 글 눌러줘");
+  assertEqual(intent.actions.length, 1, "dcinside first-post prompt should produce one click");
+  assertEqual(intent.actions[0].target.text, "1번째 글", "dcinside first-post prompt should preserve ordinal target");
+  const candidates = generateCandidateSteps({
+    action: intent.actions[0],
+    graph,
+    target: intent.actions[0].target,
+    hint: intent.actions[0].target.text,
+    lease: { context: { observation: before } }
+  });
+  const decision = decideCandidatePlanningGate({ action: intent.actions[0], candidates, locale: "ko", requireFreshLease: false });
+  const selected = candidates.find((candidate) => candidate.candidateId === decision.selectedCandidateId);
+  assertEqual(decision.decision, "proceed", "dcinside same-board first post should be executable");
+  assertEqual(selected?.element?.id, "thesingularity-post-1", "first post must come from the current thesingularity board list");
+  assert(!candidates.some((candidate) => candidate.element?.id === "dcbest-post"), "dcbest/sidebar links must not count as current-board ordinal posts");
+
+  const wrongAfter = buildBrowserObservation({
+    snapshot: createDcinsideSnapshot({
+      url: "https://gall.dcinside.com/board/view/?id=dcbest&no=429653",
+      title: "대만 1일차 카페투어 결과 - 실시간 베스트 갤러리",
+      text: "실시간 베스트 갤러리"
+    })
+  });
+  const wrongVerification = verifyBrowserAction({
+    action: intent.actions[0],
+    before,
+    after: wrongAfter,
+    ok: true
+  });
+  assertEqual(wrongVerification.status, "failed", "ordinal content verification must reject navigation to a different board id");
+}
+
+function verifyNavigationIntentRegressions() {
+  const shortIntent = resolveBrowserActionIntent("특갤로 이동해줘");
+  assertEqual(shortIntent.actions.length, 1, "short gallery alias should resolve to direct navigation");
+  assertEqual(shortIntent.actions[0].type, "navigate", "short gallery alias should navigate");
+  assertEqual(shortIntent.actions[0].url, "https://gall.dcinside.com/mgallery/board/lists/?id=thesingularity", "short gallery alias URL");
+
+  const galleryIntent = resolveBrowserActionIntent("특이점이온다 갤러리로 이동해줘");
+  assertEqual(galleryIntent.actions.length, 1, "gallery name should resolve to direct navigation");
+  assertEqual(galleryIntent.actions[0].url, "https://gall.dcinside.com/mgallery/board/lists/?id=thesingularity", "gallery name URL");
+
+  const bookmarkIntent = resolveBrowserActionIntent("즐겨찾기에 특이점이온다 갤러리로 이동해줘");
+  assertEqual(bookmarkIntent.actions.length, 0, "bookmark navigation must not be downgraded to a Google search Browser Action");
+  const bookmarkPlan = planBrowserActionFromPrompt({
+    text: "즐겨찾기에 특이점이온다 갤러리로 이동해줘",
+    mode: "browser"
+  });
+  assertEqual(bookmarkPlan, null, "bookmark navigation should be routed outside generic Browser Action planning");
+}
+
+function verifyUnknownStabilityLeaseUsability({ lease }) {
+  const unknownStabilityLease = {
+    ...lease,
+    stability: "unknown",
+    expiresAt: new Date(Date.now() + 5_000).toISOString()
+  };
+  assertEqual(
+    isBrowserViewContextLeaseUsableForAction(unknownStabilityLease, { type: "click", target: { kind: "text", role: "button", text: "개념글" } }),
+    true,
+    "fresh extension contexts with unknown mutation stability should remain usable for explicit low-risk controls"
+  );
 }
 
 async function verifyTransactionClarification() {
@@ -434,6 +510,88 @@ function createMemoryReadSet({ phrase, toKey }) {
       lastUsedAt: new Date().toISOString()
     }],
     exclusions: []
+  };
+}
+
+function createDcinsideSnapshot(options = {}) {
+  const url = options.url ?? "https://gall.dcinside.com/mgallery/board/lists/?id=thesingularity";
+  const title = options.title ?? "특이점이 온다 마이너 갤러리";
+  const text = options.text ?? "특이점이 온다 마이너 갤러리\n흥미로운 특갤 첫 글\n대만 1일차 카페투어 결과";
+  return {
+    url,
+    title,
+    readyState: "complete",
+    mutationRevision: "1",
+    mutationQuietMs: 900,
+    lastMutationAt: new Date(Date.now() - 900).toISOString(),
+    bridge: {
+      tabId: 17,
+      windowId: 3,
+      url,
+      title,
+      permission: "allowed"
+    },
+    viewport: { width: 1280, height: 900, scrollX: 0, scrollY: 0 },
+    text,
+    elements: [
+      {
+        id: "dcbest-post",
+        role: "link",
+        tagName: "a",
+        label: "대만 1일차 카페투어 결과",
+        text: "대만 1일차 카페투어 결과",
+        href: "https://gall.dcinside.com/board/view/?id=dcbest&no=429653",
+        selector: "aside a[href*='dcbest']",
+        bbox: { x: 980, y: 140, w: 240, h: 28 },
+        visible: true,
+        enabled: true,
+        confidence: 0.94,
+        sourceOrder: 1,
+        nearestLandmark: "sidebar",
+        listOwner: "realtime_best",
+        contextText: "실시간 베스트 갤러리",
+        domPathHash: "dcbest-post",
+        mutationRevision: "1"
+      },
+      {
+        id: "thesingularity-post-1",
+        role: "link",
+        tagName: "a",
+        label: "흥미로운 특갤 첫 글",
+        text: "흥미로운 특갤 첫 글",
+        href: "https://gall.dcinside.com/mgallery/board/view/?id=thesingularity&no=1174404",
+        selector: "main table.gall_list a[href*='thesingularity'][href*='1174404']",
+        bbox: { x: 160, y: 210, w: 520, h: 28 },
+        visible: true,
+        enabled: true,
+        confidence: 0.95,
+        sourceOrder: 2,
+        nearestLandmark: "main",
+        listOwner: "gall_list",
+        contextText: "1174404 흥미로운 특갤 첫 글 작성자 조회수 추천",
+        domPathHash: "thesingularity-post-1",
+        mutationRevision: "1"
+      },
+      {
+        id: "thesingularity-post-2",
+        role: "link",
+        tagName: "a",
+        label: "두 번째 특갤 게시글",
+        text: "두 번째 특갤 게시글",
+        href: "https://gall.dcinside.com/mgallery/board/view/?id=thesingularity&no=1174403",
+        selector: "main table.gall_list a[href*='thesingularity'][href*='1174403']",
+        bbox: { x: 160, y: 246, w: 520, h: 28 },
+        visible: true,
+        enabled: true,
+        confidence: 0.95,
+        sourceOrder: 3,
+        nearestLandmark: "main",
+        listOwner: "gall_list",
+        contextText: "1174403 두 번째 특갤 게시글 작성자 조회수 추천",
+        domPathHash: "thesingularity-post-2",
+        mutationRevision: "1"
+      }
+    ]
   };
 }
 

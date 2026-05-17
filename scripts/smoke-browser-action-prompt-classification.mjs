@@ -24,7 +24,10 @@ assertPlan("playwright로 https://example.com 열어줘", "browser", ["navigate"
 assertNavigate("구글 홈페이지 켜줘", "browser", "https://www.google.com/");
 assertNavigate("구글 홈페이지 열어줘", "browser", "https://www.google.com/");
 assertNavigate("왜 엉뚱한 답변하고있어. 구글 홈페이지 켜달라고했잖아.", "browser", "https://www.google.com/");
-assertSearchNavigate("특이저 ㅁ 갤러리로 이동해줘", "browser");
+assertNavigate("특갤로 이동해줘", "browser", "https://gall.dcinside.com/mgallery/board/lists/?id=thesingularity");
+assertNavigate("특이점이온다 갤러리로 이동해줘", "browser", "https://gall.dcinside.com/mgallery/board/lists/?id=thesingularity");
+assertNoPlan("특이저 ㅁ 갤러리로 이동해줘", "browser");
+assertNoPlan("즐겨찾기에 특이점이온다 갤러리로 이동해줘", "browser");
 assertPlan("뒤로가기", "browser", ["back"]);
 assertPlan("앞으로가기", "browser", ["forward"]);
 assertPlan("새로고침해줘", "browser", ["reload"]);
@@ -89,16 +92,5 @@ function assertNavigate(text, mode, url) {
   const action = plan.steps[0]?.action;
   if (action?.type !== "navigate" || action.url !== url) {
     throw new Error(`Navigation prompt did not resolve expected URL for ${text}: ${JSON.stringify(plan)}`);
-  }
-}
-
-function assertSearchNavigate(text, mode) {
-  const plan = planBrowserActionFromPrompt({ text, mode });
-  if (!plan) {
-    throw new Error(`Search navigation prompt did not produce a plan: ${text}`);
-  }
-  const action = plan.steps[0]?.action;
-  if (action?.type !== "navigate" || !action.url.startsWith("https://www.google.com/search?q=")) {
-    throw new Error(`URL-less navigation should use safe search navigation for ${text}: ${JSON.stringify(plan)}`);
   }
 }

@@ -30,6 +30,7 @@ export function generateCandidateSteps(input: {
   const rawHint = input.hint || (input.target?.kind === "text" ? input.target.text : undefined) || "";
   const hint = normalizeBrowserTargetText(rawHint);
   const identifier = readContentIdentifier(rawHint);
+  const currentUrl = input.lease?.context.observation.url;
   if (identifier) {
     return generateContentIdentifierCandidates(input, identifier);
   }
@@ -39,7 +40,7 @@ export function generateCandidateSteps(input: {
   }
   const representativeContent = isRepresentativeContentRequest(hint, input.action);
   const elementPool = representativeContent
-    ? preferPrimaryContentElements(input.graph.elements.filter((element) => element.visible).filter(looksLikeContentElement))
+    ? preferPrimaryContentElements(input.graph.elements.filter((element) => element.visible).filter(looksLikeContentElement), currentUrl)
     : input.graph.elements.filter((element) => element.visible);
   const candidates = elementPool
     .filter((element) => element.visible)
@@ -120,9 +121,10 @@ function generateOrdinalContentCandidates(input: {
   memoryEvidence?: CandidateStep["memoryEvidence"];
   memoryReadSet?: MemoryReadSet;
 }, ordinal: number): CandidateStep[] {
+  const currentUrl = input.lease?.context.observation.url;
   const ordered = dedupeContentElements(preferPrimaryContentElements(input.graph.elements
     .filter((element) => element.visible)
-    .filter(looksLikeContentElement))
+    .filter(looksLikeContentElement), currentUrl)
     .sort(compareContentElementOrder));
   const selected = ordered[ordinal - 1];
   const candidateElements = selected
@@ -189,9 +191,10 @@ function generateContentIdentifierCandidates(input: {
   memoryEvidence?: CandidateStep["memoryEvidence"];
   memoryReadSet?: MemoryReadSet;
 }, identifier: string): CandidateStep[] {
-  const scored = dedupeContentElements(input.graph.elements
+  const currentUrl = input.lease?.context.observation.url;
+  const scored = dedupeContentElements(preferPrimaryContentElements(input.graph.elements
     .filter((element) => element.visible)
-    .filter(looksLikeContentElement))
+    .filter(looksLikeContentElement), currentUrl))
     .map((element) => ({ element, score: scoreContentIdentifierMatch(element, identifier) }))
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score || compareContentElementOrder(a.element, b.element));
@@ -244,7 +247,11 @@ function generateContentIdentifierCandidates(input: {
   }));
 }
 
-function preferPrimaryContentElements(elements: BrowserElement[]): BrowserElement[] {
+function preferPrimaryContentElements(elements: BrowserElement[], currentUrl?: string): BrowserElement[] {
+  const sameSection = elements.filter((element) => isSameExplicitContentSection(element.href, currentUrl));
+  if (sameSection.length > 0) {
+    return sameSection;
+  }
   const preferred = elements.filter((element) => contentLandmarkRank(element) < 2);
   return preferred.length > 0 ? preferred : elements;
 }
@@ -599,6 +606,43 @@ function contentLandmarkRank(element: BrowserElement): number {
     return 2;
   }
   return 1;
+}
+
+function isSameExplicitContentSection(href: string | undefined, currentUrl: string | undefined): boolean {
+  if (!href || !currentUrl) {
+    return false;
+  }
+  try {
+    const current = new URL(currentUrl);
+    const target = new URL(href, currentUrl);
+    if (current.origin !== target.origin) {
+      return false;
+    }
+    const currentSection = readExplicitContentSection(current);
+    if (!currentSection) {
+      return false;
+    }
+    return readExplicitContentSection(target) === currentSection && isLikelyContentPath(target);
+  } catch {
+    return false;
+  }
+}
+
+function readExplicitContentSection(url: URL): string | undefined {
+  return url.searchParams.get("id") ??
+    url.searchParams.get("board") ??
+    url.searchParams.get("gallery") ??
+    url.searchParams.get("category") ??
+    undefined;
+}
+
+function isLikelyContentPath(url: URL): boolean {
+  return /\/(?:view|post|article|read|story|item)(?:\/|$)/i.test(url.pathname) ||
+    url.searchParams.has("no") ||
+    url.searchParams.has("post") ||
+    url.searchParams.has("article") ||
+    url.searchParams.has("item") ||
+    url.searchParams.has("document_srl");
 }
 
 function isRepresentativeContentRequest(hint: string, action: BrowserAction): boolean {
