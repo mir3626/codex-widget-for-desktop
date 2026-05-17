@@ -1,6 +1,6 @@
 # Windows Codex Computer Use Parity Audit
 
-Generated: 2026-05-17T11:33:26.325Z
+Generated: 2026-05-17T13:44:35.868Z
 
 Status: implemented_with_guarded_boundaries
 
