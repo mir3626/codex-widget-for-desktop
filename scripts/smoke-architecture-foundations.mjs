@@ -190,6 +190,13 @@ assert.equal(bundle.request.utterancePreview?.includes("test@example.com"), fals
 assert.equal(bundle.request.utterancePreview?.includes("sk_1234567890123456"), false);
 
 const sourceSizeBudgets = [
+  ["src/daemon/computer-use/sessionRuntime.ts", 3600],
+  ["src/daemon/computer-use/sessionPromptRuntime.ts", 450],
+  ["src/daemon/computer-use/sessionOperationRuntime.ts", 400],
+  ["src/daemon/computer-use/sessionEvidenceRecorder.ts", 320],
+  ["src/daemon/computer-use/sessionRollbackRuntime.ts", 260],
+  ["src/daemon/computer-use/sessionRuntimeHelpers.ts", 430],
+  ["src/daemon/computer-use/sessionRuntimeTypes.ts", 130],
   ["src/daemon/browser-action/interaction/candidateStep.ts", 800],
   ["src/daemon/browser-perception/service.ts", 700],
   ["src/daemon/server/ws/messageRouter.ts", 120],

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { existsSync, readFileSync, statSync, unlinkSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import type { WidgetMode } from "../../shared/protocol.js";
 import type {
@@ -9,18 +9,11 @@ import type {
   AutonomyPermissionProfile,
   AutonomyPermissionDecision,
   AutonomyPermissionRequirement,
-  AutonomyRiskClass,
   ComputerSessionCreateInput,
-  ComputerSessionActionFeedbackSummary,
   ComputerSessionDebugBundle,
-  ComputerSessionFreshnessSummary,
   ComputerSessionEvent,
-  ComputerSessionObservationKind,
   ComputerSessionObservationResourceSummary,
   ComputerSessionObservationSummary,
-  ComputerSessionPromptRunSummary,
-  ComputerSessionPromptStepSummary,
-  ComputerSessionPromptStepStatus,
   ComputerSessionRollbackActionSummary,
   ComputerSessionStartResult,
   ComputerSessionState,
@@ -35,29 +28,23 @@ import type {
 } from "../../shared/protocol.js";
 import { normalizeComputerActionBatch } from "../../shared/protocol.js";
 import {
-  planBrowserActionFromPrompt,
   type BrowserActionResult,
-  type BrowserObservation,
   type BrowserActionPromptPlan,
   type BrowserActionSource
 } from "../browser-action/index.js";
 import { closePlaywrightBrowserSession } from "../browser-action/adapters/playwright/runtime.js";
-import type { CapabilityRuntime } from "../capability-runtime/index.js";
 import { CapabilityDagRuntime } from "../capability-dag/index.js";
 import { auditComputerUseVerifier, finalizeEvalRunFromSteps } from "../computer-use-eval/index.js";
 import { recordStructuredFailure } from "../failure-memory/index.js";
-import { arbitratePerceptionTarget, buildPerceptionGraphFromBrowserObservation, buildPerceptionGraphFromNativeObservation, buildPerceptionGraphFromOcr, buildPerceptionGraphFromScreenObservation } from "../perception-graph/index.js";
+import { buildPerceptionGraphFromNativeObservation, buildPerceptionGraphFromOcr, buildPerceptionGraphFromScreenObservation } from "../perception-graph/index.js";
 import { ScopedAutonomyRuntime, type ScopedAutonomyDagResult } from "../scoped-autonomy/index.js";
 import { evaluateAutonomyPermission } from "../scoped-autonomy/permissionProfile.js";
-import type { StorageService } from "../storage/storage.js";
-import { verifyComputerSessionEffect, type ComputerSessionEffectVerification } from "./effectVerifier.js";
+import type { ComputerSessionEffectVerification } from "./effectVerifier.js";
 import { ExecutionSurfaceManager } from "./surfaceManager.js";
 import {
-  bridgeOperationToCapability,
   createBrowserActionAdapterFallbackPlan,
   mapBrowserActionExecutorResultToDagStatus,
   operationFromCapabilityJob,
-  resolvePromptBrowserSource,
   routeComputerOperation
 } from "./operationRouting.js";
 import {
@@ -65,29 +52,21 @@ import {
   sanitizeRollbackActionForDebugBundle
 } from "./sessionDebugBundle.js";
 import {
-  collectSessionTargetGraphs,
-  mapBrowserActionStatusToFeedbackStatus,
   mapCapabilityKindToObservationKind,
-  readComputerSessionIdFromBrowserAction,
   readDagNodeIdFromCapabilityJob,
   readDagRunIdFromCapabilityJob,
   readNativeHelperSnapshotFromCapabilityOutput,
   readPerceptionGraphIdFromCapabilityOutput,
-  readTextFromCapabilityOutput,
-  summarizeBrowserActionTargetEvidence,
-  summarizeBrowserObservationForSession,
-  summarizeObservationFeedbackReference
+  readTextFromCapabilityOutput
 } from "./observationSummaries.js";
 import {
-  applyScreenTileCacheToInput,
   readPreviousTileHashCount,
   readScreenCascadePayload,
   readScreenDirtyRegionsFromCapabilityOutput,
   readScreenTextBoxesFromCapabilityOutput,
   readScreenTextFromCapabilityOutput,
   readScreenTileHashesFromCapabilityOutput,
-  summarizeCapabilityObservation,
-  type ScreenTileCache
+  summarizeCapabilityObservation
 } from "./screenObservationRuntime.js";
 import {
   buildBrowserPermissionBubblePreconditions,
@@ -106,7 +85,6 @@ import {
   emptyTerminalOutputRootDeltaResult,
   isPathWithinAnyRoot,
   readExpectedTerminalArtifacts,
-  readTerminalArtifactRollbackTargets,
   readTerminalOutputRoots,
   snapshotTerminalOutputRoot
 } from "./terminalArtifactDelta.js";
@@ -129,103 +107,67 @@ import {
   readStringField,
   readUnknownRecord
 } from "./sessionRecordUtils.js";
+import {
+  continueBrowserActionPrompt,
+  continueBrowserActionPromptByCapabilityJob,
+  executeBrowserActionPrompt,
+  type ComputerSessionPromptRuntimeHost
+} from "./sessionPromptRuntime.js";
+import {
+  completeRollbackAction,
+  executeRollbackAction,
+  recordRollbackAction,
+  type ComputerSessionRollbackRuntimeHost
+} from "./sessionRollbackRuntime.js";
+import {
+  executeOperation as executeSessionOperation,
+  type ComputerSessionOperationRuntimeHost
+} from "./sessionOperationRuntime.js";
+import {
+  recordActionBatch,
+  recordBrowserActionResultObservation,
+  recordObservation,
+  recordVerifierResult,
+  type ComputerSessionEvidenceRecorderHost
+} from "./sessionEvidenceRecorder.js";
+import {
+  annotateObservationFreshness,
+  createBrowserActionReobserveOperation,
+  createSkeletonDagNodes,
+  evaluateOperationFreshnessRequirement,
+  inferFailureMemorySurface,
+  inferModalitiesForSurface,
+  inferRiskClass,
+  isCapabilityDagNodeFinal,
+  isComputerSessionFinal,
+  isPromptStepFinal,
+  isScreenTileCache,
+  mapRiskClassToAutonomyRisk,
+  readBrowserActionTypeFromOperation,
+  readBrowserFallbackDocuments,
+  readSourceDocuments,
+  summarizeBrowserActionTargetForRecovery,
+  summarizeObservationFreshness,
+  summarizeObservationRecord,
+} from "./sessionRuntimeHelpers.js";
+import type {
+  ComputerSessionOperationExecutor,
+  ComputerSessionOperationResult,
+  ComputerSessionPromptPlanResult,
+  ComputerSessionRuntimeOptions,
+  RuntimeSessionState,
+  TerminalArtifactRollbackTarget,
+  TerminalOutputRootDeltaEntry,
+  TerminalOutputRootDeltaResult,
+  TerminalOutputRootSnapshot
+} from "./sessionRuntimeTypes.js";
 
-export type ComputerSessionRuntimeOptions = {
-  storage: StorageService;
-  capabilityRuntime: CapabilityRuntime;
-  dagRuntime?: CapabilityDagRuntime;
-  surfaceManager?: ExecutionSurfaceManager;
-  executors?: {
-    browserAction?: ComputerSessionOperationExecutor;
-  };
-  emit?: (event: ComputerSessionEvent) => void;
-};
-
-export type ComputerSessionOperationExecutor = (input: {
-  session: ComputerSessionSummary;
-  operation: ComputerStructuredOperation;
-  dagRunId: string;
-  dagNodeId: string;
-  evalRunId: string;
-}) => Promise<{
-  status: "completed" | "running" | "awaiting_approval" | "failed" | "cancelled";
-  capabilityJob?: CapabilityJobSummary;
-  output?: unknown;
-  summary?: string;
-  error?: string;
-}>;
-
-export type ComputerSessionOperationResult = {
-  session: ComputerSessionSummary;
-  dagNode: CapabilityDagNodeSummary;
-  job?: CapabilityJobSummary;
-};
-
-type TerminalOutputRootSnapshot = {
-  root: string;
-  files: Map<string, { size: number; mtimeMs: number; sha256: string }>;
-};
-
-type TerminalOutputRootDeltaEntry = {
-  path: string;
-  root: string;
-  change: "created" | "modified" | "deleted";
-  basename: string;
-  relativePathHash: string;
-  depth: number;
-  size?: number;
-  mtimeMs?: number;
-  sha256?: string;
-  previousSize?: number;
-  previousSha256?: string;
-};
-
-type TerminalOutputRootDeltaResult = {
-  resources: ComputerSessionObservationResourceSummary[];
-  manifestResource?: ComputerSessionObservationResourceSummary;
-  summary: {
-    outputRootCount: number;
-    createdCount: number;
-    modifiedCount: number;
-    deletedCount: number;
-    capturedArtifactCount: number;
-    manifestEntryCount: number;
-    omittedEntryCount: number;
-    rollbackCandidateCount: number;
-  };
-  rollbackTargets: TerminalArtifactRollbackTarget[];
-};
-
-type TerminalArtifactRollbackTarget = {
-  path: string;
-  basename: string;
-  sha256: string;
-  size: number;
-  change: "created";
-  blobId?: string;
-  evalResourceId?: string;
-};
-
-export type ComputerSessionPromptPlanResult = {
-  session: ComputerSessionSummary;
-  plan?: BrowserActionPromptPlan;
-  promptRun?: ComputerSessionPromptRunSummary;
-  operation?: ComputerSessionOperationResult;
-  blockedReason?: string;
-};
-
-type RuntimeSessionState = {
-  summary: ComputerSessionSummary;
-  observations: ComputerSessionObservationSummary[];
-  actionFeedbacks: ComputerSessionActionFeedbackSummary[];
-  actionBatches: NormalizedComputerActionBatch[];
-  promptRuns: ComputerSessionPromptRunSummary[];
-  rollbackActions: ComputerSessionRollbackActionSummary[];
-  safetyDecisions: unknown[];
-  verifierResults: unknown[];
-  recoveryAttempts: number;
-  screenTileCache?: ScreenTileCache;
-};
+export type {
+  ComputerSessionOperationExecutor,
+  ComputerSessionOperationResult,
+  ComputerSessionPromptPlanResult,
+  ComputerSessionRuntimeOptions
+} from "./sessionRuntimeTypes.js";
 
 export class ComputerSessionRuntime {
   private readonly dagRuntime: CapabilityDagRuntime;
@@ -493,27 +435,11 @@ export class ComputerSessionRuntime {
   }
 
   recordActionBatch(sessionId: string, input: unknown): NormalizedComputerActionBatch {
-    const batch = normalizeComputerActionBatch(input);
-    const state = this.requireSession(sessionId);
-    state.actionBatches.push(batch);
-    state.summary.latestActionBatchId = `action-batch:${state.actionBatches.length - 1}`;
-    state.summary.updatedAt = new Date().toISOString();
-    if (batch.blockedReason) {
-      this.block(sessionId, batch.blockedReason);
-    } else {
-      this.emit({ type: "computer.session.action_started", sessionId, actionBatch: batch });
-    }
-    this.persistSessionState(state);
-    return batch;
+    return recordActionBatch(this.createEvidenceRecorderHost(), sessionId, input);
   }
 
   recordObservation(sessionId: string, observation: ComputerSessionObservationSummary): void {
-    const state = this.requireSession(sessionId);
-    state.observations.push(observation);
-    state.summary.latestObservationId = readRecordId(observation) ?? `observation:${state.observations.length - 1}`;
-    state.summary.updatedAt = new Date().toISOString();
-    this.persistSessionState(state);
-    this.emit({ type: "computer.session.observation", sessionId, observation });
+    recordObservation(this.createEvidenceRecorderHost(), sessionId, observation);
   }
 
   recordBrowserActionResultObservation(input: {
@@ -521,236 +447,28 @@ export class ComputerSessionRuntime {
     capabilityJobId?: string;
     dagNodeId?: string;
   }): ComputerSessionObservationSummary | null {
-    const sessionId = readComputerSessionIdFromBrowserAction(input.result.actionSessionId);
-    if (!sessionId || !this.sessions.has(sessionId)) {
-      return null;
-    }
-    const records = [
-      input.result.before ? this.recordBrowserActionDomObservation({
-        sessionId,
-        result: input.result,
-        observation: input.result.before,
-        phase: "pre_action",
-        capabilityJobId: input.capabilityJobId,
-        dagNodeId: input.dagNodeId
-      }) : null,
-      input.result.after ? this.recordBrowserActionDomObservation({
-        sessionId,
-        result: input.result,
-        observation: input.result.after,
-        phase: "post_action",
-        capabilityJobId: input.capabilityJobId,
-        dagNodeId: input.dagNodeId
-      }) : null
-    ].filter((record): record is ComputerSessionObservationSummary => Boolean(record));
-    this.recordBrowserActionFeedback({
-      sessionId,
-      result: input.result,
-      capabilityJobId: input.capabilityJobId,
-      dagNodeId: input.dagNodeId,
-      records
-    });
-    return records.at(-1) ?? null;
-  }
-
-  private recordBrowserActionFeedback(input: {
-    sessionId: string;
-    result: BrowserActionResult;
-    capabilityJobId?: string;
-    dagNodeId?: string;
-    records: ComputerSessionObservationSummary[];
-  }): ComputerSessionActionFeedbackSummary {
-    const state = this.requireSession(input.sessionId);
-    const before = input.records.find((record) => record.metadata?.observationPhase === "pre_action");
-    const after = input.records.find((record) => record.metadata?.observationPhase === "post_action");
-    const metadata = {
-      resultId: input.result.id,
-      actionSessionId: input.result.actionSessionId,
-      targetEvidence: before?.metadata?.targetEvidence,
-      before: before ? summarizeObservationFeedbackReference(before) : undefined,
-      after: after ? summarizeObservationFeedbackReference(after) : undefined,
-      verification: input.result.verification
-    };
-    const feedback: ComputerSessionActionFeedbackSummary = {
-      id: `action-feedback:${randomUUID()}`,
-      sessionId: input.sessionId,
-      operationKind: "browser_action",
-      actionType: input.result.action.type,
-      status: mapBrowserActionStatusToFeedbackStatus(input.result.status),
-      capturedAt: input.result.completedAt ?? after?.capturedAt ?? before?.capturedAt ?? new Date().toISOString(),
-      capabilityJobId: input.capabilityJobId,
-      dagNodeId: input.dagNodeId,
-      beforeObservationId: before?.id,
-      afterObservationId: after?.id,
-      perceptionGraphId: after?.perceptionGraphId ?? before?.perceptionGraphId,
-      verifierStatus: input.result.verification.status,
-      summary: `Browser Action ${input.result.action.type} feedback: ${input.result.verification.status}.`,
-      metadata,
-      redaction: {
-        screenshots: "not_stored",
-        credentials: "redacted_by_browser_action_policy",
-        rawDom: "not_stored"
-      }
-    };
-    if (state.summary.evalRunId) {
-      const step = this.options.storage.appendComputerUseEvalStep({
-        runId: state.summary.evalRunId,
-        kind: "browser_action_feedback",
-        phase: "observe",
-        status: feedback.status === "completed" ? "completed" : feedback.status === "blocked" ? "blocked" : "failed",
-        capabilityJobId: input.capabilityJobId,
-        capabilityDagNodeId: input.dagNodeId,
-        perceptionGraphId: feedback.perceptionGraphId,
-        input: {
-          resultId: input.result.id,
-          actionSessionId: input.result.actionSessionId,
-          action: input.result.action.type
-        },
-        output: {
-          feedbackId: feedback.id,
-          beforeObservationId: feedback.beforeObservationId,
-          afterObservationId: feedback.afterObservationId,
-          verifierStatus: feedback.verifierStatus,
-          targetEvidence: before?.metadata?.targetEvidence
-        },
-        failureClass: feedback.status === "completed" ? "none" : "action_failed"
-      });
-      feedback.evalStepId = step.id;
-      feedback.metadata = {
-        ...metadata,
-        evalStepId: step.id
-      };
-    }
-    state.actionFeedbacks.push(feedback);
-    state.summary.updatedAt = new Date().toISOString();
-    this.persistSessionState(state);
-    this.emit({ type: "computer.session.action_completed", sessionId: input.sessionId, result: feedback });
-    return feedback;
-  }
-
-  private recordBrowserActionDomObservation(input: {
-    sessionId: string;
-    result: BrowserActionResult;
-    observation: BrowserObservation;
-    phase: "pre_action" | "post_action";
-    capabilityJobId?: string;
-    dagNodeId?: string;
-  }): ComputerSessionObservationSummary | null {
-    const state = this.requireSession(input.sessionId);
-    if (!input.observation) {
-      return null;
-    }
-    const graph = input.observation.elements.length > 0
-      ? this.options.storage.recordPerceptionGraph({
-          graph: buildPerceptionGraphFromBrowserObservation({
-            observation: input.observation,
-            sessionId: input.sessionId
-          }),
-          sessionId: input.sessionId,
-          source: `computer_session_browser_action_${input.phase}`
-        })
-      : undefined;
-    const targetGraphs = graph ? collectSessionTargetGraphs({
-      currentGraph: graph,
-      sessionId: input.sessionId,
-      storage: this.options.storage,
-      observations: state.observations
-    }) : [];
-    const targetEvidence = graph
-      ? summarizeBrowserActionTargetEvidence(input.result, targetGraphs, graph.id)
-      : undefined;
-    const step = state.summary.evalRunId ? this.options.storage.appendComputerUseEvalStep({
-      runId: state.summary.evalRunId,
-      kind: `browser_action_${input.phase}_observation`,
-      phase: "observe",
-      status: "completed",
-      capabilityJobId: input.capabilityJobId,
-      capabilityDagNodeId: input.dagNodeId,
-      perceptionGraphId: graph?.id,
-      input: {
-        actionSessionId: input.result.actionSessionId,
-        action: input.result.action.type,
-        resultId: input.result.id,
-        observationPhase: input.phase
-      },
-      output: {
-        ...summarizeBrowserObservationForSession(input.observation),
-        targetEvidence
-      },
-      failureClass: "none"
-    }) : undefined;
-    const resources = graph && state.summary.evalRunId
-      ? [this.options.storage.createComputerUseEvalResource({
-          runId: state.summary.evalRunId,
-          stepId: step?.id,
-          role: "perception_graph",
-          retention: "evidence",
-          redaction: {
-            screenshots: "not_stored",
-            source: "structured_dom_metadata"
-          }
-        })]
-      : [];
-    const record: ComputerSessionObservationSummary = {
-      id: `observation:${randomUUID()}`,
-      kind: "browser_dom",
-      source: `browser_action_${input.phase}`,
-      surface: state.summary.selectedSurface?.kind,
-      capturedAt: input.observation.capturedAt,
-      capabilityJobId: input.capabilityJobId,
-      dagNodeId: input.dagNodeId,
-      evalRunId: state.summary.evalRunId,
-      perceptionGraphId: graph?.id,
-      resourceIds: resources.map((resource) => ({
-        evalResourceId: resource.id,
-        role: resource.role,
-        retention: resource.retention
-      })),
-      summary: `Browser Action ${input.result.action.type} ${input.phase}; observed ${input.observation.elements.length} DOM elements.`,
-      freshness: "fresh",
-      metadata: {
-        action: input.result.action.type,
-        observationPhase: input.phase,
-        status: input.result.status,
-        verification: input.result.verification.status,
-        url: input.observation.url,
-        title: input.observation.title,
-        elementCount: input.observation.elements.length,
-        perceptionGraphNodeCount: graph?.nodes.length,
-        targetEvidence
-      },
-      redaction: {
-        screenshots: "not_stored",
-        credentials: "redacted_by_browser_action_policy"
-      }
-    };
-    this.recordObservation(input.sessionId, record);
-    return record;
+    return recordBrowserActionResultObservation(this.createEvidenceRecorderHost(), input);
   }
 
   recordVerifierResult(sessionId: string, result: unknown): void {
-    const state = this.requireSession(sessionId);
-    state.verifierResults.push(result);
-    state.summary.latestVerifierResultId = readRecordId(result) ?? `verifier:${state.verifierResults.length - 1}`;
-    state.summary.updatedAt = new Date().toISOString();
-    this.persistSessionState(state);
-    this.emit({ type: "computer.session.verifier_result", sessionId, result });
+    recordVerifierResult(this.createEvidenceRecorderHost(), sessionId, result);
   }
 
+  private createEvidenceRecorderHost(): ComputerSessionEvidenceRecorderHost {
+    return {
+      storage: this.options.storage,
+      hasSession: (sessionId) => this.sessions.has(sessionId),
+      requireSession: (sessionId) => this.requireSession(sessionId),
+      block: (sessionId, reason) => this.block(sessionId, reason),
+      persistSessionState: (state) => this.persistSessionState(state),
+      emit: (event) => this.emit(event)
+    };
+  }
   recordRollbackAction(
     sessionId: string,
     input: Omit<ComputerSessionRollbackActionSummary, "id" | "createdAt">
   ): ComputerSessionRollbackActionSummary {
-    const state = this.requireSession(sessionId);
-    const action: ComputerSessionRollbackActionSummary = {
-      id: `rollback:${randomUUID()}`,
-      createdAt: new Date().toISOString(),
-      ...input
-    };
-    state.rollbackActions.push(action);
-    state.summary.updatedAt = action.createdAt;
-    this.persistSessionState(state);
-    return action;
+    return recordRollbackAction(this.createRollbackRuntimeHost(), sessionId, input);
   }
 
   completeRollbackAction(
@@ -759,17 +477,7 @@ export class ComputerSessionRuntime {
     status: ComputerSessionRollbackActionSummary["status"],
     reason?: string
   ): ComputerSessionRollbackActionSummary | null {
-    const state = this.requireSession(sessionId);
-    const action = state.rollbackActions.find((candidate) => candidate.id === rollbackActionId);
-    if (!action) {
-      return null;
-    }
-    action.status = status;
-    action.reason = reason ?? action.reason;
-    action.completedAt = new Date().toISOString();
-    state.summary.updatedAt = action.completedAt;
-    this.persistSessionState(state);
-    return action;
+    return completeRollbackAction(this.createRollbackRuntimeHost(), sessionId, rollbackActionId, status, reason);
   }
 
   async executeRollbackAction(input: {
@@ -778,418 +486,46 @@ export class ComputerSessionRuntime {
     includeUserArtifacts?: boolean;
     confirmUserArtifacts?: boolean;
   }): Promise<{ session: ComputerSessionSummary; rollbackAction: ComputerSessionRollbackActionSummary; toolRun?: unknown }> {
-    const state = this.requireSession(input.sessionId);
-    const action = state.rollbackActions.find((candidate) => candidate.id === input.rollbackActionId);
-    if (!action) {
-      throw new Error(`Rollback action not found: ${input.rollbackActionId}`);
-    }
-    state.safetyDecisions.push({
-      phase: "rollback_action",
-      rollbackActionId: action.id,
-      kind: action.kind,
-      includeUserArtifacts: input.includeUserArtifacts === true,
-      confirmUserArtifacts: input.confirmUserArtifacts === true,
-      requestedAt: new Date().toISOString()
-    });
-    if (action.kind === "delete_artifact") {
-      const metadata = readUnknownRecord(action.metadata);
-      const terminalArtifactTargets = readTerminalArtifactRollbackTargets(metadata.terminalArtifactTargets);
-      if (terminalArtifactTargets.length) {
-        if (!input.includeUserArtifacts || !input.confirmUserArtifacts) {
-          const blocked = this.completeRollbackAction(input.sessionId, action.id, "blocked", "terminal_artifact_deletion_requires_explicit_delete_confirmation") ?? action;
-          this.recordRollbackEvalStep(state, blocked, "blocked", {
-            reason: "terminal_artifact_deletion_requires_explicit_delete_confirmation",
-            terminalArtifactTargetCount: terminalArtifactTargets.length
-          });
-          return { session: this.requireSession(input.sessionId).summary, rollbackAction: blocked };
-        }
-        const profile = state.summary.profileId
-          ? this.options.storage.readAutonomyPermissionProfile(state.summary.profileId)
-          : null;
-        const writeRoots = profile?.grants.filesystem.writeRoots ?? [];
-        let deletedCount = 0;
-        let skippedCount = 0;
-        const skippedReasons: Record<string, number> = {};
-        for (const target of terminalArtifactTargets.slice(0, 25)) {
-          const absolutePath = resolve(target.path);
-          const skip = (reason: string) => {
-            skippedCount += 1;
-            skippedReasons[reason] = (skippedReasons[reason] ?? 0) + 1;
-          };
-          if (!writeRoots.length || !isPathWithinAnyRoot(absolutePath, writeRoots)) {
-            skip("outside_approved_write_root");
-            continue;
-          }
-          if (!existsSync(absolutePath)) {
-            skip("already_missing");
-            continue;
-          }
-          try {
-            const stat = statSync(absolutePath);
-            if (!stat.isFile()) {
-              skip("not_a_file");
-              continue;
-            }
-            const bytes = readFileSync(absolutePath);
-            const currentSha256 = createHash("sha256").update(bytes).digest("hex");
-            if (currentSha256 !== target.sha256) {
-              skip("hash_changed_after_terminal_run");
-              continue;
-            }
-            unlinkSync(absolutePath);
-            deletedCount += 1;
-          } catch {
-            skip("delete_failed");
-          }
-        }
-        const status: ComputerSessionRollbackActionSummary["status"] = deletedCount > 0
-          ? "completed"
-          : skippedCount > 0
-            ? "skipped"
-            : "completed";
-        const completed = this.completeRollbackAction(input.sessionId, action.id, status, "terminal_artifact_rollback_finished") ?? action;
-        completed.metadata = {
-          ...metadata,
-          terminalArtifactTargetCount: terminalArtifactTargets.length,
-          deletedCount,
-          skippedCount,
-          skippedReasons
-        };
-        state.summary.updatedAt = new Date().toISOString();
-        this.persistSessionState(state);
-        this.recordRollbackEvalStep(state, completed, status, {
-          source: "terminal_output_root_diff",
-          terminalArtifactTargetCount: terminalArtifactTargets.length,
-          deletedCount,
-          skippedCount,
-          skippedReasons
-        });
-        return { session: this.requireSession(input.sessionId).summary, rollbackAction: completed };
-      }
-      const autonomyRunId = typeof metadata.autonomyRunId === "string" ? metadata.autonomyRunId : "";
-      if (!autonomyRunId) {
-        const failed = this.completeRollbackAction(input.sessionId, action.id, "failed", "missing_autonomy_run_id") ?? action;
-        this.recordRollbackEvalStep(state, failed, "failed", { reason: "missing_autonomy_run_id" });
-        return { session: this.requireSession(input.sessionId).summary, rollbackAction: failed };
-      }
-      if (input.includeUserArtifacts && !input.confirmUserArtifacts) {
-        const blocked = this.completeRollbackAction(input.sessionId, action.id, "blocked", "user_artifact_deletion_requires_explicit_confirmation") ?? action;
-        this.recordRollbackEvalStep(state, blocked, "blocked", { reason: "user_artifact_deletion_requires_explicit_confirmation" });
-        return { session: this.requireSession(input.sessionId).summary, rollbackAction: blocked };
-      }
-      const runtime = new ScopedAutonomyRuntime(this.options.storage);
-      const toolRun = runtime.rollbackRun({
-        autonomyRunId,
-        includeUserArtifacts: input.includeUserArtifacts === true
-      });
-      const output = readUnknownRecord(toolRun.output);
-      const deleted = Array.isArray(output.deleted) ? output.deleted.length : 0;
-      const skipped = Array.isArray(output.skipped) ? output.skipped.length : 0;
-      const status: ComputerSessionRollbackActionSummary["status"] = deleted > 0
-        ? "completed"
-        : skipped > 0
-          ? "skipped"
-          : "completed";
-      const reason = input.includeUserArtifacts
-        ? "toolsmith_rollback_completed_with_user_artifacts"
-        : "toolsmith_rollback_completed_without_user_artifacts";
-      const completed = this.completeRollbackAction(input.sessionId, action.id, status, reason) ?? action;
-      completed.metadata = {
-        ...readUnknownRecord(completed.metadata),
-        rollbackToolRunId: toolRun.id,
-        includeUserArtifacts: input.includeUserArtifacts === true,
-        deletedCount: deleted,
-        skippedCount: skipped
-      };
-      state.summary.updatedAt = new Date().toISOString();
-      this.persistSessionState(state);
-      this.recordRollbackEvalStep(state, completed, status, {
-        autonomyRunId,
-        rollbackToolRunId: toolRun.id,
-        includeUserArtifacts: input.includeUserArtifacts === true,
-        deletedCount: deleted,
-        skippedCount: skipped
-      });
-      return { session: this.requireSession(input.sessionId).summary, rollbackAction: completed, toolRun };
-    }
-    if (action.kind === "cancel_capability_job" && action.capabilityJobId) {
-      await this.options.capabilityRuntime.cancel(action.capabilityJobId, "computer_session_rollback_action");
-      const completed = this.completeRollbackAction(input.sessionId, action.id, "completed", "capability_job_cancelled") ?? action;
-      this.recordRollbackEvalStep(state, completed, "completed", { capabilityJobId: action.capabilityJobId });
-      return { session: this.requireSession(input.sessionId).summary, rollbackAction: completed };
-    }
-    const skipped = this.completeRollbackAction(input.sessionId, action.id, "skipped", "rollback_action_has_no_executable_handler") ?? action;
-    this.recordRollbackEvalStep(state, skipped, "skipped", { reason: "rollback_action_has_no_executable_handler" });
-    return { session: this.requireSession(input.sessionId).summary, rollbackAction: skipped };
+    return executeRollbackAction(this.createRollbackRuntimeHost(), input);
   }
 
+  private createRollbackRuntimeHost(): ComputerSessionRollbackRuntimeHost {
+    return {
+      storage: this.options.storage,
+      capabilityRuntime: this.options.capabilityRuntime,
+      requireSession: (sessionId) => this.requireSession(sessionId),
+      persistSessionState: (state) => this.persistSessionState(state)
+    };
+  }
   async executeOperation(input: {
     sessionId: string;
     operation: ComputerStructuredOperation;
     waitMs?: number;
   }): Promise<ComputerSessionOperationResult> {
-    const state = this.requireSession(input.sessionId);
-    if (!state.summary.evalRunId || !state.summary.dagRunId) {
-      throw new Error("Computer session must be started before executing operations.");
-    }
-    if (input.operation.kind === "browser_action" && this.options.executors?.browserAction) {
-      return await this.executeBrowserActionOperation(input.sessionId, input.operation, input.waitMs);
-    }
-    if (input.operation.kind === "toolsmith") {
-      return await this.executeToolsmithOperation(input.sessionId, input.operation);
-    }
-    if (input.operation.kind === "visual_desktop_action") {
-      return this.executeVisualDesktopWatchOperation(input.sessionId, input.operation);
-    }
-    if (input.operation.kind === "browser_permission_bubble_action") {
-      return this.executeBrowserPermissionBubbleBoundaryOperation(input.sessionId, input.operation);
-    }
-    if (input.operation.kind === "native_file_picker_action") {
-      return this.executeNativeFilePickerBoundaryOperation(input.sessionId, input.operation);
-    }
-    const bridge = bridgeOperationToCapability(input.operation);
-    if (!bridge) {
-      const actionRoute = routeComputerOperation(input.operation, state.summary);
-      const node = this.options.storage.upsertCapabilityDagNode({
-        id: `${input.sessionId}:operation:${randomUUID()}`,
-        dagRunId: state.summary.dagRunId,
-        kind: "action",
-        status: "failed",
-        input: { operation: input.operation, actionRoute },
-        output: { ok: false, reason: "operation_not_capability_backed", actionRoute },
-        lastError: "operation_not_capability_backed"
-      });
-      this.block(input.sessionId, "operation_not_capability_backed");
-      return { session: state.summary, dagNode: node };
-    }
-    if (bridge.kind === "screen_observe") {
-      bridge.input = applyScreenTileCacheToInput(state, bridge.input);
-    }
-    this.transition(input.sessionId, "executing");
-    const actionRoute = routeComputerOperation(input.operation, state.summary);
-    const dagNode = this.options.storage.upsertCapabilityDagNode({
-      id: `${input.sessionId}:operation:${randomUUID()}`,
-      dagRunId: state.summary.dagRunId,
-      kind: bridge.kind === "screen_observe" || bridge.kind === "ocr" ? "observe" : "action",
-      status: "running",
-      capabilityKind: bridge.kind,
-      input: { capabilityInput: bridge.input, actionRoute },
-      startedAt: new Date().toISOString()
-    });
-    const freshnessRequirement = evaluateOperationFreshnessRequirement(state.observations, input.operation);
-    if (freshnessRequirement.status === "blocked") {
-      const now = new Date().toISOString();
-      const reason = freshnessRequirement.reason ?? "fresh_observation_required";
-      state.safetyDecisions.push({
-        decision: "blocked",
-        phase: "evidence_freshness_check",
-        reason,
-        latestObservationId: freshnessRequirement.latestObservation?.id,
-        freshness: freshnessRequirement.latestObservation?.freshness ?? "unknown",
-        requiredMaxAgeMs: freshnessRequirement.maxAgeMs
-      });
-      const failedNode = this.options.storage.upsertCapabilityDagNode({
-        id: dagNode.id,
-        dagRunId: state.summary.dagRunId,
-        kind: dagNode.kind,
-        status: "failed",
-        capabilityKind: bridge.kind,
-        input: { capabilityInput: bridge.input, actionRoute },
-        output: {
-          ok: false,
-          reason,
-          latestObservationId: freshnessRequirement.latestObservation?.id,
-          freshness: freshnessRequirement.latestObservation?.freshness ?? "unknown",
-          requiredMaxAgeMs: freshnessRequirement.maxAgeMs
-        },
-        startedAt: dagNode.startedAt,
-        completedAt: now,
-        elapsedMs: 0,
-        lastError: reason
-      });
-      this.options.storage.appendComputerUseEvalStep({
-        runId: state.summary.evalRunId,
-        kind: "evidence_freshness_check",
-        phase: "observe",
-        status: "blocked",
-        capabilityDagNodeId: failedNode.id,
-        input: {
-          operationKind: input.operation.kind,
-          maxAgeMs: freshnessRequirement.maxAgeMs
-        },
-        output: {
-          reason,
-          latestObservation: freshnessRequirement.latestObservation
-        },
-        failureClass: "perception_miss",
-        startedAt: now,
-        completedAt: now,
-        elapsedMs: 0
-      });
-      this.block(input.sessionId, reason);
-      return {
-        session: this.requireSession(input.sessionId).summary,
-        dagNode: failedNode
-      };
-    }
-    const terminalPermission = bridge.kind === "terminal"
-      ? this.evaluateTerminalOperationPermission(input.sessionId, bridge.input)
-      : { status: "not_applicable" as const };
-    if (terminalPermission.status === "blocked") {
-      const now = new Date().toISOString();
-      const reason = terminalPermission.reason ?? "terminal_permission_profile_blocked";
-      state.safetyDecisions.push({
-        decision: "blocked",
-        phase: "terminal_permission_profile",
-        profileId: state.summary.profileId,
-        reason,
-        missingRequirements: terminalPermission.decision?.missingRequirements ?? terminalPermission.requirements,
-        usedRequirements: terminalPermission.decision?.usedRequirements ?? [],
-        credentialPolicy: terminalPermission.decision?.credentialPolicy,
-        command: terminalPermission.command
-      });
-      const failedNode = this.options.storage.upsertCapabilityDagNode({
-        id: dagNode.id,
-        dagRunId: state.summary.dagRunId,
-        kind: dagNode.kind,
-        status: "failed",
-        capabilityKind: bridge.kind,
-        input: bridge.input,
-        output: {
-          ok: false,
-          reason: terminalPermission.reason,
-          command: terminalPermission.command,
-          missingRequirements: terminalPermission.decision?.missingRequirements ?? terminalPermission.requirements,
-          safetyBoundaries: terminalPermission.decision?.safetyBoundaries ?? [],
-          credentialPolicy: terminalPermission.decision?.credentialPolicy
-        },
-        startedAt: dagNode.startedAt,
-        completedAt: now,
-        elapsedMs: 0,
-        lastError: reason
-      });
-      this.options.storage.appendComputerUseEvalStep({
-        runId: state.summary.evalRunId,
-        kind: "terminal_permission_profile",
-        phase: "approval",
-        status: "blocked",
-        capabilityDagNodeId: failedNode.id,
-        input: {
-          command: terminalPermission.command,
-          profileId: state.summary.profileId,
-          requirements: terminalPermission.requirements
-        },
-        output: {
-          reason,
-          missingRequirements: terminalPermission.decision?.missingRequirements ?? terminalPermission.requirements,
-          credentialPolicy: terminalPermission.decision?.credentialPolicy
-        },
-        failureClass: "approval_denied",
-        startedAt: now,
-        completedAt: now,
-        elapsedMs: 0
-      });
-      this.block(input.sessionId, reason);
-      return {
-        session: this.requireSession(input.sessionId).summary,
-        dagNode: failedNode
-      };
-    }
-    if (terminalPermission.status === "preapproved" && terminalPermission.decision) {
-      const reversibleEvidence = terminalPermission.reversibleRegistryMutation
-        ? { reversibleRegistryMutation: terminalPermission.reversibleRegistryMutation }
-        : {};
-      state.safetyDecisions.push({
-        decision: "allow",
-        phase: "terminal_permission_profile",
-        profileId: state.summary.profileId,
-        reason: terminalPermission.decision.reason,
-        usedRequirements: terminalPermission.decision.usedRequirements,
-        credentialPolicy: terminalPermission.decision.credentialPolicy,
-        command: terminalPermission.command,
-        ...reversibleEvidence
-      });
-      this.consumeOneTimePermissionProfile(state, "terminal_permission_profile");
-    }
-    if (bridge.kind === "terminal") {
-      const snapshots = this.captureTerminalOutputRootSnapshots(input.sessionId, bridge.input);
-      if (snapshots.length) {
-        this.terminalOutputRootSnapshots.set(dagNode.id, snapshots);
-      }
-    }
-    const job = await this.options.capabilityRuntime.enqueue({
-      kind: bridge.kind,
-      sessionId: input.sessionId,
-      priority: "interactive",
-      requestedBy: "direct_ui",
-      requireApproval: terminalPermission.status === "preapproved" ? false : undefined,
-      input: {
-        ...bridge.input,
-        dagRunId: state.summary.dagRunId,
-        dagNodeId: dagNode.id,
-        evalRunId: state.summary.evalRunId,
-        ...(terminalPermission.status === "preapproved" ? {
-          permissionProfileId: state.summary.profileId,
-          permissionDecision: terminalPermission.decision
-        } : {})
-      },
-      timeoutMs: readOperationTimeoutMs(bridge.input)
-    });
-    const finalJob = await waitForCapabilityJobIfRunning(this.options.capabilityRuntime, job.id, input.waitMs ?? 5000);
-    const latestNode = this.options.storage.readCapabilityDagNode(dagNode.id) ?? dagNode;
-    if (finalJob.status === "awaiting_approval") {
-      this.transition(input.sessionId, "awaiting_action_confirmation", {
-        requiresUserAction: finalJob.approvalId ?? "approval_required"
-      });
-      return { session: this.requireSession(input.sessionId).summary, dagNode: latestNode, job: finalJob };
-    }
-    if (finalJob.status === "completed") {
-      this.recordCapabilityOperationObservation({
-        sessionId: input.sessionId,
-        operation: input.operation,
-        job: finalJob,
-        dagNodeId: dagNode.id,
-        capabilityKind: bridge.kind
-      });
-      this.transition(input.sessionId, "verifying");
-      const verification = verifyComputerSessionEffect({
-        operation: input.operation,
-        capabilityKind: bridge.kind,
-        job: finalJob,
-        recoveryBudgetRemaining: Math.max(0, 1 - state.recoveryAttempts)
-      });
-      this.recordEffectVerificationStep({
-        sessionId: input.sessionId,
-        dagNodeId: dagNode.id,
-        job: finalJob,
-        verification
-      });
-      this.recordVerifierResult(input.sessionId, {
-        id: `verifier:${finalJob.id}`,
-        ...verification
-      });
-      if (verification.status === "passed") {
-        this.transition(input.sessionId, "completed");
-      } else {
-        this.recordRecoveryAttempt({
-          sessionId: input.sessionId,
-          dagNodeId: dagNode.id,
-          job: finalJob,
-          verification
-        });
-        this.transition(input.sessionId, "failed", {
-          blockedReason: verification.reason
-        });
-      }
-    } else if (finalJob.status === "running" || finalJob.status === "scheduled" || finalJob.status === "queued") {
-      this.transition(input.sessionId, "executing");
-    } else {
-      this.transition(input.sessionId, "failed", { blockedReason: finalJob.lastError ?? `Capability job ${finalJob.status}` });
-    }
+    return executeSessionOperation(this.createOperationRuntimeHost(), input);
+  }
+
+  private createOperationRuntimeHost(): ComputerSessionOperationRuntimeHost {
     return {
-      session: this.requireSession(input.sessionId).summary,
-      dagNode: this.options.storage.readCapabilityDagNode(dagNode.id) ?? latestNode,
-      job: finalJob
+      storage: this.options.storage,
+      capabilityRuntime: this.options.capabilityRuntime,
+      hasBrowserActionExecutor: Boolean(this.options.executors?.browserAction),
+      requireSession: (sessionId) => this.requireSession(sessionId),
+      transition: (sessionId, state, patch) => this.transition(sessionId, state, patch),
+      block: (sessionId, reason) => this.block(sessionId, reason),
+      executeBrowserActionOperation: (sessionId, operation, waitMs) => this.executeBrowserActionOperation(sessionId, operation, waitMs),
+      executeToolsmithOperation: (sessionId, operation) => this.executeToolsmithOperation(sessionId, operation),
+      executeVisualDesktopWatchOperation: (sessionId, operation) => this.executeVisualDesktopWatchOperation(sessionId, operation),
+      executeBrowserPermissionBubbleBoundaryOperation: (sessionId, operation) => this.executeBrowserPermissionBubbleBoundaryOperation(sessionId, operation),
+      executeNativeFilePickerBoundaryOperation: (sessionId, operation) => this.executeNativeFilePickerBoundaryOperation(sessionId, operation),
+      evaluateTerminalOperationPermission: (sessionId, input) => this.evaluateTerminalOperationPermission(sessionId, input),
+      consumeOneTimePermissionProfile: (state, phase) => this.consumeOneTimePermissionProfile(state, phase),
+      captureTerminalOutputRootSnapshots: (sessionId, input) => this.captureTerminalOutputRootSnapshots(sessionId, input),
+      setTerminalOutputRootSnapshots: (dagNodeId, snapshots) => this.terminalOutputRootSnapshots.set(dagNodeId, snapshots),
+      recordCapabilityOperationObservation: (input) => this.recordCapabilityOperationObservation(input),
+      recordEffectVerificationStep: (input) => this.recordEffectVerificationStep(input),
+      recordVerifierResult: (sessionId, result) => this.recordVerifierResult(sessionId, result),
+      recordRecoveryAttempt: (input) => this.recordRecoveryAttempt(input)
     };
   }
 
@@ -1199,141 +535,34 @@ export class ComputerSessionRuntime {
     mode?: WidgetMode;
     source?: Partial<BrowserActionSource>;
   }): Promise<ComputerSessionPromptPlanResult> {
-    const state = this.requireSession(input.sessionId);
-    if (!state.summary.evalRunId) {
-      throw new Error("Computer session must be started before planning Browser Action prompts.");
-    }
-    this.transition(input.sessionId, "planning");
-    const promptSource = resolvePromptBrowserSource(state.summary, input.source);
-    const defaultAdapterId = state.summary.selectedSurface?.kind === "isolated_browser" ? "playwright" : undefined;
-    const plan = planBrowserActionFromPrompt({
-      text: input.text,
-      mode: input.mode ?? "browser",
-      defaultAdapterId,
-      source: promptSource
-    });
-    if (!plan || !plan.steps[0]) {
-      const blockedReason = "browser_action_prompt_not_plannable";
-      this.options.storage.appendComputerUseEvalStep({
-        runId: state.summary.evalRunId,
-        kind: "browser_action_prompt_plan",
-        phase: "planning",
-        status: "failed",
-        input: { text: input.text, mode: input.mode ?? "browser", source: promptSource, defaultAdapterId },
-        output: { blockedReason },
-        failureClass: "ambiguous_target"
-      });
-      this.block(input.sessionId, blockedReason);
-      return {
-        session: this.requireSession(input.sessionId).summary,
-        blockedReason
-      };
-    }
-    this.options.storage.appendComputerUseEvalStep({
-      runId: state.summary.evalRunId,
-      kind: "browser_action_prompt_plan",
-      phase: "planning",
-      status: "completed",
-      input: { text: input.text, mode: input.mode ?? "browser", source: promptSource, defaultAdapterId },
-      output: {
-        planId: plan.id,
-        confidence: plan.confidence,
-        reason: plan.reason,
-        steps: plan.steps.map((step) => ({
-          id: step.id,
-          action: step.action.type,
-          targetSummary: step.targetSummary
-        }))
-      },
-      failureClass: "none"
-    });
-    this.emit({
-      type: "computer.session.plan",
-      sessionId: input.sessionId,
-      plan
-    });
-    const promptRun = this.createPromptRun(input.sessionId, input.text, plan);
-    const operation = await this.startBrowserActionPromptStep(input.sessionId, promptRun.id, 0);
-    return {
-      session: this.requireSession(input.sessionId).summary,
-      plan,
-      promptRun: this.readPromptRun(input.sessionId, promptRun.id),
-      operation
-    };
+    return executeBrowserActionPrompt(this.createPromptRuntimeHost(), input);
   }
 
   async continueBrowserActionPrompt(input: {
     sessionId: string;
     promptRunId?: string;
   }): Promise<ComputerSessionPromptPlanResult> {
-    const state = this.requireSession(input.sessionId);
-    const promptRun = input.promptRunId
-      ? this.requirePromptRun(state, input.promptRunId)
-      : this.findContinuablePromptRun(state);
-    if (!promptRun) {
-      return {
-        session: state.summary,
-        blockedReason: "browser_action_prompt_run_not_found"
-      };
-    }
-    this.refreshPromptRunFromStorage(input.sessionId, promptRun.id);
-    const latestRun = this.requirePromptRun(state, promptRun.id);
-    const plan = this.promptPlans.get(latestRun.id);
-    if (!plan) {
-      latestRun.status = "failed";
-      latestRun.lastError = "browser_action_prompt_plan_missing";
-      latestRun.updatedAt = new Date().toISOString();
-      this.emitPromptRun(input.sessionId, latestRun);
-      return {
-        session: this.requireSession(input.sessionId).summary,
-        promptRun: latestRun,
-        blockedReason: latestRun.lastError
-      };
-    }
-    if (latestRun.status === "completed" || latestRun.status === "failed" || latestRun.status === "cancelled") {
-      return {
-        session: this.requireSession(input.sessionId).summary,
-        plan,
-        promptRun: latestRun
-      };
-    }
-    const current = latestRun.steps[latestRun.currentStepIndex];
-    if (current && current.status !== "completed") {
-      return {
-        session: this.requireSession(input.sessionId).summary,
-        plan,
-        promptRun: latestRun
-      };
-    }
-    const nextIndex = latestRun.steps.findIndex((step) => step.status === "pending");
-    if (nextIndex < 0) {
-      this.completePromptRun(input.sessionId, latestRun.id);
-      return {
-        session: this.requireSession(input.sessionId).summary,
-        plan,
-        promptRun: this.requirePromptRun(state, latestRun.id)
-      };
-    }
-    const operation = await this.startBrowserActionPromptStep(input.sessionId, latestRun.id, nextIndex);
-    return {
-      session: this.requireSession(input.sessionId).summary,
-      plan,
-      promptRun: this.requirePromptRun(state, latestRun.id),
-      operation
-    };
+    return continueBrowserActionPrompt(this.createPromptRuntimeHost(), input);
   }
 
   async continueBrowserActionPromptByCapabilityJob(capabilityJobId: string): Promise<ComputerSessionPromptPlanResult | null> {
-    for (const [sessionId, state] of this.sessions.entries()) {
-      for (const promptRun of state.promptRuns) {
-        const step = promptRun.steps.find((candidate) => candidate.capabilityJobId === capabilityJobId);
-        if (!step || isPromptStepFinal(step.status)) {
-          continue;
-        }
-        return await this.continueBrowserActionPrompt({ sessionId, promptRunId: promptRun.id });
-      }
-    }
-    return null;
+    return continueBrowserActionPromptByCapabilityJob(this.createPromptRuntimeHost(), capabilityJobId);
+  }
+
+  private createPromptRuntimeHost(): ComputerSessionPromptRuntimeHost {
+    return {
+      storage: this.options.storage,
+      capabilityRuntime: this.options.capabilityRuntime,
+      promptPlans: this.promptPlans,
+      sessionEntries: () => this.sessions.entries(),
+      requireSession: (sessionId) => this.requireSession(sessionId),
+      transition: (sessionId, state, patch) => this.transition(sessionId, state, patch),
+      block: (sessionId, reason) => this.block(sessionId, reason),
+      executeOperation: (input) => this.executeOperation(input),
+      recordVerifierResult: (sessionId, result) => this.recordVerifierResult(sessionId, result),
+      persistSessionState: (state) => this.persistSessionState(state),
+      emit: (event) => this.emit(event)
+    };
   }
 
   private async executeBrowserActionOperation(
@@ -3983,38 +3212,6 @@ export class ComputerSessionRuntime {
     });
   }
 
-  private recordRollbackEvalStep(
-    state: RuntimeSessionState,
-    rollbackAction: ComputerSessionRollbackActionSummary,
-    status: ComputerSessionRollbackActionSummary["status"],
-    output: Record<string, unknown>
-  ): void {
-    if (!state.summary.evalRunId) {
-      return;
-    }
-    const now = new Date().toISOString();
-    this.options.storage.appendComputerUseEvalStep({
-      runId: state.summary.evalRunId,
-      kind: "rollback_action",
-      phase: "cleanup",
-      status: status === "completed" || status === "skipped" ? "completed" : "failed",
-      input: {
-        rollbackActionId: rollbackAction.id,
-        kind: rollbackAction.kind,
-        riskClass: rollbackAction.riskClass
-      },
-      output: {
-        ...output,
-        rollbackStatus: rollbackAction.status,
-        reason: rollbackAction.reason
-      },
-      failureClass: status === "completed" || status === "skipped" ? "none" : "recovery_failed",
-      startedAt: now,
-      completedAt: now,
-      elapsedMs: 0
-    });
-  }
-
   private selectSurface(input: ComputerSessionCreateInput): ExecutionSurfaceDecision {
     return this.surfaceManager.select({
       requestedSurface: input.requestedSurface,
@@ -4089,214 +3286,6 @@ export class ComputerSessionRuntime {
 
   private emit(event: ComputerSessionEvent): void {
     this.options.emit?.(event);
-  }
-
-  private createPromptRun(sessionId: string, prompt: string, plan: BrowserActionPromptPlan): ComputerSessionPromptRunSummary {
-    const state = this.requireSession(sessionId);
-    const now = new Date().toISOString();
-    const promptRun: ComputerSessionPromptRunSummary = {
-      id: `browser-prompt-run:${randomUUID()}`,
-      sessionId,
-      prompt,
-      planId: plan.id,
-      goal: plan.goal,
-      status: "pending",
-      currentStepIndex: 0,
-      confidence: plan.confidence,
-      reason: plan.reason,
-      steps: plan.steps.map((step, index): ComputerSessionPromptStepSummary => ({
-        id: step.id,
-        index,
-        actionType: step.action.type,
-        targetSummary: step.targetSummary,
-        status: "pending"
-      })),
-      createdAt: now,
-      updatedAt: now
-    };
-    state.promptRuns.push(promptRun);
-    this.promptPlans.set(promptRun.id, plan);
-    this.emitPromptRun(sessionId, promptRun);
-    return promptRun;
-  }
-
-  private async startBrowserActionPromptStep(
-    sessionId: string,
-    promptRunId: string,
-    stepIndex: number
-  ): Promise<ComputerSessionOperationResult> {
-    const state = this.requireSession(sessionId);
-    const promptRun = this.requirePromptRun(state, promptRunId);
-    const plan = this.promptPlans.get(promptRunId);
-    const step = plan?.steps[stepIndex];
-    const stepSummary = promptRun.steps[stepIndex];
-    if (!plan || !step || !stepSummary) {
-      throw new Error(`Browser Action prompt step not found: ${promptRunId}#${stepIndex}`);
-    }
-    const now = new Date().toISOString();
-    promptRun.status = "running";
-    promptRun.currentStepIndex = stepIndex;
-    promptRun.updatedAt = now;
-    stepSummary.status = "running";
-    stepSummary.startedAt = stepSummary.startedAt ?? now;
-    stepSummary.lastError = undefined;
-    this.emitPromptRun(sessionId, promptRun);
-    const operation = await this.executeOperation({
-      sessionId,
-      operation: {
-        kind: "browser_action",
-        input: {
-          actionSessionId: `computer-session-browser-action:${sessionId}`,
-          mode: plan.mode,
-          adapterId: plan.adapterId,
-          source: plan.source,
-          action: step.action,
-          expected: step.expected,
-          targetHint: step.targetSummary,
-          promptRunId,
-          promptStepId: step.id,
-          promptStepIndex: stepIndex
-        }
-      }
-    });
-    const latest = this.requirePromptRun(state, promptRunId);
-    const latestStep = latest.steps[stepIndex];
-    latestStep.dagNodeId = operation.dagNode.id;
-    latestStep.capabilityJobId = operation.job?.id;
-    latestStep.status = readPromptStepStatus(operation);
-    latestStep.completedAt = isPromptStepFinal(latestStep.status) ? new Date().toISOString() : latestStep.completedAt;
-    latestStep.lastError = operation.dagNode.lastError ?? operation.job?.lastError;
-    latest.status = latestStep.status === "awaiting_approval" ? "awaiting_approval" : latestStep.status === "completed" ? "running" : latestStep.status;
-    latest.updatedAt = new Date().toISOString();
-    this.recordPromptStepEval(sessionId, latest, latestStep, "started");
-    this.emitPromptRun(sessionId, latest);
-    if (latestStep.status === "completed") {
-      return (await this.continueBrowserActionPrompt({ sessionId, promptRunId })).operation ?? operation;
-    }
-    return operation;
-  }
-
-  private refreshPromptRunFromStorage(sessionId: string, promptRunId: string): void {
-    const state = this.requireSession(sessionId);
-    const promptRun = this.requirePromptRun(state, promptRunId);
-    let changed = false;
-    for (const step of promptRun.steps) {
-      if (!step.capabilityJobId && !step.dagNodeId) {
-        continue;
-      }
-      const before = step.status;
-      const job = step.capabilityJobId ? this.options.capabilityRuntime.read(step.capabilityJobId) : null;
-      const node = step.dagNodeId ? this.options.storage.readCapabilityDagNode(step.dagNodeId) : null;
-      step.status = readPromptStepStatusFromJobNode(job, node, step.status);
-      step.lastError = node?.lastError ?? job?.lastError ?? step.lastError;
-      if (isPromptStepFinal(step.status) && !step.completedAt) {
-        step.completedAt = new Date().toISOString();
-      }
-      if (before !== step.status) {
-        changed = true;
-        this.recordPromptStepEval(sessionId, promptRun, step, "completed");
-      }
-    }
-    const failed = promptRun.steps.find((step) => step.status === "failed" || step.status === "cancelled");
-    if (failed) {
-      promptRun.status = failed.status;
-      promptRun.lastError = failed.lastError ?? `browser_action_prompt_step_${failed.status}`;
-      promptRun.completedAt = promptRun.completedAt ?? new Date().toISOString();
-      changed = true;
-    } else if (promptRun.steps.every((step) => step.status === "completed" || step.status === "skipped")) {
-      promptRun.status = "completed";
-      changed = true;
-    } else if (promptRun.steps.some((step) => step.status === "awaiting_approval")) {
-      promptRun.status = "awaiting_approval";
-      changed = true;
-    } else if (promptRun.steps.some((step) => step.status === "running")) {
-      promptRun.status = "running";
-      changed = true;
-    }
-    if (changed) {
-      promptRun.updatedAt = new Date().toISOString();
-      this.emitPromptRun(sessionId, promptRun);
-      if (promptRun.status === "completed") {
-        this.completePromptRun(sessionId, promptRunId);
-      }
-    }
-  }
-
-  private completePromptRun(sessionId: string, promptRunId: string): void {
-    const state = this.requireSession(sessionId);
-    const promptRun = this.requirePromptRun(state, promptRunId);
-    if (promptRun.status === "completed" && promptRun.completedAt) {
-      return;
-    }
-    promptRun.status = "completed";
-    promptRun.completedAt = new Date().toISOString();
-    promptRun.updatedAt = promptRun.completedAt;
-    this.recordVerifierResult(sessionId, {
-      id: `verifier:${promptRun.id}`,
-      status: "passed",
-      reason: "Browser Action prompt run completed all planned steps.",
-      promptRunId,
-      stepCount: promptRun.steps.length
-    });
-    this.transition(sessionId, "completed");
-    this.emitPromptRun(sessionId, promptRun);
-  }
-
-  private readPromptRun(sessionId: string, promptRunId: string): ComputerSessionPromptRunSummary {
-    return this.requirePromptRun(this.requireSession(sessionId), promptRunId);
-  }
-
-  private requirePromptRun(state: RuntimeSessionState, promptRunId: string): ComputerSessionPromptRunSummary {
-    const promptRun = state.promptRuns.find((candidate) => candidate.id === promptRunId);
-    if (!promptRun) {
-      throw new Error(`Computer session prompt run not found: ${promptRunId}`);
-    }
-    return promptRun;
-  }
-
-  private findContinuablePromptRun(state: RuntimeSessionState): ComputerSessionPromptRunSummary | undefined {
-    return state.promptRuns.find((promptRun) => promptRun.status === "running" || promptRun.status === "awaiting_approval" || promptRun.status === "pending");
-  }
-
-  private recordPromptStepEval(
-    sessionId: string,
-    promptRun: ComputerSessionPromptRunSummary,
-    step: ComputerSessionPromptStepSummary,
-    phase: "started" | "completed"
-  ): void {
-    const state = this.requireSession(sessionId);
-    if (!state.summary.evalRunId) {
-      return;
-    }
-    this.options.storage.appendComputerUseEvalStep({
-      runId: state.summary.evalRunId,
-      kind: "browser_action_prompt_step",
-      phase: "action",
-      status: phase === "started" && !isPromptStepFinal(step.status) ? "running" : step.status,
-      capabilityJobId: step.capabilityJobId,
-      capabilityDagNodeId: step.dagNodeId,
-      input: {
-        promptRunId: promptRun.id,
-        planId: promptRun.planId,
-        stepId: step.id,
-        stepIndex: step.index,
-        actionType: step.actionType,
-        targetSummary: step.targetSummary
-      },
-      output: {
-        promptStatus: promptRun.status,
-        stepStatus: step.status,
-        lastError: step.lastError
-      },
-      failureClass: step.status === "failed" ? "action_failed" : step.status === "cancelled" ? "external_blocker" : "none"
-    });
-  }
-
-  private emitPromptRun(sessionId: string, promptRun: ComputerSessionPromptRunSummary): void {
-    const state = this.requireSession(sessionId);
-    state.summary.updatedAt = new Date().toISOString();
-    this.persistSessionState(state);
-    this.emit({ type: "computer.session.prompt_run", sessionId, promptRun });
   }
 
   private hydratePersistedSessions(): void {
@@ -4558,405 +3547,4 @@ export class ComputerSessionRuntime {
       }
     }
   }
-}
-
-function createSkeletonDagNodes(input: {
-  sessionId: string;
-  evalRunId: string;
-  surfaceDecision: ExecutionSurfaceDecision;
-}) {
-  const prefix = input.sessionId;
-  return [
-    {
-      id: `${prefix}:permission_check`,
-      kind: "permission_check" as const,
-      input: {
-        evalRunId: input.evalRunId,
-        requiredGrants: input.surfaceDecision.requiredGrants
-      }
-    },
-    {
-      id: `${prefix}:surface_select`,
-      kind: "setup" as const,
-      dependsOn: [`${prefix}:permission_check`],
-      input: {
-        surface: input.surfaceDecision.surface.kind,
-        reason: input.surfaceDecision.reason
-      }
-    },
-    {
-      id: `${prefix}:observe`,
-      kind: "observe" as const,
-      dependsOn: [`${prefix}:surface_select`],
-      input: { mode: "skeleton_observe" }
-    },
-    {
-      id: `${prefix}:plan`,
-      kind: "plan" as const,
-      dependsOn: [`${prefix}:observe`],
-      input: { mode: "skeleton_plan" }
-    },
-    {
-      id: `${prefix}:eval_ledger`,
-      kind: "eval_ledger" as const,
-      dependsOn: [`${prefix}:plan`],
-      input: { evalRunId: input.evalRunId }
-    }
-  ];
-}
-
-function inferRiskClass(userRequest: string): RiskClass {
-  if (/password|credential|token|결제|payment|보안|security/i.test(userRequest)) {
-    return "credential_or_secret";
-  }
-  if (/delete|remove|삭제|변경|settings|설정/i.test(userRequest)) {
-    return "os_settings_mutation";
-  }
-  if (/upload|첨부|file/i.test(userRequest)) {
-    return "local_file_disclosure";
-  }
-  if (/pdf|markdown|문서|보고서|저장|save/i.test(userRequest)) {
-    return "local_artifact_create";
-  }
-  return "read_only";
-}
-
-function inferModalitiesForSurface(surface: string): ComputerUseEvalModality[] {
-  if (surface === "pty_workspace" || surface === "tool_workspace") {
-    return ["terminal", "cross_app"];
-  }
-  if (surface === "foreground_desktop_watch" || surface === "future_vm_session") {
-    return ["windows", "vision"];
-  }
-  return ["browser"];
-}
-
-function inferFailureMemorySurface(surface: string | undefined, capabilityKind: CapabilityJobKind): ComputerUseEvalModality | "memory" {
-  if (capabilityKind === "terminal") return "terminal";
-  if (capabilityKind === "desktop_action" || surface === "foreground_desktop_watch" || surface === "future_vm_session") return "windows";
-  if (capabilityKind === "screen_observe" || capabilityKind === "ocr") return "vision";
-  if (capabilityKind === "browser_action" || capabilityKind === "browser_chrome") return "browser";
-  return "memory";
-}
-
-function mapRiskClassToAutonomyRisk(riskClass: RiskClass): AutonomyRiskClass {
-  if (riskClass === "read_only") return "read_only";
-  if (riskClass === "local_artifact_create") return "reversible";
-  if (riskClass === "credential_or_secret") return "credential";
-  if (riskClass === "browser_state_mutation" || riskClass === "external_submission") return "side_effect";
-  return "high_risk";
-}
-
-function readSourceDocuments(value: unknown): Array<{ title?: string; url?: string; text: string }> | undefined {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-  const documents = value
-    .map((item) => item && typeof item === "object" ? item as Record<string, unknown> : null)
-    .filter((item): item is Record<string, unknown> => Boolean(item))
-    .map((item) => ({
-      title: typeof item.title === "string" ? item.title : undefined,
-      url: typeof item.url === "string" ? item.url : undefined,
-      text: typeof item.text === "string" ? item.text : ""
-    }))
-    .filter((item) => item.text.trim());
-  return documents.length ? documents : undefined;
-}
-
-function readBrowserFallbackDocuments(value: unknown): Array<{
-  title?: string;
-  url: string;
-  text?: string;
-  capture?: Record<string, unknown>;
-}> | undefined {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-  const documents = value
-    .map((item) => item && typeof item === "object" ? item as Record<string, unknown> : null)
-    .filter((item): item is Record<string, unknown> => Boolean(item))
-    .map((item) => ({
-      title: typeof item.title === "string" ? item.title : undefined,
-      url: typeof item.url === "string" ? item.url.trim() : "",
-      text: typeof item.text === "string" ? item.text : undefined,
-      capture: item.capture && typeof item.capture === "object" && !Array.isArray(item.capture)
-        ? item.capture as Record<string, unknown>
-        : undefined
-    }))
-    .filter((item) => item.url && (item.text?.trim() || item.capture));
-  return documents.length ? documents : undefined;
-}
-
-function createBrowserActionReobserveOperation(
-  operation: Extract<ComputerStructuredOperation, { kind: "browser_action" }>
-): Extract<ComputerStructuredOperation, { kind: "browser_action" }> {
-  const originalInput = operation.input && typeof operation.input === "object"
-    ? operation.input as Record<string, unknown>
-    : {};
-  const reobserveInput: Record<string, unknown> = {
-    action: {
-      type: "read",
-      reason: `Refresh browser observation before ${readBrowserActionTypeFromOperation(operation)}.`
-    }
-  };
-  for (const key of ["actionSessionId", "adapterId", "source", "mode", "targetHint"]) {
-    if (originalInput[key] !== undefined) {
-      reobserveInput[key] = originalInput[key];
-    }
-  }
-  if (typeof originalInput.requestId === "string" && originalInput.requestId.trim()) {
-    reobserveInput.requestId = `${originalInput.requestId.trim()}:reobserve`;
-  }
-  return {
-    kind: "browser_action",
-    input: reobserveInput
-  };
-}
-
-function readBrowserActionTypeFromOperation(
-  operation: Extract<ComputerStructuredOperation, { kind: "browser_action" }>
-): string {
-  const input = operation.input && typeof operation.input === "object"
-    ? operation.input as Record<string, unknown>
-    : {};
-  const action = input.action && typeof input.action === "object" && !Array.isArray(input.action)
-    ? input.action as Record<string, unknown>
-    : {};
-  return typeof action.type === "string" && action.type.trim() ? action.type.trim() : "unknown";
-}
-
-function summarizeBrowserActionTargetForRecovery(
-  operation: Extract<ComputerStructuredOperation, { kind: "browser_action" }>
-): Record<string, unknown> | undefined {
-  const input = operation.input && typeof operation.input === "object"
-    ? operation.input as Record<string, unknown>
-    : {};
-  const action = input.action && typeof input.action === "object" && !Array.isArray(input.action)
-    ? input.action as Record<string, unknown>
-    : {};
-  const target = action.target && typeof action.target === "object" && !Array.isArray(action.target)
-    ? action.target as Record<string, unknown>
-    : undefined;
-  if (!target) {
-    return undefined;
-  }
-  const summary: Record<string, unknown> = {};
-  for (const key of ["kind", "id", "role", "label", "name", "text", "selector"]) {
-    const value = target[key];
-    if (typeof value === "string" && value.trim()) {
-      summary[key] = value.length > 160 ? `${value.slice(0, 157)}...` : value;
-    }
-  }
-  return Object.keys(summary).length ? summary : { kind: "unknown" };
-}
-
-function evaluateOperationFreshnessRequirement(
-  observations: ComputerSessionObservationSummary[],
-  operation: ComputerStructuredOperation
-): {
-  status: "not_required" | "ok" | "blocked";
-  reason?: string;
-  latestObservation?: ComputerSessionObservationSummary;
-  maxAgeMs?: number;
-} {
-  const input = "input" in operation && operation.input && typeof operation.input === "object"
-    ? operation.input as Record<string, unknown>
-    : {};
-  const requiresFreshObservation = input.requiresFreshObservation === true || typeof input.maxEvidenceAgeMs === "number";
-  if (!requiresFreshObservation) {
-    return { status: "not_required" };
-  }
-  const maxAgeMs = clampFreshnessMs(typeof input.maxEvidenceAgeMs === "number" ? input.maxEvidenceAgeMs : undefined);
-  const latestObservation = [...observations]
-    .reverse()
-    .find((observation) => observation.kind !== "session_skeleton");
-  if (!latestObservation) {
-    return {
-      status: "blocked",
-      reason: "fresh_observation_required_but_missing",
-      maxAgeMs
-    };
-  }
-  const [annotated] = annotateObservationFreshness([latestObservation], new Date(), maxAgeMs);
-  if (annotated.freshness !== "fresh") {
-    return {
-      status: "blocked",
-      reason: annotated.freshness === "stale"
-        ? "fresh_observation_required_but_stale"
-        : "fresh_observation_required_but_unknown",
-      latestObservation: annotated,
-      maxAgeMs
-    };
-  }
-  return {
-    status: "ok",
-    latestObservation: annotated,
-    maxAgeMs
-  };
-}
-
-function annotateObservationFreshness(
-  observations: ComputerSessionObservationSummary[],
-  now = new Date(),
-  overrideStaleAfterMs?: number
-): ComputerSessionObservationSummary[] {
-  return observations.map((observation) => {
-    const staleAfterMs = overrideStaleAfterMs ?? staleAfterMsForObservation(observation);
-    const capturedAtMs = Date.parse(observation.capturedAt);
-    if (!Number.isFinite(capturedAtMs) || staleAfterMs <= 0) {
-      return {
-        ...observation,
-        freshness: "unknown",
-        metadata: {
-          ...(observation.metadata ?? {}),
-          freshnessCheckedAt: now.toISOString(),
-          freshnessReason: !Number.isFinite(capturedAtMs) ? "invalid_captured_at" : "no_freshness_window"
-        }
-      };
-    }
-    const ageMs = Math.max(0, now.getTime() - capturedAtMs);
-    const freshness = ageMs <= staleAfterMs ? "fresh" : "stale";
-    return {
-      ...observation,
-      freshness,
-      metadata: {
-        ...(observation.metadata ?? {}),
-        freshnessCheckedAt: now.toISOString(),
-        ageMs,
-        staleAfterMs
-      }
-    };
-  });
-}
-
-function summarizeObservationFreshness(
-  observations: ComputerSessionObservationSummary[]
-): ComputerSessionFreshnessSummary {
-  const summary: ComputerSessionFreshnessSummary = {
-    checkedAt: new Date().toISOString(),
-    fresh: 0,
-    stale: 0,
-    unknown: 0,
-    staleObservationIds: []
-  };
-  for (const observation of observations) {
-    if (observation.freshness === "fresh") {
-      summary.fresh += 1;
-    } else if (observation.freshness === "stale") {
-      summary.stale += 1;
-      summary.staleObservationIds.push(observation.id);
-    } else {
-      summary.unknown += 1;
-    }
-    const ageMs = typeof observation.metadata?.ageMs === "number" ? observation.metadata.ageMs : undefined;
-    if (ageMs !== undefined) {
-      summary.maxAgeMs = Math.max(summary.maxAgeMs ?? 0, ageMs);
-    }
-  }
-  return summary;
-}
-
-function staleAfterMsForObservation(observation: ComputerSessionObservationSummary): number {
-  if (observation.kind === "browser_dom" || observation.kind === "screen" || observation.kind === "ocr") {
-    return 15_000;
-  }
-  if (observation.kind === "terminal" || observation.kind === "file") {
-    return 5 * 60_000;
-  }
-  return 0;
-}
-
-function clampFreshnessMs(value: number | undefined): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return 15_000;
-  }
-  return Math.min(Math.max(Math.floor(value), 250), 5 * 60_000);
-}
-
-function summarizeObservationRecord(kind: ComputerSessionObservationKind, output: unknown): string {
-  const summary = summarizeCapabilityObservation(kind, output);
-  if (kind === "ocr") {
-    return `OCR observation captured ${String(summary.textLength ?? 0)} characters.`;
-  }
-  if (kind === "screen") {
-    return `Screen observation captured ${String(summary.dirtyRegionCount ?? "unknown")} dirty regions.`;
-  }
-  if (kind === "terminal") {
-    return `Terminal observation completed with exit code ${String(summary.exitCode ?? "unknown")}.`;
-  }
-  return "Capability observation completed through Computer Session runtime.";
-}
-
-function readOperationTimeoutMs(input: Record<string, unknown>): number | undefined {
-  const timeoutMs = Number(input.timeoutMs);
-  return Number.isFinite(timeoutMs) && timeoutMs > 0 ? Math.min(120_000, Math.floor(timeoutMs)) : undefined;
-}
-
-async function waitForCapabilityJobIfRunning(
-  runtime: CapabilityRuntime,
-  jobId: string,
-  timeoutMs: number
-): Promise<CapabilityJobSummary> {
-  const deadline = Date.now() + Math.max(0, timeoutMs);
-  let latest = runtime.read(jobId);
-  while (latest && !isCapabilitySettledForSession(latest.status) && Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, 25));
-    latest = runtime.read(jobId);
-  }
-  if (!latest) {
-    throw new Error(`Capability job not found: ${jobId}`);
-  }
-  return latest;
-}
-
-function isCapabilitySettledForSession(status: CapabilityJobSummary["status"]): boolean {
-  return status === "completed" ||
-    status === "failed" ||
-    status === "cancelled" ||
-    status === "expired" ||
-    status === "awaiting_approval";
-}
-
-function isComputerSessionFinal(state: ComputerSessionState): boolean {
-  return state === "completed" || state === "blocked" || state === "cancelled" || state === "failed";
-}
-
-function isCapabilityDagNodeFinal(status: CapabilityDagNodeSummary["status"]): boolean {
-  return status === "completed" || status === "failed" || status === "cancelled" || status === "skipped";
-}
-
-function readPromptStepStatus(operation: ComputerSessionOperationResult): ComputerSessionPromptStepStatus {
-  return readPromptStepStatusFromJobNode(operation.job ?? null, operation.dagNode, "running");
-}
-
-function readPromptStepStatusFromJobNode(
-  job: CapabilityJobSummary | null,
-  node: CapabilityDagNodeSummary | null,
-  fallback: ComputerSessionPromptStepStatus
-): ComputerSessionPromptStepStatus {
-  if (job?.status === "awaiting_approval") {
-    return "awaiting_approval";
-  }
-  if (job?.status === "completed" || node?.status === "completed") {
-    return "completed";
-  }
-  if (job?.status === "cancelled" || node?.status === "cancelled") {
-    return "cancelled";
-  }
-  if (job?.status === "failed" || job?.status === "expired" || node?.status === "failed") {
-    return "failed";
-  }
-  if (job?.status === "queued" || job?.status === "scheduled" || job?.status === "running" || node?.status === "running" || node?.status === "ready" || node?.status === "pending") {
-    return "running";
-  }
-  return fallback;
-}
-
-function isPromptStepFinal(status: ComputerSessionPromptStepStatus): boolean {
-  return status === "completed" || status === "failed" || status === "cancelled" || status === "skipped";
-}
-
-function isScreenTileCache(value: unknown): value is ScreenTileCache {
-  const record = readUnknownRecord(value);
-  return Array.isArray(record.tileHashes) && typeof record.capturedAt === "string";
 }

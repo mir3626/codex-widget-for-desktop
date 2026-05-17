@@ -1,0 +1,705 @@
+{
+  "schemaVersion": "windows-codex-computer-use-parity-audit.v1",
+  "generatedAt": "2026-05-17T15:04:29.839Z",
+  "date": "2026-05-18",
+  "objectiveFiles": [
+    "docs/plans/windows-codex-computer-use-parity-handoff.md",
+    "docs/plans/windows-codex-computer-use-parity/00-overview.md",
+    "docs/plans/windows-codex-computer-use-parity/01-contract-session-runtime.md",
+    "docs/plans/windows-codex-computer-use-parity/02-surfaces-permissions-safety.md",
+    "docs/plans/windows-codex-computer-use-parity/03-observation-perception-action.md",
+    "docs/plans/windows-codex-computer-use-parity/04-browser-tool-terminal-slices.md",
+    "docs/plans/windows-codex-computer-use-parity/05-windows-native-helper-watch-mode.md",
+    "docs/plans/windows-codex-computer-use-parity/06-eval-debug-ux-dogfood.md",
+    "docs/plans/windows-codex-computer-use-parity/07-migration-checklist.md"
+  ],
+  "promotionGateStatus": "blocked",
+  "summary": {
+    "status": "implemented_with_guarded_boundaries",
+    "counts": {
+      "passed": 61,
+      "guarded": 7,
+      "blocked": 0,
+      "missing": 0
+    },
+    "total": 68
+  },
+  "checks": [
+    {
+      "id": "doc:docs/plans/windows-codex-computer-use-parity-handoff.md",
+      "requirement": "Required parity handoff document exists and is non-empty.",
+      "status": "passed",
+      "evidence": [
+        "docs/plans/windows-codex-computer-use-parity-handoff.md"
+      ],
+      "notes": "41766 bytes"
+    },
+    {
+      "id": "doc:docs/plans/windows-codex-computer-use-parity/00-overview.md",
+      "requirement": "Required parity handoff document exists and is non-empty.",
+      "status": "passed",
+      "evidence": [
+        "docs/plans/windows-codex-computer-use-parity/00-overview.md"
+      ],
+      "notes": "8504 bytes"
+    },
+    {
+      "id": "doc:docs/plans/windows-codex-computer-use-parity/01-contract-session-runtime.md",
+      "requirement": "Required parity handoff document exists and is non-empty.",
+      "status": "passed",
+      "evidence": [
+        "docs/plans/windows-codex-computer-use-parity/01-contract-session-runtime.md"
+      ],
+      "notes": "7801 bytes"
+    },
+    {
+      "id": "doc:docs/plans/windows-codex-computer-use-parity/02-surfaces-permissions-safety.md",
+      "requirement": "Required parity handoff document exists and is non-empty.",
+      "status": "passed",
+      "evidence": [
+        "docs/plans/windows-codex-computer-use-parity/02-surfaces-permissions-safety.md"
+      ],
+      "notes": "8218 bytes"
+    },
+    {
+      "id": "doc:docs/plans/windows-codex-computer-use-parity/03-observation-perception-action.md",
+      "requirement": "Required parity handoff document exists and is non-empty.",
+      "status": "passed",
+      "evidence": [
+        "docs/plans/windows-codex-computer-use-parity/03-observation-perception-action.md"
+      ],
+      "notes": "8883 bytes"
+    },
+    {
+      "id": "doc:docs/plans/windows-codex-computer-use-parity/04-browser-tool-terminal-slices.md",
+      "requirement": "Required parity handoff document exists and is non-empty.",
+      "status": "passed",
+      "evidence": [
+        "docs/plans/windows-codex-computer-use-parity/04-browser-tool-terminal-slices.md"
+      ],
+      "notes": "10414 bytes"
+    },
+    {
+      "id": "doc:docs/plans/windows-codex-computer-use-parity/05-windows-native-helper-watch-mode.md",
+      "requirement": "Required parity handoff document exists and is non-empty.",
+      "status": "passed",
+      "evidence": [
+        "docs/plans/windows-codex-computer-use-parity/05-windows-native-helper-watch-mode.md"
+      ],
+      "notes": "18904 bytes"
+    },
+    {
+      "id": "doc:docs/plans/windows-codex-computer-use-parity/06-eval-debug-ux-dogfood.md",
+      "requirement": "Required parity handoff document exists and is non-empty.",
+      "status": "passed",
+      "evidence": [
+        "docs/plans/windows-codex-computer-use-parity/06-eval-debug-ux-dogfood.md"
+      ],
+      "notes": "11775 bytes"
+    },
+    {
+      "id": "doc:docs/plans/windows-codex-computer-use-parity/07-migration-checklist.md",
+      "requirement": "Required parity handoff document exists and is non-empty.",
+      "status": "passed",
+      "evidence": [
+        "docs/plans/windows-codex-computer-use-parity/07-migration-checklist.md"
+      ],
+      "notes": "63469 bytes"
+    },
+    {
+      "id": "runtime:computer-structured-operation",
+      "requirement": "ComputerStructuredOperation covers browser, chrome, terminal, toolsmith, native picker, permission bubble, and visual desktop actions.",
+      "status": "passed",
+      "evidence": [
+        "src/shared/protocol/computerUse.ts"
+      ],
+      "notes": "markers: 7"
+    },
+    {
+      "id": "runtime:session-dag-debug-bundle",
+      "requirement": "Computer Session runtime owns DAG execution, debug bundle export, and final job-to-DAG reconciliation.",
+      "status": "passed",
+      "evidence": [
+        "src/daemon/computer-use/sessionRuntime.ts"
+      ],
+      "notes": "markers: 4"
+    },
+    {
+      "id": "runtime:http-routes",
+      "requirement": "Computer Session HTTP routes expose sessions, operations, debug bundles, prompt execution, and profile attachment.",
+      "status": "passed",
+      "evidence": [
+        "src/daemon/server/http/routes/computerUseSessionRoutes.ts"
+      ],
+      "notes": "markers: 4"
+    },
+    {
+      "id": "runtime:session-storage-snapshot",
+      "requirement": "Computer Session runtime persists session snapshots, hydrates debug-bundle state after runtime recreation, and fail-closed reconciles interrupted active sessions.",
+      "status": "passed",
+      "evidence": [
+        "src/daemon/storage/migrations/v7ComputerUseSessionSnapshots.ts",
+        "src/daemon/storage/computerUseSessions.ts",
+        "src/daemon/computer-use/sessionRuntime.ts",
+        "scripts/smoke-computer-use-session.mjs"
+      ],
+      "notes": "markers: 11"
+    },
+    {
+      "id": "surface:surface-manager",
+      "requirement": "Surface manager exposes all parity execution surfaces.",
+      "status": "passed",
+      "evidence": [
+        "src/daemon/computer-use/surfaceManager.ts"
+      ],
+      "notes": "markers: 6"
+    },
+    {
+      "id": "permission:profile-evaluator",
+      "requirement": "Permission evaluator covers credential denial, risk classes, browser automation, file paths, and generated tool execution.",
+      "status": "passed",
+      "evidence": [
+        "src/daemon/scoped-autonomy/permissionProfile.ts"
+      ],
+      "notes": "markers: 6"
+    },
+    {
+      "id": "renderer:profile-ux",
+      "requirement": "Renderer exposes permission profile management and one-time profile creation from blocked runs.",
+      "status": "passed",
+      "evidence": [
+        "src/renderer/components/ComputerUseSessionsPanel.tsx"
+      ],
+      "notes": "markers: 4"
+    },
+    {
+      "id": "perception:graph-sources",
+      "requirement": "Perception graph accepts Browser DOM, native/UIA, OCR, and screen observations.",
+      "status": "passed",
+      "evidence": [
+        "src/daemon/perception-graph/index.ts"
+      ],
+      "notes": "markers: 4"
+    },
+    {
+      "id": "perception:roi-cascade-evidence",
+      "requirement": "Computer Session records ROI/tile cache and graph evidence in observation/action flows.",
+      "status": "passed",
+      "evidence": [
+        "src/daemon/computer-use/sessionRuntime.ts",
+        "src/daemon/computer-use/screenObservationRuntime.ts",
+        "scripts/smoke-computer-use-session.mjs"
+      ],
+      "notes": "markers: 4"
+    },
+    {
+      "id": "action:freshness-and-feedback",
+      "requirement": "Action execution records freshness checks and before/after feedback evidence.",
+      "status": "passed",
+      "evidence": [
+        "src/daemon/computer-use/sessionRuntime.ts",
+        "src/daemon/computer-use/sessionOperationRuntime.ts",
+        "src/daemon/computer-use/sessionEvidenceRecorder.ts"
+      ],
+      "notes": "markers: 5"
+    },
+    {
+      "id": "action:browser-adapter-fallback",
+      "requirement": "Browser Action execution can reroute one retryable adapter failure to a bounded alternate browser adapter with DAG/eval/debug evidence.",
+      "status": "passed",
+      "evidence": [
+        "src/daemon/computer-use/sessionRuntime.ts",
+        "src/daemon/computer-use/operationRouting.ts",
+        "scripts/smoke-computer-use-session.mjs"
+      ],
+      "notes": "markers: 7"
+    },
+    {
+      "id": "slice:browser-parity-smoke",
+      "requirement": "Browser parity smoke is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "npm run build:daemon && node scripts/smoke-computer-use-browser-parity.mjs"
+    },
+    {
+      "id": "slice:browser-live-dogfood",
+      "requirement": "Browser live dogfood collector is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "npm run build:daemon && node scripts/collect-computer-use-browser-live-dogfood.mjs"
+    },
+    {
+      "id": "slice:browser-chrome-public-dogfood",
+      "requirement": "Public real-extension Browser Chrome dogfood is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "npm run build:daemon && node scripts/collect-computer-use-browser-chrome-public-extension-dogfood.mjs"
+    },
+    {
+      "id": "gate:browser-chrome-public-extension",
+      "requirement": "Public real-extension Browser Chrome promotion gate has passed evidence.",
+      "status": "passed",
+      "evidence": [
+        "scripts/gate-computer-use-promotion.mjs",
+        "docs/reports/assets/computer-use-promotion-gate-2026-05-16/evidence.json"
+      ],
+      "notes": "passed; promotable=true"
+    },
+    {
+      "id": "slice:terminal-parity",
+      "requirement": "Terminal parity smoke is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "npm run build:daemon && node scripts/smoke-computer-use-terminal-parity.mjs"
+    },
+    {
+      "id": "slice:terminal-artifact-delta-manifest",
+      "requirement": "Terminal output-root tracking records path-redacted create/modify/delete delta manifests and keeps generated artifact deletion behind explicit rollback confirmation.",
+      "status": "passed",
+      "evidence": [
+        "src/daemon/computer-use/sessionRuntime.ts",
+        "src/daemon/computer-use/sessionRollbackRuntime.ts",
+        "src/daemon/computer-use/terminalArtifactDelta.ts",
+        "src/daemon/computer-use/terminalSafetyPolicy.ts",
+        "scripts/smoke-computer-use-terminal-parity.mjs"
+      ],
+      "notes": "markers: 12"
+    },
+    {
+      "id": "slice:toolsmith-artifact",
+      "requirement": "Toolsmith artifact smoke is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "npm run build:daemon && node scripts/smoke-computer-use-toolsmith-artifact.mjs"
+    },
+    {
+      "id": "slice:scoped-autonomy-self-implementation",
+      "requirement": "Scoped autonomy self-implementation smoke is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "npm run build:daemon && node scripts/smoke-scoped-autonomy-self-implementation.mjs"
+    },
+    {
+      "id": "slice:scoped-autonomy-self-implementation-dogfood",
+      "requirement": "Scoped autonomy self-implementation breadth dogfood is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "npm run build:daemon && node scripts/collect-scoped-autonomy-self-implementation-dogfood.mjs"
+    },
+    {
+      "id": "slice:scoped-autonomy-generated-tool-live-breadth",
+      "requirement": "Scoped autonomy generated-tool live breadth dogfood is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "npm run build:daemon && node scripts/collect-scoped-autonomy-generated-tool-live-breadth-dogfood.mjs"
+    },
+    {
+      "id": "slice:scoped-autonomy-generated-tool-live-breadth-smoke",
+      "requirement": "Scoped autonomy generated-tool live breadth smoke is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "node scripts/smoke-scoped-autonomy-generated-tool-live-breadth.mjs"
+    },
+    {
+      "id": "slice:scoped-autonomy-npm-dependency-dogfood",
+      "requirement": "Scoped autonomy npm dependency dogfood is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "npm run build:daemon && node scripts/collect-scoped-autonomy-npm-dependency-dogfood.mjs"
+    },
+    {
+      "id": "slice:scoped-autonomy-npm-dependency-dogfood-smoke",
+      "requirement": "Scoped autonomy npm dependency dogfood smoke is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "node scripts/smoke-scoped-autonomy-npm-dependency-dogfood.mjs"
+    },
+    {
+      "id": "slice:scoped-autonomy-npm-dependency-redaction",
+      "requirement": "Scoped autonomy npm dependency preparation redacts package file paths from tool-run and eval evidence.",
+      "status": "passed",
+      "evidence": [
+        "src/daemon/scoped-autonomy/toolsmithRuntime.ts",
+        "src/daemon/scoped-autonomy/toolsmithRedaction.ts",
+        "scripts/smoke-scoped-autonomy-npm-dependency-prepare.mjs"
+      ],
+      "notes": "markers: 5"
+    },
+    {
+      "id": "slice:scoped-autonomy-npm-dependency-execution",
+      "requirement": "Scoped autonomy npm dependency preparation installs isolated node_modules and generated tool execution can consume it without leaking workspace paths.",
+      "status": "passed",
+      "evidence": [
+        "src/daemon/scoped-autonomy/toolsmithRuntime.ts",
+        "src/daemon/scoped-autonomy/toolsmithDependencies.ts",
+        "scripts/smoke-scoped-autonomy-npm-dependency-prepare.mjs"
+      ],
+      "notes": "markers: 5"
+    },
+    {
+      "id": "slice:scoped-autonomy-npm-package-allowlist-policy",
+      "requirement": "Scoped autonomy npm dependency policy blocks external registry packages before install unless an exact package allowlist grant is present.",
+      "status": "passed",
+      "evidence": [
+        "src/shared/protocol/scopedAutonomy.ts",
+        "src/daemon/scoped-autonomy/permissionProfile.ts",
+        "src/daemon/scoped-autonomy/toolsmithRuntime.ts",
+        "src/daemon/scoped-autonomy/toolsmithDependencies.ts",
+        "scripts/smoke-scoped-autonomy-npm-dependency-prepare.mjs"
+      ],
+      "notes": "markers: 7"
+    },
+    {
+      "id": "slice:scoped-autonomy-local-document-conversion",
+      "requirement": "Scoped autonomy local document conversion is a dedicated generated-tool slice with skipped web stages, artifact evidence, and promotion-gate coverage.",
+      "status": "passed",
+      "evidence": [
+        "src/daemon/scoped-autonomy/toolsmithRuntime.ts",
+        "src/daemon/scoped-autonomy/tool-templates/localDocumentConversion.ts",
+        "scripts/collect-scoped-autonomy-self-implementation-dogfood.mjs",
+        "scripts/gate-computer-use-promotion.mjs"
+      ],
+      "notes": "markers: 5"
+    },
+    {
+      "id": "gate:scoped-autonomy-self-implementation-breadth",
+      "requirement": "Scoped autonomy self-implementation breadth gate has passed repeated fixture evidence for web/PDF, local document conversion, terminal generated tools, download verification, native blocking, rerun stability, and p95 samples.",
+      "status": "passed",
+      "evidence": [
+        "scripts/gate-computer-use-promotion.mjs",
+        "docs/reports/assets/computer-use-promotion-gate-2026-05-16/evidence.json"
+      ],
+      "notes": "passed; promotable=false"
+    },
+    {
+      "id": "gate:scoped-autonomy-generated-tool-live-breadth",
+      "requirement": "Scoped autonomy generated-tool live breadth gate has passed repeated live/local-live evidence for web/PDF, local document conversion, terminal generated tools, download verification, rerun stability, p95 samples, and redaction.",
+      "status": "passed",
+      "evidence": [
+        "scripts/gate-computer-use-promotion.mjs",
+        "docs/reports/assets/computer-use-promotion-gate-2026-05-16/evidence.json"
+      ],
+      "notes": "passed; promotable=true"
+    },
+    {
+      "id": "gate:scoped-autonomy-npm-dependency-dogfood",
+      "requirement": "Scoped autonomy npm dependency dogfood gate has passed repeated package-consuming generated-tool execution evidence with installed package provenance, eval/resource proof, rerun stability, and redaction.",
+      "status": "passed",
+      "evidence": [
+        "scripts/gate-computer-use-promotion.mjs",
+        "docs/reports/assets/computer-use-promotion-gate-2026-05-16/evidence.json"
+      ],
+      "notes": "passed; promotable=false"
+    },
+    {
+      "id": "native:watch-boundary-smoke",
+      "requirement": "Native watch boundary smoke is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "npm run build:daemon && node scripts/smoke-computer-use-native-watch-boundary.mjs"
+    },
+    {
+      "id": "native:foreground-input-boundary",
+      "requirement": "Foreground input is blocked before native helper execution.",
+      "status": "guarded",
+      "evidence": [
+        "scripts/gate-computer-use-promotion.mjs",
+        "docs/reports/assets/computer-use-promotion-gate-2026-05-16/evidence.json"
+      ],
+      "notes": "foreground_input_blocked_before_native_helper"
+    },
+    {
+      "id": "native:foreground-preflight-contract",
+      "requirement": "Foreground watch preflight contract covers target identity, surface lock, and timeout guards.",
+      "status": "guarded",
+      "evidence": [
+        "scripts/gate-computer-use-promotion.mjs",
+        "docs/reports/assets/computer-use-promotion-gate-2026-05-16/evidence.json"
+      ],
+      "notes": "foreground_watch_preflight_contract_present"
+    },
+    {
+      "id": "native:active-window-drift-boundary",
+      "requirement": "Active-window drift abort is smoke-covered before native input.",
+      "status": "guarded",
+      "evidence": [
+        "scripts/gate-computer-use-promotion.mjs",
+        "docs/reports/assets/computer-use-promotion-gate-2026-05-16/evidence.json"
+      ],
+      "notes": "foreground_watch_active_window_drift_abort_smoke_present"
+    },
+    {
+      "id": "native:file-picker-boundary",
+      "requirement": "Native file picker blocks before local path disclosure.",
+      "status": "guarded",
+      "evidence": [
+        "scripts/gate-computer-use-promotion.mjs",
+        "docs/reports/assets/computer-use-promotion-gate-2026-05-16/evidence.json"
+      ],
+      "notes": "native_file_picker_blocked_before_path_disclosure"
+    },
+    {
+      "id": "native:permission-bubble-boundary",
+      "requirement": "Browser permission bubble native-click blocks before native input.",
+      "status": "guarded",
+      "evidence": [
+        "scripts/gate-computer-use-promotion.mjs",
+        "docs/reports/assets/computer-use-promotion-gate-2026-05-16/evidence.json"
+      ],
+      "notes": "browser_permission_bubble_blocked_before_native_click"
+    },
+    {
+      "id": "native:signing-deferred",
+      "requirement": "Unsigned helper release signing gate is explicit.",
+      "status": "guarded",
+      "evidence": [
+        "scripts/gate-computer-use-promotion.mjs",
+        "docs/reports/assets/computer-use-promotion-gate-2026-05-16/evidence.json"
+      ],
+      "notes": "native_helper_release_signing_gate_present"
+    },
+    {
+      "id": "native:helper-v2-disabled-command-gate",
+      "requirement": "Helper-v2-only commands have disabled contract evidence in release readiness.",
+      "status": "guarded",
+      "evidence": [
+        "scripts/gate-computer-use-promotion.mjs",
+        "docs/reports/assets/computer-use-promotion-gate-2026-05-16/evidence.json"
+      ],
+      "notes": "helper_v2_disabled_command_contracts_present"
+    },
+    {
+      "id": "native:signing-readiness-smoke",
+      "requirement": "Native helper signing-readiness smoke is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "npm run build:browser-native-desktop-helper && node scripts/smoke-browser-native-desktop-helper-signing-readiness.mjs"
+    },
+    {
+      "id": "native:helper-contract-release-readiness",
+      "requirement": "Release readiness verifies helper manifest, observe-only watch preflight, and bounded monitor evidence before signing/manual release gates.",
+      "status": "passed",
+      "evidence": [
+        "scripts/lib/browser-native-desktop-helper-contract.mjs",
+        "scripts/smoke-browser-native-desktop-helper-signing-readiness.mjs",
+        "scripts/release-readiness.mjs"
+      ],
+      "notes": "markers: 16"
+    },
+    {
+      "id": "native:helper-v2-disabled-command-contracts",
+      "requirement": "Helper-v2-only commands return explicit disabled contracts with no input/path/permission/screenshot/clipboard side effects before signing gates.",
+      "status": "passed",
+      "evidence": [
+        "providers/browser-native-desktop-helper-rs/src/main.rs",
+        "src/daemon/browser-action/adapters/nativeDesktopAdapter.ts",
+        "scripts/lib/browser-native-desktop-helper-contract.mjs",
+        "scripts/smoke-browser-native-desktop-helper-signing-readiness.mjs",
+        "scripts/smoke-browser-native-desktop-helper-native.mjs",
+        "scripts/release-readiness.mjs"
+      ],
+      "notes": "markers: 13"
+    },
+    {
+      "id": "native:foreground-watch-preflight-contract-artifacts",
+      "requirement": "Foreground watch preflight is a shared protocol contract and records identity, lock, timeout, user-input, and drift abort proof.",
+      "status": "passed",
+      "evidence": [
+        "src/shared/protocol/computerUse.ts",
+        "src/daemon/computer-use/sessionRuntime.ts",
+        "scripts/smoke-computer-use-native-watch-boundary.mjs"
+      ],
+      "notes": "markers: 11"
+    },
+    {
+      "id": "native:helper-v2-capability-manifest",
+      "requirement": "Native helper status exposes a helper-v2 capability manifest while keeping guarded input disabled.",
+      "status": "passed",
+      "evidence": [
+        "providers/browser-native-desktop-helper-rs/src/main.rs",
+        "src/daemon/browser-action/adapters/nativeDesktopAdapter.ts",
+        "src/daemon/browser-action/adapters/nativeDesktop/helperClient.ts",
+        "scripts/smoke-browser-native-desktop-helper-native.mjs",
+        "scripts/smoke-browser-action-native.mjs"
+      ],
+      "notes": "markers: 15"
+    },
+    {
+      "id": "eval:promotion-gate",
+      "requirement": "Computer Use promotion gate writer is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "node scripts/gate-computer-use-promotion.mjs"
+    },
+    {
+      "id": "eval:promotion-gate-route",
+      "requirement": "Promotion gate route smoke is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "npm run build:daemon && node scripts/smoke-computer-use-promotion-gate-route.mjs"
+    },
+    {
+      "id": "eval:debug-bundle",
+      "requirement": "Debug bundle smoke is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "npm run build:daemon && node scripts/smoke-computer-use-debug-bundle.mjs"
+    },
+    {
+      "id": "eval:renderer-browser-evidence",
+      "requirement": "Renderer Browser Chrome evidence smoke is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "node scripts/smoke-renderer-computer-use-browser-chrome-evidence.mjs"
+    },
+    {
+      "id": "eval:dogfood-report-links",
+      "requirement": "Daemon and renderer expose latest dogfood/report/evidence links through a redacted repo-relative route.",
+      "status": "passed",
+      "evidence": [
+        "src/daemon/server/http/routes/computerUseEvalRoutes.ts",
+        "src/renderer/components/ComputerUseSessionsPanel.tsx"
+      ],
+      "notes": "markers: 6"
+    },
+    {
+      "id": "renderer:proof-panels",
+      "requirement": "Renderer exposes dedicated public-extension, Toolsmith breadth, native-boundary, and terminal artifact-delta proof panels.",
+      "status": "passed",
+      "evidence": [
+        "src/renderer/components/ComputerUseSessionsPanel.tsx",
+        "src/renderer/components/computer-use/permissionEvidenceHelpers.ts",
+        "src/renderer/components/computer-use/promotionGateSummary.ts"
+      ],
+      "notes": "markers: 16"
+    },
+    {
+      "id": "gate:future-vm-boundary",
+      "requirement": "Future VM/sandbox boundary is represented as a non-promoting gate.",
+      "status": "passed",
+      "evidence": [
+        "scripts/gate-computer-use-promotion.mjs",
+        "docs/reports/assets/computer-use-promotion-gate-2026-05-16/evidence.json"
+      ],
+      "notes": "passed; promotable=false"
+    },
+    {
+      "id": "gate:windows-settings-boundary",
+      "requirement": "Windows settings reversible dogfood boundary is represented as a non-promoting gate.",
+      "status": "passed",
+      "evidence": [
+        "scripts/gate-computer-use-promotion.mjs",
+        "docs/reports/assets/computer-use-promotion-gate-2026-05-16/evidence.json"
+      ],
+      "notes": "passed; promotable=false"
+    },
+    {
+      "id": "verify:lint",
+      "requirement": "Lint/typecheck command is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json"
+    },
+    {
+      "id": "verify:build-daemon",
+      "requirement": "Daemon build command is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "tsc -p tsconfig.node.json"
+    },
+    {
+      "id": "verify:build-web",
+      "requirement": "Web build command is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "npm run build:browser-native-desktop-helper && npm run build:daemon && npm run build:daemon-bundle && npm run build:renderer && npm run build:node-runtime && npm run build:ocr-runtime && npm run build:pty-runtime"
+    },
+    {
+      "id": "verify:smoke-all",
+      "requirement": "Aggregate smoke command is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "node scripts/smoke-all.mjs"
+    },
+    {
+      "id": "verify:architecture-foundations",
+      "requirement": "Architecture foundation smoke is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "npm run build:daemon && node scripts/smoke-architecture-foundations.mjs"
+    },
+    {
+      "id": "verify:capability-runtime",
+      "requirement": "Capability runtime smoke is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "npm run build:daemon && node scripts/smoke-capability-runtime.mjs"
+    },
+    {
+      "id": "verify:vision-context",
+      "requirement": "Vision context smoke is registered.",
+      "status": "passed",
+      "evidence": [
+        "package.json"
+      ],
+      "notes": "npm run build:daemon && node scripts/smoke-vision-context.mjs"
+    }
+  ],
+  "openExternalBlockers": [
+    "official_app_server_custom_client_tool_contract",
+    "production_authenticode_certificate_or_ci_signing_service",
+    "unrestricted_credential_flow_or_credential_vault",
+    "authenticated_browser_profile_cookie_default_access",
+    "signed_watch_mode_helper_v2_for_foreground_native_input",
+    "signed_file_picker_helper_v2_for_native_file_picker",
+    "real_vm_rdp_windows_sandbox_backend",
+    "gpu_asr_validation",
+    "human_microphone_asr_corpus_benchmark"
+  ]
+}

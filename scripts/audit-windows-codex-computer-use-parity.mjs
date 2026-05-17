@@ -158,10 +158,13 @@ function checkSurfacesPermissionsSafety() {
 function checkObservationPerceptionAction() {
   const perception = readText("src/daemon/perception-graph/index.ts");
   const runtime = readText("src/daemon/computer-use/sessionRuntime.ts");
+  const operationRuntime = readText("src/daemon/computer-use/sessionOperationRuntime.ts");
+  const evidenceRecorder = readText("src/daemon/computer-use/sessionEvidenceRecorder.ts");
   const screenObservationRuntime = readText("src/daemon/computer-use/screenObservationRuntime.ts");
   const operationRouting = readText("src/daemon/computer-use/operationRouting.ts");
   const sessionSmoke = readText("scripts/smoke-computer-use-session.mjs");
   const roiRuntimeSource = [runtime, screenObservationRuntime, sessionSmoke].join("\n");
+  const actionEvidenceSource = [runtime, operationRuntime, evidenceRecorder].join("\n");
   const actionFallbackSource = [runtime, operationRouting, sessionSmoke].join("\n");
   return [
     containsCheck("perception:graph-sources", perception, [
@@ -180,13 +183,17 @@ function checkObservationPerceptionAction() {
       "src/daemon/computer-use/screenObservationRuntime.ts",
       "scripts/smoke-computer-use-session.mjs"
     ]),
-    containsCheck("action:freshness-and-feedback", runtime, [
+    containsCheck("action:freshness-and-feedback", actionEvidenceSource, [
       "evaluateOperationFreshnessRequirement",
       "recordBrowserActionFeedback",
       "browser_action_${input.phase}_observation",
       "pre_action",
       "post_action"
-    ], "Action execution records freshness checks and before/after feedback evidence.", ["src/daemon/computer-use/sessionRuntime.ts"]),
+    ], "Action execution records freshness checks and before/after feedback evidence.", [
+      "src/daemon/computer-use/sessionRuntime.ts",
+      "src/daemon/computer-use/sessionOperationRuntime.ts",
+      "src/daemon/computer-use/sessionEvidenceRecorder.ts"
+    ]),
     containsCheck("action:browser-adapter-fallback", actionFallbackSource, [
       "computer-session-browser-action-adapter-fallback.v1",
       "browser_action_adapter_fallback",
@@ -205,6 +212,7 @@ function checkObservationPerceptionAction() {
 
 function checkBrowserToolTerminalSlices() {
   const runtime = readText("src/daemon/computer-use/sessionRuntime.ts");
+  const rollbackRuntime = readText("src/daemon/computer-use/sessionRollbackRuntime.ts");
   const terminalArtifactDelta = readText("src/daemon/computer-use/terminalArtifactDelta.ts");
   const terminalSafetyPolicy = readText("src/daemon/computer-use/terminalSafetyPolicy.ts");
   const terminalSmoke = readText("scripts/smoke-computer-use-terminal-parity.mjs");
@@ -217,7 +225,7 @@ function checkBrowserToolTerminalSlices() {
   const generatedToolLiveBreadthDogfood = readText("scripts/collect-scoped-autonomy-generated-tool-live-breadth-dogfood.mjs");
   const selfImplementationDogfood = readText("scripts/collect-scoped-autonomy-self-implementation-dogfood.mjs");
   const promotionGate = readText("scripts/gate-computer-use-promotion.mjs");
-  const terminalSource = [runtime, terminalArtifactDelta, terminalSafetyPolicy, terminalSmoke].join("\n");
+  const terminalSource = [runtime, rollbackRuntime, terminalArtifactDelta, terminalSafetyPolicy, terminalSmoke].join("\n");
   const toolsmithSource = [toolsmithRuntime, toolsmithRedaction, toolsmithDependencies].join("\n");
   return [
     packageScriptCheck("slice:browser-parity-smoke", "smoke:computer-use-browser-parity", "Browser parity smoke is registered."),
@@ -240,6 +248,7 @@ function checkBrowserToolTerminalSlices() {
       "terminalRollback"
     ], "Terminal output-root tracking records path-redacted create/modify/delete delta manifests and keeps generated artifact deletion behind explicit rollback confirmation.", [
       "src/daemon/computer-use/sessionRuntime.ts",
+      "src/daemon/computer-use/sessionRollbackRuntime.ts",
       "src/daemon/computer-use/terminalArtifactDelta.ts",
       "src/daemon/computer-use/terminalSafetyPolicy.ts",
       "scripts/smoke-computer-use-terminal-parity.mjs"
