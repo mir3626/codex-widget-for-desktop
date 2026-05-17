@@ -480,11 +480,22 @@ function summarizeRecentSessionLog(limit = 20) {
     .join('\n');
 }
 
+function readArchivedRoadmapSection(iterationId) {
+  if (!iterationId) {
+    return '';
+  }
+
+  const normalized = String(iterationId).trim().match(/^(?:iter-)?(\d+)$/)?.[1];
+  const fileName = normalized ? `iter-${normalized}.md` : `${iterationId}.md`;
+  return readIfExists(path.join(ROOT, 'docs', 'plans', 'archive', 'roadmaps', fileName));
+}
+
 function buildPriorIterationCarryover(carryoverId) {
   const report = readIfExists(path.join(ROOT, 'docs', 'reports', 'project-report.html'));
   const handoff = readIfExists(path.join(ROOT, '.vibe', 'agent', 'handoff.md'));
   const milestones = readIfExists(path.join(ROOT, 'docs', 'plans', 'project-milestones.md'));
   const roadmap = readIfExists(path.join(ROOT, 'docs', 'plans', 'sprint-roadmap.md'));
+  const archivedRoadmap = readArchivedRoadmapSection(carryoverId);
   const historyRaw = readIfExists(path.join(ROOT, '.vibe', 'agent', 'iteration-history.json'));
   const snippets = [
     `Carryover iteration: ${carryoverId || '(unspecified)'}`,
@@ -499,7 +510,7 @@ function buildPriorIterationCarryover(carryoverId) {
     milestones.split(/\r?\n/).slice(0, 24).join('\n') || '(missing)',
     '',
     'Roadmap pointer:',
-    roadmap.split(/\r?\n/).slice(0, 16).join('\n') || '(missing)',
+    [roadmap, archivedRoadmap].filter((text) => text.trim() !== '').join('\n\n').split(/\r?\n/).slice(0, 24).join('\n') || '(missing)',
     '',
     'Iteration history:',
     historyRaw.slice(0, 2000) || '(missing)',

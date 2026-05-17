@@ -8,6 +8,8 @@ import { resolve } from 'node:path';
 
 const JSON_MODE = process.argv.includes('--json');
 const results = [];
+const MAX_HANDOFF_BYTES = Number.parseInt(process.env.VIBE_HANDOFF_MAX_BYTES ?? '', 10) || 96 * 1024;
+const MAX_HANDOFF_LINES = Number.parseInt(process.env.VIBE_HANDOFF_MAX_LINES ?? '', 10) || 1200;
 
 function record(id, ok, detail) {
   results.push({ id, ok, detail });
@@ -83,6 +85,26 @@ try {
   }
 } catch (e) {
   record('handoff.fresh', false, e.message);
+}
+
+try {
+  if (!existsSync(handoffPath)) {
+    record('handoff.budget', false, `handoff missing: ${handoffPath}`);
+  } else {
+    const content = readFileSync(handoffPath, 'utf8');
+    const bytes = Buffer.byteLength(content, 'utf8');
+    const lines = content.split(/\r?\n/).length;
+    const ok = bytes <= MAX_HANDOFF_BYTES && lines <= MAX_HANDOFF_LINES;
+    record(
+      'handoff.budget',
+      ok,
+      ok
+        ? `bytes=${bytes}/${MAX_HANDOFF_BYTES}, lines=${lines}/${MAX_HANDOFF_LINES}`
+        : `handoff too large for active context: bytes=${bytes}/${MAX_HANDOFF_BYTES}, lines=${lines}/${MAX_HANDOFF_LINES}. Archive old history and keep only current state, verification, risks, and restart steps.`,
+    );
+  }
+} catch (e) {
+  record('handoff.budget', false, e.message);
 }
 
 try {

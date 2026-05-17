@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -57,6 +57,22 @@ async function readOptionalText(filePath) {
     return '';
   }
   return readFile(filePath, 'utf8');
+}
+
+async function readArchivedRoadmaps(root) {
+  const archiveDir = path.join(root, 'docs', 'plans', 'archive', 'roadmaps');
+  if (!existsSync(archiveDir)) {
+    return '';
+  }
+
+  const files = (await readdir(archiveDir))
+    .filter((entry) => entry.endsWith('.md'))
+    .sort();
+  const contents = [];
+  for (const fileName of files) {
+    contents.push(await readOptionalText(path.join(archiveDir, fileName)));
+  }
+  return contents.filter((content) => content.trim() !== '').join('\n\n');
 }
 
 async function readOptionalJson(filePath, fallback) {
@@ -148,8 +164,28 @@ export function isMetaProject(inputs) {
 }
 
 function parseRoadmapSprintIds(roadmapMd) {
-  const lines = roadmapMd.split(/\r?\n/);
   const ids = [];
+  const seen = new Set();
+
+  for (const pattern of [
+    /^- \*\*id\*\*:\s*`([^`]+)`/gim,
+    /^#{2,6}\s+((?:iter-\d+-)?sprint-[A-Za-z0-9_.-]+)\b[^\n]*$/gim,
+  ]) {
+    for (const match of roadmapMd.matchAll(pattern)) {
+      const id = match[1]?.trim();
+      if (!id || seen.has(id)) {
+        continue;
+      }
+      seen.add(id);
+      ids.push(id);
+    }
+  }
+
+  if (ids.length > 0) {
+    return ids;
+  }
+
+  const lines = roadmapMd.split(/\r?\n/);
 
   for (let index = 0; index < lines.length; index += 1) {
     if (!/^##\s+Sprint\b/i.test(lines[index] ?? '')) {
@@ -178,6 +214,30 @@ function parseRoadmapSprintDetails(roadmapMd) {
 
   for (let index = 0; index < lines.length; index += 1) {
     const heading = lines[index]?.match(/^##\s+Sprint\s+(.+)$/i);
+    const idHeading = lines[index]?.match(/^#{2,6}\s+((?:iter-\d+-)?sprint-[A-Za-z0-9_.-]+)\b[^\n]*$/i);
+    if (idHeading?.[1]) {
+      let goal = '';
+      for (let offset = 1; offset <= 8; offset += 1) {
+        const line = lines[index + offset];
+        if (line === undefined || /^#{1,6}\s+/.test(line)) {
+          break;
+        }
+        if (line.trim() === '') {
+          continue;
+        }
+        const goalMatch = line.match(/^\s*(?:-\s+\*\*[^*]*(?:goal|target|objective|[^*]*)\*\*:\s+|Goal:\s*)(.+)$/i);
+        if (goalMatch?.[1]) {
+          goal = goalMatch[1].replace(/`/g, '').trim();
+          break;
+        }
+      }
+      details.set(idHeading[1], {
+        name: idHeading[1],
+        goal: goal || 'No sprint goal recorded.',
+      });
+      continue;
+    }
+
     if (!heading) {
       continue;
     }
@@ -384,6 +444,7 @@ async function buildModel(root) {
   const [
     rawProductMd,
     rawRoadmapMd,
+    archivedRoadmapMd,
     rawMilestonesMd,
     rawStatus,
     rawSessionLog,
@@ -394,6 +455,7 @@ async function buildModel(root) {
   ] = await Promise.all([
     readOptionalText(path.join(root, 'docs', 'context', 'product.md')),
     readOptionalText(path.join(root, 'docs', 'plans', 'sprint-roadmap.md')),
+    readArchivedRoadmaps(root),
     readOptionalText(path.join(root, 'docs', 'plans', 'project-milestones.md')),
     readOptionalJson(path.join(root, '.vibe', 'agent', 'sprint-status.json'), {}),
     readOptionalText(path.join(root, '.vibe', 'agent', 'session-log.md')),
@@ -404,7 +466,7 @@ async function buildModel(root) {
   ]);
   const templateState = isTemplateProjectStatus(root, rawStatus) || isTemplateProductState(root, rawProductMd);
   const productMd = templateState ? '' : rawProductMd;
-  const roadmapMd = templateState ? '' : rawRoadmapMd;
+  const roadmapMd = templateState ? '' : [rawRoadmapMd, archivedRoadmapMd].filter((text) => text.trim() !== '').join('\n\n');
   const milestonesMd = templateState ? '' : rawMilestonesMd;
   const status = normalizeStatusForDisplay(root, rawStatus);
   const sessionLog = templateState ? '' : rawSessionLog;

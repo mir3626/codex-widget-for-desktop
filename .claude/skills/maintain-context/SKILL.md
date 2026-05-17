@@ -20,7 +20,7 @@ Generator agents normally do not need this workflow. Sprint state is handed back
 ## Workflow
 
 1. Update only the relevant shard docs for behavior, architecture, conventions, QA, or workflow changes. Remove stale or duplicate guidance.
-2. Update `.vibe/agent/handoff.md` with the current branch/version, completed work, open risks, and exact restart steps.
+2. Rewrite `.vibe/agent/handoff.md` as compact active state: current branch/version, latest completed work, open risks, and exact restart steps only. Archive or summarize old history instead of appending another long section.
 3. Append one concise entry to `.vibe/agent/session-log.md` with an ISO timestamp and a useful tag such as `[decision]`, `[harness-review]`, or `[checkpoint]`.
 4. If sprint status changed, update `.vibe/agent/sprint-status.json` through the appropriate harness script rather than manual JSON edits.
 5. Run `npm run vibe:checkpoint` when available. If the package script is absent, run `node .vibe/harness/scripts/vibe-checkpoint.mjs`.

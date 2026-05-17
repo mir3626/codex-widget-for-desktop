@@ -272,6 +272,10 @@ describe('computeCurrentPointerBlock', () => {
       ].join('\n');
 
       assert.deepEqual(parseRoadmapSprintIds(delayedIdRoadmap), ['sprint-M1-schema-foundation']);
+      assert.deepEqual(
+        parseRoadmapSprintIds('## Iteration iter-28\n\n### iter-28-sprint-01-credential-consent\n\n### iter-28-sprint-02-parity-audit\n'),
+        ['iter-28-sprint-01-credential-consent', 'iter-28-sprint-02-parity-audit'],
+      );
       assert.equal(chunks.join(''), '');
       assert.deepEqual(parseRoadmapSprintIds('## Sprint M1\n\n- **goal**: missing id'), []);
       assert.match(chunks.join(''), /warning=roadmap-id-missing headingLine=1/);

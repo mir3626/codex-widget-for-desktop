@@ -206,6 +206,7 @@
     "vibe:review-shard-audit": "node .vibe/harness/scripts/vibe-review-shard-audit.mjs",
     "vibe:sprint-mode-audit": "node .vibe/harness/scripts/vibe-sprint-mode-audit.mjs",
     "vibe:sync-audit": "node .vibe/harness/scripts/vibe-sync-audit.mjs",
+    "vibe:roadmap-maintenance": "node .vibe/harness/scripts/vibe-roadmap-maintenance.mjs",
     "vibe:dashboard": "node .vibe/harness/scripts/vibe-dashboard.mjs",
     "vibe:session-start": "node .vibe/harness/scripts/vibe-agent-session-start.mjs",
     "vibe:checkpoint": "node .vibe/harness/scripts/vibe-checkpoint.mjs"

@@ -116,8 +116,28 @@ function normalizeScopeEntries(entries) {
 }
 
 export function parseRoadmapSprintIds(roadmapMd) {
-  const lines = roadmapMd.split(/\r?\n/);
   const sprintIds = [];
+  const seen = new Set();
+
+  for (const pattern of [
+    /^- \*\*id\*\*:\s*`([^`]+)`/gm,
+    /^#{2,6}\s+((?:iter-\d+-)?sprint-[A-Za-z0-9_.-]+)\b[^\n]*$/gm,
+  ]) {
+    for (const match of roadmapMd.matchAll(pattern)) {
+      const id = match[1]?.trim();
+      if (!id || seen.has(id)) {
+        continue;
+      }
+      seen.add(id);
+      sprintIds.push(id);
+    }
+  }
+
+  if (sprintIds.length > 0) {
+    return sprintIds;
+  }
+
+  const lines = roadmapMd.split(/\r?\n/);
 
   for (let index = 0; index < lines.length; index += 1) {
     if (!/^## Sprint M\d+/.test(lines[index] ?? '')) {
@@ -194,12 +214,12 @@ function readIterationCompletionState(sprintId) {
 
 function recordIterationSprintCompletion(sprintId, status) {
   if (status !== 'passed') {
-    return false;
+    return { changed: false, completedIterationId: null };
   }
 
   const iterationPath = resolve('.vibe/agent/iteration-history.json');
   if (!existsSync(iterationPath)) {
-    return false;
+    return { changed: false, completedIterationId: null };
   }
 
   const history = JSON.parse(readFileSync(iterationPath, 'utf8'));
@@ -214,19 +234,36 @@ function recordIterationSprintCompletion(sprintId, status) {
     );
 
   if (!current) {
-    return false;
+    return { changed: false, completedIterationId: null };
   }
 
   if (!Array.isArray(current.completedSprints)) {
     current.completedSprints = [];
   }
   if (current.completedSprints.includes(sprintId)) {
-    return false;
+    return { changed: false, completedIterationId: null };
   }
 
   current.completedSprints.push(sprintId);
+  let completedIterationId = null;
+  const planned = Array.isArray(current.plannedSprints) ? current.plannedSprints : [];
+  const completed = new Set(current.completedSprints);
+  if (
+    planned.length > 0 &&
+    planned.every((plannedSprintId) => completed.has(plannedSprintId)) &&
+    current.completedAt === null
+  ) {
+    current.completedAt = new Date().toISOString();
+    if (typeof current.summary !== 'string' || current.summary.trim() === '') {
+      current.summary = `Completed ${planned.length} planned sprint(s).`;
+    }
+    if (history.currentIteration === current.id) {
+      history.currentIteration = null;
+    }
+    completedIterationId = current.id;
+  }
   writeFileSync(iterationPath, `${JSON.stringify(history, null, 2)}\n`, 'utf8');
-  return true;
+  return { changed: true, completedIterationId };
 }
 
 function shouldAutoProjectReport(sprintId, status, noAutoReport) {
@@ -264,6 +301,28 @@ function runProjectReport() {
     return;
   }
   logStep('project-report', 'warn', `detail=exit-${result.status ?? 1}`);
+}
+
+function runRoadmapMaintenance(scriptDir, mode) {
+  const scriptPath = path.join(scriptDir, 'vibe-roadmap-maintenance.mjs');
+  if (!existsSync(scriptPath)) {
+    logStep('roadmap-maintenance', 'warn', 'detail=script-missing');
+    return;
+  }
+
+  const result = spawnSync(process.execPath, [scriptPath, '--mode', mode], {
+    encoding: 'utf8',
+  });
+  if (result.stdout) {
+    process.stderr.write(result.stdout);
+  }
+  if (result.status === 0) {
+    logStep('roadmap-maintenance', 'ok', `mode=${mode}`);
+    return;
+  }
+
+  const detail = result.stderr || result.error?.message || `exit-${result.status ?? 1}`;
+  logStep('roadmap-maintenance', 'warn', `detail=${detail.trim()}`);
 }
 
 function tsxImportSpecifier(scriptDir) {
@@ -701,6 +760,8 @@ function runCli() {
     logStep('current-pointer', 'fail', `detail=${error.message}`);
   }
 
+  const shouldReport = shouldAutoProjectReport(sprintId, status, noAutoReport);
+
   try {
     if (scope !== null) {
       const reloaded = JSON.parse(readFileSync(statusPath, 'utf8'));
@@ -720,10 +781,17 @@ function runCli() {
   }
 
   try {
-    const changed = recordIterationSprintCompletion(sprintId, status);
-    logStep('iteration-history', changed ? 'ok' : 'skip');
+    const iterationResult = recordIterationSprintCompletion(sprintId, status);
+    const detail = iterationResult.completedIterationId
+      ? `completed=${iterationResult.completedIterationId}`
+      : '';
+    logStep('iteration-history', iterationResult.changed ? 'ok' : 'skip', detail);
   } catch (error) {
     logStep('iteration-history', 'warn', `detail=${error.message}`);
+  }
+
+  if (status === 'passed') {
+    runRoadmapMaintenance(scriptDir, 'completion-check');
   }
 
   try {
@@ -737,7 +805,7 @@ function runCli() {
     logStep('session-log-sync', 'warn', `detail=${error.message}`);
   }
 
-  if (shouldAutoProjectReport(sprintId, status, noAutoReport)) {
+  if (shouldReport) {
     runProjectReport();
   }
 

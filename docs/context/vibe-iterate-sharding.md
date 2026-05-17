@@ -7,9 +7,9 @@ This document defines the guardrails for splitting
 
 Reduce `/vibe-iterate` prompt size while preserving the iteration boundary
 contract: load durable state only as Orchestrator input, run the differential
-interview, append a new roadmap section, update iteration history, run normal
-Sprint flow, and refresh the project report without replaying full history into
-Planner.
+interview, write the active roadmap section, update iteration history, archive
+inactive roadmap sections, run normal Sprint flow, and refresh the project
+report without replaying full history into Planner.
 
 ## Safety Gate
 
@@ -28,7 +28,7 @@ The gate validates:
 - Critical flow signals remain present, including project report, handoff,
   session log, milestone, iteration-history, roadmap inputs, the
   Orchestrator-input-only rule, `vibe-interview.mjs --mode iterate`, carryover
-  handling, roadmap append behavior, `currentIteration`, Planner isolation,
+  handling, active-roadmap/archive behavior, `currentIteration`, Planner isolation,
   report regeneration, `--no-open`, user follow-up, and the context isolation
   guarantee.
 - If phase shard files exist under `.claude/skills/vibe-iterate/phases/`, each

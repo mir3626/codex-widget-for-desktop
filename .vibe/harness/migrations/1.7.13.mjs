@@ -67,7 +67,7 @@ function initialSprintRoadmap() {
     '## 배경',
     '',
     '이 파일은 `/vibe-init` Phase 4에서 Orchestrator가 프로젝트별 Sprint 로드맵을 작성해 저장하는 공간이다.',
-    '이후 `/vibe-iterate` 호출 시 새 iteration 섹션이 append 된다.',
+    'active 파일에는 현재 iteration만 유지하고, 완료된 iteration 섹션은 `docs/plans/archive/roadmaps/` 에 보존한다.',
     '',
     '## 초기 상태',
     '',

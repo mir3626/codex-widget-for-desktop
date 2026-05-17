@@ -48,8 +48,9 @@ function buildSkillContent(omitPhaseHeading?: string): string {
       'Build the carryover seed. empty carryover is a fresh restart.',
     ],
     [
-      '## Phase 2 - Append Sprint Roadmap',
-      'Append ## Iteration iter-<N> to docs/plans/sprint-roadmap.md. Never overwrite existing roadmap content.',
+      '## Phase 2 - Write Active Sprint Roadmap',
+      'Write ## Iteration iter-<N> to docs/plans/sprint-roadmap.md. Never delete existing roadmap content unless it has first been archived.',
+      'Run node .vibe/harness/scripts/vibe-roadmap-maintenance.mjs --mode start-check after currentIteration is set.',
     ],
     [
       '## Phase 3 - Update Iteration History',
@@ -105,7 +106,7 @@ describe('vibe-iterate-shard-audit', () => {
     assert.deepEqual(parsed.requiredPhases, [
       'phase-0-load-state',
       'phase-1-differential-interview',
-      'phase-2-append-sprint-roadmap',
+      'phase-2-write-active-sprint-roadmap',
       'phase-3-update-iteration-history',
       'phase-4-run-sprints-normally',
       'phase-5-refresh-project-report',

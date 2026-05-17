@@ -201,16 +201,24 @@ function parseRoadmapPointer(roadmapMd) {
 
 function parseRoadmapSprintIds(roadmapMd) {
   const ids = [];
-  const directMatches = roadmapMd.matchAll(/-\s+\*\*id\*\*:\s+`([^`]+)`/g);
-  for (const match of directMatches) {
-    if (match[1]) {
-      ids.push(match[1]);
+  const seen = new Set();
+  for (const pattern of [
+    /-\s+\*\*id\*\*:\s+`([^`]+)`/g,
+    /^#{2,6}\s+((?:iter-\d+-)?sprint-[A-Za-z0-9_.-]+)\b[^\n]*$/gm,
+  ]) {
+    for (const match of roadmapMd.matchAll(pattern)) {
+      const id = match[1];
+      if (!id || seen.has(id)) {
+        continue;
+      }
+      seen.add(id);
+      ids.push(id);
     }
   }
   if (ids.length > 0) {
-    return [...new Set(ids)];
+    return ids;
   }
-  return [...roadmapMd.matchAll(/\b(sprint-[A-Za-z0-9_.-]+|M\d+[A-Za-z0-9_.-]*)\b/g)]
+  return [...roadmapMd.matchAll(/\b((?:iter-\d+-)?sprint-[A-Za-z0-9_.-]+|M\d+[A-Za-z0-9_.-]*)\b/g)]
     .map((match) => match[1])
     .filter(Boolean);
 }

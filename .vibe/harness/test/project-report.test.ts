@@ -236,6 +236,56 @@ describe('project report', () => {
     assert.equal(result.html.includes('data-sprint-id="project-01-engine"'), true);
   });
 
+  it('uses archived roadmap headings for sprint details after active roadmap compaction', async () => {
+    const root = await makeTempDir('project-report-archived-roadmap-');
+    const { runProjectReportCli } = await loadReportModule();
+    await scaffoldReportProject(root, { packageName: 'arbitrary-product' });
+    await writeJson(path.join(root, '.vibe', 'agent', 'sprint-status.json'), {
+      schemaVersion: '0.1',
+      project: {
+        name: 'Demo Project',
+        createdAt: '2026-04-01T00:00:00.000Z',
+      },
+      sprints: [
+        {
+          id: 'iter-9-sprint-01-archived',
+          name: 'Archived fallback name',
+          status: 'passed',
+          completedAt: '2026-04-16T00:00:00.000Z',
+        },
+      ],
+      verificationCommands: [],
+      pendingRisks: [],
+      lastSprintScope: [],
+      lastSprintScopeGlob: [],
+      sprintsSinceLastAudit: 0,
+      stateUpdatedAt: '2026-04-16T00:00:00.000Z',
+    });
+    await writeText(
+      path.join(root, 'docs', 'plans', 'sprint-roadmap.md'),
+      '# Sprint Roadmap\n\n## No Active Iteration\n\nStart the next iteration with `/vibe-iterate`.\n',
+    );
+    await writeText(
+      path.join(root, 'docs', 'plans', 'archive', 'roadmaps', 'iter-9.md'),
+      [
+        '## Iteration iter-9: Archived',
+        '',
+        '### iter-9-sprint-01-archived',
+        '',
+        'Goal: archived roadmap goal',
+        '',
+      ].join('\n'),
+    );
+
+    const result = await runProjectReportCli(['--no-open'], {
+      root,
+      stdout: { write: () => undefined },
+    });
+
+    assert.match(result.html, /iter-9-sprint-01-archived/);
+    assert.match(result.html, /archived roadmap goal/);
+  });
+
   it('counts only open pending risks as open in report metrics and next steps', async () => {
     const root = await makeTempDir('project-report-risk-lifecycle-');
     const { runProjectReportCli } = await loadReportModule();

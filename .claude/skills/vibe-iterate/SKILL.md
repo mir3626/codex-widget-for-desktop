@@ -33,5 +33,6 @@ iteration workflow transitively.
 
 Planner remains fresh-context per Sprint. Iteration state crosses boundaries
 only through `.vibe/agent/iteration-history.json`,
-`docs/reports/project-report.html`, `docs/plans/sprint-roadmap.md`, and short
+`docs/reports/project-report.html`, the active `docs/plans/sprint-roadmap.md`,
+archived roadmap slices under `docs/plans/archive/roadmaps/`, and short
 Orchestrator-authored prior-sprint summaries.

@@ -196,6 +196,27 @@ describe('preflight roadmap iteration resolver', () => {
     assert.equal(result.scanScope, 'legacy-flat');
   });
 
+  it('parses sprint ids from markdown headings in current iteration sections', () => {
+    const result = resolveNextSprintFromRoadmap({
+      roadmapMd: [
+        '# Sprint Roadmap',
+        '',
+        '## Iteration iter-28: Current',
+        '### iter-28-sprint-01-credential-consent',
+        'Goal: done',
+        '',
+        '### iter-28-sprint-02-parity-audit',
+        'Goal: next',
+        '',
+      ].join('\n'),
+      currentIterationId: 'iter-28',
+      completedSprintIds: new Set(['iter-28-sprint-01-credential-consent']),
+    });
+
+    assert.equal(result.pendingId, 'iter-28-sprint-02-parity-audit');
+    assert.equal(result.scanScope, 'iteration-scoped');
+  });
+
   it('returns no pending sprint when currentIterationId is absent from an iteration-scoped roadmap', () => {
     const result = resolveNextSprintFromRoadmap({
       roadmapMd: roadmap,

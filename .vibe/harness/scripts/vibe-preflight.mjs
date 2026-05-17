@@ -40,6 +40,7 @@ const vibeSyncSkillPath = resolve('.claude/skills/vibe-sync/SKILL.md');
 const vibeSyncManifestPath = resolve('.vibe/sync-manifest.json');
 const vibeSyncRuntimePath = resolve('.vibe/harness/src/commands/sync.ts');
 const vibeSyncAuditPath = path.join(scriptDir, 'vibe-sync-audit.mjs');
+const roadmapMaintenancePath = path.join(scriptDir, 'vibe-roadmap-maintenance.mjs');
 
 function record(id, ok, detail, level = 'ok') {
   results.push({ id, ok, detail, level });
@@ -687,17 +688,30 @@ function runVibeSyncAudit() {
 }
 
 function parseRoadmapIds(roadmapContent) {
-  return Array.from(roadmapContent.matchAll(/^- \*\*id\*\*: `([^`]+)`/gm), (match) => match[1]).filter(
-    (id) => typeof id === 'string' && id.trim() !== '',
-  );
+  const ids = [];
+  const seen = new Set();
+  for (const pattern of [
+    /^- \*\*id\*\*:\s*`([^`]+)`/gm,
+    /^#{2,6}\s+((?:iter-\d+-)?sprint-[A-Za-z0-9_.-]+)\b[^\n]*$/gm,
+  ]) {
+    for (const match of roadmapContent.matchAll(pattern)) {
+      const id = match[1]?.trim();
+      if (!id || seen.has(id)) {
+        continue;
+      }
+      seen.add(id);
+      ids.push(id);
+    }
+  }
+  return ids;
 }
 
 function parseIterationSections(roadmapContent) {
-  const matches = Array.from(roadmapContent.matchAll(/^(#|##)\s+Iteration\s+(?:iter-)?(\d+)\b[^\n]*$/gm));
+  const matches = Array.from(roadmapContent.matchAll(/^#{1,6}\s+Iteration\s+(?:iter-)?(\d+)\b[^\n]*$/gm));
 
   return matches.flatMap((match, index) => {
     const startOffset = match.index;
-    const iterationNumber = match[2];
+    const iterationNumber = match[1];
     if (startOffset === undefined || iterationNumber === undefined) {
       return [];
     }
@@ -898,6 +912,42 @@ function runPlannerPresenceCheck() {
     const message = error instanceof Error ? error.message : String(error);
     record('planner.presence', true, `planner presence check errored: ${message} (non-blocking)`, 'info');
   }
+}
+
+function runRoadmapLifecycleCheck() {
+  if (BOOTSTRAP_MODE) {
+    record('roadmap.lifecycle', true, 'bootstrap mode - roadmap lifecycle check skipped');
+    return;
+  }
+  if (!existsSync(roadmapMaintenancePath)) {
+    record('roadmap.lifecycle', true, 'roadmap maintenance script missing (check skipped)', 'info');
+    return;
+  }
+
+  const result = spawnSync(
+    process.execPath,
+    [roadmapMaintenancePath, '--mode', 'start-check', '--dry-run', '--json'],
+    { encoding: 'utf8' },
+  );
+  let parsed = null;
+  try {
+    parsed = JSON.parse(result.stdout || '{}');
+  } catch {
+    const detail = result.stderr || result.stdout || result.error?.message || 'roadmap maintenance check failed';
+    record('roadmap.lifecycle', true, detail, 'warn');
+    return;
+  }
+
+  if (parsed?.changed === true) {
+    record(
+      'roadmap.lifecycle',
+      true,
+      'active roadmap contains archived/inactive iteration sections; run: node .vibe/harness/scripts/vibe-roadmap-maintenance.mjs --mode start-check',
+      'warn',
+    );
+    return;
+  }
+  record('roadmap.lifecycle', true, parsed?.reason ?? 'active roadmap is current-only');
 }
 
 const auditAck = parseAckAuditArg();
@@ -1247,6 +1297,13 @@ runVibeSyncAudit();
 // either summon the sprint-planner agent OR record a [decision][planner-skip]
 // entry via .vibe/harness/scripts/vibe-planner-skip-log.mjs.
 runPlannerPresenceCheck();
+
+// 17. Roadmap active-file lifecycle check (non-blocking warn)
+//
+// This protects sprint-roadmap.md from becoming a cumulative history file.
+// Completed and inactive iteration sections should be archived under
+// docs/plans/archive/roadmaps while the active file stays current-only.
+runRoadmapLifecycleCheck();
 
 if (JSON_MODE) {
   process.stdout.write(JSON.stringify(results, null, 2) + '\n');

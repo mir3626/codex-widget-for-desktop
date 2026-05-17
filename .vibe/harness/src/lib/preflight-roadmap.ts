@@ -24,6 +24,7 @@ export interface IterationSection {
 
 const iterationHeaderPattern = /^(#|##)\s+Iteration\s+(?:iter-)?(\d+)\b[^\n]*$/gm;
 const sprintIdPattern = /^- \*\*id\*\*: `([^`]+)`/gm;
+const sprintHeadingPattern = /^#{2,6}\s+((?:iter-\d+-)?sprint-[A-Za-z0-9_.-]+)\b[^\n]*$/gm;
 
 function lineNumberAtOffset(md: string, offset: number): number {
   if (offset <= 0) {
@@ -70,9 +71,19 @@ export function parseIterationSections(md: string): IterationSection[] {
 }
 
 export function extractSprintIdsFromSection(body: string): string[] {
-  return Array.from(body.matchAll(sprintIdPattern), (match) => match[1]).filter(
-    (id): id is string => typeof id === 'string' && id.trim() !== '',
-  );
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const pattern of [sprintIdPattern, sprintHeadingPattern]) {
+    for (const match of body.matchAll(pattern)) {
+      const id = match[1];
+      if (typeof id !== 'string' || id.trim() === '' || seen.has(id)) {
+        continue;
+      }
+      seen.add(id);
+      ids.push(id);
+    }
+  }
+  return ids;
 }
 
 export function resolveNextSprintFromRoadmap(args: ResolveArgs): ResolveResult {
