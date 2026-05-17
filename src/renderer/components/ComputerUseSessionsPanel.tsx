@@ -743,6 +743,7 @@ export function ComputerUseSessionsPanel({
             <Metric label="Writes" value={`${selectedProfile.grants.filesystem.writeRoots.length}`} />
             <Metric label="Generated" value={selectedProfile.grants.generatedCode || selectedProfile.grants.generatedToolExecution ? "on" : "off"} />
             <Metric label="Credentials" value={selectedProfile.grants.credentialAccess} />
+            <Metric label="Leases" value={`${selectedProfile.grants.credentialLeases?.filter((lease) => lease.status === "active").length ?? 0}`} />
             <Metric label="Use" value={formatProfileUse(selectedProfile)} />
             <Metric label="Expires" value={selectedProfile.expiresAt ? formatActivityTime(selectedProfile.expiresAt) : "manual"} />
           </dl>

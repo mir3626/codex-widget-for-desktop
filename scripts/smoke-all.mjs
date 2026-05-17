@@ -45,6 +45,7 @@ const steps = [
   ["Renderer Computer Use Browser Chrome evidence", process.execPath, ["scripts/smoke-renderer-computer-use-browser-chrome-evidence.mjs"]],
   ["Renderer autonomy rerun history", process.execPath, ["scripts/smoke-renderer-autonomy-rerun-history.mjs"]],
   ["Computer Use one-time profile", process.execPath, ["scripts/smoke-computer-use-one-time-profile.mjs"]],
+  ["Computer Use credential consent", process.execPath, ["scripts/smoke-computer-use-credential-consent.mjs"]],
   ["Computer Use effect verifier", process.execPath, ["scripts/smoke-computer-use-effect-verifier.mjs"]],
   ["Computer Use verifier audit", process.execPath, ["scripts/smoke-computer-use-verifier-audit.mjs"]],
   ["Computer Use promotion gate", process.execPath, ["scripts/gate-computer-use-promotion.mjs", "--dry-run"]],

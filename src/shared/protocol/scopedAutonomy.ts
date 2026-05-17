@@ -13,6 +13,48 @@ export type AutonomyCredentialPolicy = "never" | "ask";
 
 export type AutonomyRiskClass = "read_only" | "reversible" | "side_effect" | "high_risk" | "credential";
 
+export type AutonomyCredentialLeaseStatus = "active" | "revoked" | "expired";
+
+export type AutonomyCredentialLeaseScope =
+  | "browser_profile"
+  | "site_session"
+  | "credential_vault"
+  | "cookie_jar";
+
+export type AutonomyCredentialVaultRef = {
+  id: string;
+  provider: "windows_credential_manager" | "dpapi_user" | "external" | "manual_user_handoff";
+  label: string;
+  secretKind: "password" | "token" | "cookie" | "session" | "other";
+  redacted: true;
+};
+
+export type AutonomyCredentialLeaseGrant = {
+  id: string;
+  status: AutonomyCredentialLeaseStatus;
+  scope: AutonomyCredentialLeaseScope;
+  domains: string[];
+  purposes: string[];
+  vaultRefs: AutonomyCredentialVaultRef[];
+  maxUses?: number;
+  usedCount?: number;
+  expiresAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  revokedAt?: string;
+  revokeReason?: string;
+};
+
+export type AutonomyCredentialRedactionPolicy = {
+  credentials: "redact";
+  cookies: "never_store";
+  localPaths: "basename_or_hash";
+  browserHistory: "domain_only";
+  screenshots: "metadata_only" | "not_stored";
+  debugBundles: "redacted_summary";
+  semanticMemory: "no_secret_values";
+};
+
 export type AutonomyPermissionGrants = {
   network: boolean;
   networkDomains: string[];
@@ -33,6 +75,8 @@ export type AutonomyPermissionGrants = {
   generatedToolExecution: boolean;
   generatedCode: boolean;
   credentialAccess: AutonomyCredentialPolicy;
+  credentialLeases?: AutonomyCredentialLeaseGrant[];
+  redactionPolicy?: AutonomyCredentialRedactionPolicy;
   riskClasses: AutonomyRiskClass[];
   maxRuntimeMs: number;
   maxOutputBytes: number;
@@ -78,6 +122,14 @@ export type AutonomyPermissionDecision = {
   missingRequirements: AutonomyPermissionRequirement[];
   usedRequirements: AutonomyPermissionRequirement[];
   safetyBoundaries: string[];
+  credentialPolicy?: {
+    status: "not_requested" | "allowed" | "blocked";
+    reason: string;
+    matchedLeaseIds: string[];
+    activeLeaseCount: number;
+    redactionPolicy: AutonomyCredentialRedactionPolicy;
+    vaultAccess: "reference_only";
+  };
 };
 
 export type AutonomyRunStatus =

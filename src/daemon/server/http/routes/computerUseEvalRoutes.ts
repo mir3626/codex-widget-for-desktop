@@ -264,6 +264,23 @@ export async function handleComputerUseEvalRoute(
     return true;
   }
 
+  const autonomyCredentialLeaseRevokeMatch = /^\/computer-use\/autonomy\/profiles\/([^/]+)\/credential-leases\/([^/]+)\/revoke$/.exec(url.pathname);
+  if (autonomyCredentialLeaseRevokeMatch && request.method === "POST") {
+    try {
+      const bodyText = await readRequestBody(request, 64 * 1024);
+      const body = bodyText.trim() ? JSON.parse(bodyText) : {};
+      const profile = context.storage.revokeAutonomyCredentialLease({
+        profileId: decodeURIComponent(autonomyCredentialLeaseRevokeMatch[1]),
+        leaseId: decodeURIComponent(autonomyCredentialLeaseRevokeMatch[2]),
+        reason: typeof body.reason === "string" ? body.reason : undefined
+      });
+      writeJsonResponse(response, 200, { ok: true, profile });
+    } catch (error) {
+      writeJsonResponse(response, 400, { ok: false, error: error instanceof Error ? error.message : "Invalid credential lease revoke request." });
+    }
+    return true;
+  }
+
   if (url.pathname === "/computer-use/autonomy/inventory" && request.method === "GET") {
     writeJsonResponse(response, 200, {
       ok: true,

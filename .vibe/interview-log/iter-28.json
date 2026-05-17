@@ -1,0 +1,14 @@
+{
+  "mode": "iterate",
+  "iterationId": "iter-28",
+  "createdAt": "2026-05-17T23:35:00.000+09:00",
+  "carryover": "After Windows Codex Computer Use parity reached implemented_with_guarded_boundaries, the user decided to skip production signing, defer official app-server contract work to local-contract readiness, implement credential consent/vault/revoke/redaction policies as far as possible, document cloud VM and ASR user-test deferrals, and add an implementation-ready parity proof that separates local readiness from production blockers.",
+  "confirmedDecisions": [
+    "Production code signing certificate or CI signing service is deferred.",
+    "Official app-server client tool contract remains local-contract only until external contract is available.",
+    "Credential work must be lease/consent/redaction based, not unrestricted credential access.",
+    "VM/RDP/Windows Sandbox work is deferred and should remain documented as environment-dependent.",
+    "GPU ASR and human microphone corpus validation are deferred to future user testing."
+  ],
+  "newGoal": "Implement credential consent/vault reference/revoke/redaction policy and implementation-ready parity evidence through vibe-iterate without pretending external production blockers are solved."
+}

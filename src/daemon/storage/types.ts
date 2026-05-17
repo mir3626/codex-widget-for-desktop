@@ -68,6 +68,7 @@ import type {
 import type {
   AutonomyCapabilityGapCreateInput,
   AutonomyGeneratedToolSpecUpsertInput,
+  AutonomyCredentialLeaseRevokeInput,
   AutonomyPermissionProfileCreateInput,
   AutonomyPermissionProfileUpdateInput,
   AutonomyRunCreateInput,
@@ -169,6 +170,7 @@ export type StorageService = {
   readAutonomyPermissionProfile: (id: string) => AutonomyPermissionProfile | null;
   listAutonomyPermissionProfiles: (input?: { status?: AutonomyPermissionProfileStatus; limit?: number }) => AutonomyPermissionProfile[];
   updateAutonomyPermissionProfile: (input: AutonomyPermissionProfileUpdateInput) => AutonomyPermissionProfile;
+  revokeAutonomyCredentialLease: (input: AutonomyCredentialLeaseRevokeInput) => AutonomyPermissionProfile;
   createAutonomyRun: (input: AutonomyRunCreateInput) => AutonomyRunSummary;
   readAutonomyRun: (id: string) => AutonomyRunSummary | null;
   listAutonomyRuns: (input?: { sessionId?: string; statuses?: AutonomyRunStatus[]; limit?: number }) => AutonomyRunSummary[];

@@ -325,6 +325,16 @@ export function collectProfileGrantDetails(profile: AutonomyPermissionProfile): 
   if (profile.grants.generatedCode) {
     details.push({ label: "code", value: "runtime_workspace" });
   }
+  const leases = Array.isArray(profile.grants.credentialLeases) ? profile.grants.credentialLeases : [];
+  for (const lease of leases) {
+    details.push({
+      label: "credential lease",
+      value: `${lease.status}:${lease.scope}:${lease.domains.length ? lease.domains.join(",") : lease.vaultRefs.length ? "vault-ref" : "manual"}`
+    });
+  }
+  if (profile.grants.redactionPolicy) {
+    details.push({ label: "redaction", value: `${profile.grants.redactionPolicy.cookies}/${profile.grants.redactionPolicy.debugBundles}` });
+  }
   return details;
 }
 
@@ -355,6 +365,16 @@ export function createSafeManagedProfileDraft(): Record<string, unknown> {
       generatedToolExecution: false,
       generatedCode: false,
       credentialAccess: "never",
+      credentialLeases: [],
+      redactionPolicy: {
+        credentials: "redact",
+        cookies: "never_store",
+        localPaths: "basename_or_hash",
+        browserHistory: "domain_only",
+        screenshots: "metadata_only",
+        debugBundles: "redacted_summary",
+        semanticMemory: "no_secret_values"
+      },
       riskClasses: ["read_only"],
       maxRuntimeMs: 30000,
       maxOutputBytes: 2097152,
@@ -420,16 +440,35 @@ export function validateManagedProfileDraft(draft: string): ManagedProfileDraftV
   const generatedCode = grants.generatedCode === true ||
     grants.generatedToolExecution === true ||
     grants.generatedToolMaterialization === true;
+  const credentialLeases = Array.isArray(grants.credentialLeases) ? grants.credentialLeases : [];
+  const hasCredentialLease = credentialLeases.some((lease) => {
+    const record = readRecord(lease);
+    return readString(record.id) &&
+      (readString(record.status) ?? "active") === "active" &&
+      (readStringArray(record.domains).length > 0 || Array.isArray(record.vaultRefs) && record.vaultRefs.length > 0) &&
+      typeof record.expiresAt === "string" &&
+      readStringArray(record.purposes).length > 0;
+  });
   const highRisk = riskClasses.includes("high_risk") ||
     riskClasses.includes("credential") ||
     packageInstall ||
     osMutation;
 
   if (credentialAccess !== "never") {
-    errors.push("Credential access must remain never.");
-  }
-  if (riskClasses.includes("credential")) {
-    errors.push("Credential risk class is blocked in renderer-created profiles.");
+    if (credentialAccess !== "ask") {
+      errors.push("Credential access can only use ask mode.");
+    }
+    if (scope !== "one_time") {
+      errors.push("Credential consent profiles must be one-time.");
+    }
+    if (!riskClasses.includes("credential")) {
+      errors.push("Credential consent profiles must include credential risk.");
+    }
+    if (!hasCredentialLease) {
+      errors.push("Credential consent requires an active expiring lease with domain or vault reference.");
+    }
+  } else if (riskClasses.includes("credential")) {
+    errors.push("Credential risk requires an explicit credential consent lease.");
   }
   if (scope === "persistent" && highRisk) {
     errors.push("Persistent profiles cannot add high-risk, package, OS, or credential grants from this UI; use a one-time profile.");
@@ -459,7 +498,7 @@ export function validateManagedProfileDraft(draft: string): ManagedProfileDraftV
       ? errors.join(" ")
       : [
         `${scope} profile`,
-        credentialAccess === "never" ? "credentials never" : "credential review needed",
+        credentialAccess === "never" ? "credentials never" : `${credentialLeases.length} credential lease${credentialLeases.length === 1 ? "" : "s"}`,
         riskClasses.length ? `risk ${riskClasses.join(", ")}` : "risk read_only",
         browserAutomation ? `browser ${browserDomains.length ? browserDomains.length : "broad"}` : "browser off",
         commandPrefixes.length ? `${commandPrefixes.length} commands` : "no commands",

@@ -4,6 +4,7 @@ import type {
   AutonomyCapabilityGap,
   AutonomyCapabilityInventoryItem,
   AutonomyCapabilityStatus,
+  AutonomyCredentialLeaseGrant,
   AutonomyGeneratedToolSpec,
   AutonomyPermissionGrants,
   AutonomyPermissionMode,
@@ -17,6 +18,11 @@ import type {
   AutonomyToolRunSummary,
   ComputerUseFailureClass
 } from "../../shared/protocol.js";
+import {
+  defaultCredentialRedactionPolicy,
+  normalizeCredentialLeases,
+  normalizeCredentialRedactionPolicy
+} from "../scoped-autonomy/credentialPolicy.js";
 
 type ProfileRow = {
   id: string;
@@ -146,6 +152,13 @@ export type AutonomyPermissionProfileUpdateInput = {
   usedCount?: number;
   expiresAt?: string | null;
   updatedAt?: string;
+};
+
+export type AutonomyCredentialLeaseRevokeInput = {
+  profileId: string;
+  leaseId: string;
+  reason?: string;
+  revokedAt?: string;
 };
 
 export type AutonomyRunCreateInput = {
@@ -335,6 +348,41 @@ export function updateAutonomyPermissionProfile(
       updated.id
     );
   return updated;
+}
+
+export function revokeAutonomyCredentialLease(
+  database: NodeDatabaseSync,
+  input: AutonomyCredentialLeaseRevokeInput
+): AutonomyPermissionProfile {
+  const current = readAutonomyPermissionProfile(database, input.profileId);
+  if (!current) {
+    throw new Error(`Autonomy permission profile not found: ${input.profileId}`);
+  }
+  const now = input.revokedAt ?? new Date().toISOString();
+  const leases = normalizeCredentialLeases(current.grants.credentialLeases);
+  const index = leases.findIndex((lease) => lease.id === input.leaseId);
+  if (index < 0) {
+    throw new Error(`Credential lease not found: ${input.leaseId}`);
+  }
+  const updatedLeases: AutonomyCredentialLeaseGrant[] = leases.map((lease, leaseIndex) =>
+    leaseIndex === index
+      ? {
+          ...lease,
+          status: "revoked",
+          updatedAt: now,
+          revokedAt: now,
+          revokeReason: input.reason?.trim() || "user_revoked"
+        }
+      : lease
+  );
+  return updateAutonomyPermissionProfile(database, {
+    id: input.profileId,
+    grants: {
+      credentialLeases: updatedLeases,
+      redactionPolicy: current.grants.redactionPolicy ?? defaultCredentialRedactionPolicy()
+    },
+    updatedAt: now
+  });
 }
 
 export function createAutonomyRun(database: NodeDatabaseSync, input: AutonomyRunCreateInput): AutonomyRunSummary {
@@ -909,6 +957,8 @@ function normalizeGrants(input: Partial<AutonomyPermissionGrants> | unknown): Au
     generatedToolExecution: Boolean(record.generatedToolExecution),
     generatedCode: Boolean(record.generatedCode),
     credentialAccess: record.credentialAccess === "ask" ? "ask" : "never",
+    credentialLeases: normalizeCredentialLeases(record.credentialLeases),
+    redactionPolicy: normalizeCredentialRedactionPolicy(record.redactionPolicy),
     riskClasses: normalizeRiskClasses(record.riskClasses),
     maxRuntimeMs: normalizePositiveInteger(record.maxRuntimeMs, 30_000),
     maxOutputBytes: normalizePositiveInteger(record.maxOutputBytes, 2 * 1024 * 1024),

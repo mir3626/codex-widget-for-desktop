@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-25",
+  "currentIteration": "iter-28",
   "iterations": [
     {
       "id": "iter-1",
@@ -916,6 +916,33 @@
       },
       "summary": "Iteration 27 added fine-grained Browser Action transaction timing, fast targetless navigation source handling, Browser Bridge latency traces, lightweight tab-navigation snapshots, shorter post-action polling, hotter Browser Perception background observe defaults, earlier extension wake retries, lower WebSocket command-poll waits, command-first auto-observe refresh, and reduced durable ledger writes for background observe results. Focused and aggregate Browser Action/Perception/Bridge/Extension/DOM/transaction/app-server/adapter smokes passed.",
       "completedAt": "2026-05-12T09:43:21.557+09:00"
+    },
+    {
+      "id": "iter-28",
+      "label": "Computer Use Credential Consent And Implementation-Ready Parity",
+      "startedAt": "2026-05-17T23:35:00.000+09:00",
+      "goal": "Implement the feasible parts of Computer Use credential consent and implementation-ready parity: user consent leases, reference-only vault handles, revoke, redaction, local-contract readiness evidence, and explicit deferral of production signing, VM/cloud, and ASR corpus work.",
+      "plannedSprints": [
+        "iter-28-sprint-01-credential-consent-lease-boundary",
+        "iter-28-sprint-02-implementation-ready-parity-audit"
+      ],
+      "completedSprints": [
+        "iter-28-sprint-01-credential-consent-lease-boundary",
+        "iter-28-sprint-02-implementation-ready-parity-audit"
+      ],
+      "carryover": "Windows Codex Computer Use parity audit reports implemented_with_guarded_boundaries with passed=61, guarded=7, missing=0. The user decided to skip production signing for now, keep official app-server client-tool work local-contract-only until the external contract exists, implement credential consent/revoke/redaction as far as possible, and document VM/cloud plus GPU ASR/human corpus as deferred.",
+      "openRisks": [
+        "Credential leases are implemented as consent and redaction contracts; actual secret retrieval from Windows Credential Manager or DPAPI remains intentionally unimplemented until a narrower vault-access sprint.",
+        "Production parity remains blocked on external signing and official app-server contract even if local implementation-ready audit passes.",
+        "VM/RDP/Windows Sandbox and ASR corpus validation remain user/environment dependent."
+      ],
+      "milestoneProgress": {
+        "windows-codex-computer-use-parity": 0.86,
+        "computer-use-implementation-ready-parity": 0.74,
+        "computer-use-credential-consent": 0.82
+      },
+      "summary": "Iteration 28 completed the feasible local scope. Credential handling now uses expiring/revocable consent leases, reference-only vault handles, strict redaction policy, fail-closed permission evaluation, renderer validation/evidence, and focused smokes. A dedicated implementation-ready parity audit reports local readiness while keeping production signing, official app-server contract, VM/cloud, and ASR corpus inputs deferred.",
+      "completedAt": "2026-05-17T23:55:00.000+09:00"
     }
   ]
 }

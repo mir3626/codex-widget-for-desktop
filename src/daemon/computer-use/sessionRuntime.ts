@@ -370,7 +370,8 @@ export class ComputerSessionRuntime {
         reason,
         missingRequirements: surfacePermissionDecision.missingRequirements,
         usedRequirements: surfacePermissionDecision.usedRequirements,
-        safetyBoundaries: surfacePermissionDecision.safetyBoundaries
+        safetyBoundaries: surfacePermissionDecision.safetyBoundaries,
+        credentialPolicy: surfacePermissionDecision.credentialPolicy
       });
       this.options.storage.upsertCapabilityDagNode({
         id: `${session.sessionId}:permission_check`,
@@ -386,7 +387,8 @@ export class ComputerSessionRuntime {
           ok: false,
           reason,
           missingRequirements: surfacePermissionDecision.missingRequirements,
-          usedRequirements: surfacePermissionDecision.usedRequirements
+          usedRequirements: surfacePermissionDecision.usedRequirements,
+          credentialPolicy: surfacePermissionDecision.credentialPolicy
         },
         startedAt: now,
         completedAt: now,
@@ -407,7 +409,8 @@ export class ComputerSessionRuntime {
         output: {
           reason,
           missingRequirements: surfacePermissionDecision.missingRequirements,
-          usedRequirements: surfacePermissionDecision.usedRequirements
+          usedRequirements: surfacePermissionDecision.usedRequirements,
+          credentialPolicy: surfacePermissionDecision.credentialPolicy
         },
         failureClass: "approval_denied",
         startedAt: now,
@@ -1042,6 +1045,7 @@ export class ComputerSessionRuntime {
         reason,
         missingRequirements: terminalPermission.decision?.missingRequirements ?? terminalPermission.requirements,
         usedRequirements: terminalPermission.decision?.usedRequirements ?? [],
+        credentialPolicy: terminalPermission.decision?.credentialPolicy,
         command: terminalPermission.command
       });
       const failedNode = this.options.storage.upsertCapabilityDagNode({
@@ -1056,7 +1060,8 @@ export class ComputerSessionRuntime {
           reason: terminalPermission.reason,
           command: terminalPermission.command,
           missingRequirements: terminalPermission.decision?.missingRequirements ?? terminalPermission.requirements,
-          safetyBoundaries: terminalPermission.decision?.safetyBoundaries ?? []
+          safetyBoundaries: terminalPermission.decision?.safetyBoundaries ?? [],
+          credentialPolicy: terminalPermission.decision?.credentialPolicy
         },
         startedAt: dagNode.startedAt,
         completedAt: now,
@@ -1076,7 +1081,8 @@ export class ComputerSessionRuntime {
         },
         output: {
           reason,
-          missingRequirements: terminalPermission.decision?.missingRequirements ?? terminalPermission.requirements
+          missingRequirements: terminalPermission.decision?.missingRequirements ?? terminalPermission.requirements,
+          credentialPolicy: terminalPermission.decision?.credentialPolicy
         },
         failureClass: "approval_denied",
         startedAt: now,
@@ -1099,6 +1105,7 @@ export class ComputerSessionRuntime {
         profileId: state.summary.profileId,
         reason: terminalPermission.decision.reason,
         usedRequirements: terminalPermission.decision.usedRequirements,
+        credentialPolicy: terminalPermission.decision.credentialPolicy,
         command: terminalPermission.command,
         ...reversibleEvidence
       });

@@ -4,6 +4,51 @@
 
 The project is a Tauri + React + Node daemon desktop widget. The native widget launches, Vite serves renderer assets during dev, and the daemon listens on `127.0.0.1:4128`.
 
+## Latest Update: Computer Use Credential Consent And Implementation-Ready Parity
+
+Completed iter-28 for the user's "3 and 6" Computer Use parity scope.
+
+Changed in this continuation:
+
+- Added a safe credential consent contract to scoped autonomy:
+  expiring/revocable credential leases, reference-only vault handles, and
+  explicit redaction policy in `AutonomyPermissionGrants`.
+- Credential access now remains fail-closed unless a profile has
+  `credentialAccess: "ask"`, the `credential` risk class, and a live matching
+  consent lease. Default/no-lease/revoked lease paths stay blocked.
+- Added `revokeAutonomyCredentialLease(...)` storage support and
+  `/computer-use/autonomy/profiles/:profileId/credential-leases/:leaseId/revoke`
+  HTTP route.
+- Renderer Computer Use profile tooling now shows credential lease/redaction
+  evidence and allows only one-time expiring credential consent drafts; unsafe
+  persistent or lease-less credential profiles remain blocked.
+- Added `docs/plans/computer-use-implementation-ready-parity.md` to document
+  local contract scope and deferred VM/cloud plus ASR user-test work.
+- Added `npm run audit:computer-use-implementation-ready`, which reports
+  `implementation_ready_with_external_deferred` when local readiness evidence is
+  present without marking production signing, official app-server contract,
+  VM/cloud, GPU ASR, or human microphone corpus as complete.
+
+Verification passed:
+
+- `npm run build:daemon`
+- `npm run smoke:computer-use-credential-consent`
+- `npm run audit:computer-use-implementation-ready`
+- `npm run smoke:renderer-computer-use-profile-draft`
+- `npm run lint`
+- `npm run smoke:computer-use-one-time-profile`
+- `npm run audit:computer-use-parity`
+  (`implemented_with_guarded_boundaries`, passed=61, guarded=7, blocked=0,
+  missing=0)
+
+Remaining boundaries:
+
+- This does not retrieve secrets from Windows Credential Manager or DPAPI yet;
+  vaults are reference-only handles behind consent leases.
+- Production parity still needs external signing and the official app-server
+  client-tool contract.
+- VM/RDP/Windows Sandbox and ASR corpus validation remain documented deferrals.
+
 ## Latest Update: Browser Action Real-Use Debug Fixes
 
 Fixed the direct widget debug-log regressions from the 2026-05-16 KST

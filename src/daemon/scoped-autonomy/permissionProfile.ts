@@ -5,6 +5,10 @@ import type {
   AutonomyPermissionProfile,
   AutonomyPermissionRequirement
 } from "../../shared/protocol.js";
+import {
+  evaluateCredentialRequirement,
+  summarizeCredentialPolicy
+} from "./credentialPolicy.js";
 
 export function evaluateAutonomyPermission(input: {
   profile?: AutonomyPermissionProfile | null;
@@ -34,12 +38,17 @@ export function evaluateAutonomyPermission(input: {
   const missing: AutonomyPermissionRequirement[] = [];
   const used: AutonomyPermissionRequirement[] = [];
   for (const requirement of input.requirements) {
-    if (isRequirementAllowed(profile.grants, requirement)) {
+    if (isRequirementAllowed(profile.grants, requirement, { now: input.now })) {
       used.push(requirement);
     } else {
       missing.push(requirement);
     }
   }
+  const credentialPolicy = summarizeCredentialPolicy({
+    grants: profile.grants,
+    requirements: input.requirements,
+    now: input.now
+  });
   return {
     allowed: missing.length === 0,
     mode: profile.mode,
@@ -47,7 +56,15 @@ export function evaluateAutonomyPermission(input: {
     reason: missing.length === 0 ? "Scoped autonomy grants cover all requirements." : "Scoped autonomy profile is missing required grants.",
     missingRequirements: missing,
     usedRequirements: used,
-    safetyBoundaries: profile.safetyBoundaries
+    safetyBoundaries: profile.safetyBoundaries,
+    credentialPolicy: {
+      status: credentialPolicy.status,
+      reason: credentialPolicy.reason,
+      matchedLeaseIds: credentialPolicy.matchedLeaseIds,
+      activeLeaseCount: credentialPolicy.activeLeaseCount,
+      redactionPolicy: credentialPolicy.redactionPolicy,
+      vaultAccess: credentialPolicy.vaultAccess
+    }
   };
 }
 
@@ -75,7 +92,11 @@ export function containsCredentialLikeText(value: string): boolean {
   return /(?:password|passwd|token|cookie|credential|secret|api[_-]?key)\s*[:=]\s*\S+/i.test(value);
 }
 
-export function isRequirementAllowed(grants: AutonomyPermissionGrants, requirement: AutonomyPermissionRequirement): boolean {
+export function isRequirementAllowed(
+  grants: AutonomyPermissionGrants,
+  requirement: AutonomyPermissionRequirement,
+  options: { now?: string } = {}
+): boolean {
   switch (requirement.type) {
     case "network":
       return grants.network;
@@ -104,7 +125,7 @@ export function isRequirementAllowed(grants: AutonomyPermissionGrants, requireme
     case "risk_class":
       return grants.riskClasses.includes(requirement.value);
     case "credential_access":
-      return grants.credentialAccess !== "never";
+      return evaluateCredentialRequirement({ grants, requirement, now: options.now }).allowed;
   }
 }
 

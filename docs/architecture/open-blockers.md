@@ -8,7 +8,8 @@ This file records items that should not be silently downgraded to complete.
 - Current path: daemon-owned simulated Browser Action tool runtime.
 - Evidence: `src/daemon/agent-tools/appServerClientTool.ts` records the blocked
   app-server client-tool contract and safe fallback runtime.
-- Required scope expansion: an official Codex app-server client-tool contract
+- Required scope expansion: an official external contract for the Codex
+  app-server client-tool boundary
   that defines schema advertisement, request ids, streaming tool-call events,
   user approval handoff, result/error delivery, persistence, and redaction.
 

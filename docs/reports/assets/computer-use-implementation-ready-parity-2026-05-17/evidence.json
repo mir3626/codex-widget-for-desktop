@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "computer-use-implementation-ready-parity-audit.v1",
+  "generatedAt": "2026-05-17T14:31:30.280Z",
+  "status": "implementation_ready_with_external_deferred",
+  "summary": {
+    "total": 9,
+    "passed": 9,
+    "missing": 0,
+    "productionExternalDeferred": [
+      "production_authenticode_certificate_or_ci_signing_service",
+      "official_app_server_custom_client_tool_contract",
+      "real_vm_rdp_windows_sandbox_or_cloud_vm_backend",
+      "gpu_asr_validation",
+      "human_microphone_asr_corpus_benchmark"
+    ]
+  },
+  "checks": [
+    {
+      "id": "credential:consent-lease-protocol",
+      "status": "passed",
+      "requirement": "Shared protocol defines expiring credential consent leases, redacted vault references, and redaction policy.",
+      "evidence": "src/shared/protocol/scopedAutonomy.ts",
+      "missingMarkers": []
+    },
+    {
+      "id": "credential:evaluator-fail-closed",
+      "status": "passed",
+      "requirement": "Credential access is denied unless an active lease and credential risk consent cover the requirement.",
+      "evidence": "src/daemon/scoped-autonomy/credentialPolicy.ts",
+      "missingMarkers": []
+    },
+    {
+      "id": "credential:revoke-route",
+      "status": "passed",
+      "requirement": "Daemon exposes a focused credential lease revoke endpoint.",
+      "evidence": "src/daemon/server/http/routes/computerUseEvalRoutes.ts",
+      "missingMarkers": []
+    },
+    {
+      "id": "credential:redaction-smoke",
+      "status": "passed",
+      "requirement": "Focused smoke proves lease gating, reference-only vault access, revoke, and credential redaction.",
+      "evidence": "scripts/smoke-computer-use-credential-consent.mjs",
+      "missingMarkers": []
+    },
+    {
+      "id": "ui:credential-lease-evidence",
+      "status": "passed",
+      "requirement": "Renderer profile tooling surfaces credential lease evidence and blocks unsafe drafts.",
+      "evidence": "src/renderer/components/computer-use/permissionEvidenceHelpers.ts",
+      "missingMarkers": []
+    },
+    {
+      "id": "local-contract:official-contract-deferred",
+      "status": "passed",
+      "requirement": "Official app-server client tool remains explicitly deferred while local contract stays bounded.",
+      "evidence": "docs/architecture/open-blockers.md",
+      "missingMarkers": []
+    },
+    {
+      "id": "vm:cloud-sandbox-deferred",
+      "status": "passed",
+      "requirement": "VM/RDP/Windows Sandbox work is documented as deferred and environment-dependent.",
+      "evidence": "docs/plans/computer-use-implementation-ready-parity.md",
+      "missingMarkers": []
+    },
+    {
+      "id": "asr:user-corpus-deferred",
+      "status": "passed",
+      "requirement": "ASR validation is documented as user-test deferred rather than silently complete.",
+      "evidence": "docs/plans/computer-use-implementation-ready-parity.md",
+      "missingMarkers": []
+    },
+    {
+      "id": "parity:audit-boundary",
+      "status": "passed",
+      "requirement": "Windows parity audit still separates local implementation from external blockers.",
+      "evidence": "docs/reports/windows-codex-computer-use-parity-audit-2026-05-17.md",
+      "missingMarkers": []
+    }
+  ]
+}

@@ -65,6 +65,7 @@ const disabledProfile = {
 };
 let createdProfileBody = null;
 let managedCreatedProfileBody = null;
+let credentialCreatedProfileBody = null;
 let attachedProfileBody = null;
 let updatedProfileBody = null;
 
@@ -90,17 +91,23 @@ const httpServer = createHttpServer(async (request, response) => {
     const body = JSON.parse(await readBody(request));
     assert.equal(body.scope, "one_time");
     assert.equal(body.maxUses, 1);
-    assert.equal(body.grants.credentialAccess, "never");
-    assert.equal(body.grants.riskClasses.includes("credential"), false);
-    const createdId = body.name === "Computer Use one-time profile"
+    const createdId = body.name === "One-time credential consent smoke"
+      ? "profile-credential-renderer"
+      : body.name === "Computer Use one-time profile"
       ? "profile-managed-renderer"
       : "profile-one-time-renderer";
-    if (createdId === "profile-managed-renderer") {
+    if (createdId === "profile-credential-renderer") {
+      credentialCreatedProfileBody = body;
+    } else if (createdId === "profile-managed-renderer") {
       managedCreatedProfileBody = body;
+      assert.equal(body.grants.credentialAccess, "never");
+      assert.equal(body.grants.riskClasses.includes("credential"), false);
       assert.equal(body.grants.browserAutomation, false);
       assert.equal(body.grants.riskClasses.includes("read_only"), true);
     } else {
       createdProfileBody = body;
+      assert.equal(body.grants.credentialAccess, "never");
+      assert.equal(body.grants.riskClasses.includes("credential"), false);
       assert.equal(body.grants.browserAutomation, true);
       assert.equal(body.grants.riskClasses.includes("high_risk"), true);
     }
@@ -331,6 +338,48 @@ try {
   }, null, 2));
   await page.getByRole("button", { name: "Save managed permission profile" }).click();
   await page.getByText("Profile draft blocked").waitFor();
+  await page.getByRole("button", { name: "New managed permission profile" }).click();
+  await page.getByLabel("Computer Use permission profile JSON editor").fill(JSON.stringify({
+    name: "One-time credential consent smoke",
+    mode: "scoped_yolo",
+    scope: "one_time",
+    status: "active",
+    maxUses: 1,
+    grants: {
+      ...existingProfile.grants,
+      credentialAccess: "ask",
+      credentialLeases: [
+        {
+          id: "renderer-credential-lease",
+          status: "active",
+          scope: "site_session",
+          domains: ["example.com"],
+          purposes: ["renderer validation smoke"],
+          vaultRefs: [],
+          expiresAt: "2999-01-01T00:00:00.000Z"
+        }
+      ],
+      redactionPolicy: {
+        credentials: "redact",
+        cookies: "never_store",
+        localPaths: "basename_or_hash",
+        browserHistory: "domain_only",
+        screenshots: "metadata_only",
+        debugBundles: "redacted_summary",
+        semanticMemory: "no_secret_values"
+      },
+      riskClasses: ["credential"]
+    },
+    safetyBoundaries: existingProfile.safetyBoundaries
+  }, null, 2));
+  await page.getByLabel("Computer Use permission profile validation").getByText("Draft allowed").waitFor();
+  await page.getByRole("button", { name: "Save managed permission profile" }).click();
+  await page.getByText("Profile created: One-time credential consent smoke").waitFor();
+  assert.equal(credentialCreatedProfileBody?.grants?.credentialAccess, "ask");
+  assert.equal(credentialCreatedProfileBody?.grants?.riskClasses?.includes("credential"), true);
+  assert.equal(credentialCreatedProfileBody?.grants?.credentialLeases?.[0]?.id, "renderer-credential-lease");
+  assert.equal(credentialCreatedProfileBody?.grants?.credentialLeases?.[0]?.status, "active");
+  assert.equal(credentialCreatedProfileBody?.grants?.redactionPolicy?.cookies, "never_store");
   await page.getByRole("button", { name: "New managed permission profile" }).click();
   await page.getByLabel("Computer Use permission profile validation").getByText("Draft allowed").waitFor();
   await page.getByRole("button", { name: "Save managed permission profile" }).click();
