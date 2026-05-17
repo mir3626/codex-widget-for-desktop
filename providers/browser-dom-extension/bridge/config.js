@@ -16,6 +16,7 @@ export const BRIDGE_SOURCE_HASH_FILES = [
   "service-worker.js",
   "bridge/action-channel.js",
   "bridge/badge.js",
+  "bridge/browser-chrome.js",
   "bridge/config.js",
   "bridge/injected-actions.js",
   "bridge/injected-dom.js",

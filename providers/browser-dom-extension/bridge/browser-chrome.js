@@ -123,6 +123,12 @@ async function runBrowserChromeCommand(tab, command) {
       metadata: { verification: "bookmark_opened", bookmarkId: bookmark.id }
     };
   }
+  if (command.command === "tab.list") {
+    return await runTabList(tab, payload);
+  }
+  if (command.command === "tab.activate") {
+    return await runTabActivate(tab, payload);
+  }
   if (command.command === "tab_group.list") {
     return await runTabGroupList();
   }
@@ -209,6 +215,68 @@ async function readBookmarkForOpen(payload) {
   const url = readBookmarkUrl(payload.url);
   const matches = await chrome.bookmarks.search({ url });
   return matches[0];
+}
+
+async function runTabList(tab, payload) {
+  requireChromeApi(chrome.tabs, "tabs");
+  const query = {};
+  const windowId = readOptionalWindowId(tab, payload);
+  if (windowId !== undefined) {
+    query.windowId = windowId;
+  }
+  const tabs = await chrome.tabs.query(query);
+  return {
+    ok: true,
+    output: {
+      tabs: tabs.slice(0, 100).map(normalizeTab),
+      activeTab: normalizeTab(tabs.find((candidate) => candidate?.active) ?? tab)
+    },
+    metadata: {
+      verification: "tabs_read",
+      browserChromeApi: true,
+      nativeInput: false,
+      hotkey: false,
+      pointer: false
+    }
+  };
+}
+
+async function runTabActivate(tab, payload) {
+  requireChromeApi(chrome.tabs, "tabs");
+  const target = await readTabActivationTarget(tab, payload);
+  const activated = await chrome.tabs.update(target.id, { active: true });
+  if (payload.focusWindow !== false && chrome.windows && activated?.windowId !== undefined) {
+    await chrome.windows.update(activated.windowId, { focused: true }).catch(() => undefined);
+  }
+  const activeTabs = activated?.windowId !== undefined
+    ? await chrome.tabs.query({ active: true, windowId: activated.windowId })
+    : [];
+  const verified = (activeTabs[0]?.id ?? activated?.id) === target.id;
+  const normalized = normalizeTab(activeTabs[0] ?? activated);
+  return {
+    ok: verified,
+    output: {
+      tab: normalized,
+      requested: {
+        tabId: target.id,
+        index: target.index,
+        ordinal: target.index + 1,
+        windowId: target.windowId
+      }
+    },
+    error: verified ? undefined : "Requested tab was not active after Browser Chrome tab activation.",
+    metadata: {
+      verification: verified ? "tab_activated" : "tab_activate_mismatch",
+      tabId: target.id,
+      tabIndex: target.index,
+      windowId: target.windowId,
+      browserChromeApi: true,
+      backgroundControl: true,
+      nativeInput: false,
+      hotkey: false,
+      pointer: false
+    }
+  };
 }
 
 async function runTabGroupList() {
@@ -673,10 +741,62 @@ function normalizeTab(tab) {
   return {
     id: tab?.id,
     windowId: tab?.windowId,
+    index: Number.isInteger(tab?.index) ? tab.index : undefined,
     title: readBoundedString(tab?.title, 240),
     url: typeof tab?.url === "string" ? tab.url : undefined,
     active: Boolean(tab?.active)
   };
+}
+
+async function readTabActivationTarget(tab, payload) {
+  const tabId = readInteger(payload.tabId, NaN);
+  if (Number.isInteger(tabId) && tabId > 0) {
+    const matches = await chrome.tabs.get(tabId).then((value) => [value]).catch(() => []);
+    if (!matches[0]?.id) {
+      throw new Error("Requested tab id was not found.");
+    }
+    return {
+      id: matches[0].id,
+      index: Number.isInteger(matches[0].index) ? matches[0].index : 0,
+      windowId: matches[0].windowId
+    };
+  }
+  const index = readTabIndex(payload);
+  const windowId = readOptionalWindowId(tab, payload);
+  const tabs = await chrome.tabs.query(windowId === undefined ? {} : { windowId });
+  const ordered = tabs
+    .filter((candidate) => Number.isInteger(candidate?.id))
+    .sort((left, right) => Number(left.index ?? 0) - Number(right.index ?? 0));
+  const target = ordered[index];
+  if (!target?.id) {
+    throw new Error(`No tab exists at requested index ${index}.`);
+  }
+  return {
+    id: target.id,
+    index: Number.isInteger(target.index) ? target.index : index,
+    windowId: target.windowId
+  };
+}
+
+function readTabIndex(payload) {
+  const index = readInteger(payload.index, NaN);
+  if (Number.isInteger(index) && index >= 0 && index < 100) {
+    return index;
+  }
+  const ordinal = readInteger(payload.ordinal, NaN);
+  if (Number.isInteger(ordinal) && ordinal >= 1 && ordinal <= 100) {
+    return ordinal - 1;
+  }
+  throw new Error("Tab activation requires a zero-based index or one-based ordinal.");
+}
+
+function readOptionalWindowId(tab, payload) {
+  const windowId = readInteger(payload.windowId, NaN);
+  if (Number.isInteger(windowId) && windowId > 0) {
+    return windowId;
+  }
+  const activeWindowId = readInteger(tab?.windowId, NaN);
+  return Number.isInteger(activeWindowId) && activeWindowId > 0 ? activeWindowId : undefined;
 }
 
 function normalizeDownloadItem(item) {

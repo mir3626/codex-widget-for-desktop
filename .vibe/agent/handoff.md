@@ -5,12 +5,49 @@
 Codex Widget for Desktop is a Tauri + React + Node daemon desktop widget. The
 daemon listens on `127.0.0.1:4128`; the renderer is served by Vite in dev.
 
-The latest completed product work is Browser Action multi-step prompt
-decomposition through `iter-37`. Active sprint pointer is idle. Current active roadmap file is
+The latest completed product work is background Browser Chrome tab control
+through `iter-38`. Active sprint pointer is idle. Current active roadmap file is
 compacted to the current iteration only; historical roadmaps live under
 `docs/plans/archive/roadmaps/`.
 
-## Latest Update: Browser Action Multi-Step Prompt Decomposition
+## Latest Update: Background Browser Chrome Control
+
+Completed `$vibe-iterate` iteration `iter-38`.
+
+Applied:
+
+- Prompt routing now recognizes ordinal browser tab-switch requests such as
+  `첫번째 탭으로 전환해줘` and sends Browser Chrome `tab.activate` instead of
+  falling through to Browser Action DOM click or native hotkey paths.
+- Browser Chrome command contract now includes `tab.list` and `tab.activate`;
+  `tab.list` is read-only, while `tab.activate` remains side-effecting.
+- Browser Bridge extension executes `tab.activate` with `chrome.tabs.update`,
+  optionally focuses the browser window through Chrome API, verifies the active
+  tab, and records no native input, hotkey, or pointer usage in metadata.
+- The Browser Action e2e-control smoke now waits for the exact direct command
+  `resultId` instead of accidentally matching an earlier chained click result.
+
+Verification passed:
+
+- `npm run smoke:browser-chrome-capability`
+- `npm run smoke:extension`
+- `npm run smoke:browser-action:e2e-control`
+- `npm run smoke:browser-action:prompt-classification`
+- `npm run smoke:browser-action:real-use-regressions`
+- `npm run lint`
+- `npm run audit:computer-use-parity` (`implemented_with_guarded_boundaries`,
+  passed=61, guarded=7, blocked=0, missing=0)
+- `git diff --check`
+
+Remaining product follow-ups:
+
+- Live real-browser verification should be repeated through the installed
+  extension after restarting/reloading Browser Bridge so the new extension code
+  is active.
+- Wider browser chrome/window operations should remain explicit, bounded, and
+  fail-closed before adding more prompts.
+
+## Previous Update: Browser Action Multi-Step Prompt Decomposition
 
 Completed `$vibe-iterate` iteration `iter-37`.
 
@@ -32,11 +69,6 @@ Verification passed:
 - `npm run smoke:browser-action:real-use-regressions`
 - `npm run lint`
 - `git diff --check`
-
-Remaining product follow-ups:
-
-- OS/global-hotkey conflicts and background browser chrome actions remain the
-  next Windows-control improvement.
 
 ## Previous Update: Browser Action Navigation Verifier Finalization
 
@@ -133,9 +165,9 @@ idle.
 
 ## Current Resume Point
 
-Worktree should be clean after the iter-37 commit/push. Next useful work is the
-remaining Browser Action background/browser chrome control follow-up listed
-above.
+Worktree should be clean after the iter-38 commit/push. Next useful work is
+live reloading/testing of the installed Browser Bridge extension and then
+bounded expansion of additional Browser Chrome controls.
 
 ## Product Boundaries
 

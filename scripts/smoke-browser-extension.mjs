@@ -82,6 +82,8 @@ for (const marker of [
   "chrome.storage.sync.get",
   "chrome.runtime.sendNativeMessage",
   "chrome.bookmarks",
+  "tab.activate",
+  "chrome.tabs.update",
   "chrome.contentSettings",
   "com.mir3626.codex_widget_dom",
   "/providers/dom/snapshot",

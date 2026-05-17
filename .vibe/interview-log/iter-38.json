@@ -1,0 +1,12 @@
+{
+  "mode": "iterate",
+  "iterationId": "iter-38",
+  "createdAt": "2026-05-18T04:37:20.546+09:00",
+  "carryover": "Iteration 37 fixed compound Browser Action prompt decomposition. The next real-use blocker is Chrome chrome control such as switching to the first tab, which should not rely on OS hotkeys that can be intercepted by other Windows apps.",
+  "confirmedDecisions": [
+    "Use background Browser Chrome or extension-side Chrome APIs for supported browser-chrome controls before any native desktop/hotkey fallback.",
+    "Start with ordinal tab activation because it directly addresses the observed Ctrl+1/global-hotkey conflict.",
+    "Keep unsupported or high-risk browser chrome/window operations explicit and fail-closed."
+  ],
+  "newGoal": "Route supported browser chrome tab-control prompts through background Browser Chrome commands."
+}

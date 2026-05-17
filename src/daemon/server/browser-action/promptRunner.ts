@@ -9,6 +9,10 @@ import {
   summarizeBrowserObservation,
   type BrowserActionResult
 } from "../../browser-action/index.js";
+import {
+  resolveBrowserChromePromptControl,
+  type BrowserChromePromptControl
+} from "../../browser-chrome/index.js";
 import type { CapabilityJobSummary } from "../../../shared/protocol.js";
 import { broadcast } from "../events.js";
 import { broadcastLedgerSnapshot } from "../clientEvents.js";
@@ -44,6 +48,10 @@ import {
 } from "./promptEvalLedger.js";
 
 export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput): Promise<boolean> {
+  if (await tryRunBrowserChromeControlPrompt(input)) {
+    return true;
+  }
+
   if (await tryRunBookmarkOpenPrompt(input)) {
     return true;
   }
@@ -383,6 +391,71 @@ export async function tryRunBrowserActionPrompt(input: BrowserActionPromptInput)
   return true;
 }
 
+async function tryRunBrowserChromeControlPrompt(input: BrowserActionPromptInput): Promise<boolean> {
+  const control = resolveBrowserChromePromptControl(input.message.text);
+  if (!control) {
+    return false;
+  }
+  const now = Date.now();
+  const timeoutMs = 15_000;
+  const job: CapabilityJobSummary = {
+    id: `browser-chrome-tab-activate-${input.message.id}`,
+    transactionId: `browser-chrome-tab-activate:${input.message.id}`,
+    sessionId: input.sessionId,
+    kind: "browser_chrome",
+    status: "running",
+    priority: "interactive",
+    requestedBy: "prompt",
+    inputJson: { command: control.command, ...control.payload },
+    inputBlobIds: [],
+    outputBlobIds: [],
+    timeoutMs,
+    deadlineAt: new Date(now + timeoutMs).toISOString(),
+    retryCount: 0,
+    maxRetries: 0,
+    createdAt: new Date(now).toISOString(),
+    updatedAt: new Date(now).toISOString()
+  };
+  input.emit({ type: "session.state", state: "tooling", id: input.message.id });
+  recordRuntimeActivity(input.storage, input.sessionId, "info", "browser-action", "Routing browser chrome control prompt through Browser Chrome", {
+    requestId: input.message.id,
+    command: control.command,
+    payload: control.payload,
+    reason: control.reason
+  });
+  broadcast(input.clients, {
+    type: "browserAction.progress",
+    actionSessionId: job.id,
+    status: "browser_chrome_command_queued",
+    detail: {
+      requestId: `browser-chrome:${job.id}`,
+      action: control.command,
+      label: control.label,
+      routing: "browser_chrome_background"
+    }
+  });
+  const result = await input.browserChromeCommands.run({
+    job,
+    command: control.command,
+    payload: control.payload
+  });
+  recordRuntimeActivity(input.storage, input.sessionId, result.ok ? "info" : "warn", "browser-action", result.ok ? "Browser Chrome control completed" : "Browser Chrome control failed", {
+    requestId: job.id,
+    command: control.command,
+    output: result.output,
+    error: result.error,
+    metadata: result.metadata
+  });
+  input.emit({
+    type: "message.completed",
+    id: input.message.id,
+    text: renderBrowserChromeControlPromptResult(input.message.text, control, result)
+  });
+  input.emit({ type: "session.state", state: "idle", id: input.message.id });
+  broadcastLedgerSnapshot(input.clients, input.storage, input.sessionId);
+  return true;
+}
+
 async function tryRunBookmarkOpenPrompt(input: BrowserActionPromptInput): Promise<boolean> {
   const target = resolveBookmarkOpenTarget(input.message.text);
   if (!target) {
@@ -449,6 +522,32 @@ async function tryRunBookmarkOpenPrompt(input: BrowserActionPromptInput): Promis
   input.emit({ type: "session.state", state: "idle", id: input.message.id });
   broadcastLedgerSnapshot(input.clients, input.storage, input.sessionId);
   return true;
+}
+
+function renderBrowserChromeControlPromptResult(
+  prompt: string,
+  control: BrowserChromePromptControl,
+  result: Awaited<ReturnType<BrowserActionPromptInput["browserChromeCommands"]["run"]>>
+): string {
+  const korean = /[가-힣]/.test(prompt);
+  if (result.ok) {
+    if (control.command === "tab.activate") {
+      return korean
+        ? `${control.label}으로 전환했습니다.`
+        : `Switched to ${control.label}.`;
+    }
+    return korean
+      ? "브라우저 제어를 완료했습니다."
+      : "Browser chrome control completed.";
+  }
+  if (control.command === "tab.activate") {
+    return korean
+      ? `${control.label}으로 전환하지 못했습니다: ${result.error ?? "Browser Chrome 명령이 실패했습니다."}`
+      : `Could not switch to ${control.label}: ${result.error ?? "Browser Chrome command failed."}`;
+  }
+  return korean
+    ? `브라우저 제어에 실패했습니다: ${result.error ?? "Browser Chrome 명령이 실패했습니다."}`
+    : `Browser chrome control failed: ${result.error ?? "Browser Chrome command failed."}`;
 }
 
 function summarizeBrowserActionResultForDebug(result: BrowserActionResult): Record<string, unknown> {

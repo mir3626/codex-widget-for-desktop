@@ -70,6 +70,7 @@ function isBrowserChromeReadOnly(input: unknown): boolean {
   }
   const command = (input as Record<string, unknown>).command;
   return command === undefined ||
+    command === "tab.list" ||
     command === "bookmark.list" ||
     command === "tab_group.list" ||
     command === "download.search" ||

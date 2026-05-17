@@ -29,6 +29,33 @@ try {
   });
 
   send({
+    type: "ask",
+    id: "prompt-browser-chrome-first-tab",
+    text: "첫번째 탭으로 전환해줘",
+    mode: "browser"
+  });
+  const tabActivateQueued = await waitFor(
+    (event) => event.type === "browserAction.progress" &&
+      event.actionSessionId === "browser-chrome-tab-activate-prompt-browser-chrome-first-tab" &&
+      event.status === "browser_chrome_command_queued",
+    "prompt tab activation queued"
+  );
+  const tabActivateCommand = await pollBrowserBridgeCommand();
+  assertEqual(tabActivateCommand?.kind, "browser_chrome", "prompt tab activation command kind");
+  assertEqual(tabActivateCommand?.requestId, tabActivateQueued.detail?.requestId, "prompt tab activation request id");
+  assertEqual(tabActivateCommand?.command, "tab.activate", "prompt tab activation command");
+  assertEqual(tabActivateCommand?.payload?.index, 0, "prompt tab activation zero-based index");
+  assertEqual(tabActivateCommand?.payload?.ordinal, 1, "prompt tab activation user ordinal");
+  await postBrowserChromeResult(tabActivateCommand.requestId, {
+    tab: { id: 1, windowId: 1, index: 0, title: "First", url: "https://example.test/first", active: true },
+    requested: { index: 0, ordinal: 1 }
+  }, { verification: "tab_activated", backgroundControl: true, nativeInput: false, hotkey: false });
+  const tabActivateAnswer = await waitFor((event) => event.type === "message.completed" && event.id === "prompt-browser-chrome-first-tab", "prompt tab activation answer");
+  if (!tabActivateAnswer.text.includes("첫번째 탭")) {
+    throw new Error(`Prompt tab activation answer should mention the requested tab: ${tabActivateAnswer.text}`);
+  }
+
+  send({
     type: "capability.start",
     requestId: "browser-chrome-list",
     job: {
@@ -48,6 +75,18 @@ try {
     tree: [{ id: "0", title: "Bookmarks", children: [{ id: "1", title: "Example", url: "https://example.test/" }] }]
   }, { verification: "bookmark_tree_read" });
   await waitFor((event) => event.type === "capability.job" && event.jobId === "browser-chrome-list-job" && event.status === "completed", "browser chrome list completed");
+
+  await expectApprovalThenComplete({
+    requestId: "browser-chrome-tab-activate",
+    jobId: "browser-chrome-tab-activate-job",
+    input: { command: "tab.activate", index: 0, ordinal: 1, focusWindow: true },
+    expectedCommand: "tab.activate",
+    output: {
+      tab: { id: 1, windowId: 1, index: 0, title: "First", url: "https://example.test/first", active: true },
+      requested: { tabId: 1, index: 0, ordinal: 1, windowId: 1 }
+    },
+    metadata: { verification: "tab_activated", backgroundControl: true, nativeInput: false, hotkey: false }
+  });
 
   send({
     type: "capability.start",

@@ -301,11 +301,11 @@ try {
   const directClickResult = await waitFor(
     (event) =>
       event.type === "browserAction.result" &&
-      event.result?.action === "click" &&
-      event.result?.status === "succeeded" &&
-      event.result?.id !== extensionResult.result.id,
+      event.result?.id === directCommand.resultId,
     "direct click result"
   );
+  assertEqual(directClickResult.result.status, "succeeded", "direct click status");
+  assertEqual(directClickResult.result.action, "click", "direct click action");
   assertEqual(directClickResult.result.verification, "passed", "direct click verification");
 
 

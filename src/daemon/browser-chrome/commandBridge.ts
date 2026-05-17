@@ -1,6 +1,8 @@
 import type { CapabilityJobSummary } from "../../shared/protocol.js";
 
 export type BrowserChromeCommandName =
+  | "tab.list"
+  | "tab.activate"
   | "bookmark.list"
   | "bookmark.create"
   | "bookmark.update"
@@ -177,7 +179,9 @@ export function readBrowserChromeCommand(input: unknown): { command: BrowserChro
 }
 
 function isBrowserChromeCommandName(value: unknown): value is BrowserChromeCommandName {
-  return value === "bookmark.list" ||
+  return value === "tab.list" ||
+    value === "tab.activate" ||
+    value === "bookmark.list" ||
     value === "bookmark.create" ||
     value === "bookmark.update" ||
     value === "bookmark.remove" ||

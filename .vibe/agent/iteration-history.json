@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-37",
+  "currentIteration": "iter-38",
   "iterations": [
     {
       "id": "iter-1",
@@ -1147,6 +1147,29 @@
         "browser-action-prompt-planning": 0.86
       },
       "summary": "Iteration 37 added known-destination compound prompt decomposition. Browser Action now plans a conservative navigate-then-follow-up action for prompts such as opening Gmail and clicking the spam folder, while abstaining when the destination cannot be resolved. Focused prompt classification, Browser Action, real-use regression, lint, and diff checks passed."
+    },
+    {
+      "id": "iter-38",
+      "label": "Background Browser Chrome Control",
+      "startedAt": "2026-05-18T04:37:20.546+09:00",
+      "completedAt": "2026-05-18T04:43:15.840+09:00",
+      "goal": "Use vibe-iterate to route supported browser chrome controls through background Browser Chrome commands, starting with ordinal tab activation instead of OS hotkeys.",
+      "plannedSprints": [
+        "iter-38-sprint-01-background-browser-chrome-control"
+      ],
+      "completedSprints": [
+        "iter-38-sprint-01-background-browser-chrome-control"
+      ],
+      "carryover": "Iteration 37 fixed multi-step prompt decomposition. Real-use testing still showed browser chrome controls such as first-tab switching should avoid OS/global-hotkey paths and use background browser control where available.",
+      "openRisks": [
+        "Extension/background Chrome APIs may be unavailable if the browser extension is disconnected or lacks required permissions.",
+        "This iteration should not expand into arbitrary desktop automation or unsupported browser chrome mutation."
+      ],
+      "milestoneProgress": {
+        "browser-action-end-to-end-control": 0.94,
+        "browser-chrome-background-control": 0.86
+      },
+      "summary": "Iteration 38 added background Browser Chrome tab activation. Prompt routing now maps ordinal tab-switch requests to Browser Chrome tab.activate, the extension executes them with Chrome tabs APIs and no native hotkey/pointer input, capability safety recognizes tab.list as read-only and tab.activate as side-effecting, and focused Browser Chrome, extension, Browser Action, lint, parity, and diff checks passed."
     }
   ]
 }
