@@ -1,0 +1,12 @@
+{
+  "mode": "iterate",
+  "iterationId": "iter-36",
+  "createdAt": "2026-05-18T04:23:04.203+09:00",
+  "carryover": "Iteration 35 made debug feedback and audit correlation reliable. The next real-use blocker is the explicit-navigation false negative: Chrome tab navigation can complete and reach the requested URL, but Browser Bridge currently reports failure when the full changed DOM observation is not captured in time.",
+  "confirmedDecisions": [
+    "Only explicit navigate-to-URL commands should use lightweight tab-state proof as a success finalizer.",
+    "History navigation such as back/forward must not be loosened by this sprint because a URL change alone may be the wrong user-visible destination.",
+    "The proof must preserve metadata that full DOM observation was unavailable so later diagnostics can distinguish lightweight from DOM-backed verification."
+  ],
+  "newGoal": "Finalize explicit Browser Action navigation success when the active tab reaches the requested URL even if the changed DOM after-observation is unavailable."
+}

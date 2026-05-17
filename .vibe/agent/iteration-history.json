@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-35",
+  "currentIteration": "iter-36",
   "iterations": [
     {
       "id": "iter-1",
@@ -1101,6 +1101,29 @@
         "semantic-memory-generalization": 0.86
       },
       "summary": "Iteration 35 added debug feedback outcome labels, guarded Semantic Memory correction writes so success/UX notes do not become avoid_target edges, stored prompt request/message ids in eval metrics, made real-use audit ranges timezone-safe and request-id-first, and retried mutating Browser Perception observe results before side-effect execution."
+    },
+    {
+      "id": "iter-36",
+      "label": "Browser Action Navigation Verifier Finalization",
+      "startedAt": "2026-05-18T04:23:04.203+09:00",
+      "completedAt": "2026-05-18T04:26:39.458+09:00",
+      "goal": "Use vibe-iterate to close the explicit Browser Action navigation false-negative path: when Chrome tab navigation reaches the requested URL but full DOM after-observation is unavailable, finalize with a lightweight tab-state proof instead of marking the run failed.",
+      "plannedSprints": [
+        "iter-36-sprint-01-navigation-verifier-finalization"
+      ],
+      "completedSprints": [
+        "iter-36-sprint-01-navigation-verifier-finalization"
+      ],
+      "carryover": "The 2026-05-18 KST real-use session included `특갤 열어줘` false-negative feedback: the browser reached the intended destination, but the extension returned `Browser tab navigation completed, but the changed page observation was not captured.`",
+      "openRisks": [
+        "This iteration intentionally does not loosen back/forward verification because a URL change alone can be user-visible wrong navigation.",
+        "Full DOM after-observation remains preferred; lightweight tab-state proof is a fallback for explicit requested URL navigation only."
+      ],
+      "milestoneProgress": {
+        "browser-action-end-to-end-control": 0.92,
+        "browser-perception-interface": 1
+      },
+      "summary": "Iteration 36 added a Browser Bridge explicit-navigate finalizer that accepts lightweight Chrome tab-state proof only when the active tab reaches the requested destination URL and full DOM after-observation is unavailable. Extension and Browser Action real-use smokes cover destination matching, mismatch rejection, and no loosening for history navigation."
     }
   ]
 }

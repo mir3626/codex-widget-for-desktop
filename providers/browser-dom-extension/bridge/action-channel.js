@@ -383,6 +383,21 @@ async function executeTabNavigationAction(tab, action) {
     }
     const after = await readPostActionSnapshot(tab.id, action, before);
     if (requiresChangedNavigationObservation(action, before) && !hasChangedNavigationObservation(before, after)) {
+      const lightweightAfter = await readLightweightNavigateCompletionSnapshot(tab.id, action, before);
+      if (lightweightAfter) {
+        return {
+          ok: true,
+          after: lightweightAfter,
+          metadata: {
+            tabNavigation: true,
+            method: readTabNavigationMethod(action.type),
+            tabId: tab.id,
+            lightweightNavigationProof: true,
+            staleNavigationObservation: true,
+            domObservationCaptured: false
+          }
+        };
+      }
       return {
         ok: false,
         error: "Browser tab navigation completed, but the changed page observation was not captured.",
@@ -528,6 +543,14 @@ async function readPostActionSnapshot(tabId, action, fallback) {
   return latest ?? fallback ?? await safeReadSnapshotFromTab(tabId);
 }
 
+async function readLightweightNavigateCompletionSnapshot(tabId, action, before) {
+  const latestTab = await safeReadTab(tabId);
+  if (!shouldAcceptLightweightNavigateCompletion(action, before, latestTab)) {
+    return null;
+  }
+  return readLightweightTabSnapshot(latestTab, "tab_navigation_after_lightweight");
+}
+
 function readPostActionSnapshotAttempts(action) {
   if (["back", "forward", "navigate", "reload"].includes(action?.type)) {
     return 10;
@@ -557,6 +580,40 @@ function requiresChangedNavigationObservation(action, before) {
     return Boolean(action.url) && normalizeUrlForSource(action.url) !== normalizeUrlForSource(before?.url);
   }
   return ["back", "forward"].includes(action?.type);
+}
+
+export function shouldAcceptLightweightNavigateCompletion(action, before, latestTab) {
+  if (action?.type !== "navigate" || !action.url || !latestTab?.url) {
+    return false;
+  }
+  if (!navigationDestinationMatches(action.url, latestTab.url)) {
+    return false;
+  }
+  return !before?.url || normalizeUrlForSource(before.url) !== normalizeUrlForSource(latestTab.url);
+}
+
+export function navigationDestinationMatches(requestedUrl, actualUrl) {
+  if (!requestedUrl || !actualUrl) {
+    return false;
+  }
+  try {
+    const requested = new URL(requestedUrl);
+    const actual = new URL(actualUrl);
+    requested.hash = "";
+    actual.hash = "";
+    if (requested.href === actual.href) {
+      return true;
+    }
+    if (requested.search) {
+      return requested.origin === actual.origin &&
+        normalizePathname(requested.pathname) === normalizePathname(actual.pathname) &&
+        requested.search === actual.search;
+    }
+    return requested.origin === actual.origin &&
+      normalizePathname(requested.pathname) === normalizePathname(actual.pathname);
+  } catch {
+    return normalizeUrlForSource(actualUrl).includes(normalizeUrlForSource(requestedUrl));
+  }
 }
 
 function hasChangedNavigationObservation(before, after) {
@@ -641,6 +698,10 @@ function normalizeUrlForSource(value) {
   } catch {
     return String(value || "").replace(/#.*$/, "");
   }
+}
+
+function normalizePathname(value) {
+  return String(value || "").replace(/\/+$/, "") || "/";
 }
 
 function createBridgeLatencyTrace(command) {

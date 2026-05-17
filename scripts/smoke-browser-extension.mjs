@@ -1,6 +1,10 @@
 import { readdir, readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
+import {
+  navigationDestinationMatches,
+  shouldAcceptLightweightNavigateCompletion
+} from "../providers/browser-dom-extension/bridge/action-channel.js";
 
 const extensionDir = path.resolve("providers/browser-dom-extension");
 const manifestPath = path.join(extensionDir, "manifest.json");
@@ -11,6 +15,7 @@ const popupPath = path.join(extensionDir, "popup.js");
 const packagePath = path.resolve("dist/providers/codex-widget-dom-extension-0.1.0.zip");
 
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+verifyLightweightNavigationFinalization();
 assertEqual(manifest.manifest_version, 3, "manifest_version");
 assertIncludes(manifest.permissions, "activeTab", "permissions");
 assertIncludes(manifest.permissions, "alarms", "permissions");
@@ -186,6 +191,43 @@ for (const entry of [
 }
 
 console.log(`browser bridge extension smoke ok: package entries=${packageEntries.length}`);
+
+function verifyLightweightNavigationFinalization() {
+  const before = {
+    url: "https://example.test/start",
+    title: "Before"
+  };
+  const reachedTab = {
+    id: 7,
+    windowId: 3,
+    url: "https://example.test/target?x=1#ignored",
+    title: "Target"
+  };
+  const mismatchedTab = {
+    ...reachedTab,
+    url: "https://example.test/other?x=1"
+  };
+  assertEqual(
+    navigationDestinationMatches("https://example.test/target?x=1", reachedTab.url),
+    true,
+    "explicit navigation destination hash-insensitive match"
+  );
+  assertEqual(
+    shouldAcceptLightweightNavigateCompletion({ type: "navigate", url: "https://example.test/target?x=1" }, before, reachedTab),
+    true,
+    "explicit navigation can finalize with matching tab-state proof"
+  );
+  assertEqual(
+    shouldAcceptLightweightNavigateCompletion({ type: "navigate", url: "https://example.test/target?x=1" }, before, mismatchedTab),
+    false,
+    "explicit navigation must reject mismatched tab-state proof"
+  );
+  assertEqual(
+    shouldAcceptLightweightNavigateCompletion({ type: "back" }, before, reachedTab),
+    false,
+    "history navigation must not be finalized by lightweight URL change alone"
+  );
+}
 
 function assertEqual(actual, expected, label) {
   if (actual !== expected) {

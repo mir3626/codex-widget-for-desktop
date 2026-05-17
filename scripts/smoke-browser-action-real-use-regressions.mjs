@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createStorageService } from "../dist/daemon/storage/storage.js";
+import { BrowserActionSessionManager } from "../dist/daemon/browser-action/index.js";
 import {
   recordPromptBrowserActionEvalCheckpoint,
   recordPromptBrowserActionTimingSummary
@@ -86,6 +87,8 @@ try {
   const activities = storage.readLedgerSnapshot(session.id).activities;
   assert.equal(activities.some((activity) => activity.category === "browser-action" && activity.summary === "Browser Action timing summary"), true);
 
+  await verifyLightweightNavigateCompletion();
+
   console.log("browser action real-use regressions smoke ok");
 } finally {
   storage.close();
@@ -108,6 +111,66 @@ function createPlan(status) {
       resultId: "browser-result-real-use-smoke"
     }]
   };
+}
+
+async function verifyLightweightNavigateCompletion() {
+  const manager = new BrowserActionSessionManager();
+  const session = manager.start({
+    id: "browser-action-navigation-finalization-smoke",
+    mode: "auto_safe_actions",
+    source: { kind: "active_tab", url: "https://example.test/start", title: "Start" }
+  });
+  const before = {
+    url: "https://example.test/start",
+    title: "Start",
+    readyState: "complete",
+    text: "Start page",
+    elements: [],
+    bridge: {
+      tabId: 7,
+      windowId: 3,
+      url: "https://example.test/start",
+      title: "Start",
+      permission: "allowed"
+    }
+  };
+  manager.observe({ actionSessionId: session.id, snapshot: before });
+  const execution = await manager.execute({
+    actionSessionId: session.id,
+    snapshot: before,
+    action: { type: "navigate", url: "https://example.test/target?x=1" },
+    expected: [{ type: "navigation_complete" }],
+    approved: true
+  });
+  assert.equal(execution.command?.action.type, "navigate", "navigate action should queue extension command");
+  const completed = manager.completeExtensionCommand({
+    requestId: execution.command.requestId,
+    adapterId: "extension",
+    ok: true,
+    after: {
+      url: "https://example.test/target?x=1",
+      title: "Target",
+      readyState: "complete",
+      text: "",
+      elements: [],
+      bridge: {
+        reason: "tab_navigation_after_lightweight",
+        tabId: 7,
+        windowId: 3,
+        url: "https://example.test/target?x=1",
+        title: "Target",
+        permission: "allowed"
+      }
+    },
+    metadata: {
+      tabNavigation: true,
+      lightweightNavigationProof: true,
+      domObservationCaptured: false
+    }
+  });
+  assert.equal(completed.result.status, "succeeded", "lightweight explicit navigation proof should succeed");
+  assert.equal(completed.result.verification.status, "passed", "lightweight explicit navigation proof should pass verification");
+  assert.match(completed.result.verification.reason, /requested navigation|route|URL/i);
 }
 
 function createResult(status) {
