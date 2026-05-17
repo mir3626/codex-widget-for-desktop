@@ -22,6 +22,8 @@ Changed in this continuation:
 - Renderer Computer Use profile tooling now shows credential lease/redaction
   evidence and allows only one-time expiring credential consent drafts; unsafe
   persistent or lease-less credential profiles remain blocked.
+- Aligned a stale Browser Action smoke expectation with the current no-plan
+  policy for malformed URL-less Korean navigation prompts.
 - Added `docs/plans/computer-use-implementation-ready-parity.md` to document
   local contract scope and deferred VM/cloud plus ASR user-test work.
 - Added `npm run audit:computer-use-implementation-ready`, which reports
@@ -40,6 +42,8 @@ Verification passed:
 - `npm run audit:computer-use-parity`
   (`implemented_with_guarded_boundaries`, passed=61, guarded=7, blocked=0,
   missing=0)
+- `npm run smoke:browser-action`
+- `npm run smoke:all`
 
 Remaining boundaries:
 

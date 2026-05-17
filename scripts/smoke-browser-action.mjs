@@ -292,8 +292,8 @@ function verifyResolverAndSafety(snapshot) {
     throw new Error(`Korean website-open prompt should not be treated as representative content: ${JSON.stringify(googleOpenPrompt)}`);
   }
   const urlLessMovePrompt = planBrowserActionFromPrompt({ text: "특이저 ㅁ 갤러리로 이동해줘", mode: "browser" });
-  if (!urlLessMovePrompt || urlLessMovePrompt.steps[0].action.type !== "navigate" || !urlLessMovePrompt.steps[0].action.url.startsWith("https://www.google.com/search?q=")) {
-    throw new Error(`URL-less target navigation should use safe search navigation instead of clicking the current page: ${JSON.stringify(urlLessMovePrompt)}`);
+  if (urlLessMovePrompt) {
+    throw new Error(`Malformed URL-less target navigation should abstain instead of clicking or searching: ${JSON.stringify(urlLessMovePrompt)}`);
   }
   const concept = resolveTarget({ graph, target: dcConceptPrompt.steps[0].action.target, hint: dcConceptPrompt.steps[0].targetSummary });
   assertEqual(concept.primary?.id, "concept-posts", "Korean concept posts target");
