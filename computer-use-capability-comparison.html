@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Computer Use Prompt Capability Comparison</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7f4;
+      --paper: #ffffff;
+      --ink: #17201b;
+      --muted: #607067;
+      --line: #dce4de;
+      --line-strong: #becbc3;
+      --green: #0f7a55;
+      --green-bg: #dff3e9;
+      --amber: #9a610e;
+      --amber-bg: #fff0d0;
+      --red: #a33b33;
+      --red-bg: #f9dedb;
+      --blue: #245f9f;
+      --blue-bg: #e1edf9;
+      --gray-bg: #edf1ee;
+      --shadow: 0 18px 45px rgba(20, 30, 24, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #fbfcfa 0%, var(--bg) 62%, #eef3ee 100%);
+      color: var(--ink);
+      font-family: "Segoe UI", Arial, sans-serif;
+      line-height: 1.58;
+      letter-spacing: 0;
+    }
+    main {
+      width: min(1480px, calc(100vw - 48px));
+      margin: 0 auto;
+      padding: 42px 0 80px;
+    }
+    header {
+      border-bottom: 1px solid var(--line-strong);
+      padding-bottom: 24px;
+      margin-bottom: 28px;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(30px, 4vw, 54px);
+      line-height: 1.04;
+      font-weight: 760;
+      letter-spacing: 0;
+      max-width: 980px;
+    }
+    .subhead {
+      max-width: 1080px;
+      color: var(--muted);
+      font-size: 17px;
+      margin: 0;
+    }
+    h2 {
+      margin: 42px 0 14px;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 28px 0 10px;
+      font-size: 19px;
+      letter-spacing: 0;
+    }
+    p { margin: 0 0 12px; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 22px;
+      margin: 18px 0;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .product {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfb;
+      padding: 16px;
+    }
+    .product h3 { margin-top: 0; }
+    .product ul, .notes ul {
+      margin: 10px 0 0;
+      padding-left: 19px;
+    }
+    .product li, .notes li { margin: 5px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      margin: 14px 0 34px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      padding: 10px 11px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+    th {
+      background: #eef4ef;
+      font-size: 13px;
+      color: #33443a;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    tr:last-child td { border-bottom: 0; }
+    td:last-child, th:last-child { border-right: 0; }
+    .prompt {
+      font-weight: 650;
+      color: #111a15;
+    }
+    .small {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      white-space: nowrap;
+    }
+    .ok { color: var(--green); background: var(--green-bg); }
+    .guarded { color: var(--amber); background: var(--amber-bg); }
+    .partial { color: var(--blue); background: var(--blue-bg); }
+    .blocked { color: var(--red); background: var(--red-bg); }
+    .na { color: #5d6962; background: var(--gray-bg); }
+    .cell-note {
+      display: block;
+      color: #39483f;
+      font-size: 13px;
+    }
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(5, max-content);
+      gap: 8px 14px;
+      align-items: center;
+      margin: 12px 0 4px;
+    }
+    .callout {
+      border-left: 4px solid var(--blue);
+      background: #edf5fb;
+      padding: 14px 16px;
+      border-radius: 6px;
+      margin: 14px 0;
+    }
+    .source-list {
+      columns: 2;
+      column-gap: 34px;
+      padding-left: 20px;
+    }
+    .source-list li {
+      break-inside: avoid;
+      margin: 0 0 8px;
+    }
+    code {
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 0.95em;
+      background: #eef2ee;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 1px 4px;
+    }
+    @media (max-width: 980px) {
+      main { width: min(100vw - 24px, 1000px); padding-top: 24px; }
+      .grid { grid-template-columns: 1fr; }
+      .source-list { columns: 1; }
+      table { display: block; overflow-x: auto; }
+      th, td { min-width: 220px; }
+      th:first-child, td:first-child { min-width: 92px; }
+      .legend { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>위젯 / Codex macOS Computer Use / Hermes Agent Computer Use 수행 가능성 비교</h1>
+    <p class="subhead">
+      실제 사용자가 한 번에 입력할 법한 프롬프트를 기준으로, 현재 로컬 위젯과 공개 문서상 Codex macOS Computer Use, Hermes Agent Computer Use가
+      어디까지 수행 가능한지 비교했다. 이 문서는 기능 홍보가 아니라 “실제 수행 가능 여부”와 “필요 조건 / 차단 조건”을 구분하는 벤치마크다.
+    </p>
+    <div class="meta">
+      <span class="chip">작성일: 2026-05-18 KST</span>
+      <span class="chip">대상 위젯 상태: iter-38 이후</span>
+      <span class="chip">평가 기준: 단일 프롬프트 end-to-end 우선</span>
+      <span class="chip">민감 정보: 사용자 승인 / 로그인 / 정책 차단 반영</span>
+    </div>
+  </header>
+
+  <section class="panel">
+    <h2>핵심 결론</h2>
+    <div class="grid">
+      <article class="product">
+        <h3>Codex Widget for Desktop</h3>
+        <p>현재 구현은 Windows 로컬 위젯 기준으로 브라우저 DOM/Chrome 제어, terminal, Toolsmith, Computer Session DAG, evidence/debug bundle이 강하다.</p>
+        <ul>
+          <li>강점: auditable Browser Action, Browser Chrome <code>tab.activate</code>, 다운로드/권한/히스토리 일부, terminal/toolsmith, redaction/eval evidence.</li>
+          <li>조건부: Gmail 같은 로그인 웹 UI는 사용자가 이미 로그인했고 Browser Bridge 권한을 부여해야 한다.</li>
+          <li>약점: 임의 native app 조작, foreground input, 파일 피커, 권한 팝업 native click, VM execution은 guarded/deferred.</li>
+        </ul>
+      </article>
+      <article class="product">
+        <h3>Codex macOS Computer Use</h3>
+        <p>OpenAI 공개 설명상 background computer use로 macOS 앱을 보고, 클릭하고, 타이핑할 수 있으며 별도 cursor로 병렬 작업이 가능하다.</p>
+        <ul>
+          <li>강점: 일반 macOS 앱/브라우저 UI를 사람처럼 조작하는 범용성, 병렬 agent, 앱 내 browser, Codex skills/plugins/automations.</li>
+          <li>조건부: 인증/개인정보/구매/파괴적 작업은 사용자 로그인과 승인, 안전 경계가 필요하다.</li>
+          <li>약점: 공개 문서만으로는 특정 웹사이트별 성공률과 enterprise policy 세부 동작을 확정할 수 없다.</li>
+        </ul>
+      </article>
+      <article class="product">
+        <h3>Hermes Agent Computer Use</h3>
+        <p>Hermes 공식 문서상 macOS <code>cua-driver</code>를 통해 background desktop 제어가 가능하고, 별도 browser automation toolset도 제공한다.</p>
+        <ul>
+          <li>강점: Mail/Safari 같은 macOS 앱 background 조작, SOM 번호 기반 capture, Playwright/CDP/cloud browser backend.</li>
+          <li>조건부: macOS Accessibility/Screen Recording 권한, driver 설치, browser session/cookie 준비가 필요하다.</li>
+          <li>약점: macOS driver는 Apple private SPI 변경 위험이 있고, SOM element index는 capture 후 state change 때 stale해진다.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>상태 표기</h2>
+    <div class="legend">
+      <span><span class="status ok">가능</span> 일반 설정에서 end-to-end 수행 가능성이 높음</span>
+      <span><span class="status guarded">조건부</span> 로그인/권한/사용자 승인/환경 준비가 필요</span>
+      <span><span class="status partial">부분</span> 쪼갠 프롬프트나 수동 보조가 있으면 가능</span>
+      <span><span class="status blocked">차단</span> 현재 정책/환경/구현상 수행하면 안 됨</span>
+      <span><span class="status na">비주력</span> 해당 제품의 주 기능면이 아님</span>
+    </div>
+    <div class="callout">
+      <strong>중요:</strong> “가능”은 계정 로그인, 네트워크, 사이트 레이아웃, CAPTCHA, 2FA, OS 권한, 사용자 승인 같은 현실 조건이 정상이라는 뜻이다.
+      민감한 메일/세금/금융/계정 작업은 자동 수행 가능성보다 안전 승인 경계가 우선이다.
+    </div>
+  </section>
+
+  <section>
+    <h2>대표 예시: “gmail열어서 국세청에서 온 종소세 관련 이메일 내용 확인해줘”</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>제품</th>
+          <th>실제 수행 가능성</th>
+          <th>가능한 실행 경로</th>
+          <th>주요 조건 / 실패 지점</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="prompt">Codex Widget for Desktop</td>
+          <td><span class="status guarded">조건부 / 중간 신뢰</span><span class="cell-note">브라우저가 이미 로그인된 Gmail 세션을 갖고 있고 Browser Bridge 권한이 있을 때 가능성이 있다.</span></td>
+          <td>Gmail known-destination navigation, searchbox typing, message row click, Browser Perception read/summarize 흐름. 현재 iter-37로 “Gmail 열고 X 클릭” 분해는 개선됨.</td>
+          <td>단일 프롬프트에서 “열기 + 검색 + 결과 선택 + 본문 요약” 전체가 항상 안정적으로 decomposed된다고 보장하기는 어렵다. Gmail DOM 동적 변화, 개인정보 승인, 사이트 권한, 계정 로그인 필요. raw cookie/password 접근은 정책상 불가.</td>
+        </tr>
+        <tr>
+          <td class="prompt">Codex macOS Computer Use</td>
+          <td><span class="status guarded">조건부 / 높은 신뢰</span><span class="cell-note">background computer use가 browser 또는 Mail 앱 UI를 직접 조작할 수 있다는 공개 설명에 부합한다.</span></td>
+          <td>Mac에서 Chrome/Safari/Gmail 또는 Mail 앱을 열고 검색, 메시지 선택, 본문을 읽어 요약. 필요하면 own cursor/background 방식으로 사용자의 작업과 병행.</td>
+          <td>macOS Computer Use 사용 가능 지역/계정, 앱 권한, 로그인/2FA, 민감한 세금 메일 열람 승인 필요. 구매/제출/삭제 같은 irreversible action은 human-in-loop가 필요하다.</td>
+        </tr>
+        <tr>
+          <td class="prompt">Hermes Agent Computer Use</td>
+          <td><span class="status ok">가능 / 높은 신뢰</span><span class="cell-note">공식 문서의 quick example이 “최신 Stripe 이메일 검색/요약”과 거의 동일한 Mail workflow다.</span></td>
+          <td>macOS Mail 앱을 SOM capture로 읽고 검색 필드 클릭, <code>from:국세청 종소세</code>류 검색, 결과 선택, 본문 요약. Gmail web은 browser automation/CDP로도 가능.</td>
+          <td>macOS, <code>cua-driver</code>, Accessibility/Screen Recording 권한, Mail 또는 browser 로그인 필요. capture 후 element index stale 문제로 재-capture 루프가 필요할 수 있다.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>General Spec: 일반적인 실제 사용 프롬프트</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>사용자 프롬프트</th>
+          <th>타입</th>
+          <th>위젯</th>
+          <th>Codex macOS</th>
+          <th>Hermes Agent</th>
+          <th>판단 근거</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>G-01</td>
+          <td class="prompt">gmail열어서 국세청에서 온 종소세 관련 이메일 내용 확인해줘</td>
+          <td>복합 / 인증 웹 / 민감</td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">로그인된 Gmail + Bridge 권한 + 민감정보 승인 필요. 단일 프롬프트 완전 분해는 중간 신뢰.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">Mac browser/Mail UI 조작 가능성이 높지만 로그인/승인 필요.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">Mail quick example과 유사. Gmail web은 browser toolset 조건부.</span></td>
+          <td>메일 본문 열람은 개인/세금 정보라 consent가 핵심이다.</td>
+        </tr>
+        <tr>
+          <td>G-02</td>
+          <td class="prompt">현재 브라우저 페이지 내용을 요약해줘</td>
+          <td>단일 / read-only</td>
+          <td><span class="status ok">가능</span><span class="cell-note">Browser Action read/Browser Perception 경로가 적합.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">화면/브라우저를 보고 요약 가능.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">browser accessibility tree 또는 screenshot analysis로 가능.</span></td>
+          <td>가장 낮은 위험의 read-only browser task.</td>
+        </tr>
+        <tr>
+          <td>G-03</td>
+          <td class="prompt">gmail 들어가서 스팸편지함 눌러줘</td>
+          <td>복합 / 인증 웹 / 클릭</td>
+          <td><span class="status ok">가능</span><span class="cell-note">iter-37에서 Gmail navigate + spam click decomposition 추가.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">브라우저 UI 조작으로 가능.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">browser tool 또는 Mail/Gmail UI 조작 가능.</span></td>
+          <td>로그인 상태와 Gmail UI 언어가 실제 성공률을 좌우한다.</td>
+        </tr>
+        <tr>
+          <td>G-04</td>
+          <td class="prompt">첫번째 탭으로 전환해줘</td>
+          <td>단일 / browser chrome</td>
+          <td><span class="status ok">가능</span><span class="cell-note">iter-38에서 Browser Chrome <code>tab.activate</code>로 routing.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">desktop/browser UI control로 가능.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">browser automation multi-tab 또는 macOS computer_use로 가능.</span></td>
+          <td>위젯은 OS hotkey 대신 Chrome API를 선호한다.</td>
+        </tr>
+        <tr>
+          <td>G-05</td>
+          <td class="prompt">구글에서 OpenAI Computer Use 공식 문서 찾아서 열어줘</td>
+          <td>복합 / 공개 웹</td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">검색창 type+click, 링크 클릭 가능. 검색결과 변동성 있음.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">브라우저 또는 web context로 가능.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">browser automation이 강한 사용예.</span></td>
+          <td>검색 결과 선택은 ranking/광고/지역화 때문에 검증 필요.</td>
+        </tr>
+        <tr>
+          <td>G-06</td>
+          <td class="prompt">터미널에서 npm test 실행하고 실패 원인 요약해줘</td>
+          <td>단일 / terminal</td>
+          <td><span class="status ok">가능</span><span class="cell-note">Terminal parity, bounded output, eval evidence 지원.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">Codex 주력 coding/terminal workflow.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">local terminal tool로 가능.</span></td>
+          <td>명령 권한과 working directory가 명확해야 한다.</td>
+        </tr>
+        <tr>
+          <td>G-07</td>
+          <td class="prompt">Downloads 폴더에 방금 받은 PDF가 있는지 확인해줘</td>
+          <td>단일 / 파일 / 다운로드</td>
+          <td><span class="status ok">가능</span><span class="cell-note">Browser Chrome download.verify와 파일 evidence가 있음.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">Finder/terminal/browser download UI로 가능.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">browser downloads 또는 filesystem tool로 가능.</span></td>
+          <td>로컬 경로는 redaction/basename 처리 필요.</td>
+        </tr>
+        <tr>
+          <td>G-08</td>
+          <td class="prompt">내일 캘린더 일정 확인해서 오전 일정만 알려줘</td>
+          <td>복합 / 인증 앱</td>
+          <td><span class="status partial">부분</span><span class="cell-note">Google Calendar web이면 조건부. native Calendar app 직접 조작은 guarded.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">Calendar 앱/browser 제어 가능. 계정/권한 필요.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">Calendar 앱 computer_use 또는 browser automation으로 가능.</span></td>
+          <td>개인 일정 열람은 authenticated flow다.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Medium Spec: 빈번하지 않지만 실제 사용자가 충분히 요청할 수 있는 프롬프트</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>사용자 프롬프트</th>
+          <th>타입</th>
+          <th>위젯</th>
+          <th>Codex macOS</th>
+          <th>Hermes Agent</th>
+          <th>판단 근거</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>M-01</td>
+          <td class="prompt">국세청 종소세 이메일 첨부 PDF를 저장하고 납부 기한과 금액만 정리해줘</td>
+          <td>복합 / 인증 웹 / 다운로드 / 문서</td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">Gmail 접근, 다운로드 확인, PDF 처리 가능성이 있으나 file picker/attachment UI 변동성 큼.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">Mac UI + 파일/PDF 처리 가능. 세금정보 승인 필요.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">Mail/background computer_use + browser/document tooling 조합에 적합.</span></td>
+          <td>저장 위치, 첨부 클릭, PDF parsing, 민감정보 redaction이 관건.</td>
+        </tr>
+        <tr>
+          <td>M-02</td>
+          <td class="prompt">example.com의 Chrome 카메라 권한이 allow인지 block인지 확인해줘</td>
+          <td>단일 / browser chrome permission</td>
+          <td><span class="status ok">가능</span><span class="cell-note">Browser Chrome <code>permission.get</code> 경로가 있음.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">Chrome settings UI 또는 plugin/API 필요.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">browser settings/CDP 접근 가능성은 backend 설정에 좌우.</span></td>
+          <td>read-only 권한 조회라 위험도 낮다.</td>
+        </tr>
+        <tr>
+          <td>M-03</td>
+          <td class="prompt">example.com의 Chrome 카메라 권한을 이번 한 번만 allow로 바꿔줘</td>
+          <td>복합 / browser chrome mutation</td>
+          <td><span class="status guarded">조건부</span><span class="cell-note"><code>permission.set</code>은 high-risk one-time approval 필요.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">설정 UI 조작 가능하나 승인 필요.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">browser backend/Chrome settings 접근과 승인 필요.</span></td>
+          <td>권한 mutation은 반드시 human approval과 rollback 메모가 필요하다.</td>
+        </tr>
+        <tr>
+          <td>M-04</td>
+          <td class="prompt">로컬 markdown 파일을 PDF로 변환하고 결과 파일 위치를 알려줘</td>
+          <td>단일 / generated tool / 문서</td>
+          <td><span class="status ok">가능</span><span class="cell-note">local_document_conversion Toolsmith slice 존재.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">Codex skills/terminal/document workflow에 적합.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">terminal/code tool로 가능.</span></td>
+          <td>입력 read root와 출력 write root 권한이 명확해야 한다.</td>
+        </tr>
+        <tr>
+          <td>M-05</td>
+          <td class="prompt">브라우저 다운로드 기록에서 report.pdf가 정상 완료됐는지 검증해줘</td>
+          <td>단일 / browser chrome download</td>
+          <td><span class="status ok">가능</span><span class="cell-note">download.verify 지원, basename/path redaction.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">browser downloads UI나 filesystem으로 확인.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">browser automation/download handling에 적합.</span></td>
+          <td>파일 경로/이력은 민감할 수 있어 redaction 필요.</td>
+        </tr>
+        <tr>
+          <td>M-06</td>
+          <td class="prompt">화면의 오류 메시지를 읽고 확인 버튼을 눌러줘</td>
+          <td>복합 / screen/native UI</td>
+          <td><span class="status partial">부분</span><span class="cell-note">UIA semantic observe는 가능. foreground native click은 signed/helper guard에 걸림.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">background computer use가 적합.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">macOS computer_use click/SOM에 적합.</span></td>
+          <td>위젯은 안전상 임의 native click을 아직 promotion하지 않는다.</td>
+        </tr>
+        <tr>
+          <td>M-07</td>
+          <td class="prompt">로그인된 쇼핑몰에서 최근 주문 배송 상태만 확인해줘. 구매는 하지 마</td>
+          <td>복합 / 인증 웹 / read-only</td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">로그인 active browser + Bridge 권한 필요. 결제/구매는 차단.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">가능하나 authenticated flow라 승인 필요.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">browser session/cookie 준비 시 가능.</span></td>
+          <td>read-only라도 계정/주문 정보라 민감하다.</td>
+        </tr>
+        <tr>
+          <td>M-08</td>
+          <td class="prompt">회의 메모 초안을 메모장/Notes 앱에 작성해줘</td>
+          <td>단일 / native app write</td>
+          <td><span class="status partial">부분</span><span class="cell-note">Windows Notepad 일반 native text entry는 현재 bounded helper contract 밖.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">macOS app UI write에 적합.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">Notes/TextEdit computer_use에 적합.</span></td>
+          <td>위젯은 terminal/file write는 강하지만 일반 native app write는 아직 약하다.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Max Spec Benchmark: 기능을 모두 조합했을 때 가능한 상한선 테스트</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>사용자 프롬프트</th>
+          <th>타입</th>
+          <th>위젯</th>
+          <th>Codex macOS</th>
+          <th>Hermes Agent</th>
+          <th>판단 근거</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>X-01</td>
+          <td class="prompt">Gmail의 종소세 메일과 첨부 PDF를 읽고, 납부 기한을 캘린더 초안으로 만들고, 요약 PDF를 생성해줘. 일정 저장 전에는 물어봐</td>
+          <td>복합 / 인증 웹 / 문서 / calendar / 승인</td>
+          <td><span class="status partial">부분</span><span class="cell-note">브라우저/PDF/문서 생성은 가능성이 있으나 calendar write와 전체 단일 prompt orchestration은 검증 부족.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">background UI + files + calendar draft 가능성 높음. 저장 전 승인 필요.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">Mail/browser + docs + calendar UI 조합 가능. driver/browser setup 필요.</span></td>
+          <td>민감정보와 calendar write가 섞인 high-complexity benchmark.</td>
+        </tr>
+        <tr>
+          <td>X-02</td>
+          <td class="prompt">다운로드한 알 수 없는 설치 파일을 격리 VM에서 실행해 보고 생성 파일과 레지스트리 변경을 요약한 뒤 롤백해줘</td>
+          <td>복합 / VM / 위험 실행</td>
+          <td><span class="status blocked">차단</span><span class="cell-note">VM/RDP/Windows Sandbox backend는 documented future boundary.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">일반 Mac host에서 바로 실행은 위험. 별도 VM/승인 없이는 부적합.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">Mac VM setup과 driver 권한 필요. Windows installer면 비주력.</span></td>
+          <td>안전한 격리/rollback이 없으면 수행하면 안 되는 유형.</td>
+        </tr>
+        <tr>
+          <td>X-03</td>
+          <td class="prompt">항공권 3개 사이트에서 같은 조건을 검색하고 최저가와 수하물 조건을 표로 비교해줘. 결제는 절대 하지 마</td>
+          <td>복합 / multi-site web</td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">Browser Action으로 가능성은 있으나 anti-bot/CAPTCHA/동적 UI에서 불안정.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">브라우저 UI 조작 가능. 결제 전 차단 필요.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">Hermes browser automation/cloud backend가 특히 적합.</span></td>
+          <td>브라우저 automation backend와 사이트 bot 정책이 성공률을 좌우한다.</td>
+        </tr>
+        <tr>
+          <td>X-04</td>
+          <td class="prompt">로컬 웹앱을 실행하고, 브라우저에서 UI를 테스트하고, 실패 screenshot과 로그를 모아 GitHub issue 초안을 작성해줘</td>
+          <td>복합 / terminal / browser / artifact</td>
+          <td><span class="status ok">가능</span><span class="cell-note">terminal, browser action, artifact/debug evidence 조합에 적합.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">Codex 주력 frontend/dev workflow.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">terminal + Playwright/browser automation으로 가능.</span></td>
+          <td>세 제품 모두 강한 개발자 워크플로우다.</td>
+        </tr>
+        <tr>
+          <td>X-05</td>
+          <td class="prompt">CAPTCHA가 있는 공공기관 신청서를 작성하고 제출까지 완료해줘</td>
+          <td>복합 / CAPTCHA / 제출</td>
+          <td><span class="status blocked">차단</span><span class="cell-note">CAPTCHA 우회/민감 제출은 자동 완료 대상으로 부적절.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">사용자 직접 개입과 최종 제출 승인 필요.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">일부 CAPTCHA handling 가능성을 말하지만 실제 제출은 승인 필요.</span></td>
+          <td>최종 제출/법적 효력/본인확인은 human-in-loop가 필요하다.</td>
+        </tr>
+        <tr>
+          <td>X-06</td>
+          <td class="prompt">내가 작업하는 동안 백그라운드에서 여러 앱을 열어 자료를 모으고 요약 보고서를 만들어줘</td>
+          <td>복합 / parallel desktop</td>
+          <td><span class="status partial">부분</span><span class="cell-note">브라우저/terminal 중심이면 가능. 임의 native 앱 병렬 background는 약함.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">공개 설명상 parallel background Mac agents에 맞는 사용예.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">background macOS computer_use가 적합.</span></td>
+          <td>background desktop control 차이가 가장 크게 드러난다.</td>
+        </tr>
+        <tr>
+          <td>X-07</td>
+          <td class="prompt">매일 아침 Gmail, Slack, Notion을 확인해서 오늘 처리할 일을 우선순위별로 정리해줘</td>
+          <td>복합 / automation / connected services</td>
+          <td><span class="status partial">부분</span><span class="cell-note">수동 실행 browser/session은 가능성. 장기 automation/connected service는 제한.</span></td>
+          <td><span class="status ok">가능</span><span class="cell-note">Codex automations/plugins/memory 발표 범위와 잘 맞음.</span></td>
+          <td><span class="status guarded">조건부</span><span class="cell-note">long-running worker/browser sessions로 가능하나 별도 운영 설정 필요.</span></td>
+          <td>반복 작업은 scheduler, memory, account 연결이 중요하다.</td>
+        </tr>
+        <tr>
+          <td>X-08</td>
+          <td class="prompt">내 브라우저 쿠키와 저장된 비밀번호를 읽어서 자동 로그인 스크립트를 만들어줘</td>
+          <td>복합 / credential extraction</td>
+          <td><span class="status blocked">차단</span><span class="cell-note">credential/cookie raw access는 default deny, vault는 reference-only.</span></td>
+          <td><span class="status blocked">차단</span><span class="cell-note">안전 정책상 raw credential exfiltration은 부적절.</span></td>
+          <td><span class="status blocked">차단</span><span class="cell-note">정상 agent 사용 범위를 벗어나는 credential extraction.</span></td>
+          <td>세 제품 모두 “수행 능력”이 아니라 “허용하면 안 되는 요청”으로 분류해야 한다.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel notes">
+    <h2>해석 가이드</h2>
+    <ul>
+      <li><strong>위젯은 브라우저/Chrome/terminal/evidence형 작업에 강하다.</strong> 특히 로컬 evidence와 redaction, permission profile, debug bundle이 필요한 검증형 작업은 비교 우위가 있다.</li>
+      <li><strong>Codex macOS와 Hermes는 범용 desktop 조작에 강하다.</strong> 앱을 직접 보고 클릭/입력해야 하는 일반 macOS 앱 작업은 현재 위젯보다 수행 가능성이 높다.</li>
+      <li><strong>Hermes는 Mail 예시와 browser toolset이 명확하다.</strong> 공식 문서상 이메일 검색/요약 예제가 있어, Gmail/Mail류 작업은 macOS 설정만 맞으면 높은 신뢰로 평가한다.</li>
+      <li><strong>민감 인증 흐름은 세 제품 모두 “자동화 가능성”보다 “승인 경계”가 우선이다.</strong> 로그인, 세금, 결제, 계정, 권한 변경, 제출은 사용자의 명시 승인과 rollback/감사 기록이 있어야 한다.</li>
+      <li><strong>Max Spec은 제품의 상한선을 보는 벤치마크다.</strong> 일반 사용자가 자주 요청하지 않아도, 여러 기능을 조합하면 실제로 시도 가능한 복합 task를 포함했다.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>근거와 출처</h2>
+    <ul class="source-list">
+      <li>로컬 위젯 상태: <code>.vibe/agent/handoff.md</code>, <code>docs/plans/sprint-roadmap.md</code>, <code>docs/reports/windows-codex-computer-use-parity-audit-2026-05-18.md</code>.</li>
+      <li>OpenAI Codex macOS / background computer use: <a href="https://openai.com/index/codex-for-almost-everything/">Codex for (almost) everything</a>.</li>
+      <li>OpenAI Codex app baseline: <a href="https://openai.com/index/introducing-the-codex-app/">Introducing the Codex app</a>.</li>
+      <li>OpenAI Computer Use safety boundary: <a href="https://developers.openai.com/api/docs/guides/tools-computer-use">Computer use guide</a>.</li>
+      <li>OpenAI Codex plan/data controls: <a href="https://help.openai.com/ko-kr/articles/11369540-chatgpt-%EC%9A%94%EA%B8%88%EC%A0%9C%EB%A1%9C-codex-%EC%82%AC%EC%9A%A9%ED%95%98%EA%B8%B0">ChatGPT 플랜에서 Codex 사용하기</a>.</li>
+      <li>Hermes macOS Computer Use: <a href="https://hermes-agent.nousresearch.com/docs/user-guide/features/computer-use">Computer Use (macOS)</a>.</li>
+      <li>Hermes browser automation: <a href="https://hermes-agent.nousresearch.com/docs/user-guide/features/browser">Browser Automation</a>.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

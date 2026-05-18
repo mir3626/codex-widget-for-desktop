@@ -6,11 +6,41 @@ Codex Widget for Desktop is a Tauri + React + Node daemon desktop widget. The
 daemon listens on `127.0.0.1:4128`; the renderer is served by Vite in dev.
 
 The latest completed product work is background Browser Chrome tab control
-through `iter-38`. Active sprint pointer is idle. Current active roadmap file is
-compacted to the current iteration only; historical roadmaps live under
-`docs/plans/archive/roadmaps/`.
+through `iter-38`. The latest report work is
+`computer-use-capability-comparison.html`, a root-level Korean HTML comparison
+of widget/Codex macOS/Hermes Agent Computer Use prompt capability. Active sprint
+pointer is idle. Current active roadmap file is compacted to the current
+iteration only; historical roadmaps live under `docs/plans/archive/roadmaps/`.
 
-## Latest Update: Background Browser Chrome Control
+## Latest Update: Computer Use Prompt Capability Comparison Report
+
+Created `computer-use-capability-comparison.html` in the repository root.
+
+Covered:
+
+- Representative prompt: `gmail열어서 국세청에서 온 종소세 관련 이메일 내용 확인해줘`.
+- General Spec prompts for common everyday Computer Use requests.
+- Medium Spec prompts for less frequent but realistic user requests.
+- Max Spec Benchmark prompts that combine implemented boundaries into upper-end
+  capability tests.
+- Per-prompt feasibility for the local widget, Codex macOS Computer Use, and
+  Hermes Agent Computer Use with guarded/auth/destructive-flow notes.
+
+Grounding:
+
+- Local widget status is based on current parity and implementation-ready
+  ledgers plus iter-37/iter-38 Browser Action and Browser Chrome behavior.
+- Codex macOS and Hermes Agent status is based on current public product
+  documentation checked during the report slice.
+
+Verification passed:
+
+- HTML report content sanity check
+- `git diff --check`
+- Strict UTF-8 read and mojibake scan over changed/new text files
+- No `.cs` files touched
+
+## Previous Update: Background Browser Chrome Control
 
 Completed `$vibe-iterate` iteration `iter-38`.
 
