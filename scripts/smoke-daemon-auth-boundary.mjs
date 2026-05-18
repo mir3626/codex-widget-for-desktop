@@ -11,7 +11,9 @@ const daemon = await startDaemon({ port: 0 });
 const baseUrl = `http://127.0.0.1:${daemon.port}`;
 const trustedOrigin = "http://127.0.0.1:5173";
 const maliciousOrigin = "https://malicious.example";
-const extensionOrigin = "chrome-extension://abcdefghijklmnopabcdefghijklmnop";
+const extensionRuntimeId = "abcdefghijklmnopabcdefghijklmnop";
+const extensionOrigin = `chrome-extension://${extensionRuntimeId}`;
+const otherExtensionOrigin = "chrome-extension://ponmlkjihgfedcbaponmlkjihgfedcba";
 
 try {
   const deniedHandshake = await fetchRaw("/daemon/auth/handshake", {
@@ -43,12 +45,22 @@ try {
   assert.equal(deniedExtensionScreenSnapshot.status, 403);
 
   const allowedExtensionHeartbeat = await postRaw("/browser-action/extension/heartbeat", {
+    extensionRuntimeId,
     connected: true,
     mode: "idle",
     updatedAt: new Date().toISOString(),
     activeTab: { permission: "allowed" }
   }, { Origin: extensionOrigin });
   assert.equal(allowedExtensionHeartbeat.status, 200);
+
+  const deniedOtherExtensionHeartbeat = await postRaw("/browser-action/extension/heartbeat", {
+    extensionRuntimeId: "ponmlkjihgfedcbaponmlkjihgfedcba",
+    connected: true,
+    mode: "idle",
+    updatedAt: new Date().toISOString(),
+    activeTab: { permission: "allowed" }
+  }, { Origin: otherExtensionOrigin });
+  assert.equal(deniedOtherExtensionHeartbeat.status, 403);
 
   const allowedExtensionDomSnapshot = await postRaw("/providers/dom/snapshot", {
     url: "https://example.test/extension-origin",
@@ -58,6 +70,15 @@ try {
     elements: []
   }, { Origin: extensionOrigin });
   assert.equal(allowedExtensionDomSnapshot.status, 200);
+
+  const deniedOtherExtensionDomSnapshot = await postRaw("/providers/dom/snapshot", {
+    url: "https://example.test/other-extension-origin",
+    title: "Other Extension Origin DOM",
+    readyState: "complete",
+    text: "other extension route scope",
+    elements: []
+  }, { Origin: otherExtensionOrigin });
+  assert.equal(deniedOtherExtensionDomSnapshot.status, 403);
 
   const allowedOptions = await fetchRaw("/computer-use/autonomy/profiles", {
     method: "OPTIONS",

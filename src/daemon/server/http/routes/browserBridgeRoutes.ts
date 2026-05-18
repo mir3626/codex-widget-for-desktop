@@ -16,6 +16,7 @@ import { recordBrowserActionAudit } from "../../browser-action/helpers.js";
 import { broadcastLedgerSnapshot } from "../../clientEvents.js";
 import { broadcast } from "../../events.js";
 import { readRequestBody, writeJsonResponse } from "../../http.js";
+import { isBrowserExtensionBridgeTrustError } from "../../browser-bridge/store.js";
 import { resolveClientSessionId } from "../../runtime/sessionIds.js";
 import type { HttpRouteContext } from "../context.js";
 
@@ -31,7 +32,7 @@ export async function handleBrowserBridgeRoute(
     try {
       const previous = browserExtensionBridge.snapshot();
       const payload = JSON.parse(await readRequestBody(request, 128 * 1024));
-      const status = browserExtensionBridge.update(payload);
+      const status = browserExtensionBridge.update(payload, { requestOrigin: readRequestOrigin(request) });
       if (browserBridgeActiveTabChanged(previous, status)) {
         browserPerception.markDirty(`bridge_active_tab_changed:${status.reason ?? "heartbeat"}`);
       }
@@ -39,22 +40,29 @@ export async function handleBrowserBridgeRoute(
       broadcast(clients, { type: "browserExtensionBridge.status", status });
       writeJsonResponse(response, 200, { ok: true, status });
     } catch (error) {
-      writeJsonResponse(response, 400, {
-        ok: false,
-        error: error instanceof Error ? error.message : "Invalid Browser Bridge heartbeat."
-      });
+      writeBrowserBridgeErrorResponse(response, error, "Invalid Browser Bridge heartbeat.");
     }
     return true;
   }
 
   if (request.method === "GET" && url.pathname === "/browser-action/extension/status") {
+    const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: false });
+    if (!trustDecision.ok) {
+      writeBrowserBridgeTrustDenied(response, trustDecision);
+      return true;
+    }
     writeJsonResponse(response, 200, { ok: true, status: browserExtensionBridge.snapshot() });
     return true;
   }
 
   if (request.method === "GET" && url.pathname === "/browser-action/extension/poll") {
+    const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true });
+    if (!trustDecision.ok) {
+      writeBrowserBridgeTrustDenied(response, trustDecision);
+      return true;
+    }
     const previous = browserExtensionBridge.snapshot();
-    const status = browserExtensionBridge.update(buildBrowserBridgePollStatus(url, previous));
+    const status = browserExtensionBridge.update(buildBrowserBridgePollStatus(url, previous), { requestOrigin: readRequestOrigin(request) });
     if (browserBridgeActiveTabChanged(previous, status)) {
       browserPerception.markDirty(`bridge_active_tab_changed:${status.reason ?? "poll"}`);
     }
@@ -72,6 +80,11 @@ export async function handleBrowserBridgeRoute(
 
   if (request.method === "POST" && url.pathname === "/browser-action/extension/ack") {
     try {
+      const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true });
+      if (!trustDecision.ok) {
+        writeBrowserBridgeTrustDenied(response, trustDecision);
+        return true;
+      }
       const ack = browserPerception.acknowledgeObserveCommand(JSON.parse(await readRequestBody(request, 128 * 1024)));
       writeJsonResponse(response, 200, { ok: true, ack });
     } catch (error) {
@@ -82,6 +95,11 @@ export async function handleBrowserBridgeRoute(
 
   if (request.method === "POST" && url.pathname === "/browser-action/extension/action-ack") {
     try {
+      const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true });
+      if (!trustDecision.ok) {
+        writeBrowserBridgeTrustDenied(response, trustDecision);
+        return true;
+      }
       const payload = JSON.parse(await readRequestBody(request, 128 * 1024)) as { requestId?: string };
       const requestId = typeof payload.requestId === "string" ? payload.requestId.trim() : "";
       if (!requestId) {
@@ -117,6 +135,11 @@ export async function handleBrowserBridgeRoute(
 
   if (request.method === "POST" && url.pathname === "/browser-action/extension/observe-result") {
     try {
+      const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true });
+      if (!trustDecision.ok) {
+        writeBrowserBridgeTrustDenied(response, trustDecision);
+        return true;
+      }
       const payload = JSON.parse(await readRequestBody(request, 1024 * 1024));
       const result = browserPerception.completeObserveResult({
         providers,
@@ -170,6 +193,11 @@ export async function handleBrowserBridgeRoute(
 
   if (request.method === "POST" && url.pathname === "/browser-action/extension/result") {
     try {
+      const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true });
+      if (!trustDecision.ok) {
+        writeBrowserBridgeTrustDenied(response, trustDecision);
+        return true;
+      }
       const payload = JSON.parse(await readRequestBody(request, 512 * 1024)) as BrowserActionExecutionResult;
       const completed = browserActions.completeExtensionCommand(payload);
       recordBrowserActionAudit(storage, completed.audit);
@@ -214,6 +242,11 @@ export async function handleBrowserBridgeRoute(
 
   if (request.method === "POST" && url.pathname === "/browser-action/extension/browser-chrome-result") {
     try {
+      const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true });
+      if (!trustDecision.ok) {
+        writeBrowserBridgeTrustDenied(response, trustDecision);
+        return true;
+      }
       const payload = JSON.parse(await readRequestBody(request, 512 * 1024)) as {
         requestId?: string;
         ok?: boolean;
@@ -253,12 +286,36 @@ function readDagNodeId(input: unknown): string | undefined {
 }
 
 function writeBrowserBridgeErrorResponse(response: ServerResponse, error: unknown, fallback: string): void {
+  if (isBrowserExtensionBridgeTrustError(error)) {
+    writeBrowserBridgeTrustDenied(response, {
+      status: error.status,
+      code: error.code,
+      error: error.message
+    });
+    return;
+  }
   const message = error instanceof Error ? error.message : fallback;
   if (isBrowserBridgeCommandCorrelationError(message)) {
     writeBrowserBridgeCommandConflict(response, message);
     return;
   }
   writeJsonResponse(response, 400, { ok: false, error: message });
+}
+
+function writeBrowserBridgeTrustDenied(response: ServerResponse, decision: { status: 403; code: string; error: string }): void {
+  writeJsonResponse(response, decision.status, {
+    ok: false,
+    code: decision.code,
+    error: decision.error
+  });
+}
+
+function readRequestOrigin(request: IncomingMessage): string | undefined {
+  const value = request.headers.origin;
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+  return typeof value === "string" ? value : undefined;
 }
 
 function writeBrowserBridgeCommandConflict(response: ServerResponse, error: string): void {

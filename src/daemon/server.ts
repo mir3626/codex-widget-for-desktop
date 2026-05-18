@@ -1,4 +1,5 @@
-import { createServer, type Server } from "node:http";
+import { createServer, type IncomingMessage, type Server } from "node:http";
+import type { Duplex } from "node:stream";
 import { WebSocketServer, WebSocket } from "ws";
 import type { AgentSessionState } from "./agent.js";
 import { CodexAppServerBridge } from "./codexAppServer.js";
@@ -246,16 +247,15 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
   server.on("upgrade", (request, socket, head) => {
     const authDecision = localAuth.authorizeWebSocketUpgrade(request);
     if (!authDecision.ok) {
-      const body = JSON.stringify({ ok: false, error: authDecision.error, code: authDecision.code });
-      socket.write([
-        `HTTP/1.1 ${authDecision.status} ${authDecision.error}`,
-        "Connection: close",
-        "Content-Type: application/json; charset=utf-8",
-        `Content-Length: ${Buffer.byteLength(body)}`,
-        "",
-        body
-      ].join("\r\n"));
-      socket.destroy();
+      rejectWebSocketUpgrade(socket, authDecision.status, authDecision.error, authDecision.code);
+      return;
+    }
+    const bridgeDecision = browserExtensionBridge.authorizeExtensionRequest({
+      requestOrigin: readRequestOrigin(request),
+      requireTrusted: true
+    });
+    if (!bridgeDecision.ok) {
+      rejectWebSocketUpgrade(socket, bridgeDecision.status, bridgeDecision.error, bridgeDecision.code);
       return;
     }
     wss.handleUpgrade(request, socket, head, (webSocket) => {
@@ -263,9 +263,10 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     });
   });
 
-  wss.on("connection", (socket) => {
+  wss.on("connection", (socket, request) => {
     handleWebSocketConnection({
       socket,
+      requestOrigin: readRequestOrigin(request),
       serverPort: getServerPort(server),
       startedAt,
       controllers,
@@ -341,6 +342,27 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
       }
     }
   };
+}
+
+function rejectWebSocketUpgrade(socket: Duplex, status: number, error: string, code: string): void {
+  const body = JSON.stringify({ ok: false, error, code });
+  socket.write([
+    `HTTP/1.1 ${status} ${error}`,
+    "Connection: close",
+    "Content-Type: application/json; charset=utf-8",
+    `Content-Length: ${Buffer.byteLength(body)}`,
+    "",
+    body
+  ].join("\r\n"));
+  socket.destroy();
+}
+
+function readRequestOrigin(request: IncomingMessage): string | undefined {
+  const value = request.headers.origin;
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+  return typeof value === "string" ? value : undefined;
 }
 
 function readComputerSessionBrowserAction(input: unknown): BrowserAction {

@@ -22,6 +22,15 @@ export async function handleProviderSnapshotRoute(
 
   if (request.method === "POST" && url.pathname === "/providers/dom/snapshot") {
     try {
+      const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true });
+      if (!trustDecision.ok) {
+        writeJsonResponse(response, trustDecision.status, {
+          ok: false,
+          code: trustDecision.code,
+          error: trustDecision.error
+        });
+        return true;
+      }
       const snapshot = providers.setDomSnapshot(JSON.parse(await readRequestBody(request, 1024 * 1024)));
       browserPerception.ingestProviderSnapshot({
         providers,
@@ -88,4 +97,12 @@ export async function handleProviderSnapshotRoute(
   }
 
   return false;
+}
+
+function readRequestOrigin(request: IncomingMessage): string | undefined {
+  const value = request.headers.origin;
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+  return typeof value === "string" ? value : undefined;
 }

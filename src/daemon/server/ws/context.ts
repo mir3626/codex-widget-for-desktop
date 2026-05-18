@@ -17,6 +17,7 @@ import type { RetainedMessage } from "../events.js";
 
 export type MessageRouterContext = {
   socket: WebSocket;
+  requestOrigin?: string;
   controllers: Map<string, AbortController>;
   retainedMessages: Map<string, RetainedMessage>;
   toolOutputBuffers: Map<string, Map<string, string>>;

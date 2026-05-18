@@ -187,6 +187,11 @@ export type ServerEvent =
       command: unknown;
     }
   | {
+      type: "browserBridge.error";
+      code: string;
+      error: string;
+    }
+  | {
       type: "browserAction.plan";
       actionSessionId: string;
       plan: unknown;

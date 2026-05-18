@@ -6,15 +6,54 @@ Codex Widget for Desktop is a Tauri + React + Node daemon desktop widget. The
 daemon listens on `127.0.0.1:4128`; the renderer is served by Vite in dev.
 
 The latest completed product work is post-iter-40 daemon transport hardening:
-Browser Bridge command-correlation hardening after extension-Origin route
-scoping, daemon auth cache recovery, and the auth/nonce/CORS hardening sprint.
+Browser Bridge enrolled-extension Origin hardening after command-correlation
+hardening, extension-Origin route scoping, daemon auth cache recovery, and the
+auth/nonce/CORS hardening sprint.
 The latest report work is
 `computer-use-capability-comparison.html`, a root-level Korean HTML comparison
 of widget/Codex macOS/Hermes Agent Computer Use prompt capability. Active sprint
 pointer is idle. Current active roadmap file is compacted to the current
 iteration only; historical roadmaps live under `docs/plans/archive/roadmaps/`.
 
-## Latest Update: Browser Bridge Command Correlation Hardening
+## Latest Update: Browser Bridge Enrolled Extension Origin Hardening
+
+Completed the next-priority code review/refactor after Browser Bridge
+command-correlation hardening.
+
+Review finding:
+
+- Extension-Origin route scoping and command correlation reduced the daemon
+  surface, but any `chrome-extension://...` Origin could still call scoped
+  Browser Bridge routes. A different extension could attempt heartbeat/poll,
+  legacy DOM snapshot injection, or WebSocket upgrade and receive initial daemon
+  events.
+
+Applied:
+
+- Browser Bridge now enrolls the extension Origin from a valid heartbeat and
+  requires the heartbeat `extensionRuntimeId` to match the Origin id.
+- Once enrolled, command poll, ack/result, Browser Chrome result, Browser
+  Perception result, and legacy DOM snapshot POSTs from a different extension
+  Origin return `403`.
+- Extension WebSocket upgrades now require the enrolled extension Origin before
+  the daemon sends connection/bootstrap events.
+- The store allows re-enrollment only after the prior bridge heartbeat is stale,
+  keeping dev reload recovery possible without accepting active-origin races.
+- `smoke:browser-bridge` and `smoke:daemon-auth-boundary` now cover allowed
+  enrolled extension access and denied different-extension heartbeat, poll,
+  DOM snapshot, and WebSocket access.
+
+Verification passed:
+
+- `npm run smoke:browser-bridge`
+- `npm run smoke:daemon-auth-boundary`
+- `npm run smoke:browser-chrome-capability`
+- `npm run smoke:browser-action`
+- `npm run smoke:browser-perception`
+- `npm run smoke:extension`
+- `npm run lint`
+
+## Previous Update: Browser Bridge Command Correlation Hardening
 
 Completed the next-priority code review/refactor after daemon extension Origin
 scope hardening.
@@ -490,11 +529,13 @@ idle.
 
 ## Current Resume Point
 
-Worktree should be clean after the Browser Bridge command-correlation hardening
-commit/push. Next useful work is live dogfood with the restarted widget: verify
-the Tauri renderer still obtains the daemon handshake, Browser Bridge extension
-posts are accepted under extension Origin, and controlled SUPER-YOLO unlocked
-paths still work under the new transport boundary.
+Worktree should be clean after the Browser Bridge enrolled-extension Origin
+hardening commit/push. Next useful work is live dogfood with the restarted
+widget: verify the Tauri renderer still obtains the daemon handshake, reload the
+Browser Bridge extension so the current source hash is active, confirm
+heartbeat/WebSocket command polling under the enrolled extension Origin, and
+then retest controlled SUPER-YOLO unlocked paths under the new transport
+boundary.
 
 ## Product Boundaries
 

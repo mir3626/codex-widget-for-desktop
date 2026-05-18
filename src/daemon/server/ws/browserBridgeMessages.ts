@@ -21,9 +21,23 @@ export async function handleBrowserBridgeMessage(message: unknown, context: Mess
   if (record.type !== "browserBridge.command.poll") {
     return false;
   }
+  const trustDecision = context.browserExtensionBridge.authorizeExtensionRequest({
+    requestOrigin: context.requestOrigin,
+    requireTrusted: true
+  });
+  if (!trustDecision.ok) {
+    send(context.socket, {
+      type: "browserBridge.error",
+      code: trustDecision.code,
+      error: trustDecision.error
+    });
+    return true;
+  }
 
   const previous = context.browserExtensionBridge.snapshot();
-  const status = context.browserExtensionBridge.update(buildBrowserBridgeWebSocketStatus(record, previous));
+  const status = context.browserExtensionBridge.update(buildBrowserBridgeWebSocketStatus(record, previous), {
+    requestOrigin: context.requestOrigin
+  });
   if (browserBridgeActiveTabChanged(previous, status)) {
     context.browserPerception.markDirty(`bridge_active_tab_changed:${status.reason ?? "ws_poll"}`);
   }

@@ -26,6 +26,7 @@ import { handleMessage } from "./messageRouter.js";
 
 export function handleWebSocketConnection(input: {
   socket: WebSocket;
+  requestOrigin?: string;
   serverPort: number;
   startedAt: number;
   controllers: Map<string, AbortController>;
@@ -78,6 +79,7 @@ export function handleWebSocketConnection(input: {
   socket.on("message", (raw) => {
     void handleMessage(raw.toString(), {
       socket,
+      requestOrigin: input.requestOrigin,
       controllers: input.controllers,
       retainedMessages,
       toolOutputBuffers: input.toolOutputBuffers,

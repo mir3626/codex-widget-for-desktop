@@ -9,29 +9,14 @@ const smokeAppData = useSmokeAppData("codex-widget-browser-extension-bridge-smok
 const expectedBuild = readExpectedBrowserBridgeBuildInfo();
 const daemon = await startDaemon({ port: 0 });
 const baseUrl = `http://127.0.0.1:${daemon.port}`;
-const socket = new WebSocket(`ws://127.0.0.1:${daemon.port}`);
+const extensionRuntimeId = "abcdefghijklmnopabcdefghijklmnop";
+const extensionOrigin = `chrome-extension://${extensionRuntimeId}`;
+const otherExtensionOrigin = "chrome-extension://ponmlkjihgfedcbaponmlkjihgfedcba";
+let socket = null;
 const events = [];
 const waiters = [];
-socket.on("message", (raw) => {
-  const event = JSON.parse(raw.toString());
-  events.push(event);
-  for (const waiter of [...waiters]) {
-    if (waiter.predicate(event)) {
-      clearTimeout(waiter.timeout);
-      waiters.splice(waiters.indexOf(waiter), 1);
-      waiter.resolve(event);
-    }
-  }
-});
 
 try {
-  await new Promise((resolve, reject) => {
-    socket.once("open", resolve);
-    socket.once("error", reject);
-  });
-
-  await waitFor((event) => event.type === "browserExtensionBridge.status", "initial bridge status");
-
   await postHeartbeat({
     extensionVersion: "0.1.0",
     extensionBuildId: expectedBuild.extensionBuildId,
@@ -62,6 +47,7 @@ try {
       pollIntervalSeconds: 10
     }
   });
+  await connectBridgeSocket(extensionOrigin);
   const idle = await waitFor(
     (event) => event.type === "browserExtensionBridge.status" && event.status?.mode === "idle",
     "idle bridge heartbeat"
@@ -76,6 +62,7 @@ try {
   assertEqual(status.activeTab.permission, "allowed", "GET bridge permission");
   assertEqual(status.settings.allowAllSites, true, "GET bridge all-sites setting");
   assertEqual(status.settings.observeBlocklist[0], "https://blocked.example", "GET bridge observe blocklist");
+  await assertBridgeExtensionOriginBoundary();
   await assertBridgeCommandCorrelationRejectsUnknownPayloads();
   await drainBackgroundObserve({
     url: "https://example.test/browser-bridge",
@@ -153,7 +140,7 @@ try {
   pollUrl.searchParams.set("windowId", "5");
   pollUrl.searchParams.set("url", "https://example.test/browser-bridge/poll");
   pollUrl.searchParams.set("title", "Browser Bridge Poll");
-  const poll = await fetch(pollUrl);
+  const poll = await fetchBridgePoll(pollUrl);
   if (!poll.ok) {
     throw new Error(`Browser Bridge poll endpoint failed: ${poll.status}`);
   }
@@ -200,16 +187,38 @@ try {
 
   console.log(`browser extension bridge smoke ok on port ${daemon.port}`);
 } finally {
-  socket.close();
+  socket?.close();
   await daemon.close();
   smokeAppData.cleanup();
+}
+
+async function connectBridgeSocket(origin) {
+  socket = new WebSocket(`ws://127.0.0.1:${daemon.port}`, { headers: { Origin: origin } });
+  socket.on("message", (raw) => {
+    const event = JSON.parse(raw.toString());
+    events.push(event);
+    for (const waiter of [...waiters]) {
+      if (waiter.predicate(event)) {
+        clearTimeout(waiter.timeout);
+        waiters.splice(waiters.indexOf(waiter), 1);
+        waiter.resolve(event);
+      }
+    }
+  });
+  await new Promise((resolve, reject) => {
+    socket.once("open", resolve);
+    socket.once("error", reject);
+  });
 }
 
 async function postHeartbeat(payload) {
   const response = await fetch(`${baseUrl}/browser-action/extension/heartbeat`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(payload)
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
+    body: JSON.stringify({
+      extensionRuntimeId,
+      ...payload
+    })
   });
   if (!response.ok) {
     throw new Error(`Browser Bridge heartbeat failed: ${response.status}`);
@@ -217,7 +226,9 @@ async function postHeartbeat(payload) {
 }
 
 async function readBridgeStatus() {
-  const response = await fetch(`${baseUrl}/browser-action/extension/status`);
+  const response = await fetch(`${baseUrl}/browser-action/extension/status`, {
+    headers: { Origin: extensionOrigin }
+  });
   if (!response.ok) {
     throw new Error(`Browser Bridge status failed: ${response.status}`);
   }
@@ -227,7 +238,7 @@ async function readBridgeStatus() {
 async function postDomSnapshot() {
   const response = await fetch(`${baseUrl}/providers/dom/snapshot`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
     body: JSON.stringify({
       url: "https://example.test/browser-bridge",
       title: "Browser Bridge Smoke",
@@ -239,6 +250,32 @@ async function postDomSnapshot() {
   if (!response.ok) {
     throw new Error(`Legacy DOM snapshot endpoint failed: ${response.status}`);
   }
+}
+
+async function assertBridgeExtensionOriginBoundary() {
+  await expectPostStatus("/browser-action/extension/heartbeat", {
+    extensionRuntimeId: "ponmlkjihgfedcbaponmlkjihgfedcba",
+    connected: true,
+    mode: "idle",
+    updatedAt: new Date().toISOString(),
+    activeTab: { permission: "allowed" }
+  }, 403, "different Browser Bridge extension heartbeat", { Origin: otherExtensionOrigin });
+
+  const deniedPoll = await fetch(`${baseUrl}/browser-action/extension/poll`, {
+    headers: { Origin: otherExtensionOrigin }
+  });
+  assertEqual(deniedPoll.status, 403, "different Browser Bridge extension poll status");
+  assertEqual((await deniedPoll.json()).ok, false, "different Browser Bridge extension poll ok flag");
+
+  await expectPostStatus("/providers/dom/snapshot", {
+    url: "https://example.test/browser-bridge/other-extension",
+    title: "Other Extension DOM",
+    readyState: "complete",
+    text: "should be rejected",
+    elements: []
+  }, 403, "different Browser Bridge extension DOM snapshot", { Origin: otherExtensionOrigin });
+
+  await assertWebSocketBridgePollDenied(otherExtensionOrigin);
 }
 
 async function assertBridgeCommandCorrelationRejectsUnknownPayloads() {
@@ -276,10 +313,10 @@ async function assertBridgeCommandCorrelationRejectsUnknownPayloads() {
   }, 409, "unknown Browser Perception observe result");
 }
 
-async function expectPostStatus(path, payload, expectedStatus, label) {
+async function expectPostStatus(path, payload, expectedStatus, label, headers = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", Origin: extensionOrigin, ...headers },
     body: JSON.stringify(payload)
   });
   assertEqual(response.status, expectedStatus, `${label} status`);
@@ -290,7 +327,7 @@ async function expectPostStatus(path, payload, expectedStatus, label) {
 async function postObserveResult(commandId, options) {
   const response = await fetch(`${baseUrl}/browser-action/extension/observe-result`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
     body: JSON.stringify({
       commandId,
       status: "succeeded",
@@ -335,7 +372,7 @@ async function drainBackgroundObserve(options) {
   pollUrl.searchParams.set("windowId", String(options.windowId));
   pollUrl.searchParams.set("url", options.url);
   pollUrl.searchParams.set("title", options.title);
-  const response = await fetch(pollUrl);
+  const response = await fetchBridgePoll(pollUrl);
   if (!response.ok) {
     throw new Error(`Browser Bridge drain poll failed: ${response.status}`);
   }
@@ -343,6 +380,33 @@ async function drainBackgroundObserve(options) {
   if (payload.command?.kind === "observe_now") {
     await postObserveResult(payload.command.commandId, options);
   }
+}
+
+async function fetchBridgePoll(url) {
+  return await fetch(url, {
+    headers: { Origin: extensionOrigin }
+  });
+}
+
+async function assertWebSocketBridgePollDenied(origin) {
+  await new Promise((resolve, reject) => {
+    const deniedSocket = new WebSocket(`ws://127.0.0.1:${daemon.port}`, { headers: { Origin: origin } });
+    deniedSocket.once("open", () => {
+      deniedSocket.close();
+      reject(new Error(`Browser Bridge websocket unexpectedly opened for ${origin}.`));
+    });
+    deniedSocket.once("unexpected-response", (_request, response) => {
+      assertEqual(response.statusCode, 403, "different Browser Bridge extension websocket status");
+      resolve();
+    });
+    deniedSocket.once("error", (error) => {
+      if (/Unexpected server response: 403/.test(error.message)) {
+        resolve();
+      } else {
+        reject(error);
+      }
+    });
+  });
 }
 
 function waitFor(predicate, label, timeoutMs = 10_000) {

@@ -4,11 +4,37 @@ import type { BrowserBridgeExpectedBuildInfo } from "./extensionBuild.js";
 const BROWSER_EXTENSION_BRIDGE_STALE_MS = 90_000;
 
 export type BrowserExtensionBridgeStore = {
-  update: (status: BrowserExtensionBridgeStatus) => BrowserExtensionBridgeStatus;
+  update: (status: BrowserExtensionBridgeStatus, context?: BrowserExtensionBridgeRequestContext) => BrowserExtensionBridgeStatus;
   snapshot: () => BrowserExtensionBridgeStatus;
+  authorizeExtensionRequest: (context?: BrowserExtensionBridgeRequestContext & { requireTrusted?: boolean }) => BrowserExtensionBridgeTrustDecision;
 };
 
+export type BrowserExtensionBridgeRequestContext = {
+  requestOrigin?: string;
+};
+
+export type BrowserExtensionBridgeTrustDecision = {
+  ok: true;
+} | {
+  ok: false;
+  status: 403;
+  code: string;
+  error: string;
+};
+
+export class BrowserExtensionBridgeTrustError extends Error {
+  readonly status = 403;
+  readonly code: string;
+
+  constructor(decision: Exclude<BrowserExtensionBridgeTrustDecision, { ok: true }>) {
+    super(decision.error);
+    this.name = "BrowserExtensionBridgeTrustError";
+    this.code = decision.code;
+  }
+}
+
 export function createBrowserExtensionBridgeStore(input: { expectedBuild?: BrowserBridgeExpectedBuildInfo } = {}): BrowserExtensionBridgeStore {
+  let trustedExtensionOrigin: string | undefined;
   let latest: BrowserExtensionBridgeStatus = {
     connected: false,
     mode: "disconnected",
@@ -20,8 +46,13 @@ export function createBrowserExtensionBridgeStore(input: { expectedBuild?: Brows
   };
 
   return {
-    update(status) {
-      latest = normalizeBrowserExtensionBridgeStatus(status, input.expectedBuild);
+    update(status, context) {
+      const next = normalizeBrowserExtensionBridgeStatus(status, input.expectedBuild);
+      const trustDecision = registerTrustedExtensionOrigin(next, context?.requestOrigin);
+      if (!trustDecision.ok) {
+        throw new BrowserExtensionBridgeTrustError(trustDecision);
+      }
+      latest = next;
       return latest;
     },
     snapshot() {
@@ -34,8 +65,110 @@ export function createBrowserExtensionBridgeStore(input: { expectedBuild?: Brows
         };
       }
       return latest;
+    },
+    authorizeExtensionRequest(context) {
+      return authorizeTrustedExtensionOrigin(context?.requestOrigin, context?.requireTrusted === true);
     }
   };
+
+  function registerTrustedExtensionOrigin(
+    status: BrowserExtensionBridgeStatus,
+    requestOrigin: string | undefined
+  ): BrowserExtensionBridgeTrustDecision {
+    const origin = normalizeExtensionOrigin(requestOrigin);
+    if (!origin) {
+      return { ok: true };
+    }
+    const originRuntimeId = readExtensionOriginRuntimeId(origin);
+    const statusRuntimeId = status.extensionRuntimeId?.toLowerCase();
+    if (!statusRuntimeId) {
+      return {
+        ok: false,
+        status: 403,
+        code: "browser_bridge_extension_runtime_required",
+        error: "Browser Bridge extension heartbeat requires extensionRuntimeId."
+      };
+    }
+    if (originRuntimeId && statusRuntimeId !== originRuntimeId) {
+      return {
+        ok: false,
+        status: 403,
+        code: "browser_bridge_extension_origin_mismatch",
+        error: "Browser Bridge extension Origin does not match extensionRuntimeId."
+      };
+    }
+    if (trustedExtensionOrigin && trustedExtensionOrigin !== origin && !isTrustedExtensionStale()) {
+      return {
+        ok: false,
+        status: 403,
+        code: "browser_bridge_extension_origin_denied",
+        error: "Browser Bridge is already enrolled to a different extension Origin."
+      };
+    }
+    trustedExtensionOrigin = origin;
+    return { ok: true };
+  }
+
+  function authorizeTrustedExtensionOrigin(
+    requestOrigin: string | undefined,
+    requireTrusted: boolean
+  ): BrowserExtensionBridgeTrustDecision {
+    const origin = normalizeExtensionOrigin(requestOrigin);
+    if (!origin) {
+      return { ok: true };
+    }
+    if (!trustedExtensionOrigin || isTrustedExtensionStale()) {
+      return requireTrusted
+        ? {
+            ok: false,
+            status: 403,
+            code: "browser_bridge_extension_not_enrolled",
+            error: "Browser Bridge extension must send a valid heartbeat before command routes are available."
+          }
+        : { ok: true };
+    }
+    if (trustedExtensionOrigin !== origin) {
+      return {
+        ok: false,
+        status: 403,
+        code: "browser_bridge_extension_origin_denied",
+        error: "Browser Bridge command route is enrolled to a different extension Origin."
+      };
+    }
+    return { ok: true };
+  }
+
+  function isTrustedExtensionStale(): boolean {
+    return Boolean(latest.lastSeenAt && Date.now() - Date.parse(latest.lastSeenAt) > BROWSER_EXTENSION_BRIDGE_STALE_MS);
+  }
+}
+
+export function isBrowserExtensionBridgeTrustError(error: unknown): error is BrowserExtensionBridgeTrustError {
+  return error instanceof BrowserExtensionBridgeTrustError;
+}
+
+export function normalizeExtensionOrigin(origin: string | undefined): string | undefined {
+  if (!origin) {
+    return undefined;
+  }
+  try {
+    const parsed = new URL(origin);
+    if (parsed.protocol !== "chrome-extension:" && parsed.protocol !== "edge-extension:" && parsed.protocol !== "moz-extension:") {
+      return undefined;
+    }
+    return `${parsed.protocol}//${parsed.hostname.toLowerCase()}`;
+  } catch {
+    return undefined;
+  }
+}
+
+function readExtensionOriginRuntimeId(origin: string): string | undefined {
+  try {
+    const parsed = new URL(origin);
+    return parsed.hostname ? parsed.hostname.toLowerCase() : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function normalizeBrowserExtensionBridgeStatus(input: unknown, expectedBuild?: BrowserBridgeExpectedBuildInfo): BrowserExtensionBridgeStatus {
