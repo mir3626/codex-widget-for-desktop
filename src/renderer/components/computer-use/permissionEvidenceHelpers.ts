@@ -489,7 +489,10 @@ export function createComputerUseSuperYoloProfileDraft(): Record<string, unknown
           "token",
           "captcha",
           "purchase",
-          "payment"
+          "payment",
+          "pay",
+          "checkout",
+          "card"
         ]
       },
       packageInstall: true,
@@ -520,6 +523,10 @@ export function createComputerUseSuperYoloProfileDraft(): Record<string, unknown
       "credential_and_cookie_values_are_never_extracted",
       "captcha_bypass_is_blocked",
       "purchase_payment_submit_require_explicit_user_commit",
+      "credential_cookie_captcha_override_default_off",
+      "payment_purchase_override_default_off",
+      "DISCLAIMER: credential_cookie_captcha_override_requires_user_acknowledgement_of_account_security_privacy_lockout_site_terms_and_captcha_policy_risk",
+      "DISCLAIMER: payment_purchase_override_requires_user_acknowledgement_of_financial_order_refund_tax_subscription_and_legal_responsibility",
       "foreground_desktop_requires_watch_mode",
       "terminal_destructive_patterns_remain_blocked",
       "file_access_is_broad_when_enabled",

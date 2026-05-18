@@ -322,6 +322,12 @@
   font-weight: 700;
 }
 
+.computer-use-super-yolo-toggle .super-yolo-disclaimer {
+  color: #7d3e23;
+  line-height: 1.25;
+  white-space: normal;
+}
+
 .computer-use-profile-detail-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

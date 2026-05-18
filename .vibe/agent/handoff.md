@@ -5,14 +5,45 @@
 Codex Widget for Desktop is a Tauri + React + Node daemon desktop widget. The
 daemon listens on `127.0.0.1:4128`; the renderer is served by Vite in dev.
 
-The latest completed product work is Computer Use catch-up capability recipes
-through `iter-39`. The latest report work is
+The latest completed product work is the Computer Use SUPER-YOLO permission
+override UI, after Computer Use catch-up capability recipes through `iter-39`.
+The latest report work is
 `computer-use-capability-comparison.html`, a root-level Korean HTML comparison
 of widget/Codex macOS/Hermes Agent Computer Use prompt capability. Active sprint
 pointer is idle. Current active roadmap file is compacted to the current
 iteration only; historical roadmaps live under `docs/plans/archive/roadmaps/`.
 
-## Latest Update: Computer Use Catch-Up Capability Recipes
+## Latest Update: Computer Use SUPER-YOLO Permission Overrides
+
+Added user-facing SUPER-YOLO override controls in the Computer Use permission
+profile manager.
+
+Applied:
+
+- SUPER-YOLO remains gated behind the existing YOLO draft and still requires a
+  user confirmation dialog before creating the one-time profile draft.
+- Added two default-off override categories:
+  - `Credential / Cookie / CAPTCHA`
+  - `Payment / Purchase`
+- Both categories show explicit disclaimer text in the UI and store disclaimer
+  acknowledgement markers in the profile `safetyBoundaries` when enabled.
+- Enabling a category removes its profile-level deny patterns and replaces the
+  default safety boundary markers with user-release markers. Disabling restores
+  the default-off boundary and deny patterns.
+- Credential access remains `never` unless a separate explicit credential lease
+  flow is authored; redaction and runtime policy layers still apply.
+
+Verification passed:
+
+- `npm run lint`
+- `npm run build:renderer`
+- `npm run smoke:renderer-computer-use-profile-draft`
+- `npm run audit:computer-use-implementation-ready`
+- `npm run smoke:all`
+- `git diff --check`
+- Strict UTF-8 read and mojibake scan over changed text files
+
+## Previous Update: Computer Use Catch-Up Capability Recipes
 
 Completed `$vibe-iterate` iteration `iter-39`.
 

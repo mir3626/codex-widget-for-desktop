@@ -140,11 +140,13 @@ type SuperYoloToggleId =
   | "fileRead"
   | "fileWrite"
   | "osMutation"
-  | "highRisk";
+  | "highRisk"
+  | "credentialCookieCaptcha"
+  | "paymentPurchase";
 
 type SuperYoloToggleState = Record<SuperYoloToggleId, boolean>;
 
-const SUPER_YOLO_TOGGLES: Array<{ id: SuperYoloToggleId; label: string; detail: string }> = [
+const SUPER_YOLO_TOGGLES: Array<{ id: SuperYoloToggleId; label: string; detail: string; disclaimer?: string }> = [
   { id: "network", label: "Network", detail: "Allow broad outbound network domains." },
   { id: "browser", label: "Browser", detail: "Allow broad browser automation domains." },
   { id: "terminal", label: "Terminal", detail: "Allow common local command prefixes." },
@@ -153,7 +155,19 @@ const SUPER_YOLO_TOGGLES: Array<{ id: SuperYoloToggleId; label: string; detail: 
   { id: "fileRead", label: "File read", detail: "Allow broad user-profile read root." },
   { id: "fileWrite", label: "File write", detail: "Allow Codex public output write root." },
   { id: "osMutation", label: "OS mutation", detail: "Allow explicit OS mutation requirements." },
-  { id: "highRisk", label: "High risk", detail: "Allow high-risk scoped autonomy class." }
+  { id: "highRisk", label: "High risk", detail: "Allow high-risk scoped autonomy class." },
+  {
+    id: "credentialCookieCaptcha",
+    label: "Credential / Cookie / CAPTCHA",
+    detail: "Release the profile-level boundary for credential, cookie, and CAPTCHA-labeled work.",
+    disclaimer: "Disclaimer: user accepts account-security, privacy, lockout, site-terms, and CAPTCHA-policy risk. Credential leases and redaction still apply."
+  },
+  {
+    id: "paymentPurchase",
+    label: "Payment / Purchase",
+    detail: "Release the profile-level boundary for payment and purchase-labeled work.",
+    disclaimer: "Disclaimer: user accepts financial, order, refund, tax, subscription, and legal responsibility. Commit actions may still require explicit approval."
+  }
 ];
 
 const SUPER_YOLO_COMMAND_PREFIXES = [
@@ -167,20 +181,48 @@ const SUPER_YOLO_COMMAND_PREFIXES = [
   "pwsh *"
 ];
 
-const SUPER_YOLO_COMMAND_DENY_PATTERNS = [
+const SUPER_YOLO_CREDENTIAL_COOKIE_CAPTCHA_DENY_PATTERNS = [
   "cookie",
   "password",
   "credential",
   "secret",
   "token",
-  "captcha",
+  "captcha"
+];
+
+const SUPER_YOLO_PAYMENT_PURCHASE_DENY_PATTERNS = [
   "purchase",
-  "payment"
+  "payment",
+  "pay",
+  "checkout",
+  "card"
+];
+
+const SUPER_YOLO_COMMAND_DENY_PATTERNS = [
+  ...SUPER_YOLO_CREDENTIAL_COOKIE_CAPTCHA_DENY_PATTERNS,
+  ...SUPER_YOLO_PAYMENT_PURCHASE_DENY_PATTERNS
 ];
 
 const SUPER_YOLO_FILE_READ_ROOTS = ["C:\\Users"];
 const SUPER_YOLO_FILE_WRITE_ROOTS = ["C:\\Users\\Public\\Documents\\Codex Outputs"];
 const SUPER_YOLO_RISK_CLASSES: AutonomyRiskClass[] = ["read_only", "reversible", "side_effect", "high_risk"];
+const SUPER_YOLO_CREDENTIAL_COOKIE_CAPTCHA_BOUNDARIES = [
+  "credential_and_cookie_values_are_never_extracted",
+  "captcha_bypass_is_blocked",
+  "credential_cookie_captcha_override_default_off"
+];
+const SUPER_YOLO_CREDENTIAL_COOKIE_CAPTCHA_RELEASE_BOUNDARIES = [
+  "credential_cookie_captcha_boundary_released_by_user",
+  "DISCLAIMER: credential_cookie_captcha_override_acknowledged_user_accepts_account_security_privacy_lockout_site_terms_and_captcha_policy_risk"
+];
+const SUPER_YOLO_PAYMENT_PURCHASE_BOUNDARIES = [
+  "purchase_payment_submit_require_explicit_user_commit",
+  "payment_purchase_override_default_off"
+];
+const SUPER_YOLO_PAYMENT_PURCHASE_RELEASE_BOUNDARIES = [
+  "payment_purchase_boundary_released_by_user",
+  "DISCLAIMER: payment_purchase_override_acknowledged_user_accepts_financial_order_refund_tax_subscription_and_legal_responsibility"
+];
 
 export function ComputerUseSessionsPanel({
   daemonPort,
@@ -659,7 +701,8 @@ export function ComputerUseSessionsPanel({
     }
     const confirmed = window.confirm([
       "SUPER-YOLO creates a one-time profile with broad local/browser/network permissions.",
-      "Credentials, cookies, CAPTCHA bypass, purchases, payments, and unattended submit actions remain blocked.",
+      "Credential/cookie/CAPTCHA and payment/purchase overrides are off by default.",
+      "If you enable either override, review its disclaimer and accept the related account, privacy, financial, and legal risk.",
       "Review each permission toggle before saving. Continue?"
     ].join("\n\n"));
     if (!confirmed) {
@@ -932,6 +975,7 @@ export function ComputerUseSessionsPanel({
                   <span>
                     <strong>{toggle.label}</strong>
                     <small>{toggle.detail}</small>
+                    {toggle.disclaimer ? <small className="super-yolo-disclaimer">{toggle.disclaimer}</small> : null}
                   </span>
                 </label>
               ))}
@@ -1415,6 +1459,8 @@ function readSuperYoloToggleState(draft: string): SuperYoloToggleState | null {
   const grants = readRecord(payload.grants);
   const filesystem = readRecord(grants.filesystem);
   const commands = readRecord(grants.commands);
+  const denyPatterns = readStringArrayValue(commands.denyPatterns);
+  const safetyBoundaries = readStringArrayValue(payload.safetyBoundaries);
   const riskClasses = readStringArrayValue(grants.riskClasses);
   return {
     network: grants.network === true && readStringArrayValue(grants.networkDomains).includes("*"),
@@ -1425,7 +1471,11 @@ function readSuperYoloToggleState(draft: string): SuperYoloToggleState | null {
     fileRead: readStringArrayValue(filesystem.readRoots).length > 0,
     fileWrite: readStringArrayValue(filesystem.writeRoots).length > 0,
     osMutation: grants.osMutation === true,
-    highRisk: riskClasses.includes("high_risk")
+    highRisk: riskClasses.includes("high_risk"),
+    credentialCookieCaptcha: safetyBoundaries.includes("credential_cookie_captcha_boundary_released_by_user") &&
+      !hasAnyValue(denyPatterns, SUPER_YOLO_CREDENTIAL_COOKIE_CAPTCHA_DENY_PATTERNS),
+    paymentPurchase: safetyBoundaries.includes("payment_purchase_boundary_released_by_user") &&
+      !hasAnyValue(denyPatterns, SUPER_YOLO_PAYMENT_PURCHASE_DENY_PATTERNS)
   };
 }
 
@@ -1473,6 +1523,32 @@ function updateSuperYoloProfileDraftGrant(draft: string, toggleId: SuperYoloTogg
         ? [...SUPER_YOLO_RISK_CLASSES]
         : SUPER_YOLO_RISK_CLASSES.filter((riskClass) => riskClass !== "high_risk");
       break;
+    case "credentialCookieCaptcha":
+      commands.denyPatterns = updateStringSet(
+        readStringArrayValue(commands.denyPatterns),
+        SUPER_YOLO_CREDENTIAL_COOKIE_CAPTCHA_DENY_PATTERNS,
+        !enabled
+      );
+      payload.safetyBoundaries = updateBoundaryRelease(
+        readStringArrayValue(payload.safetyBoundaries),
+        SUPER_YOLO_CREDENTIAL_COOKIE_CAPTCHA_BOUNDARIES,
+        SUPER_YOLO_CREDENTIAL_COOKIE_CAPTCHA_RELEASE_BOUNDARIES,
+        enabled
+      );
+      break;
+    case "paymentPurchase":
+      commands.denyPatterns = updateStringSet(
+        readStringArrayValue(commands.denyPatterns),
+        SUPER_YOLO_PAYMENT_PURCHASE_DENY_PATTERNS,
+        !enabled
+      );
+      payload.safetyBoundaries = updateBoundaryRelease(
+        readStringArrayValue(payload.safetyBoundaries),
+        SUPER_YOLO_PAYMENT_PURCHASE_BOUNDARIES,
+        SUPER_YOLO_PAYMENT_PURCHASE_RELEASE_BOUNDARIES,
+        enabled
+      );
+      break;
   }
   grants.credentialAccess = "never";
   grants.credentialLeases = [];
@@ -1483,6 +1559,28 @@ function updateSuperYoloProfileDraftGrant(draft: string, toggleId: SuperYoloTogg
     payload.safetyBoundaries = ["super_yolo_requires_user_confirmation", ...boundaries];
   }
   return JSON.stringify(payload, null, 2);
+}
+
+function updateBoundaryRelease(
+  current: string[],
+  blockedBoundaries: string[],
+  releaseBoundaries: string[],
+  released: boolean
+): string[] {
+  const removal = new Set(released ? blockedBoundaries : releaseBoundaries);
+  const additions = released ? releaseBoundaries : blockedBoundaries;
+  return [...new Set([...current.filter((boundary) => !removal.has(boundary)), ...additions])];
+}
+
+function updateStringSet(current: string[], values: string[], include: boolean): string[] {
+  const removal = new Set(values.map((value) => value.toLowerCase()));
+  const filtered = current.filter((value) => !removal.has(value.toLowerCase()));
+  return include ? [...new Set([...filtered, ...values])] : filtered;
+}
+
+function hasAnyValue(current: string[], values: string[]): boolean {
+  const currentSet = new Set(current.map((value) => value.toLowerCase()));
+  return values.some((value) => currentSet.has(value.toLowerCase()));
 }
 
 function isSuperYoloProfilePayload(payload: Record<string, unknown>): boolean {
