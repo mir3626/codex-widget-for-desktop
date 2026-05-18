@@ -75,10 +75,7 @@ export async function handleBrowserBridgeRoute(
       const ack = browserPerception.acknowledgeObserveCommand(JSON.parse(await readRequestBody(request, 128 * 1024)));
       writeJsonResponse(response, 200, { ok: true, ack });
     } catch (error) {
-      writeJsonResponse(response, 400, {
-        ok: false,
-        error: error instanceof Error ? error.message : "Invalid Browser Perception observe acknowledgement."
-      });
+      writeBrowserBridgeErrorResponse(response, error, "Invalid Browser Perception observe acknowledgement.");
     }
     return true;
   }
@@ -92,21 +89,23 @@ export async function handleBrowserBridgeRoute(
         return true;
       }
       const result = browserActions.acknowledgeExtensionCommand(requestId);
-      if (result) {
-        recordBrowserActionCapabilityAcknowledged({
-          storage,
-          clients,
-          requestId,
-          result
-        });
-        broadcast(clients, {
-          type: "browserAction.progress",
-          actionSessionId: result.actionSessionId,
-          status: "extension_command_acknowledged",
-          detail: { requestId, action: result.action.type }
-        });
+      if (!result) {
+        writeBrowserBridgeCommandConflict(response, `Browser Action command not pending: ${requestId}`);
+        return true;
       }
-      writeJsonResponse(response, 200, { ok: true, acknowledged: Boolean(result) });
+      recordBrowserActionCapabilityAcknowledged({
+        storage,
+        clients,
+        requestId,
+        result
+      });
+      broadcast(clients, {
+        type: "browserAction.progress",
+        actionSessionId: result.actionSessionId,
+        status: "extension_command_acknowledged",
+        detail: { requestId, action: result.action.type }
+      });
+      writeJsonResponse(response, 200, { ok: true, acknowledged: true });
     } catch (error) {
       writeJsonResponse(response, 400, {
         ok: false,
@@ -164,10 +163,7 @@ export async function handleBrowserBridgeRoute(
       }
       writeJsonResponse(response, 200, { ok: true, result });
     } catch (error) {
-      writeJsonResponse(response, 400, {
-        ok: false,
-        error: error instanceof Error ? error.message : "Invalid Browser Perception observe result."
-      });
+      writeBrowserBridgeErrorResponse(response, error, "Invalid Browser Perception observe result.");
     }
     return true;
   }
@@ -211,10 +207,7 @@ export async function handleBrowserBridgeRoute(
       broadcastLedgerSnapshot(clients, storage, resolveClientSessionId(storage, completed.session.sessionId));
       writeJsonResponse(response, 200, { ok: true, result: summarizeBrowserActionResult(completed.result) });
     } catch (error) {
-      writeJsonResponse(response, 400, {
-        ok: false,
-        error: error instanceof Error ? error.message : "Invalid browser action result."
-      });
+      writeBrowserBridgeErrorResponse(response, error, "Invalid browser action result.");
     }
     return true;
   }
@@ -240,12 +233,13 @@ export async function handleBrowserBridgeRoute(
         error: typeof payload.error === "string" ? payload.error : undefined,
         metadata: payload.metadata && typeof payload.metadata === "object" ? payload.metadata : undefined
       });
+      if (!completed) {
+        writeBrowserBridgeCommandConflict(response, `Browser Chrome command not pending: ${requestId}`);
+        return true;
+      }
       writeJsonResponse(response, 200, { ok: true, completed });
     } catch (error) {
-      writeJsonResponse(response, 400, {
-        ok: false,
-        error: error instanceof Error ? error.message : "Invalid Browser Chrome result."
-      });
+      writeBrowserBridgeErrorResponse(response, error, "Invalid Browser Chrome result.");
     }
     return true;
   }
@@ -256,6 +250,27 @@ export async function handleBrowserBridgeRoute(
 function readDagNodeId(input: unknown): string | undefined {
   const record = input && typeof input === "object" ? input as Record<string, unknown> : {};
   return typeof record.dagNodeId === "string" ? record.dagNodeId : undefined;
+}
+
+function writeBrowserBridgeErrorResponse(response: ServerResponse, error: unknown, fallback: string): void {
+  const message = error instanceof Error ? error.message : fallback;
+  if (isBrowserBridgeCommandCorrelationError(message)) {
+    writeBrowserBridgeCommandConflict(response, message);
+    return;
+  }
+  writeJsonResponse(response, 400, { ok: false, error: message });
+}
+
+function writeBrowserBridgeCommandConflict(response: ServerResponse, error: string): void {
+  writeJsonResponse(response, 409, {
+    ok: false,
+    code: "browser_bridge_command_not_pending",
+    error
+  });
+}
+
+function isBrowserBridgeCommandCorrelationError(message: string): boolean {
+  return /(?:command|result) (?:not pending|not found)/i.test(message);
 }
 
 function scheduleBackgroundPerceptionObserve(input: {

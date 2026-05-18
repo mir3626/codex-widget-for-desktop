@@ -6,15 +6,55 @@ Codex Widget for Desktop is a Tauri + React + Node daemon desktop widget. The
 daemon listens on `127.0.0.1:4128`; the renderer is served by Vite in dev.
 
 The latest completed product work is post-iter-40 daemon transport hardening:
-extension-Origin route scoping after daemon auth cache recovery and the
-auth/nonce/CORS hardening sprint.
+Browser Bridge command-correlation hardening after extension-Origin route
+scoping, daemon auth cache recovery, and the auth/nonce/CORS hardening sprint.
 The latest report work is
 `computer-use-capability-comparison.html`, a root-level Korean HTML comparison
 of widget/Codex macOS/Hermes Agent Computer Use prompt capability. Active sprint
 pointer is idle. Current active roadmap file is compacted to the current
 iteration only; historical roadmaps live under `docs/plans/archive/roadmaps/`.
 
-## Latest Update: Daemon Extension Origin Scope Hardening
+## Latest Update: Browser Bridge Command Correlation Hardening
+
+Completed the next-priority code review/refactor after daemon extension Origin
+scope hardening.
+
+Review finding:
+
+- Browser Bridge compatibility routes correctly stayed extension-accessible, but
+  some ack/result endpoints accepted unknown or stale `requestId`/`commandId`
+  payloads as successful no-ops. Browser Perception also ingested successful
+  observe results without first proving they belonged to a pending foreground
+  observe or scheduled background observe.
+
+Applied:
+
+- Browser Action unknown `action-ack` now returns `409` instead of
+  `{ acknowledged: false }`.
+- Browser Action result, Browser Chrome result, Browser Perception ack, and
+  Browser Perception observe-result failures that are command-correlation
+  failures now return a consistent `409` with
+  `browser_bridge_command_not_pending`.
+- Browser Perception now validates `commandId`, accepted ack status values, and
+  known foreground/background command state before accepting a result.
+- Scheduled background observes remain supported through the existing
+  background command registry, while expired/stale background command ids are
+  rejected.
+- `smoke:browser-bridge` now covers spoofed unknown Browser Action, Browser
+  Chrome, and Browser Perception ack/result payloads before exercising normal
+  background observe ingestion.
+
+Verification passed:
+
+- `npm run smoke:browser-bridge`
+- `npm run smoke:browser-perception`
+- `npm run smoke:browser-perception:stabilization`
+- `npm run smoke:browser-chrome-capability`
+- `npm run smoke:browser-action`
+- `npm run smoke:daemon-auth-boundary`
+- `npm run lint`
+
+## Previous Update: Daemon Extension Origin Scope Hardening
 
 Completed the next-priority code review/refactor after daemon auth cache
 recovery.
@@ -450,11 +490,11 @@ idle.
 
 ## Current Resume Point
 
-Worktree should be clean after the daemon auth/nonce/CORS hardening commit/push.
-Next useful work is live dogfood with the restarted widget: verify the Tauri
-renderer still obtains the daemon handshake, Browser Bridge extension posts are
-accepted under extension Origin, and controlled SUPER-YOLO unlocked paths still
-work under the new transport boundary.
+Worktree should be clean after the Browser Bridge command-correlation hardening
+commit/push. Next useful work is live dogfood with the restarted widget: verify
+the Tauri renderer still obtains the daemon handshake, Browser Bridge extension
+posts are accepted under extension Origin, and controlled SUPER-YOLO unlocked
+paths still work under the new transport boundary.
 
 ## Product Boundaries
 

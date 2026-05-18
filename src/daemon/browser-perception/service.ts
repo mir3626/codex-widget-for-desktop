@@ -218,25 +218,36 @@ export class BrowserPerceptionService {
   }
 
   acknowledgeObserveCommand(ack: BrowserPerceptionObserveAck): BrowserPerceptionObserveAck {
-    const pending = this.pending.get(ack.commandId);
-    if (pending) {
-      pending.ack = ack;
+    const commandId = typeof ack.commandId === "string" ? ack.commandId.trim() : "";
+    if (!commandId) {
+      throw new Error("Browser Perception observe acknowledgement requires commandId.");
     }
-    if (ack.status !== "accepted") {
-      this.cleanupBackgroundCommand(ack.commandId);
-      this.resolvePending(ack.commandId, {
-        status: mapAckStatusToObserveStatus(ack.status),
-        commandId: ack.commandId,
-        ack,
+    if (!isObserveAckStatus(ack.status)) {
+      throw new Error("Browser Perception observe acknowledgement has invalid status.");
+    }
+    if (!this.hasKnownObserveCommand(commandId)) {
+      throw new Error(`Browser Perception observe command not pending: ${commandId}`);
+    }
+    const normalizedAck: BrowserPerceptionObserveAck = { ...ack, commandId };
+    const pending = this.pending.get(commandId);
+    if (pending) {
+      pending.ack = normalizedAck;
+    }
+    if (normalizedAck.status !== "accepted") {
+      this.cleanupBackgroundCommand(commandId);
+      this.resolvePending(commandId, {
+        status: mapAckStatusToObserveStatus(normalizedAck.status),
+        commandId,
+        ack: normalizedAck,
         diagnostics: {
           reason: "extension_ack_not_accepted",
-          ackStatus: ack.status,
-          error: ack.error
+          ackStatus: normalizedAck.status,
+          error: normalizedAck.error
         },
-        userRecovery: ack.error
+        userRecovery: normalizedAck.error
       });
     }
-    return ack;
+    return normalizedAck;
   }
 
   completeObserveResult(input: {
@@ -244,16 +255,24 @@ export class BrowserPerceptionService {
     bridgeStatus?: BrowserExtensionBridgeStatus;
     payload: BrowserPerceptionObserveResultPayload;
   }): BrowserPerceptionObserveResult {
-    const pending = this.pending.get(input.payload.commandId);
+    const commandId = typeof input.payload.commandId === "string" ? input.payload.commandId.trim() : "";
+    if (!commandId) {
+      throw new Error("Browser Perception observe result requires commandId.");
+    }
+    const pending = this.pending.get(commandId);
+    if (!pending && !this.hasKnownObserveCommand(commandId)) {
+      throw new Error(`Browser Perception observe command not pending: ${commandId}`);
+    }
+    const payload: BrowserPerceptionObserveResultPayload = { ...input.payload, commandId };
     if (!pending) {
-      if (input.payload.status === "succeeded" && input.payload.snapshot) {
-        const snapshot = input.providers.setDomSnapshot(input.payload.snapshot);
+      if (payload.status === "succeeded" && payload.snapshot) {
+        const snapshot = input.providers.setDomSnapshot(payload.snapshot);
         const context = this.ingestProviderSnapshot({
           providers: input.providers,
           bridgeStatus: input.bridgeStatus,
-          reason: readObserveResultReason(input.payload.metadata)
+          reason: readObserveResultReason(payload.metadata)
         });
-        this.cleanupBackgroundCommand(input.payload.commandId);
+        this.cleanupBackgroundCommand(commandId);
         const sourceKey = input.bridgeStatus ? readBridgeSourceKey(input.bridgeStatus) : undefined;
         if (sourceKey) {
           this.dropQueuedBackgroundCommandsForSource(sourceKey);
@@ -261,45 +280,45 @@ export class BrowserPerceptionService {
         return {
           status: context?.freshness === "settling" ? "settling_ready" : "ready",
           context,
-          commandId: input.payload.commandId,
+          commandId,
           diagnostics: {
             reason: "observe_result_without_waiter_ingested",
-            payloadStatus: input.payload.status,
+            payloadStatus: payload.status,
             url: snapshot.url,
             title: snapshot.title,
-            mutationRevision: input.payload.mutationRevision,
-            mutationQuietMs: input.payload.mutationQuietMs,
-            readyState: input.payload.readyState
+            mutationRevision: payload.mutationRevision,
+            mutationQuietMs: payload.mutationQuietMs,
+            readyState: payload.readyState
           }
         };
       }
-      this.cleanupBackgroundCommand(input.payload.commandId);
+      this.cleanupBackgroundCommand(commandId);
       return {
-        status: input.payload.status === "succeeded" ? "ready" : "error",
-        commandId: input.payload.commandId,
-        diagnostics: { reason: "observe_result_without_waiter", payloadStatus: input.payload.status }
+        status: payload.status === "succeeded" ? "ready" : "error",
+        commandId,
+        diagnostics: { reason: "observe_result_without_waiter", payloadStatus: payload.status }
       };
     }
-    if (input.payload.status !== "succeeded" || !input.payload.snapshot) {
+    if (payload.status !== "succeeded" || !payload.snapshot) {
       const result: BrowserPerceptionObserveResult = {
-        status: input.payload.status === "cancelled" ? "cancelled" : input.payload.status === "expired" ? "timeout" : "error",
-        commandId: input.payload.commandId,
+        status: payload.status === "cancelled" ? "cancelled" : payload.status === "expired" ? "timeout" : "error",
+        commandId,
         ack: pending.ack,
         wait: { waitedMs: Date.now() - Date.parse(pending.command.createdAt), timeoutMs: Date.parse(pending.command.deadlineAt) - Date.parse(pending.command.createdAt) },
         diagnostics: {
           reason: "extension_observe_failed",
-          payloadStatus: input.payload.status,
-          error: input.payload.error,
-          metadata: input.payload.metadata
+          payloadStatus: payload.status,
+          error: payload.error,
+          metadata: payload.metadata
         },
-        userRecovery: input.payload.error
+        userRecovery: payload.error
       };
-      this.cleanupBackgroundCommand(input.payload.commandId);
-      this.resolvePending(input.payload.commandId, result);
+      this.cleanupBackgroundCommand(commandId);
+      this.resolvePending(commandId, result);
       return result;
     }
 
-    const snapshot = input.providers.setDomSnapshot(input.payload.snapshot);
+    const snapshot = input.providers.setDomSnapshot(payload.snapshot);
     const context = this.ingestProviderSnapshot({
       providers: input.providers,
       bridgeStatus: input.bridgeStatus,
@@ -309,7 +328,7 @@ export class BrowserPerceptionService {
       pending,
       context,
       bridgeStatus: input.bridgeStatus,
-      commandId: input.payload.commandId
+      commandId
     });
     if (retry) {
       return retry;
@@ -317,25 +336,25 @@ export class BrowserPerceptionService {
     const result: BrowserPerceptionObserveResult = {
       status: context?.freshness === "settling" ? "settling_ready" : "ready",
       context,
-      commandId: input.payload.commandId,
+      commandId,
       ack: pending.ack,
       wait: { waitedMs: Date.now() - Date.parse(pending.command.createdAt), timeoutMs: Date.parse(pending.command.deadlineAt) - Date.parse(pending.command.createdAt) },
       diagnostics: {
         reason: "extension_observe_succeeded",
         url: snapshot.url,
         title: snapshot.title,
-        mutationRevision: input.payload.mutationRevision,
-        mutationQuietMs: input.payload.mutationQuietMs,
-        readyState: input.payload.readyState,
-        bridgeLatencyTrace: input.payload.metadata?.latencyTrace
+        mutationRevision: payload.mutationRevision,
+        mutationQuietMs: payload.mutationQuietMs,
+        readyState: payload.readyState,
+        bridgeLatencyTrace: payload.metadata?.latencyTrace
       }
     };
-    this.cleanupBackgroundCommand(input.payload.commandId);
+    this.cleanupBackgroundCommand(commandId);
     const sourceKey = input.bridgeStatus ? readBridgeSourceKey(input.bridgeStatus) : undefined;
     if (sourceKey) {
       this.dropQueuedBackgroundCommandsForSource(sourceKey);
     }
-    this.resolvePending(input.payload.commandId, result);
+    this.resolvePending(commandId, result);
     return result;
   }
 
@@ -542,6 +561,17 @@ export class BrowserPerceptionService {
     pending.resolve(result);
   }
 
+  private hasKnownObserveCommand(commandId: string): boolean {
+    if (this.pending.has(commandId)) {
+      return true;
+    }
+    const now = Date.now();
+    this.cleanupExpiredBackgroundCommands(now);
+    const queued = this.pendingCommands.some((command) => command.commandId === commandId && Date.parse(command.deadlineAt) > now);
+    const background = this.backgroundSourceByCommandId.get(commandId);
+    return queued || Boolean(background && background.deadlineAt > now);
+  }
+
   private hasPendingObserveForSource(sourceKey: string): boolean {
     const now = Date.now();
     this.cleanupExpiredBackgroundCommands(now);
@@ -581,6 +611,16 @@ export class BrowserPerceptionService {
       return false;
     });
   }
+}
+
+function isObserveAckStatus(value: unknown): value is BrowserPerceptionObserveAck["status"] {
+  return value === "accepted" ||
+    value === "busy" ||
+    value === "missing_permission" ||
+    value === "restricted_page" ||
+    value === "wrong_tab" ||
+    value === "unsupported" ||
+    value === "error";
 }
 
 function snapshotMatchesBridgeStatus(snapshot: DomSnapshot, status: BrowserExtensionBridgeStatus): boolean {

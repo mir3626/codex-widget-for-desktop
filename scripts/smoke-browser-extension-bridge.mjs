@@ -76,6 +76,7 @@ try {
   assertEqual(status.activeTab.permission, "allowed", "GET bridge permission");
   assertEqual(status.settings.allowAllSites, true, "GET bridge all-sites setting");
   assertEqual(status.settings.observeBlocklist[0], "https://blocked.example", "GET bridge observe blocklist");
+  await assertBridgeCommandCorrelationRejectsUnknownPayloads();
   await drainBackgroundObserve({
     url: "https://example.test/browser-bridge",
     title: "Browser Bridge Smoke",
@@ -240,6 +241,52 @@ async function postDomSnapshot() {
   }
 }
 
+async function assertBridgeCommandCorrelationRejectsUnknownPayloads() {
+  const requestId = `spoofed-${Date.now()}`;
+  await expectPostStatus("/browser-action/extension/action-ack", {
+    requestId
+  }, 409, "unknown Browser Action acknowledgement");
+  await expectPostStatus("/browser-action/extension/result", {
+    requestId,
+    ok: true
+  }, 409, "unknown Browser Action result");
+  await expectPostStatus("/browser-action/extension/browser-chrome-result", {
+    requestId: `browser-chrome:${requestId}`,
+    ok: true,
+    output: { tabs: [] }
+  }, 409, "unknown Browser Chrome result");
+  await expectPostStatus("/browser-action/extension/ack", {
+    commandId: requestId,
+    status: "accepted",
+    receivedAt: new Date().toISOString()
+  }, 409, "unknown Browser Perception acknowledgement");
+  await expectPostStatus("/browser-action/extension/observe-result", {
+    commandId: requestId,
+    status: "succeeded",
+    snapshot: createBridgeSnapshot({
+      url: "https://example.test/browser-bridge/spoofed",
+      title: "Spoofed Browser Bridge Result",
+      tabId: 31,
+      windowId: 4
+    }),
+    mutationRevision: "spoofed",
+    mutationQuietMs: 900,
+    readyState: "complete",
+    metadata: { reason: "background" }
+  }, 409, "unknown Browser Perception observe result");
+}
+
+async function expectPostStatus(path, payload, expectedStatus, label) {
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  assertEqual(response.status, expectedStatus, `${label} status`);
+  const body = await response.json();
+  assertEqual(body.ok, false, `${label} ok flag`);
+}
+
 async function postObserveResult(commandId, options) {
   const response = await fetch(`${baseUrl}/browser-action/extension/observe-result`, {
     method: "POST",
@@ -247,24 +294,7 @@ async function postObserveResult(commandId, options) {
     body: JSON.stringify({
       commandId,
       status: "succeeded",
-      snapshot: {
-        url: options.url,
-        title: options.title,
-        readyState: "complete",
-        text: options.title,
-        mutationRevision: "bridge-smoke",
-        mutationQuietMs: 900,
-        lastMutationAt: new Date(Date.now() - 900).toISOString(),
-        bridge: {
-          tabId: options.tabId,
-          windowId: options.windowId,
-          url: options.url,
-          title: options.title,
-          permission: "allowed",
-          reason: "smoke"
-        },
-        elements: []
-      },
+      snapshot: createBridgeSnapshot(options),
       mutationRevision: "bridge-smoke",
       mutationQuietMs: 900,
       readyState: "complete",
@@ -274,6 +304,27 @@ async function postObserveResult(commandId, options) {
   if (!response.ok) {
     throw new Error(`Browser Bridge observe result failed: ${response.status}`);
   }
+}
+
+function createBridgeSnapshot(options) {
+  return {
+    url: options.url,
+    title: options.title,
+    readyState: "complete",
+    text: options.title,
+    mutationRevision: "bridge-smoke",
+    mutationQuietMs: 900,
+    lastMutationAt: new Date(Date.now() - 900).toISOString(),
+    bridge: {
+      tabId: options.tabId,
+      windowId: options.windowId,
+      url: options.url,
+      title: options.title,
+      permission: "allowed",
+      reason: "smoke"
+    },
+    elements: []
+  };
 }
 
 async function drainBackgroundObserve(options) {
