@@ -8,6 +8,8 @@ type DaemonAuthHandshake = {
 
 const authCache = new Map<string, Promise<DaemonAuthHandshake | null>>();
 
+class RecoverableDaemonAuthError extends Error {}
+
 export async function readDaemonAuth(daemonPort: string | number): Promise<DaemonAuthHandshake | null> {
   const port = String(daemonPort);
   let cached = authCache.get(port);
@@ -32,6 +34,15 @@ export async function daemonFetchJson<T>(daemonPort: string | number, path: stri
 }
 
 export async function daemonPostJson<T>(daemonPort: string | number, path: string, body: unknown): Promise<T> {
+  return await daemonPostJsonAttempt<T>(String(daemonPort), path, body, false);
+}
+
+async function daemonPostJsonAttempt<T>(
+  daemonPort: string,
+  path: string,
+  body: unknown,
+  retrying: boolean
+): Promise<T> {
   const port = String(daemonPort);
   const auth = await readDaemonAuth(port);
   const headers: Record<string, string> = {
@@ -39,7 +50,15 @@ export async function daemonPostJson<T>(daemonPort: string | number, path: strin
   };
   if (auth) {
     headers[auth.header] = auth.token;
-    headers[auth.nonceHeader] = await fetchDaemonNonce(port, auth, "POST", path);
+    try {
+      headers[auth.nonceHeader] = await fetchDaemonNonce(port, auth, "POST", path);
+    } catch (error) {
+      if (!retrying && error instanceof RecoverableDaemonAuthError) {
+        clearDaemonAuth(port);
+        return await daemonPostJsonAttempt<T>(port, path, body, true);
+      }
+      throw error;
+    }
   }
 
   const response = await fetch(daemonUrl(port, path), {
@@ -47,11 +66,15 @@ export async function daemonPostJson<T>(daemonPort: string | number, path: strin
     headers,
     body: JSON.stringify(body)
   });
-  if ((response.status === 401 || response.status === 409) && auth) {
-    clearDaemonAuth(port);
-  }
-  const payload = await response.json() as T & { ok?: boolean; error?: string };
+  const payload = await response.json() as T & { ok?: boolean; error?: string; code?: string };
   if (!response.ok || payload.ok === false) {
+    if (!retrying && auth && isRecoverableAuthResponse(response.status, payload.code)) {
+      clearDaemonAuth(port);
+      return await daemonPostJsonAttempt<T>(port, path, body, true);
+    }
+    if (isRecoverableAuthResponse(response.status, payload.code)) {
+      clearDaemonAuth(port);
+    }
     throw new Error(payload.error ?? `${path} returned ${response.status}`);
   }
   return payload as T;
@@ -62,6 +85,23 @@ export function daemonWebSocketUrl(daemonPort: string | number, auth: DaemonAuth
   return auth
     ? `${base}?${encodeURIComponent(auth.websocketQueryParam)}=${encodeURIComponent(auth.token)}`
     : base;
+}
+
+function isRecoverableAuthResponse(status: number, code: unknown): boolean {
+  if (status !== 401 && status !== 409) {
+    return false;
+  }
+  return typeof code === "string" && (
+    code === "daemon_token_required" ||
+    code === "nonce_required" ||
+    code === "nonce_invalid_or_replayed"
+  );
+}
+
+function maybeThrowRecoverableAuthError(status: number, payload: { code?: unknown; error?: string }): void {
+  if (isRecoverableAuthResponse(status, payload.code)) {
+    throw new RecoverableDaemonAuthError(payload.error ?? `Daemon auth failed: ${status}`);
+  }
 }
 
 async function fetchDaemonAuth(daemonPort: string): Promise<DaemonAuthHandshake | null> {
@@ -102,8 +142,10 @@ async function fetchDaemonNonce(
     daemonUrl(daemonPort, `/daemon/auth/nonce?method=${encodeURIComponent(method)}&path=${encodeURIComponent(path)}`),
     { headers: { [auth.header]: auth.token } }
   );
-  const payload = await response.json() as { ok?: boolean; auth?: { nonce?: string }; error?: string };
+  const payload = await response.json() as { ok?: boolean; auth?: { nonce?: string }; error?: string; code?: string };
   if (!response.ok || payload.ok !== true || typeof payload.auth?.nonce !== "string") {
+    maybeThrowRecoverableAuthError(response.status, payload);
+    clearDaemonAuth(daemonPort);
     throw new Error(payload.error ?? `Nonce request failed: ${response.status}`);
   }
   return payload.auth.nonce;

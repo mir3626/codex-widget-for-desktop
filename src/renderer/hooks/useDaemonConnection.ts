@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ClientMessage, ServerEvent } from "../../shared/protocol.js";
 import { readNativeDaemonStatus, type NativeDaemonStatus } from "../shell";
 import type { LogLine } from "../types";
-import { daemonWebSocketUrl, readDaemonAuth } from "../utils/daemonHttp";
+import { clearDaemonAuth, daemonWebSocketUrl, readDaemonAuth } from "../utils/daemonHttp";
 
 type UseDaemonConnectionInput = {
   daemonPort: string;
@@ -59,6 +59,9 @@ export function useDaemonConnection(input: UseDaemonConnectionInput) {
         setConnected(false);
         if (stopped) {
           return;
+        }
+        if (auth) {
+          clearDaemonAuth(input.daemonPort);
         }
         retryCount += 1;
         setStatus("reconnecting");

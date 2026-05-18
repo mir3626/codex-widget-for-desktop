@@ -5,17 +5,44 @@
 Codex Widget for Desktop is a Tauri + React + Node daemon desktop widget. The
 daemon listens on `127.0.0.1:4128`; the renderer is served by Vite in dev.
 
-The latest completed product work is `iter-40` daemon local transport hardening
-for auth/nonce/CORS and WebSocket Origin boundaries, after the SUPER-YOLO
-runtime trust-boundary hardening and Computer Use catch-up capability recipes
-through `iter-39`.
+The latest completed product work is the post-iter-40 daemon auth cache recovery
+refactor, after daemon local transport hardening for auth/nonce/CORS and
+WebSocket Origin boundaries.
 The latest report work is
 `computer-use-capability-comparison.html`, a root-level Korean HTML comparison
 of widget/Codex macOS/Hermes Agent Computer Use prompt capability. Active sprint
 pointer is idle. Current active roadmap file is compacted to the current
 iteration only; historical roadmaps live under `docs/plans/archive/roadmaps/`.
 
-## Latest Update: Daemon Auth Nonce CORS Hardening
+## Latest Update: Daemon Auth Cache Recovery Refactor
+
+Completed the next-priority code review/refactor after `iter-40`.
+
+Review finding:
+
+- Renderer daemon auth was cached per port. If the daemon restarted on the same
+  port, the renderer could keep using the stale token, causing nonce fetches or
+  WebSocket reconnects to fail until a manual retry/reload.
+
+Applied:
+
+- Added `smoke:daemon-auth-cache-recovery` to reproduce same-port daemon restart
+  with a stale renderer auth cache.
+- `daemonPostJson` now treats daemon-token and nonce auth failures as
+  recoverable, clears the cached handshake, and retries once with a fresh
+  handshake/nonce.
+- `useDaemonConnection` clears cached daemon auth on unexpected WebSocket close
+  so reconnect starts with a fresh handshake after daemon restarts.
+
+Verification passed:
+
+- `npm run smoke:daemon-auth-cache-recovery`
+- `npm run smoke:daemon-auth-boundary`
+- `node scripts/smoke-renderer-computer-use-profile-draft.mjs`
+- `npm run lint`
+- `npm run build:renderer`
+
+## Previous Update: Daemon Auth Nonce CORS Hardening
 
 Completed `$vibe-iterate` iteration `iter-40`.
 
