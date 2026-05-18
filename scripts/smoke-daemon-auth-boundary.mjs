@@ -11,6 +11,7 @@ const daemon = await startDaemon({ port: 0 });
 const baseUrl = `http://127.0.0.1:${daemon.port}`;
 const trustedOrigin = "http://127.0.0.1:5173";
 const maliciousOrigin = "https://malicious.example";
+const extensionOrigin = "chrome-extension://abcdefghijklmnopabcdefghijklmnop";
 
 try {
   const deniedHandshake = await fetchRaw("/daemon/auth/handshake", {
@@ -18,6 +19,45 @@ try {
   });
   assert.equal(deniedHandshake.status, 403);
   assert.notEqual(deniedHandshake.headers.get("access-control-allow-origin"), "*");
+
+  const deniedExtensionHandshake = await fetchRaw("/daemon/auth/handshake", {
+    headers: { Origin: extensionOrigin }
+  });
+  assert.equal(deniedExtensionHandshake.status, 403);
+
+  const allowedExtensionHealth = await fetchRaw("/storage/health", {
+    headers: { Origin: extensionOrigin }
+  });
+  assert.equal(allowedExtensionHealth.status, 200);
+  assert.equal(allowedExtensionHealth.headers.get("access-control-allow-origin"), extensionOrigin);
+
+  const deniedExtensionComputerUseRead = await fetchRaw("/computer-use/autonomy/profiles", {
+    headers: { Origin: extensionOrigin }
+  });
+  assert.equal(deniedExtensionComputerUseRead.status, 403);
+
+  const deniedExtensionScreenSnapshot = await postRaw("/providers/screen/snapshot", {
+    source: "malicious-extension",
+    title: "should fail"
+  }, { Origin: extensionOrigin });
+  assert.equal(deniedExtensionScreenSnapshot.status, 403);
+
+  const allowedExtensionHeartbeat = await postRaw("/browser-action/extension/heartbeat", {
+    connected: true,
+    mode: "idle",
+    updatedAt: new Date().toISOString(),
+    activeTab: { permission: "allowed" }
+  }, { Origin: extensionOrigin });
+  assert.equal(allowedExtensionHeartbeat.status, 200);
+
+  const allowedExtensionDomSnapshot = await postRaw("/providers/dom/snapshot", {
+    url: "https://example.test/extension-origin",
+    title: "Extension Origin DOM",
+    readyState: "complete",
+    text: "extension origin route scope",
+    elements: []
+  }, { Origin: extensionOrigin });
+  assert.equal(allowedExtensionDomSnapshot.status, 200);
 
   const allowedOptions = await fetchRaw("/computer-use/autonomy/profiles", {
     method: "OPTIONS",
@@ -41,6 +81,15 @@ try {
   });
   assert.equal(deniedOptions.status, 403);
   assert.notEqual(deniedOptions.headers.get("access-control-allow-origin"), "*");
+
+  const deniedExtensionOptions = await fetchRaw("/computer-use/autonomy/profiles", {
+    method: "OPTIONS",
+    headers: {
+      Origin: extensionOrigin,
+      "Access-Control-Request-Method": "POST"
+    }
+  });
+  assert.equal(deniedExtensionOptions.status, 403);
 
   const missingToken = await postRaw("/computer-use/autonomy/profiles", {
     name: "Missing token should fail",

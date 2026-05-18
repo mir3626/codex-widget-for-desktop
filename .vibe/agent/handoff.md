@@ -5,16 +5,47 @@
 Codex Widget for Desktop is a Tauri + React + Node daemon desktop widget. The
 daemon listens on `127.0.0.1:4128`; the renderer is served by Vite in dev.
 
-The latest completed product work is the post-iter-40 daemon auth cache recovery
-refactor, after daemon local transport hardening for auth/nonce/CORS and
-WebSocket Origin boundaries.
+The latest completed product work is post-iter-40 daemon transport hardening:
+extension-Origin route scoping after daemon auth cache recovery and the
+auth/nonce/CORS hardening sprint.
 The latest report work is
 `computer-use-capability-comparison.html`, a root-level Korean HTML comparison
 of widget/Codex macOS/Hermes Agent Computer Use prompt capability. Active sprint
 pointer is idle. Current active roadmap file is compacted to the current
 iteration only; historical roadmaps live under `docs/plans/archive/roadmaps/`.
 
-## Latest Update: Daemon Auth Cache Recovery Refactor
+## Latest Update: Daemon Extension Origin Scope Hardening
+
+Completed the next-priority code review/refactor after daemon auth cache
+recovery.
+
+Review finding:
+
+- `chrome-extension://...` Origins were trusted broadly for compatibility, but
+  that exempted extension Origins from token/nonce checks on all sensitive
+  daemon routes, not just Browser Bridge routes.
+
+Applied:
+
+- Extension Origins can no longer request daemon auth tokens.
+- Extension Origins are route-scoped to:
+  - `GET /storage/health`
+  - `/browser-action/extension/*`
+  - `POST /providers/dom/snapshot`
+- Extension Origins are denied for Computer Use, Semantic Memory, screen
+  snapshot, and other sensitive daemon surfaces.
+- `smoke:daemon-auth-boundary` now covers allowed and denied extension-Origin
+  routes plus denied extension preflight for non-bridge mutation routes.
+
+Verification passed:
+
+- `npm run smoke:daemon-auth-boundary`
+- `npm run smoke:browser-bridge`
+- `npm run smoke:daemon-auth-cache-recovery`
+- `node scripts/smoke-renderer-computer-use-profile-draft.mjs`
+- `npm run lint`
+
+## Previous Update: Daemon Auth Cache Recovery Refactor
 
 Completed the next-priority code review/refactor after `iter-40`.
 

@@ -82,6 +82,15 @@ export function createDaemonLocalAuth(input: {
         .end(JSON.stringify({ ok: false, error: originDecision.reason ?? "Origin is not allowed.", code: "origin_denied" }));
       return true;
     }
+    if (originDecision.kind === "extension" && !isExtensionAllowedRoute(readHeader(request, "access-control-request-method") ?? "", url.pathname)) {
+      response.writeHead(403, { "Content-Type": "application/json; charset=utf-8" })
+        .end(JSON.stringify({
+          ok: false,
+          error: "Extension origins may only call Browser Bridge scoped daemon routes.",
+          code: "extension_route_denied"
+        }));
+      return true;
+    }
     applyCorsHeaders(request, response);
     response.writeHead(204).end();
     return true;
@@ -98,6 +107,15 @@ export function createDaemonLocalAuth(input: {
       return true;
     }
     applyCorsHeaders(request, response);
+    if (originDecision.kind === "extension") {
+      response.writeHead(403, { "Content-Type": "application/json; charset=utf-8" })
+        .end(JSON.stringify({
+          ok: false,
+          error: "Extension origins cannot request daemon auth tokens.",
+          code: "extension_auth_denied"
+        }));
+      return true;
+    }
 
     if (url.pathname === "/daemon/auth/handshake" && request.method === "GET") {
       response.writeHead(200, { "Content-Type": "application/json; charset=utf-8" })
@@ -138,6 +156,14 @@ export function createDaemonLocalAuth(input: {
         status: 403,
         code: "origin_denied",
         error: originDecision.reason ?? "Origin is not allowed."
+      };
+    }
+    if (originDecision.kind === "extension" && !isExtensionAllowedRoute(request.method ?? "GET", url.pathname)) {
+      return {
+        ok: false,
+        status: 403,
+        code: "extension_route_denied",
+        error: "Extension origins may only call Browser Bridge scoped daemon routes."
       };
     }
     if (!requiresBrowserMutationAuth(originDecision, request.method ?? "GET", url.pathname)) {
@@ -270,6 +296,23 @@ export function isCorsManagedRoute(pathname: string): boolean {
 
 function isAuthRoute(pathname: string): boolean {
   return pathname === "/daemon/auth/handshake" || pathname === "/daemon/auth/nonce";
+}
+
+function isExtensionAllowedRoute(method: string, pathname: string): boolean {
+  const normalized = normalizeMethod(method);
+  if (!normalized) {
+    return false;
+  }
+  if (pathname === "/storage/health" && normalized === "GET") {
+    return true;
+  }
+  if (pathname === "/providers/dom/snapshot" && normalized === "POST") {
+    return true;
+  }
+  if (pathname.startsWith("/browser-action/extension/")) {
+    return normalized === "GET" || normalized === "POST";
+  }
+  return false;
 }
 
 function requiresBrowserMutationAuth(originDecision: OriginDecision, method: string, pathname: string): boolean {
