@@ -2142,7 +2142,7 @@ export class ComputerSessionRuntime {
       {
         type: "risk_class",
         value: mapRiskClassToAutonomyRisk(state.summary.riskClass),
-        reason: `Computer Session risk class is ${state.summary.riskClass}.`
+        reason: `Computer Session risk class is ${state.summary.riskClass} for user request: ${state.summary.userRequest.slice(0, 240)}`
       }
     ];
     if (!command) {

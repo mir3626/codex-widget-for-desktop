@@ -64,8 +64,11 @@ export function createSkeletonDagNodes(input: {
 }
 
 export function inferRiskClass(userRequest: string): RiskClass {
-  if (/password|credential|token|결제|payment|보안|security/i.test(userRequest)) {
+  if (/password|credential|token|secret|cookie|captcha|비밀번호|암호|쿠키|캡차|보안|security/i.test(userRequest)) {
     return "credential_or_secret";
+  }
+  if (/purchase|payment|pay|checkout|card|cvv|cvc|결제|구매|카드/i.test(userRequest)) {
+    return "external_submission";
   }
   if (/delete|remove|삭제|변경|settings|설정/i.test(userRequest)) {
     return "os_settings_mutation";
@@ -101,7 +104,8 @@ export function mapRiskClassToAutonomyRisk(riskClass: RiskClass): AutonomyRiskCl
   if (riskClass === "read_only") return "read_only";
   if (riskClass === "local_artifact_create") return "reversible";
   if (riskClass === "credential_or_secret") return "credential";
-  if (riskClass === "browser_state_mutation" || riskClass === "external_submission") return "side_effect";
+  if (riskClass === "browser_state_mutation") return "side_effect";
+  if (riskClass === "external_submission") return "high_risk";
   return "high_risk";
 }
 

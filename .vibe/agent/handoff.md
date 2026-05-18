@@ -5,16 +5,55 @@
 Codex Widget for Desktop is a Tauri + React + Node daemon desktop widget. The
 daemon listens on `127.0.0.1:4128`; the renderer is served by Vite in dev.
 
-The latest completed product work is mode-aware Computer Use SUPER-YOLO safety
-boundary unlock execution and documentation, after the SUPER-YOLO permission
-override UI and Computer Use catch-up capability recipes through `iter-39`.
+The latest completed product work is post-review hardening for mode-aware
+Computer Use SUPER-YOLO safety boundary unlock execution, after the SUPER-YOLO
+permission override UI and Computer Use catch-up capability recipes through
+`iter-39`.
 The latest report work is
 `computer-use-capability-comparison.html`, a root-level Korean HTML comparison
 of widget/Codex macOS/Hermes Agent Computer Use prompt capability. Active sprint
 pointer is idle. Current active roadmap file is compacted to the current
 iteration only; historical roadmaps live under `docs/plans/archive/roadmaps/`.
 
-## Latest Update: Computer Use SUPER-YOLO Mode-Aware Execution
+## Latest Update: SUPER-YOLO Runtime Trust Boundary Hardening
+
+Closed the review findings for mode-aware SUPER-YOLO execution.
+
+Applied:
+
+- WS `capability.start` now strips client-supplied runtime-only approval and
+  permission-decision fields before enqueueing, so external messages cannot
+  set `requireApproval: false` or forge a SUPER-YOLO decision.
+- `CapabilityRuntime` now accepts server-generated
+  `trustedPermissionDecision` separately from persisted job input; terminal
+  credential unlock uses that trusted context only, and persisted command input
+  is redacted while transient input remains in memory for execution.
+- Terminal credential-like detection now uses the same broad keyword form for
+  hard-blocking, persistence redaction, transient input selection, and scoped
+  autonomy redaction, covering `password placeholder` as well as
+  `password=placeholder`.
+- Payment/purchase prompts now infer `external_submission`, map to autonomy
+  `high_risk`, and carry the original user request into terminal risk
+  requirement reasons so the payment/purchase unlock applies only to matching
+  payment/purchase text.
+- SUPER-YOLO safety boundary unlock profile writes are validated server-side:
+  category unlocks require `scoped_yolo`, `one_time`, max one use, explicit
+  SUPER-YOLO confirmation, and the matching disclaimer acknowledgement marker.
+
+Verification passed:
+
+- `npm run build:daemon`
+- `node scripts/smoke-terminal-capability.mjs`
+- `node scripts/smoke-computer-use-credential-consent.mjs`
+- `node scripts/smoke-computer-use-browser-profile-permission.mjs`
+- `node scripts/smoke-computer-use-terminal-parity.mjs`
+- `npm run lint`
+- `node scripts/smoke-renderer-computer-use-profile-draft.mjs`
+- `npm run smoke:computer-use-one-time-profile`
+- `git diff --check` (only the existing CRLF normalization warning)
+- strict UTF-8, mojibake, and `.cs` BOM touched-file checks
+
+## Previous Update: Computer Use SUPER-YOLO Mode-Aware Execution
 
 Connected the SUPER-YOLO safety boundary unlock model to current documentation
 and runtime permission paths.

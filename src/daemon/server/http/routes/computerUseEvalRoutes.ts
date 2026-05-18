@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { createReadStream, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, extname, join, resolve, sep } from "node:path";
 import { auditComputerUseVerifier, createReleaseReadinessSummary, rollupComputerUseEvalMetrics } from "../../../computer-use-eval/index.js";
-import { listEffectiveAutonomyCapabilities, ScopedAutonomyRuntime } from "../../../scoped-autonomy/index.js";
+import { listEffectiveAutonomyCapabilities, ScopedAutonomyRuntime, validateAutonomyPermissionProfileBoundaryUnlocks } from "../../../scoped-autonomy/index.js";
 import { readRequestBody, writeJsonResponse } from "../../http.js";
 import type { HttpRouteContext } from "../context.js";
 
@@ -223,17 +223,22 @@ export async function handleComputerUseEvalRoute(
   if (url.pathname === "/computer-use/autonomy/profiles" && request.method === "POST") {
     try {
       const body = JSON.parse(await readRequestBody(request, 256 * 1024));
-      const profile = context.storage.createAutonomyPermissionProfile({
+      const profileInput = {
         id: typeof body.id === "string" ? body.id : undefined,
         name: typeof body.name === "string" ? body.name : "Scoped autonomy",
         mode: body.mode === "off" || body.mode === "ask" || body.mode === "scoped_yolo" ? body.mode : "ask",
-        scope: body.scope === "one_time" ? "one_time" : "persistent",
+        scope: body.scope === "one_time" ? "one_time" as const : "persistent" as const,
         status: body.status === "disabled" || body.status === "expired" ? body.status : "active",
         grants: body.grants && typeof body.grants === "object" ? body.grants : undefined,
         safetyBoundaries: Array.isArray(body.safetyBoundaries) ? body.safetyBoundaries : undefined,
         maxUses: Number.isFinite(Number(body.maxUses)) ? Number(body.maxUses) : undefined,
         expiresAt: typeof body.expiresAt === "string" ? body.expiresAt : undefined
-      });
+      };
+      const validation = validateAutonomyPermissionProfileBoundaryUnlocks(profileInput);
+      if (!validation.ok) {
+        throw new Error(validation.reason);
+      }
+      const profile = context.storage.createAutonomyPermissionProfile(profileInput);
       writeJsonResponse(response, 200, { ok: true, profile });
     } catch (error) {
       writeJsonResponse(response, 400, { ok: false, error: error instanceof Error ? error.message : "Invalid autonomy profile request." });
@@ -245,8 +250,13 @@ export async function handleComputerUseEvalRoute(
   if (autonomyProfileMatch && request.method === "POST") {
     try {
       const body = JSON.parse(await readRequestBody(request, 256 * 1024));
-      const profile = context.storage.updateAutonomyPermissionProfile({
-        id: decodeURIComponent(autonomyProfileMatch[1]),
+      const id = decodeURIComponent(autonomyProfileMatch[1]);
+      const current = context.storage.readAutonomyPermissionProfile(id);
+      if (!current) {
+        throw new Error(`Autonomy permission profile not found: ${id}`);
+      }
+      const profileInput = {
+        id,
         name: typeof body.name === "string" ? body.name : undefined,
         mode: body.mode === "off" || body.mode === "ask" || body.mode === "scoped_yolo" ? body.mode : undefined,
         scope: body.scope === "one_time" || body.scope === "persistent" ? body.scope : undefined,
@@ -256,7 +266,18 @@ export async function handleComputerUseEvalRoute(
         maxUses: body.maxUses === null ? null : Number.isFinite(Number(body.maxUses)) ? Number(body.maxUses) : undefined,
         usedCount: Number.isFinite(Number(body.usedCount)) ? Number(body.usedCount) : undefined,
         expiresAt: body.expiresAt === null ? null : typeof body.expiresAt === "string" ? body.expiresAt : undefined
+      };
+      const nextScope = profileInput.scope ?? current.scope;
+      const validation = validateAutonomyPermissionProfileBoundaryUnlocks({
+        mode: profileInput.mode ?? current.mode,
+        scope: nextScope,
+        maxUses: nextScope === "one_time" ? 1 : profileInput.maxUses === null ? undefined : profileInput.maxUses ?? current.maxUses,
+        safetyBoundaries: profileInput.safetyBoundaries ?? current.safetyBoundaries
       });
+      if (!validation.ok) {
+        throw new Error(validation.reason);
+      }
+      const profile = context.storage.updateAutonomyPermissionProfile(profileInput);
       writeJsonResponse(response, 200, { ok: true, profile });
     } catch (error) {
       writeJsonResponse(response, 400, { ok: false, error: error instanceof Error ? error.message : "Invalid autonomy profile update request." });

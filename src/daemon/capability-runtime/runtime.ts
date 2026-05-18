@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type {
+  AutonomyPermissionDecision,
   CapabilityEventPhase,
   CapabilityJobKind,
   CapabilityJobStatus,
@@ -18,6 +19,7 @@ import {
   recordCapabilityJobEvalStep
 } from "../computer-use-eval/index.js";
 import { readAutonomyPermissionModeCapabilities } from "../scoped-autonomy/permissionProfile.js";
+import { containsCredentialLikeTerminalText } from "../computer-use/terminalSafetyPolicy.js";
 import type {
   CapabilityHandler,
   CapabilityHandlerOutput,
@@ -98,14 +100,18 @@ export class CapabilityRuntime {
 
   async enqueue(input: CapabilityRuntimeEnqueueInput): Promise<CapabilityJobSummary> {
     const safety = decideCapabilitySafety(input);
-    const persistedInput = this.attachAutomaticEvalRun(input, sanitizeCapabilityInputForPersistence(input.kind, input.input));
+    const persistedInput = this.attachAutomaticEvalRun(input, sanitizeCapabilityInputForPersistence(input.kind, input.input, {
+      trustedPermissionDecision: input.trustedPermissionDecision
+    }));
     const job = this.queue.create({
       ...input,
       input: persistedInput,
       leaseId: input.leaseId ?? input.lockKey,
       approvalId: safety.approvalId ?? input.approvalId
     });
-    if (requiresTransientCapabilityInput(input.kind, input.input)) {
+    if (requiresTransientCapabilityInput(input.kind, input.input, {
+      trustedPermissionDecision: input.trustedPermissionDecision
+    })) {
       this.transientInputs.set(job.id, input.input);
     }
     this.emitJobEvent(job, "queued", `Capability job queued: ${job.kind}`, { safety: safety.reason });
@@ -722,12 +728,16 @@ function readCapabilityContextLease(input: unknown): { id?: string; leaseId?: st
   return null;
 }
 
-function sanitizeCapabilityInputForPersistence(kind: CapabilityJobKind, input: unknown): unknown {
+function sanitizeCapabilityInputForPersistence(
+  kind: CapabilityJobKind,
+  input: unknown,
+  options: { trustedPermissionDecision?: AutonomyPermissionDecision } = {}
+): unknown {
   if (kind === "terminal") {
     const record = input && typeof input === "object" ? input as Record<string, unknown> : {};
     const command = typeof record.command === "string" ? record.command : "";
-    if (containsSensitiveText(command)) {
-      if (!hasCredentialCookieCaptchaPermissionUnlock(record.permissionDecision)) {
+    if (containsSensitiveTerminalText(command)) {
+      if (!hasCredentialCookieCaptchaPermissionUnlock(options.trustedPermissionDecision)) {
         throw new Error("Refusing to persist or execute a terminal capability command containing credential-like text.");
       }
       return redactSensitiveCapabilityValue(input);
@@ -742,11 +752,15 @@ function sanitizeCapabilityInputForPersistence(kind: CapabilityJobKind, input: u
   return redactSensitiveCapabilityValue(input);
 }
 
-function requiresTransientCapabilityInput(kind: CapabilityJobKind, input: unknown): boolean {
+function requiresTransientCapabilityInput(
+  kind: CapabilityJobKind,
+  input: unknown,
+  options: { trustedPermissionDecision?: AutonomyPermissionDecision } = {}
+): boolean {
   if (kind === "terminal") {
     const record = input && typeof input === "object" ? input as Record<string, unknown> : {};
     const command = typeof record.command === "string" ? record.command : "";
-    return containsSensitiveText(command) && hasCredentialCookieCaptchaPermissionUnlock(record.permissionDecision);
+    return containsSensitiveTerminalText(command) && hasCredentialCookieCaptchaPermissionUnlock(options.trustedPermissionDecision);
   }
   return kind === "browser_chrome" && (
     (isFileUploadBrowserChromeInput(input) && containsFileUploadPaths(input)) ||
@@ -754,11 +768,8 @@ function requiresTransientCapabilityInput(kind: CapabilityJobKind, input: unknow
   );
 }
 
-function hasCredentialCookieCaptchaPermissionUnlock(value: unknown): boolean {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-  const capabilities = readAutonomyPermissionModeCapabilities(value as { mode?: string; safetyBoundaries?: string[] });
+function hasCredentialCookieCaptchaPermissionUnlock(value: AutonomyPermissionDecision | undefined): boolean {
+  const capabilities = readAutonomyPermissionModeCapabilities(value);
   return capabilities.credentialCookieCaptchaUnlocked;
 }
 
@@ -871,10 +882,10 @@ function isSensitiveKey(key: string): boolean {
   return /password|passwd|token|cookie|credential|payment|card|secret|api[_-]?key/i.test(key);
 }
 
-function containsSensitiveText(text: string): boolean {
-  return /(?:password|passwd|token|cookie|credential|secret|api[_-]?key)\s*[:=]/i.test(text);
+function containsSensitiveTerminalText(text: string): boolean {
+  return containsCredentialLikeTerminalText(text);
 }
 
 function containsSensitiveInlineValue(text: string): boolean {
-  return /(?:password|passwd|token|cookie|credential|secret|api[_-]?key)\s*[:=]\s*\S+/i.test(text);
+  return containsCredentialLikeTerminalText(text);
 }

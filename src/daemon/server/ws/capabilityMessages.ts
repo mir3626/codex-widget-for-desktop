@@ -1,4 +1,4 @@
-import type { ClientMessage } from "../../../shared/protocol.js";
+import type { CapabilityStartInput, ClientMessage } from "../../../shared/protocol.js";
 import { send } from "../events.js";
 import { mapCapabilityRuntimeEvent } from "../../capability-runtime/index.js";
 import type { MessageRouterContext } from "./context.js";
@@ -6,7 +6,7 @@ import type { MessageRouterContext } from "./context.js";
 export async function handleCapabilityMessage(message: ClientMessage, context: MessageRouterContext): Promise<boolean> {
   if (message.type === "capability.start") {
     try {
-      const job = await context.capabilityRuntime.enqueue(message.job);
+      const job = await context.capabilityRuntime.enqueue(sanitizeClientCapabilityStartInput(message.job));
       send(context.socket, mapCapabilityRuntimeEvent({
         type: "job",
         job,
@@ -58,4 +58,36 @@ export async function handleCapabilityMessage(message: ClientMessage, context: M
   }
 
   return false;
+}
+
+function sanitizeClientCapabilityStartInput(input: CapabilityStartInput): CapabilityStartInput {
+  const raw = input as CapabilityStartInput & Record<string, unknown>;
+  return {
+    id: raw.id,
+    transactionId: raw.transactionId,
+    sessionId: raw.sessionId,
+    kind: raw.kind,
+    priority: raw.priority,
+    requestedBy: raw.requestedBy,
+    input: sanitizeClientCapabilityInput(raw.input),
+    inputBlobIds: raw.inputBlobIds,
+    leaseId: raw.leaseId,
+    approvalId: raw.approvalId,
+    timeoutMs: raw.timeoutMs,
+    maxRetries: raw.maxRetries
+  };
+}
+
+function sanitizeClientCapabilityInput(input: unknown): unknown {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return input;
+  }
+  const output: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
+    if (key === "permissionDecision") {
+      continue;
+    }
+    output[key] = value;
+  }
+  return output;
 }

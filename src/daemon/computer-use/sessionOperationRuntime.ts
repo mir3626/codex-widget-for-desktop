@@ -315,14 +315,15 @@ export async function executeOperation(
     priority: "interactive",
     requestedBy: "direct_ui",
     requireApproval: terminalPermission.status === "preapproved" ? false : undefined,
+    trustedPermissionDecision: terminalPermission.status === "preapproved" ? terminalPermission.decision : undefined,
+    trustedPermissionProfileId: terminalPermission.status === "preapproved" ? state.summary.profileId : undefined,
     input: {
       ...bridge.input,
       dagRunId: state.summary.dagRunId,
       dagNodeId: dagNode.id,
       evalRunId: state.summary.evalRunId,
       ...(terminalPermission.status === "preapproved" ? {
-        permissionProfileId: state.summary.profileId,
-        permissionDecision: terminalPermission.decision
+        permissionProfileId: state.summary.profileId
       } : {})
     },
     timeoutMs: readOperationTimeoutMs(bridge.input)

@@ -6,6 +6,10 @@ import { join } from "node:path";
 import { startDaemon } from "../dist/daemon/server.js";
 import { createStorageService } from "../dist/daemon/storage/storage.js";
 import {
+  inferRiskClass,
+  mapRiskClassToAutonomyRisk
+} from "../dist/daemon/computer-use/sessionRuntimeHelpers.js";
+import {
   evaluateAutonomyPermission,
   sanitizeAutonomyInput,
   summarizeCredentialPolicy
@@ -106,7 +110,15 @@ try {
     "terminal_command_credential_like"
   );
   assert.equal(
+    readTerminalHardBlockReason("powershell -NoProfile -Command \"Write-Output password placeholder\""),
+    "terminal_command_credential_like"
+  );
+  assert.equal(
     readTerminalHardBlockReason("powershell -NoProfile -Command \"Write-Output password=placeholder\"", { allowCredentialLikeText: true }),
+    undefined
+  );
+  assert.equal(
+    readTerminalHardBlockReason("powershell -NoProfile -Command \"Write-Output password placeholder\"", { allowCredentialLikeText: true }),
     undefined
   );
 
@@ -146,6 +158,20 @@ try {
   });
   assert.equal(superYoloPaymentAllowed.allowed, true, JSON.stringify(superYoloPaymentAllowed, null, 2));
   assert.match(superYoloPaymentAllowed.reason, /payment_purchase_boundary_released_by_user/);
+  assert.equal(inferRiskClass("장바구니 결제 버튼을 눌러 구매를 완료해줘"), "external_submission");
+  assert.equal(mapRiskClassToAutonomyRisk("external_submission"), "high_risk");
+  const naturalPaymentRiskAllowed = evaluateAutonomyPermission({
+    profile: superYoloPaymentUnlockProfile,
+    requirements: [
+      {
+        type: "risk_class",
+        value: "high_risk",
+        reason: "Computer Session risk class is external_submission for a payment checkout purchase prompt."
+      }
+    ]
+  });
+  assert.equal(naturalPaymentRiskAllowed.allowed, true, JSON.stringify(naturalPaymentRiskAllowed, null, 2));
+  assert.match(naturalPaymentRiskAllowed.reason, /payment_purchase_boundary_released_by_user/);
 
   const leaseProfile = storage.createAutonomyPermissionProfile({
     name: "Credential consent with lease",
@@ -216,6 +242,7 @@ try {
   assert.equal(redacted.login.token, "[redacted]");
   assert.equal(redacted.login.nested[0].cookie, "[redacted]");
   assert.equal(redacted.safe, "public label");
+  assert.equal(sanitizeAutonomyInput({ note: "password placeholder" }).note, "[redacted]");
 
   const revoked = storage.revokeAutonomyCredentialLease({
     profileId: leaseProfile.id,
@@ -235,6 +262,22 @@ try {
   const daemon = await startDaemon({ port: 0 });
   try {
     const baseUrl = `http://127.0.0.1:${daemon.port}`;
+    const invalidSuperYoloUnlock = await postJsonRaw(baseUrl, "/computer-use/autonomy/profiles", {
+      name: "Invalid persistent SUPER-YOLO unlock",
+      mode: "scoped_yolo",
+      scope: "persistent",
+      grants: {
+        credentialAccess: "never",
+        riskClasses: ["high_risk"]
+      },
+      safetyBoundaries: [
+        "super_yolo_requires_user_confirmation",
+        "credential_cookie_captcha_boundary_released_by_user"
+      ]
+    });
+    assert.equal(invalidSuperYoloUnlock.status, 400);
+    assert.match(String(invalidSuperYoloUnlock.body.error ?? ""), /one_time|disclaimer|acknowledged/i);
+
     const routeProfile = await postJson(baseUrl, "/computer-use/autonomy/profiles", {
       name: "Route credential lease",
       mode: "scoped_yolo",
@@ -287,4 +330,17 @@ async function postJson(baseUrl, path, body) {
     throw new Error(`${path} returned ${response.status}: ${await response.text()}`);
   }
   return await response.json();
+}
+
+async function postJsonRaw(baseUrl, path, body) {
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const text = await response.text();
+  return {
+    status: response.status,
+    body: text ? JSON.parse(text) : {}
+  };
 }

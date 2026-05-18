@@ -3,7 +3,8 @@ import type {
   CapabilityJobKind,
   CapabilityJobStatus,
   CapabilityJobSummary,
-  CapabilityStartInput
+  CapabilityStartInput,
+  AutonomyPermissionDecision
 } from "../../shared/protocol.js";
 import type { StorageService } from "../storage/storage.js";
 
@@ -55,6 +56,8 @@ export type CapabilityRuntimeOptions = {
 export type CapabilityRuntimeEnqueueInput = CapabilityStartInput & {
   requireApproval?: boolean;
   lockKey?: string;
+  trustedPermissionDecision?: AutonomyPermissionDecision;
+  trustedPermissionProfileId?: string;
 };
 
 export type CapabilityCancellationToken = {

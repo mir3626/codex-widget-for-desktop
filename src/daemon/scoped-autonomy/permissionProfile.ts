@@ -21,9 +21,13 @@ export type AutonomyPermissionModeCapabilities = {
   paymentPurchaseUnlocked: boolean;
 };
 
-const SUPER_YOLO_CONFIRMATION_BOUNDARY = "super_yolo_requires_user_confirmation";
-const CREDENTIAL_COOKIE_CAPTCHA_UNLOCK_BOUNDARY = "credential_cookie_captcha_boundary_released_by_user";
-const PAYMENT_PURCHASE_UNLOCK_BOUNDARY = "payment_purchase_boundary_released_by_user";
+export const SUPER_YOLO_CONFIRMATION_BOUNDARY = "super_yolo_requires_user_confirmation";
+export const CREDENTIAL_COOKIE_CAPTCHA_UNLOCK_BOUNDARY = "credential_cookie_captcha_boundary_released_by_user";
+export const PAYMENT_PURCHASE_UNLOCK_BOUNDARY = "payment_purchase_boundary_released_by_user";
+export const CREDENTIAL_COOKIE_CAPTCHA_DEFAULT_OFF_BOUNDARY = "credential_cookie_captcha_override_default_off";
+export const PAYMENT_PURCHASE_DEFAULT_OFF_BOUNDARY = "payment_purchase_override_default_off";
+export const CREDENTIAL_COOKIE_CAPTCHA_ACK_BOUNDARY = "DISCLAIMER: credential_cookie_captcha_override_acknowledged_user_accepts_account_security_privacy_lockout_site_terms_and_captcha_policy_risk";
+export const PAYMENT_PURCHASE_ACK_BOUNDARY = "DISCLAIMER: payment_purchase_override_acknowledged_user_accepts_financial_order_refund_tax_subscription_and_legal_responsibility";
 const CREDENTIAL_COOKIE_CAPTCHA_PATTERN = /password|passwd|token|cookie|credential|secret|api[_-]?key|captcha|비밀번호|암호|쿠키|자격\s*증명|캡차/i;
 const PAYMENT_PURCHASE_PATTERN = /purchase|payment|pay|checkout|card|cvv|cvc|결제|구매|카드/i;
 
@@ -133,15 +137,67 @@ export function evaluateAutonomyPermission(input: {
 
 export function readAutonomyPermissionModeCapabilities(input: {
   mode?: string;
+  scope?: string;
+  maxUses?: number;
   safetyBoundaries?: string[];
 } | null | undefined): AutonomyPermissionModeCapabilities {
   const boundaries = new Set(Array.isArray(input?.safetyBoundaries) ? input.safetyBoundaries : []);
-  const isSuperYolo = input?.mode === "scoped_yolo" && boundaries.has(SUPER_YOLO_CONFIRMATION_BOUNDARY);
+  const hasOneTimeScope = input?.scope === undefined || input.scope === "one_time";
+  const hasOneTimeUseLimit = input?.maxUses === undefined || input.maxUses === 1;
+  const isSuperYolo = input?.mode === "scoped_yolo" &&
+    hasOneTimeScope &&
+    hasOneTimeUseLimit &&
+    boundaries.has(SUPER_YOLO_CONFIRMATION_BOUNDARY);
   return {
     isSuperYolo,
-    credentialCookieCaptchaUnlocked: isSuperYolo && boundaries.has(CREDENTIAL_COOKIE_CAPTCHA_UNLOCK_BOUNDARY),
-    paymentPurchaseUnlocked: isSuperYolo && boundaries.has(PAYMENT_PURCHASE_UNLOCK_BOUNDARY)
+    credentialCookieCaptchaUnlocked: isSuperYolo &&
+      boundaries.has(CREDENTIAL_COOKIE_CAPTCHA_UNLOCK_BOUNDARY) &&
+      boundaries.has(CREDENTIAL_COOKIE_CAPTCHA_ACK_BOUNDARY) &&
+      !boundaries.has(CREDENTIAL_COOKIE_CAPTCHA_DEFAULT_OFF_BOUNDARY),
+    paymentPurchaseUnlocked: isSuperYolo &&
+      boundaries.has(PAYMENT_PURCHASE_UNLOCK_BOUNDARY) &&
+      boundaries.has(PAYMENT_PURCHASE_ACK_BOUNDARY) &&
+      !boundaries.has(PAYMENT_PURCHASE_DEFAULT_OFF_BOUNDARY)
   };
+}
+
+export function validateAutonomyPermissionProfileBoundaryUnlocks(input: {
+  mode?: string;
+  scope?: string;
+  maxUses?: number;
+  safetyBoundaries?: string[];
+}): { ok: true } | { ok: false; reason: string } {
+  const boundaries = new Set(Array.isArray(input.safetyBoundaries) ? input.safetyBoundaries : []);
+  const releasesCredential = boundaries.has(CREDENTIAL_COOKIE_CAPTCHA_UNLOCK_BOUNDARY);
+  const releasesPayment = boundaries.has(PAYMENT_PURCHASE_UNLOCK_BOUNDARY);
+  if (!releasesCredential && !releasesPayment) {
+    return { ok: true };
+  }
+  if (input.mode !== "scoped_yolo") {
+    return { ok: false, reason: "SUPER-YOLO safety boundary unlocks require scoped_yolo mode." };
+  }
+  if (!boundaries.has(SUPER_YOLO_CONFIRMATION_BOUNDARY)) {
+    return { ok: false, reason: "SUPER-YOLO safety boundary unlocks require explicit user confirmation." };
+  }
+  if (input.scope !== "one_time") {
+    return { ok: false, reason: "SUPER-YOLO safety boundary unlocks must be one_time scoped." };
+  }
+  if (input.maxUses !== undefined && input.maxUses !== 1) {
+    return { ok: false, reason: "SUPER-YOLO safety boundary unlocks must have maxUses set to 1." };
+  }
+  if (releasesCredential && boundaries.has(CREDENTIAL_COOKIE_CAPTCHA_DEFAULT_OFF_BOUNDARY)) {
+    return { ok: false, reason: "Credential/cookie/CAPTCHA unlock cannot include the default-off marker." };
+  }
+  if (releasesCredential && !boundaries.has(CREDENTIAL_COOKIE_CAPTCHA_ACK_BOUNDARY)) {
+    return { ok: false, reason: "Credential/cookie/CAPTCHA unlock requires the acknowledged disclaimer marker." };
+  }
+  if (releasesPayment && boundaries.has(PAYMENT_PURCHASE_DEFAULT_OFF_BOUNDARY)) {
+    return { ok: false, reason: "Payment/purchase unlock cannot include the default-off marker." };
+  }
+  if (releasesPayment && !boundaries.has(PAYMENT_PURCHASE_ACK_BOUNDARY)) {
+    return { ok: false, reason: "Payment/purchase unlock requires the acknowledged disclaimer marker." };
+  }
+  return { ok: true };
 }
 
 export function sanitizeAutonomyInput(value: unknown, key = ""): unknown {
@@ -165,7 +221,7 @@ export function sanitizeAutonomyInput(value: unknown, key = ""): unknown {
 }
 
 export function containsCredentialLikeText(value: string): boolean {
-  return /(?:password|passwd|token|cookie|credential|secret|api[_-]?key)\s*[:=]\s*\S+/i.test(value);
+  return /(?:\b(?:password|passwd|token|cookie|credential|secret)\b|api[_-]?key)(?:\s*[:=]\s*\S+|\s+\S+)?/i.test(value);
 }
 
 function evaluateRequirementForProfile(

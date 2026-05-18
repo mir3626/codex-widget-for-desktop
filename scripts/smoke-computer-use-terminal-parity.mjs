@@ -277,6 +277,66 @@ try {
     requirement.type === "command" && requirement.value === "node -v"
   ), true);
 
+  const credentialUnlockProfile = await postJson("/computer-use/autonomy/profiles", {
+    name: "Computer Use terminal credential unlock smoke",
+    mode: "scoped_yolo",
+    scope: "one_time",
+    maxUses: 1,
+    grants: {
+      network: false,
+      networkDomains: [],
+      browserAutomation: false,
+      browserDomains: [],
+      filesystem: { readRoots: [smokeAppData.dir], writeRoots: [smokeAppData.dir] },
+      commands: {
+        allowPrefixes: ["echo"],
+        denyPatterns: ["password", "token", "secret", "cookie"]
+      },
+      packageInstall: false,
+      osMutation: false,
+      generatedToolMaterialization: false,
+      generatedToolExecution: false,
+      generatedCode: false,
+      credentialAccess: "never",
+      riskClasses: ["high_risk", "reversible"],
+      maxRuntimeMs: 30000,
+      maxOutputBytes: 2097152,
+      maxIterations: 1
+    },
+    safetyBoundaries: [
+      "super_yolo_requires_user_confirmation",
+      "credential_cookie_captcha_boundary_released_by_user",
+      "DISCLAIMER: credential_cookie_captcha_override_acknowledged_user_accepts_account_security_privacy_lockout_site_terms_and_captcha_policy_risk"
+    ]
+  });
+  assert.equal(credentialUnlockProfile.ok, true);
+  const credentialUnlockStarted = await postJson("/computer-use/sessions", {
+    userRequest: "비밀번호 placeholder를 포함한 터미널 테스트 명령을 실행해줘",
+    requestedSurface: "pty_workspace",
+    profileId: credentialUnlockProfile.profile.id,
+    metadata: {
+      requiresTerminal: true
+    }
+  });
+  assert.equal(credentialUnlockStarted.ok, true);
+  const credentialCommand = "echo password placeholder";
+  const credentialOperation = await postJson(`/computer-use/sessions/${encodeURIComponent(credentialUnlockStarted.result.session.sessionId)}/operations`, {
+    operation: {
+      kind: "terminal",
+      input: {
+        command: credentialCommand,
+        cwd: process.cwd()
+      }
+    },
+    waitMs: 8000
+  });
+  assert.equal(credentialOperation.ok, true);
+  assert.equal(credentialOperation.result.job.kind, "terminal");
+  assert.equal(credentialOperation.result.job.status, "completed");
+  const credentialJob = await getJson(`/capabilities/jobs/${encodeURIComponent(credentialOperation.result.job.id)}`);
+  assert.equal(credentialJob.job.inputJson.command, "[redacted]");
+  assert.equal(credentialJob.job.inputJson.permissionDecision, undefined);
+
   console.log(`computer use terminal parity smoke ok on port ${daemon.port}`);
 } finally {
   socket.close();
