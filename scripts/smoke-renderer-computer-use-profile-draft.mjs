@@ -66,6 +66,7 @@ const disabledProfile = {
 let createdProfileBody = null;
 let managedCreatedProfileBody = null;
 let credentialCreatedProfileBody = null;
+let yoloCreatedProfileBody = null;
 let attachedProfileBody = null;
 let updatedProfileBody = null;
 
@@ -93,11 +94,29 @@ const httpServer = createHttpServer(async (request, response) => {
     assert.equal(body.maxUses, 1);
     const createdId = body.name === "One-time credential consent smoke"
       ? "profile-credential-renderer"
+      : body.name === "Computer Use YOLO one-time profile"
+      ? "profile-yolo-renderer"
       : body.name === "Computer Use one-time profile"
       ? "profile-managed-renderer"
       : "profile-one-time-renderer";
     if (createdId === "profile-credential-renderer") {
       credentialCreatedProfileBody = body;
+    } else if (createdId === "profile-yolo-renderer") {
+      yoloCreatedProfileBody = body;
+      assert.equal(body.mode, "scoped_yolo");
+      assert.equal(body.scope, "one_time");
+      assert.equal(body.maxUses, 1);
+      assert.equal(body.grants.credentialAccess, "never");
+      assert.equal(body.grants.browserAutomation, true);
+      assert.equal(body.grants.browserDomains.includes("*"), true);
+      assert.equal(body.grants.generatedToolMaterialization, true);
+      assert.equal(body.grants.generatedToolExecution, true);
+      assert.equal(body.grants.generatedCode, true);
+      assert.equal(body.grants.osMutation, false);
+      assert.equal(body.grants.packageInstall, false);
+      assert.equal(body.grants.riskClasses.includes("high_risk"), true);
+      assert.equal(body.grants.redactionPolicy.cookies, "never_store");
+      assert.equal(body.safetyBoundaries.includes("captcha_bypass_is_blocked"), true);
     } else if (createdId === "profile-managed-renderer") {
       managedCreatedProfileBody = body;
       assert.equal(body.grants.credentialAccess, "never");
@@ -380,6 +399,17 @@ try {
   assert.equal(credentialCreatedProfileBody?.grants?.credentialLeases?.[0]?.id, "renderer-credential-lease");
   assert.equal(credentialCreatedProfileBody?.grants?.credentialLeases?.[0]?.status, "active");
   assert.equal(credentialCreatedProfileBody?.grants?.redactionPolicy?.cookies, "never_store");
+  await page.getByRole("button", { name: "New Computer Use YOLO profile" }).click();
+  await page.getByText("Computer Use YOLO one-time profile draft ready.").waitFor();
+  await page.getByLabel("Computer Use permission profile validation").getByText("Draft allowed").waitFor();
+  await page.getByLabel("Computer Use permission profile validation").getByText("risk read_only, reversible, side_effect, high_risk").waitFor();
+  assert.equal((await page.getByLabel("Computer Use permission profile JSON editor").inputValue()).includes("captcha_bypass_is_blocked"), true);
+  await page.getByRole("button", { name: "Save managed permission profile" }).click();
+  await page.getByText("Profile created: Computer Use YOLO one-time profile").waitFor();
+  assert.equal(yoloCreatedProfileBody?.grants?.credentialAccess, "never");
+  assert.equal(yoloCreatedProfileBody?.grants?.browserDomains?.includes("*"), true);
+  assert.equal(yoloCreatedProfileBody?.grants?.riskClasses?.includes("side_effect"), true);
+  assert.equal(yoloCreatedProfileBody?.grants?.riskClasses?.includes("high_risk"), true);
   await page.getByRole("button", { name: "New managed permission profile" }).click();
   await page.getByLabel("Computer Use permission profile validation").getByText("Draft allowed").waitFor();
   await page.getByRole("button", { name: "Save managed permission profile" }).click();

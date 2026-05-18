@@ -26,6 +26,7 @@ import {
   collectBrowserChromeEvidenceRows,
   collectProfileGrantDetails,
   collectTerminalDeltaEvidenceRows,
+  createComputerUseYoloProfileDraft,
   createSafeManagedProfileDraft,
   deriveOneTimeProfileRequirements,
   formatCountOrList,
@@ -584,6 +585,13 @@ export function ComputerUseSessionsPanel({
     setMessage("New one-time profile draft ready.");
   }
 
+  function startComputerUseYoloProfileCreate() {
+    setManagedProfileId("");
+    setProfileDraftMode("create");
+    setProfileDraft(JSON.stringify(createComputerUseYoloProfileDraft(), null, 2));
+    setMessage("Computer Use YOLO one-time profile draft ready.");
+  }
+
   async function saveManagedProfileDraft() {
     const validation = validateManagedProfileDraft(profileDraft);
     if (!validation.ok || !validation.payload) {
@@ -770,6 +778,10 @@ export function ComputerUseSessionsPanel({
             <button type="button" aria-label="New managed permission profile" disabled={status === "loading"} onClick={startManagedProfileCreate}>
               <Plus size={10} />
               New
+            </button>
+            <button type="button" aria-label="New Computer Use YOLO profile" disabled={status === "loading"} onClick={startComputerUseYoloProfileCreate}>
+              <ShieldCheck size={10} />
+              YOLO
             </button>
             <button type="button" aria-label="Save managed permission profile" disabled={status === "loading"} onClick={() => void saveManagedProfileDraft()}>
               <Save size={10} />

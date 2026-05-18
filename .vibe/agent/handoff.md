@@ -5,14 +5,59 @@
 Codex Widget for Desktop is a Tauri + React + Node daemon desktop widget. The
 daemon listens on `127.0.0.1:4128`; the renderer is served by Vite in dev.
 
-The latest completed product work is background Browser Chrome tab control
-through `iter-38`. The latest report work is
+The latest completed product work is Computer Use catch-up capability recipes
+through `iter-39`. The latest report work is
 `computer-use-capability-comparison.html`, a root-level Korean HTML comparison
 of widget/Codex macOS/Hermes Agent Computer Use prompt capability. Active sprint
 pointer is idle. Current active roadmap file is compacted to the current
 iteration only; historical roadmaps live under `docs/plans/archive/roadmaps/`.
 
-## Latest Update: Computer Use Prompt Capability Comparison Report
+## Latest Update: Computer Use Catch-Up Capability Recipes
+
+Completed `$vibe-iterate` iteration `iter-39`.
+
+Applied:
+
+- Added a user-facing Computer Use YOLO one-time profile preset in the
+  permission profile manager. It remains scoped/auditable and keeps credential
+  access, cookie storage, host OS mutation, package install, CAPTCHA bypass,
+  purchase/payment/submit, and raw debug leakage blocked.
+- Added `computer-use-catchup-recipe.v1` planning for the HTML comparison gaps:
+  Gmail tax-mail/PDF read-only workflows, Calendar draft approval, UIA guarded
+  foreground action contracts, Browser Chrome permission get/set rollback,
+  multi-site read-only research, recurring account triage, and VM sandbox
+  readiness.
+- Computer Session startup now records catch-up recipe evidence and uses recipe
+  surface/risk hints while still failing closed on missing browser profile
+  grants, native helper boundaries, and unavailable VM backends.
+- Split Browser Bridge navigation helpers into a separate shard so the
+  architecture source-size budget remains enforced.
+
+Verification passed:
+
+- `npm run smoke:computer-use-catchup-recipes`
+- `npm run smoke:renderer-computer-use-profile-draft`
+- `npm run smoke:computer-use-session`
+- `npm run smoke:computer-use-browser-profile-permission`
+- `npm run smoke:browser-chrome-capability`
+- `npm run smoke:computer-use-vm-sandbox-boundary`
+- `npm run audit:computer-use-parity` (`implemented_with_guarded_boundaries`,
+  passed=61, guarded=7, blocked=0, missing=0)
+- `npm run audit:computer-use-implementation-ready`
+  (`implementation_ready_with_external_deferred`, passed=9, missing=0)
+- `npm run smoke:all`
+
+Remaining product follow-ups:
+
+- Recipes are implementation-ready planning/evidence contracts. Live Gmail,
+  Calendar, Slack, Notion, and multi-site execution still depends on user login,
+  Browser Bridge permissions, and site layout.
+- UIA foreground actions remain guarded until signed/watch-mode helper
+  preconditions are available.
+- VM execution remains fail-closed until a real Windows Sandbox/Hyper-V/RDP or
+  cloud backend is configured.
+
+## Previous Update: Computer Use Prompt Capability Comparison Report
 
 Created `computer-use-capability-comparison.html` in the repository root.
 

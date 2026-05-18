@@ -115,12 +115,14 @@ import {
   executeBrowserActionPrompt,
   type ComputerSessionPromptRuntimeHost
 } from "./sessionPromptRuntime.js";
+import { recordCatchUpRecipeEvidence, summarizeCatchUpRecipeForEval } from "./sessionCatchUpRecipeRuntime.js";
 import {
   completeRollbackAction,
   executeRollbackAction,
   recordRollbackAction,
   type ComputerSessionRollbackRuntimeHost
 } from "./sessionRollbackRuntime.js";
+import { planComputerUseCatchUpRecipe, recipeCreatesLocalArtifact, recipeRequiresBrowserChrome, recipeRequiresBrowserProfile, recipeRequiresForeground, recipeRequiresGeneratedTool, type ComputerUseCatchUpRecipe } from "./promptRecipes.js";
 import {
   executeOperation as executeSessionOperation,
   type ComputerSessionOperationRuntimeHost
@@ -188,6 +190,7 @@ export class ComputerSessionRuntime {
 
   create(input: ComputerSessionCreateInput): ComputerSessionSummary {
     const now = new Date().toISOString();
+    const catchUpRecipe = planComputerUseCatchUpRecipe(input.userRequest);
     const sessionId = input.sessionId?.trim() || this.options.storage.createSession({
       title: `Computer Use: ${input.userRequest.slice(0, 80)}`
     }).activeSessionId;
@@ -195,7 +198,7 @@ export class ComputerSessionRuntime {
       sessionId,
       userRequest: input.userRequest,
       profileId: input.profileId,
-      riskClass: input.riskClass ?? inferRiskClass(input.userRequest),
+      riskClass: input.riskClass ?? catchUpRecipe?.riskClass ?? inferRiskClass(input.userRequest),
       state: "created",
       createdAt: now,
       updatedAt: now
@@ -222,7 +225,8 @@ export class ComputerSessionRuntime {
     const session = this.create(input);
     const state = this.requireSession(session.sessionId);
     this.transition(session.sessionId, "permission_check");
-    const surfaceDecision = this.selectSurface(input);
+    const catchUpRecipe = planComputerUseCatchUpRecipe(input.userRequest);
+    const surfaceDecision = this.selectSurface(input, catchUpRecipe);
     state.safetyDecisions.push({
       decision: "allow",
       phase: "permission_check",
@@ -250,9 +254,10 @@ export class ComputerSessionRuntime {
           profileId: input.profileId,
           requestedSurface: input.requestedSurface,
           selectedSurface: surfaceDecision.surface.kind,
-          requiredGrants: surfaceDecision.requiredGrants
+          requiredGrants: surfaceDecision.requiredGrants,
+          catchUpRecipe: catchUpRecipe ? summarizeCatchUpRecipeForEval(catchUpRecipe) : undefined
         },
-        tags: ["computer_session_runtime", surfaceDecision.surface.kind],
+        tags: ["computer_session_runtime", surfaceDecision.surface.kind, ...(catchUpRecipe ? [catchUpRecipe.id] : [])],
         safetyBoundaries: [
           "approval_required_for_high_risk_actions",
           "restricted_pages_are_not_bypassed",
@@ -262,7 +267,10 @@ export class ComputerSessionRuntime {
       },
       metrics: {
         runtime: "computer_session_runtime.v1",
-        selectedSurface: surfaceDecision.surface.kind
+        selectedSurface: surfaceDecision.surface.kind,
+        catchUpRecipeId: catchUpRecipe?.id,
+        catchUpRecipeStatus: catchUpRecipe?.rolloutStatus,
+        catchUpRecipeCommitPolicy: catchUpRecipe?.commitPolicy
       }
     });
     const dagRun = this.dagRuntime.createRun({
@@ -292,9 +300,21 @@ export class ComputerSessionRuntime {
       summary: "Computer Session runtime started and selected an execution surface.",
       metadata: {
         userRequest: input.userRequest,
-        selectedSurface: surfaceDecision.surface.kind
+        selectedSurface: surfaceDecision.surface.kind,
+        catchUpRecipeId: catchUpRecipe?.id
       }
     });
+    if (catchUpRecipe) {
+      recordCatchUpRecipeEvidence({
+        storage: this.options.storage,
+        requireSession: (sessionId) => this.requireSession(sessionId),
+        recordObservation: (sessionId, observation) => this.recordObservation(sessionId, observation)
+      }, {
+        sessionId: session.sessionId,
+        evalRunId: evalRun.id,
+        recipe: catchUpRecipe
+      });
+    }
     if (surfaceDecision.surface.kind === "future_vm_session") {
       return this.blockFutureVmSessionBoundary({
         sessionId: session.sessionId,
@@ -3235,17 +3255,17 @@ export class ComputerSessionRuntime {
     });
   }
 
-  private selectSurface(input: ComputerSessionCreateInput): ExecutionSurfaceDecision {
+  private selectSurface(input: ComputerSessionCreateInput, catchUpRecipe?: ComputerUseCatchUpRecipe | null): ExecutionSurfaceDecision {
     return this.surfaceManager.select({
-      requestedSurface: input.requestedSurface,
+      requestedSurface: input.requestedSurface ?? catchUpRecipe?.preferredSurface,
       userRequest: input.userRequest,
-      riskClass: input.riskClass,
-      requiresBrowserProfile: Boolean(input.metadata?.requiresBrowserProfile),
-      requiresForeground: input.requestedSurface === "foreground_desktop_watch" || Boolean(input.metadata?.requiresForeground),
+      riskClass: input.riskClass ?? catchUpRecipe?.riskClass,
+      requiresBrowserProfile: Boolean(input.metadata?.requiresBrowserProfile) || recipeRequiresBrowserProfile(catchUpRecipe ?? null),
+      requiresForeground: input.requestedSurface === "foreground_desktop_watch" || Boolean(input.metadata?.requiresForeground) || recipeRequiresForeground(catchUpRecipe ?? null),
       requiresTerminal: input.requestedSurface === "pty_workspace" || Boolean(input.metadata?.requiresTerminal),
-      requiresGeneratedTool: input.requestedSurface === "tool_workspace" || Boolean(input.metadata?.requiresGeneratedTool),
-      requiresBrowserChrome: input.requestedSurface === "regular_browser_extension" || Boolean(input.metadata?.requiresBrowserChrome),
-      createsLocalArtifact: Boolean(input.metadata?.createsLocalArtifact)
+      requiresGeneratedTool: input.requestedSurface === "tool_workspace" || Boolean(input.metadata?.requiresGeneratedTool) || recipeRequiresGeneratedTool(catchUpRecipe ?? null),
+      requiresBrowserChrome: input.requestedSurface === "regular_browser_extension" || Boolean(input.metadata?.requiresBrowserChrome) || recipeRequiresBrowserChrome(catchUpRecipe ?? null),
+      createsLocalArtifact: Boolean(input.metadata?.createsLocalArtifact) || recipeCreatesLocalArtifact(catchUpRecipe ?? null)
     });
   }
 

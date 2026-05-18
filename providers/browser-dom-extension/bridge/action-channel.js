@@ -10,6 +10,15 @@ import { executeBrowserChromeCommand } from "./browser-chrome.js";
 import { readError, resolveDaemonUrl } from "./settings.js";
 import { setBridgeBadge } from "./badge.js";
 import { readTabPermission } from "./tab-state.js";
+import {
+  hasChangedNavigationObservation,
+  navigationDestinationMatches,
+  normalizeUrlForSource,
+  requiresChangedNavigationObservation,
+  shouldAcceptLightweightNavigateCompletion
+} from "./navigation-utils.js";
+
+export { navigationDestinationMatches, shouldAcceptLightweightNavigateCompletion } from "./navigation-utils.js";
 
 const inFlightBrowserActionRequestIds = new Set();
 const recentBrowserActionRequestIds = new Map();
@@ -575,64 +584,6 @@ function mayChangePage(action) {
   return ["click", "navigate", "back", "forward", "reload"].includes(action?.type);
 }
 
-function requiresChangedNavigationObservation(action, before) {
-  if (action?.type === "navigate") {
-    return Boolean(action.url) && normalizeUrlForSource(action.url) !== normalizeUrlForSource(before?.url);
-  }
-  return ["back", "forward"].includes(action?.type);
-}
-
-export function shouldAcceptLightweightNavigateCompletion(action, before, latestTab) {
-  if (action?.type !== "navigate" || !action.url || !latestTab?.url) {
-    return false;
-  }
-  if (!navigationDestinationMatches(action.url, latestTab.url)) {
-    return false;
-  }
-  return !before?.url || normalizeUrlForSource(before.url) !== normalizeUrlForSource(latestTab.url);
-}
-
-export function navigationDestinationMatches(requestedUrl, actualUrl) {
-  if (!requestedUrl || !actualUrl) {
-    return false;
-  }
-  try {
-    const requested = new URL(requestedUrl);
-    const actual = new URL(actualUrl);
-    requested.hash = "";
-    actual.hash = "";
-    if (requested.href === actual.href) {
-      return true;
-    }
-    if (requested.search) {
-      return requested.origin === actual.origin &&
-        normalizePathname(requested.pathname) === normalizePathname(actual.pathname) &&
-        requested.search === actual.search;
-    }
-    return requested.origin === actual.origin &&
-      normalizePathname(requested.pathname) === normalizePathname(actual.pathname);
-  } catch {
-    return normalizeUrlForSource(actualUrl).includes(normalizeUrlForSource(requestedUrl));
-  }
-}
-
-function hasChangedNavigationObservation(before, after) {
-  if (!before || !after) {
-    return false;
-  }
-  return normalizeUrlForSource(before.url) !== normalizeUrlForSource(after.url) ||
-    Boolean(readRouteKey(before) && readRouteKey(after) && readRouteKey(before) !== readRouteKey(after)) ||
-    Boolean(readViewRevision(before) && readViewRevision(after) && readViewRevision(before) !== readViewRevision(after));
-}
-
-function readRouteKey(snapshot) {
-  return snapshot?.viewGraph?.identity?.routeKey || snapshot?.routeKey || "";
-}
-
-function readViewRevision(snapshot) {
-  return snapshot?.viewGraph?.identity?.viewRevision || snapshot?.viewRevision || snapshot?.mutationRevision || "";
-}
-
 async function postBrowserActionResultWithRetry(url, payload) {
   return postJsonWithRetry(url, payload);
 }
@@ -688,20 +639,6 @@ function detectSourceMismatch(expected, tab, before, action) {
 
 function isHistoryNavigationAction(action) {
   return action?.type === "back" || action?.type === "forward" || action?.type === "reload";
-}
-
-function normalizeUrlForSource(value) {
-  try {
-    const url = new URL(value);
-    url.hash = "";
-    return url.href;
-  } catch {
-    return String(value || "").replace(/#.*$/, "");
-  }
-}
-
-function normalizePathname(value) {
-  return String(value || "").replace(/\/+$/, "") || "/";
 }
 
 function createBridgeLatencyTrace(command) {

@@ -44,6 +44,7 @@ const steps = [
   ["Browser native desktop helper v2 dev contract", process.execPath, ["scripts/smoke-browser-native-desktop-helper-v2-dev-contract.mjs"]],
   ["Computer Use VM sandbox boundary", process.execPath, ["scripts/smoke-computer-use-vm-sandbox-boundary.mjs"]],
   ["Computer Use VM sandbox adapter", process.execPath, ["scripts/smoke-computer-use-vm-sandbox-adapter.mjs"]],
+  ["Computer Use catch-up recipes", process.execPath, ["scripts/smoke-computer-use-catchup-recipes.mjs"]],
   ["Computer Use debug bundle", process.execPath, ["scripts/smoke-computer-use-debug-bundle.mjs"]],
   ["Renderer Computer Use live refresh", process.execPath, ["scripts/smoke-renderer-computer-use-live-refresh.mjs"]],
   ["Renderer Computer Use profile draft", process.execPath, ["scripts/smoke-renderer-computer-use-profile-draft.mjs"]],

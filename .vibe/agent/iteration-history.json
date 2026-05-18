@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-38",
+  "currentIteration": "iter-39",
   "iterations": [
     {
       "id": "iter-1",
@@ -1170,6 +1170,46 @@
         "browser-chrome-background-control": 0.86
       },
       "summary": "Iteration 38 added background Browser Chrome tab activation. Prompt routing now maps ordinal tab-switch requests to Browser Chrome tab.activate, the extension executes them with Chrome tabs APIs and no native hotkey/pointer input, capability safety recognizes tab.list as read-only and tab.activate as side-effecting, and focused Browser Chrome, extension, Browser Action, lint, parity, and diff checks passed."
+    },
+    {
+      "id": "iter-39",
+      "label": "Computer Use Catch-Up Capability Recipes",
+      "startedAt": "2026-05-18T11:45:03.494+09:00",
+      "completedAt": "2026-05-18T12:00:59.069+09:00",
+      "goal": "Use one vibe-iterate-style implementation slice per HTML comparison catch-up item: user-facing Computer Use YOLO profile setting, Gmail/PDF read-only recipe, Calendar draft approval, UIA foreground action contract, browser permission rollback, multi-site research, recurring worker boundary, and VM sandbox readiness planning.",
+      "plannedSprints": [
+        "iter-39-sprint-01-user-yolo-mode-setting",
+        "iter-39-sprint-02-gmail-pdf-readonly-recipe",
+        "iter-39-sprint-03-calendar-draft-approval-recipe",
+        "iter-39-sprint-04-uia-foreground-action-contract",
+        "iter-39-sprint-05-browser-permission-rollback-recipe",
+        "iter-39-sprint-06-multisite-research-recipe",
+        "iter-39-sprint-07-recurring-worker-boundary",
+        "iter-39-sprint-08-vm-sandbox-readiness-recipe"
+      ],
+      "completedSprints": [
+        "iter-39-sprint-01-user-yolo-mode-setting",
+        "iter-39-sprint-02-gmail-pdf-readonly-recipe",
+        "iter-39-sprint-03-calendar-draft-approval-recipe",
+        "iter-39-sprint-04-uia-foreground-action-contract",
+        "iter-39-sprint-05-browser-permission-rollback-recipe",
+        "iter-39-sprint-06-multisite-research-recipe",
+        "iter-39-sprint-07-recurring-worker-boundary",
+        "iter-39-sprint-08-vm-sandbox-readiness-recipe"
+      ],
+      "carryover": "The root HTML comparison showed the widget is already strong at browser/Chrome/terminal/evidence workflows, but still weaker than Codex macOS and Hermes for logged-in web workflows, Calendar draft flows, guarded native app actions, permission rollback, multi-site research, recurring account triage, and VM/sandbox tasks. Preserve local safety boundaries: do not enable raw credential/cookie extraction, CAPTCHA bypass, unattended purchases/submissions, or unsupported host mutation.",
+      "openRisks": [
+        "YOLO mode must remain scoped and auditable, not a bypass for credential, CAPTCHA, destructive, or external-submit boundaries.",
+        "Logged-in Gmail/Calendar/Slack/Notion execution still depends on user browser session, Browser Bridge permissions, and live-site layout.",
+        "Native foreground input remains guarded by helper/signing/watch-mode constraints.",
+        "VM execution remains implementation-ready but environment-dependent until a real backend is configured."
+      ],
+      "milestoneProgress": {
+        "computer-use-prompt-capability-catchup": 0.72,
+        "browser-action-end-to-end-control": 0.95,
+        "computer-use-safety-boundaries": 0.92
+      },
+      "summary": "Iteration 39 added a user-facing Computer Use YOLO one-time profile preset and a catch-up recipe planner for the HTML comparison gaps: Gmail tax-mail/PDF read-only flows, Calendar draft approval, UIA guarded foreground action contracts, Browser Chrome permission get/set rollback, multi-site read-only research, recurring account triage boundary, and VM sandbox readiness. Session startup now records recipe evidence and uses recipe surface/risk hints while preserving credential, CAPTCHA, destructive submit, native helper, and VM backend boundaries."
     }
   ]
 }

@@ -390,6 +390,70 @@ export function createSafeManagedProfileDraft(): Record<string, unknown> {
   };
 }
 
+export function createComputerUseYoloProfileDraft(): Record<string, unknown> {
+  return {
+    name: "Computer Use YOLO one-time profile",
+    mode: "scoped_yolo",
+    scope: "one_time",
+    status: "active",
+    maxUses: 1,
+    grants: {
+      network: true,
+      networkDomains: ["*"],
+      browserAutomation: true,
+      browserDomains: ["*"],
+      filesystem: {
+        readRoots: [],
+        writeRoots: []
+      },
+      commands: {
+        allowPrefixes: [],
+        denyPatterns: [
+          "cookie",
+          "password",
+          "credential",
+          "secret",
+          "token",
+          "captcha",
+          "purchase",
+          "payment",
+          "submit"
+        ]
+      },
+      packageInstall: false,
+      packageAllowlist: ["file:*"],
+      osMutation: false,
+      generatedToolMaterialization: true,
+      generatedToolExecution: true,
+      generatedCode: true,
+      credentialAccess: "never",
+      credentialLeases: [],
+      redactionPolicy: {
+        credentials: "redact",
+        cookies: "never_store",
+        localPaths: "basename_or_hash",
+        browserHistory: "domain_only",
+        screenshots: "metadata_only",
+        debugBundles: "redacted_summary",
+        semanticMemory: "no_secret_values"
+      },
+      riskClasses: ["read_only", "reversible", "side_effect", "high_risk"],
+      maxRuntimeMs: 120000,
+      maxOutputBytes: 4194304,
+      maxIterations: 8
+    },
+    safetyBoundaries: [
+      "credential_and_cookie_values_are_never_extracted",
+      "captcha_bypass_is_blocked",
+      "purchase_payment_submit_require_explicit_user_commit",
+      "foreground_desktop_requires_watch_mode",
+      "host_os_mutation_is_disabled",
+      "generated_code_must_remain_in_runtime_workspace",
+      "debug_bundles_store_redacted_summaries"
+    ]
+  };
+}
+
 export function profileToEditablePayload(profile: AutonomyPermissionProfile): Record<string, unknown> {
   return {
     name: profile.name,

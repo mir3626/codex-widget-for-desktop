@@ -156,6 +156,7 @@
     "smoke:browser-native-desktop-helper-v2-dev-contract": "node scripts/smoke-browser-native-desktop-helper-v2-dev-contract.mjs",
     "smoke:computer-use-vm-sandbox-boundary": "npm run build:daemon && node scripts/smoke-computer-use-vm-sandbox-boundary.mjs",
     "smoke:computer-use-vm-sandbox-adapter": "npm run build:daemon && node scripts/smoke-computer-use-vm-sandbox-adapter.mjs",
+    "smoke:computer-use-catchup-recipes": "npm run build:daemon && node scripts/smoke-computer-use-catchup-recipes.mjs",
     "smoke:computer-use-one-time-profile": "npm run build:daemon && node scripts/smoke-computer-use-one-time-profile.mjs",
     "smoke:computer-use-credential-consent": "npm run build:daemon && node scripts/smoke-computer-use-credential-consent.mjs",
     "smoke:computer-use-effect-verifier": "npm run build:daemon && node scripts/smoke-computer-use-effect-verifier.mjs",
