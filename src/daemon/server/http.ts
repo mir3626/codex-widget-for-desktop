@@ -20,11 +20,26 @@ export function writeJsonResponse(response: ServerResponse, status: number, body
   response
     .writeHead(status, {
       "Content-Type": "application/json; charset=utf-8",
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-      "Access-Control-Allow-Headers": "content-type"
+      ...readResponseCorsHeaders(response)
     })
     .end(JSON.stringify(body));
+}
+
+export function readResponseCorsHeaders(response: ServerResponse): Record<string, string> {
+  const headers: Record<string, string> = {};
+  for (const name of [
+    "Access-Control-Allow-Origin",
+    "Access-Control-Allow-Methods",
+    "Access-Control-Allow-Headers",
+    "Vary"
+  ]) {
+    const value = response.getHeader(name);
+    if (value === undefined) {
+      continue;
+    }
+    headers[name] = Array.isArray(value) ? value.join(", ") : String(value);
+  }
+  return headers;
 }
 
 export function getServerPort(server: Server): number {

@@ -3,7 +3,7 @@ import { createReadStream, existsSync, readdirSync, readFileSync, statSync } fro
 import { basename, extname, join, resolve, sep } from "node:path";
 import { auditComputerUseVerifier, createReleaseReadinessSummary, rollupComputerUseEvalMetrics } from "../../../computer-use-eval/index.js";
 import { listEffectiveAutonomyCapabilities, ScopedAutonomyRuntime, validateAutonomyPermissionProfileBoundaryUnlocks } from "../../../scoped-autonomy/index.js";
-import { readRequestBody, writeJsonResponse } from "../../http.js";
+import { readRequestBody, readResponseCorsHeaders, writeJsonResponse } from "../../http.js";
 import type { HttpRouteContext } from "../context.js";
 
 export async function handleComputerUseEvalRoute(
@@ -99,12 +99,10 @@ export async function handleComputerUseEvalRoute(
     }
     const disposition = url.searchParams.get("download") === "1" ? "attachment" : "inline";
     response.writeHead(200, {
+      ...readResponseCorsHeaders(response),
       "Content-Type": blob.mime,
       "Content-Length": String(blob.size),
       "Content-Disposition": `${disposition}; filename="${artifactFilename(resource.role, blob.mime)}"`,
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-      "Access-Control-Allow-Headers": "content-type",
       "X-Content-Type-Options": "nosniff"
     });
     createReadStream(blob.path).pipe(response);
@@ -160,12 +158,10 @@ export async function handleComputerUseEvalRoute(
       return true;
     }
     response.writeHead(200, {
+      ...readResponseCorsHeaders(response),
       "Content-Type": dogfoodReportContentType(reportPath),
       "Content-Length": String(stat.size),
       "Content-Disposition": `inline; filename="${basename(reportPath)}"`,
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-      "Access-Control-Allow-Headers": "content-type",
       "X-Content-Type-Options": "nosniff"
     });
     createReadStream(reportPath).pipe(response);

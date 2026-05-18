@@ -23,6 +23,7 @@ import {
 } from "./server/browser-action/commandWaiters.js";
 import { broadcast, type RetainedMessage } from "./server/events.js";
 import { getServerPort } from "./server/http.js";
+import { createDaemonLocalAuth } from "./server/localAuth.js";
 import { readRuntimeStatus } from "./server/runtimeStatus.js";
 import {
   type PendingSemanticClarification
@@ -68,6 +69,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
   const semanticMemory = createSemanticMemoryStore();
   const browserActions = new BrowserActionSessionManager(undefined, semanticMemory);
   const browserChromeCommands = new BrowserChromeCommandBridge();
+  const localAuth = createDaemonLocalAuth();
   const capabilityRuntime = new CapabilityRuntime({
     storage,
     emit: (event) => broadcast(clients, mapCapabilityRuntimeEvent(event))
@@ -236,10 +238,30 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
     getDaemonPort: () => (serverRef ? getServerPort(serverRef) : 0)
   });
   const server = createServer((request, response) => {
-    void handleHttpRequest(request, response, auth, onAuthChanged, providers, browserPerception, browserActions, browserChromeCommands, browserExtensionBridge, clients, storage, capabilityRuntime, computerSessionRuntime, semanticMemory, browserActionCommandWaiters);
+    void handleHttpRequest(request, response, auth, onAuthChanged, providers, browserPerception, browserActions, browserChromeCommands, browserExtensionBridge, clients, storage, capabilityRuntime, computerSessionRuntime, semanticMemory, browserActionCommandWaiters, localAuth);
   });
   serverRef = server;
-  const wss = new WebSocketServer({ server });
+  const wss = new WebSocketServer({ noServer: true });
+
+  server.on("upgrade", (request, socket, head) => {
+    const authDecision = localAuth.authorizeWebSocketUpgrade(request);
+    if (!authDecision.ok) {
+      const body = JSON.stringify({ ok: false, error: authDecision.error, code: authDecision.code });
+      socket.write([
+        `HTTP/1.1 ${authDecision.status} ${authDecision.error}`,
+        "Connection: close",
+        "Content-Type: application/json; charset=utf-8",
+        `Content-Length: ${Buffer.byteLength(body)}`,
+        "",
+        body
+      ].join("\r\n"));
+      socket.destroy();
+      return;
+    }
+    wss.handleUpgrade(request, socket, head, (webSocket) => {
+      wss.emit("connection", webSocket, request);
+    });
+  });
 
   wss.on("connection", (socket) => {
     handleWebSocketConnection({

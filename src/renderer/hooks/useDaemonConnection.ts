@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ClientMessage, ServerEvent } from "../../shared/protocol.js";
 import { readNativeDaemonStatus, type NativeDaemonStatus } from "../shell";
 import type { LogLine } from "../types";
+import { daemonWebSocketUrl, readDaemonAuth } from "../utils/daemonHttp";
 
 type UseDaemonConnectionInput = {
   daemonPort: string;
@@ -34,7 +35,15 @@ export function useDaemonConnection(input: UseDaemonConnectionInput) {
       }
 
       setStatus(retryCount === 0 ? "connecting" : "reconnecting");
-      const socket = new WebSocket(`ws://127.0.0.1:${input.daemonPort}`);
+      void openSocket();
+    }
+
+    async function openSocket() {
+      const auth = await readDaemonAuth(input.daemonPort);
+      if (stopped) {
+        return;
+      }
+      const socket = new WebSocket(daemonWebSocketUrl(input.daemonPort, auth));
       socketRef.current = socket;
 
       socket.addEventListener("open", () => {

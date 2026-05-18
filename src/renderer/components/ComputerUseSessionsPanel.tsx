@@ -12,6 +12,7 @@ import type {
   ExecutionSurface,
   ExecutionSurfaceKind
 } from "../../shared/protocol.js";
+import { daemonFetchJson, daemonPostJson } from "../utils/daemonHttp";
 import { formatActivityTime } from "../utils/format";
 import {
   promotionGateLabel,
@@ -1697,30 +1698,10 @@ function statusTone(status: string): string {
   return "active";
 }
 
-function readPayloadError(value: unknown): string | undefined {
-  return value && typeof value === "object" && typeof (value as Record<string, unknown>).error === "string"
-    ? (value as Record<string, unknown>).error as string
-    : undefined;
-}
-
 async function fetchJson<T>(daemonPort: string, path: string): Promise<T> {
-  const response = await fetch(`http://127.0.0.1:${daemonPort}${path}`);
-  const payload = await response.json() as T;
-  if (!response.ok) {
-    throw new Error(readPayloadError(payload) ?? `${path} returned ${response.status}`);
-  }
-  return payload;
+  return await daemonFetchJson<T>(daemonPort, path);
 }
 
 async function postJson<T = { ok: boolean; error?: string }>(daemonPort: string, path: string, body: unknown): Promise<T> {
-  const response = await fetch(`http://127.0.0.1:${daemonPort}${path}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body)
-  });
-  const payload = await response.json() as T;
-  if (!response.ok) {
-    throw new Error(readPayloadError(payload) ?? `${path} returned ${response.status}`);
-  }
-  return payload;
+  return await daemonPostJson<T>(daemonPort, path, body);
 }

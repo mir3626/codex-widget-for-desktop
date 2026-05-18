@@ -18,6 +18,9 @@ import { handleOAuthRoute } from "./routes/oauthRoutes.js";
 import { handleProviderSnapshotRoute } from "./routes/providerSnapshotRoutes.js";
 import { handleSemanticMemoryRoute } from "./routes/semanticMemoryRoutes.js";
 import { handleStorageRoute } from "./routes/storageRoutes.js";
+import type { DaemonLocalAuth } from "../localAuth.js";
+import { isCorsManagedRoute } from "../localAuth.js";
+import { writeJsonResponse } from "../http.js";
 
 type HttpRouteHandler = (
   request: IncomingMessage,
@@ -52,7 +55,8 @@ export async function handleHttpRequest(
   capabilityRuntime: import("../../capability-runtime/index.js").CapabilityRuntime,
   computerSessionRuntime: import("../../computer-use/index.js").ComputerSessionRuntime,
   semanticMemory: SemanticMemoryStore,
-  browserActionCommandWaiters: Map<string, BrowserActionCommandWaiter>
+  browserActionCommandWaiters: Map<string, BrowserActionCommandWaiter>,
+  localAuth: DaemonLocalAuth
 ): Promise<void> {
   if (!request.url) {
     response.writeHead(404).end();
@@ -60,15 +64,24 @@ export async function handleHttpRequest(
   }
 
   const url = new URL(request.url, `http://${request.headers.host ?? "127.0.0.1"}`);
-  if (request.method === "OPTIONS" && isCorsRoute(url.pathname)) {
-    response
-      .writeHead(204, {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-        "Access-Control-Allow-Headers": "content-type"
-      })
-      .end();
+  if (localAuth.handlePreflight(request, response, url)) {
     return;
+  }
+  if (localAuth.handleAuthRoute(request, response, url)) {
+    return;
+  }
+  if (isCorsManagedRoute(url.pathname)) {
+    const authDecision = localAuth.authorizeHttp(request, url);
+    if (!authDecision.ok) {
+      localAuth.applyCorsHeaders(request, response);
+      writeJsonResponse(response, authDecision.status, {
+        ok: false,
+        error: authDecision.error,
+        code: authDecision.code
+      });
+      return;
+    }
+    localAuth.applyCorsHeaders(request, response);
   }
 
   const context: HttpRouteContext = {
@@ -94,28 +107,4 @@ export async function handleHttpRequest(
   }
 
   response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" }).end("Codex widget daemon");
-}
-
-function isCorsRoute(pathname: string): boolean {
-  return isProviderSnapshotPath(pathname) || isBrowserActionPath(pathname) || isSemanticMemoryPath(pathname) || isCapabilityPath(pathname) || isComputerUsePath(pathname);
-}
-
-function isProviderSnapshotPath(pathname: string): boolean {
-  return pathname === "/providers/dom/snapshot" || pathname === "/providers/screen/snapshot";
-}
-
-function isBrowserActionPath(pathname: string): boolean {
-  return pathname.startsWith("/browser-action/");
-}
-
-function isSemanticMemoryPath(pathname: string): boolean {
-  return pathname.startsWith("/semantic-memory/");
-}
-
-function isCapabilityPath(pathname: string): boolean {
-  return pathname.startsWith("/capabilities/");
-}
-
-function isComputerUsePath(pathname: string): boolean {
-  return pathname.startsWith("/computer-use/");
 }

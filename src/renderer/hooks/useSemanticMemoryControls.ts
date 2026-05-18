@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { daemonFetchJson, daemonPostJson } from "../utils/daemonHttp";
 
 export type SemanticMemoryReportView = {
   nodeCount: number;
@@ -19,15 +20,10 @@ export function useSemanticMemoryControls(input: {
 
   async function refreshSemanticMemory() {
     try {
-      const [settingsResponse, reportResponse] = await Promise.all([
-        fetch(`http://127.0.0.1:${input.daemonPort}/semantic-memory/settings`),
-        fetch(`http://127.0.0.1:${input.daemonPort}/semantic-memory/report`)
+      const [settingsPayload, reportPayload] = await Promise.all([
+        daemonFetchJson<{ ok: boolean; settings?: { enabled?: boolean } }>(input.daemonPort, "/semantic-memory/settings"),
+        daemonFetchJson<{ ok: boolean; report?: unknown }>(input.daemonPort, "/semantic-memory/report")
       ]);
-      const settingsPayload = await settingsResponse.json();
-      const reportPayload = await reportResponse.json();
-      if (!settingsResponse.ok || !reportResponse.ok || !settingsPayload.ok || !reportPayload.ok) {
-        throw new Error("Semantic memory unavailable");
-      }
       setSemanticMemoryEnabled(Boolean(settingsPayload.settings?.enabled));
       setSemanticMemoryReport(normalizeSemanticMemoryReport(reportPayload.report));
       setSemanticMemoryStatus("Ready");
@@ -39,15 +35,7 @@ export function useSemanticMemoryControls(input: {
   async function updateSemanticMemoryEnabled(enabled: boolean) {
     setSemanticMemoryEnabled(enabled);
     try {
-      const response = await fetch(`http://127.0.0.1:${input.daemonPort}/semantic-memory/settings`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ enabled })
-      });
-      const payload = await response.json();
-      if (!response.ok || !payload.ok) {
-        throw new Error("Semantic memory settings update failed");
-      }
+      const payload = await daemonPostJson<{ ok: boolean; settings?: { enabled?: boolean } }>(input.daemonPort, "/semantic-memory/settings", { enabled });
       setSemanticMemoryEnabled(Boolean(payload.settings?.enabled));
       setSemanticMemoryStatus(Boolean(payload.settings?.enabled) ? "Enabled" : "Disabled");
       input.appendLog(Boolean(payload.settings?.enabled) ? "semantic memory enabled" : "semantic memory disabled", "tool");
@@ -60,15 +48,7 @@ export function useSemanticMemoryControls(input: {
 
   async function clearSemanticMemory() {
     try {
-      const response = await fetch(`http://127.0.0.1:${input.daemonPort}/semantic-memory/reset`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ scope: { global: true } })
-      });
-      const payload = await response.json();
-      if (!response.ok || !payload.ok) {
-        throw new Error("Semantic memory reset failed");
-      }
+      const payload = await daemonPostJson<{ ok: boolean; report?: unknown }>(input.daemonPort, "/semantic-memory/reset", { scope: { global: true } });
       setSemanticMemoryReport(normalizeSemanticMemoryReport(payload.report));
       setSemanticMemoryStatus("Cleared");
       input.appendLog("semantic memory cleared", "tool");

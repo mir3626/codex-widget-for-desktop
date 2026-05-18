@@ -32,6 +32,7 @@ import {
   buildScreenCrop,
   formatVisionStreamStatus
 } from "../utils/vision";
+import { daemonPostJson } from "../utils/daemonHttp";
 import { useScreenCropPicker } from "./vision/useScreenCropPicker";
 import { useVisionNotice } from "./vision/useVisionNotice";
 
@@ -475,19 +476,12 @@ export function useVisionController(input: UseVisionControllerInput) {
     context.drawImage(video, 0, 0, width, height);
     const imageDataUrl = canvas.toDataURL("image/jpeg", VISION_AGENT_STREAM_JPEG_QUALITY);
     try {
-      const response = await fetch(`http://127.0.0.1:${input.daemonPort}/providers/screen/snapshot`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          source: "agent-screen-stream",
-          title: "Agent screen stream",
-          description: `Live screen stream frame from ${streamId}.`,
-          imageDataUrl
-        })
+      await daemonPostJson(input.daemonPort, "/providers/screen/snapshot", {
+        source: "agent-screen-stream",
+        title: "Agent screen stream",
+        description: `Live screen stream frame from ${streamId}.`,
+        imageDataUrl
       });
-      if (!response.ok) {
-        throw new Error(`screen snapshot failed: ${response.status}`);
-      }
       setVisionFrameStats((current) => ({
         sent: current.sent + 1,
         skipped: current.skipped,

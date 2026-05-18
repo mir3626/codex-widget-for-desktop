@@ -5,17 +5,49 @@
 Codex Widget for Desktop is a Tauri + React + Node daemon desktop widget. The
 daemon listens on `127.0.0.1:4128`; the renderer is served by Vite in dev.
 
-The latest completed product work is post-review hardening for mode-aware
-Computer Use SUPER-YOLO safety boundary unlock execution, after the SUPER-YOLO
-permission override UI and Computer Use catch-up capability recipes through
-`iter-39`.
+The latest completed product work is `iter-40` daemon local transport hardening
+for auth/nonce/CORS and WebSocket Origin boundaries, after the SUPER-YOLO
+runtime trust-boundary hardening and Computer Use catch-up capability recipes
+through `iter-39`.
 The latest report work is
 `computer-use-capability-comparison.html`, a root-level Korean HTML comparison
 of widget/Codex macOS/Hermes Agent Computer Use prompt capability. Active sprint
 pointer is idle. Current active roadmap file is compacted to the current
 iteration only; historical roadmaps live under `docs/plans/archive/roadmaps/`.
 
-## Latest Update: SUPER-YOLO Runtime Trust Boundary Hardening
+## Latest Update: Daemon Auth Nonce CORS Hardening
+
+Completed `$vibe-iterate` iteration `iter-40`.
+
+Applied:
+
+- Added daemon-local auth endpoints:
+  - `GET /daemon/auth/handshake`
+  - `GET /daemon/auth/nonce`
+- Browser-origin sensitive HTTP mutations now require
+  `x-codex-widget-daemon-token` plus a fresh one-time
+  `x-codex-widget-daemon-nonce`; replay returns `409`.
+- Wildcard CORS was removed from sensitive daemon paths. Trusted
+  localhost/Tauri/extension Origins are echoed explicitly with `Vary: Origin`;
+  untrusted browser Origins fail closed.
+- WebSocket upgrade now runs explicit Origin/token authorization before daemon
+  message handling. Trusted browser Origins pass the daemon token via the
+  `daemonToken` query parameter; extension and no-Origin local clients remain
+  compatible.
+- Renderer daemon POST and WebSocket clients now use a shared handshake/nonce
+  helper with fake-daemon fallback for renderer smoke tests.
+
+Verification passed:
+
+- `npm run smoke:daemon-auth-boundary`
+- `node scripts/smoke-renderer-computer-use-profile-draft.mjs`
+- `npm run smoke:computer-use-credential-consent`
+- `npm run smoke:terminal-capability`
+- `npm run lint`
+- `npm run smoke:browser-bridge`
+- `npm run smoke:computer-use-one-time-profile`
+
+## Previous Update: SUPER-YOLO Runtime Trust Boundary Hardening
 
 Closed the review findings for mode-aware SUPER-YOLO execution.
 
@@ -354,11 +386,11 @@ idle.
 
 ## Current Resume Point
 
-Worktree should be clean after the mode-aware SUPER-YOLO execution commit/push.
-Next useful work is live dogfood of the unlocked paths in a controlled profile:
-Browser Action evaluate with credential access, authenticated browser profile
-read-only flow, and an explicit payment/purchase approval dry run that does not
-commit a real transaction.
+Worktree should be clean after the daemon auth/nonce/CORS hardening commit/push.
+Next useful work is live dogfood with the restarted widget: verify the Tauri
+renderer still obtains the daemon handshake, Browser Bridge extension posts are
+accepted under extension Origin, and controlled SUPER-YOLO unlocked paths still
+work under the new transport boundary.
 
 ## Product Boundaries
 

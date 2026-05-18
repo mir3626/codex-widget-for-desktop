@@ -2,6 +2,7 @@ import { Check, Clipboard, RefreshCw, Square, Workflow } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { CapabilityJobStatus } from "../../shared/protocol.js";
 import type { CapabilityJobsUiState } from "../types";
+import { daemonFetchJson } from "../utils/daemonHttp";
 import { formatActivityTime } from "../utils/format";
 
 type CapabilityJobDetail = {
@@ -52,12 +53,11 @@ export function CapabilityJobsPanel({
     }
     let cancelled = false;
     setDetailStatus("loading");
-    fetch(`http://127.0.0.1:${daemonPort}/capabilities/jobs/${encodeURIComponent(selectedJob.id)}`)
-      .then(async (response) => {
-        const payload = await response.json() as CapabilityJobDetail;
+    daemonFetchJson<CapabilityJobDetail>(daemonPort, `/capabilities/jobs/${encodeURIComponent(selectedJob.id)}`)
+      .then((payload) => {
         if (!cancelled) {
           setDetail(payload);
-          setDetailStatus(response.ok ? "idle" : "failed");
+          setDetailStatus("idle");
         }
       })
       .catch((error) => {

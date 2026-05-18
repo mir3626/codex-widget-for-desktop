@@ -1,6 +1,6 @@
 {
   "$schema": "./iteration-history.schema.json",
-  "currentIteration": "iter-39",
+  "currentIteration": null,
   "iterations": [
     {
       "id": "iter-1",
@@ -1210,6 +1210,31 @@
         "computer-use-safety-boundaries": 0.92
       },
       "summary": "Iteration 39 added a user-facing Computer Use YOLO one-time profile preset and a catch-up recipe planner for the HTML comparison gaps: Gmail tax-mail/PDF read-only flows, Calendar draft approval, UIA guarded foreground action contracts, Browser Chrome permission get/set rollback, multi-site read-only research, recurring account triage boundary, and VM sandbox readiness. Session startup now records recipe evidence and uses recipe surface/risk hints while preserving credential, CAPTCHA, destructive submit, native helper, and VM backend boundaries."
+    },
+    {
+      "id": "iter-40",
+      "label": "Daemon Auth Nonce CORS Hardening",
+      "startedAt": "2026-05-18T18:14:06.327+09:00",
+      "completedAt": "2026-05-18T18:27:32.001+09:00",
+      "goal": "Use vibe-iterate to harden the local daemon transport boundary with renderer/extension-compatible client authentication, nonce replay protection for sensitive HTTP mutations, WebSocket Origin checks, and narrowed CORS behavior.",
+      "plannedSprints": [
+        "iter-40-sprint-01-daemon-auth-nonce-cors-hardening"
+      ],
+      "completedSprints": [
+        "iter-40-sprint-01-daemon-auth-nonce-cors-hardening"
+      ],
+      "carryover": "SUPER-YOLO runtime trust-boundary hardening closed forged capability approval and permission-decision injection. Remaining daemon hardening is transport-level: malicious browser pages or same-machine clients should not be able to drive sensitive localhost HTTP/WS APIs by abusing wildcard CORS, missing token checks, or replayed mutation requests.",
+      "openRisks": [
+        "Trusted Tauri renderer, Vite dev localhost, Chrome/Edge extension/native-host, and Node smoke clients must keep working while browser-origin requests fail closed.",
+        "This iteration does not solve production signing, remote multi-user auth, official app-server client contract, or external identity service integration.",
+        "Daemon auth token and nonce state must not persist raw secrets in SQLite."
+      ],
+      "milestoneProgress": {
+        "resident-desktop-readiness": 0.95,
+        "computer-use-safety-boundaries": 0.94,
+        "daemon-local-transport-hardening": 0.92
+      },
+      "summary": "Iteration 40 completed daemon local transport hardening: sensitive browser-origin HTTP mutations now require a daemon token plus one-time nonce, replayed nonces are rejected, WebSocket upgrades reject untrusted browser Origins before message handling and require the daemon token for trusted browser Origins, wildcard CORS is removed from sensitive daemon paths, renderer POST/WS clients use handshake and nonce helpers, and trusted extension/no-Origin local clients remain compatible."
     }
   ]
 }

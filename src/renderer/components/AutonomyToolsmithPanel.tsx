@@ -11,6 +11,7 @@ import type {
   AutonomyToolRunSummary,
   CapabilityDagNodeSummary
 } from "../../shared/protocol.js";
+import { daemonFetchJson, daemonPostJson } from "../utils/daemonHttp";
 import { formatActivityTime } from "../utils/format";
 
 type AutonomyListPayload = {
@@ -433,25 +434,11 @@ export function AutonomyToolsmithPanel({ daemonPort }: AutonomyToolsmithPanelPro
 }
 
 async function fetchJson<T>(daemonPort: string, path: string): Promise<T> {
-  const response = await fetch(`http://127.0.0.1:${daemonPort}${path}`);
-  const payload = await response.json() as T & { ok?: boolean; error?: string };
-  if (!response.ok || payload.ok === false) {
-    throw new Error(payload.error ?? `Request failed: ${path}`);
-  }
-  return payload as T;
+  return await daemonFetchJson<T>(daemonPort, path);
 }
 
 async function postJson<T = unknown>(daemonPort: string, path: string, body: unknown): Promise<T> {
-  const response = await fetch(`http://127.0.0.1:${daemonPort}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-  const payload = await response.json() as T & { ok?: boolean; error?: string };
-  if (!response.ok || payload.ok === false) {
-    throw new Error(payload.error ?? `Request failed: ${path}`);
-  }
-  return payload as T;
+  return await daemonPostJson<T>(daemonPort, path, body);
 }
 
 function profileToEditablePayload(profile: AutonomyPermissionProfile): Record<string, unknown> {

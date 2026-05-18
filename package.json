@@ -126,6 +126,7 @@
     "smoke:semantic-trace-corpus": "npm run build:daemon && node scripts/smoke-semantic-trace-corpus.mjs",
     "smoke:browser-action:semantic-live-corpus": "node scripts/smoke-browser-action-semantic-live-corpus.mjs",
     "smoke:browser-action:recovery-live-corpus": "node scripts/smoke-browser-action-recovery-live-corpus.mjs",
+    "smoke:daemon-auth-boundary": "npm run build:daemon && node scripts/smoke-daemon-auth-boundary.mjs",
     "smoke:semantic-memory": "npm run build:daemon && node scripts/smoke-semantic-memory.mjs",
     "smoke:architecture-foundations": "npm run build:daemon && node scripts/smoke-architecture-foundations.mjs",
     "smoke:research-performance-architecture": "npm run build:daemon && node scripts/smoke-research-performance-architecture.mjs",
