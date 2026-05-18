@@ -67,6 +67,7 @@ let createdProfileBody = null;
 let managedCreatedProfileBody = null;
 let credentialCreatedProfileBody = null;
 let yoloCreatedProfileBody = null;
+let superYoloCreatedProfileBody = null;
 let attachedProfileBody = null;
 let updatedProfileBody = null;
 
@@ -96,6 +97,8 @@ const httpServer = createHttpServer(async (request, response) => {
       ? "profile-credential-renderer"
       : body.name === "Computer Use YOLO one-time profile"
       ? "profile-yolo-renderer"
+      : body.name === "Computer Use SUPER-YOLO one-time profile"
+      ? "profile-super-yolo-renderer"
       : body.name === "Computer Use one-time profile"
       ? "profile-managed-renderer"
       : "profile-one-time-renderer";
@@ -117,6 +120,27 @@ const httpServer = createHttpServer(async (request, response) => {
       assert.equal(body.grants.riskClasses.includes("high_risk"), true);
       assert.equal(body.grants.redactionPolicy.cookies, "never_store");
       assert.equal(body.safetyBoundaries.includes("captcha_bypass_is_blocked"), true);
+    } else if (createdId === "profile-super-yolo-renderer") {
+      superYoloCreatedProfileBody = body;
+      assert.equal(body.mode, "scoped_yolo");
+      assert.equal(body.scope, "one_time");
+      assert.equal(body.maxUses, 1);
+      assert.equal(body.grants.credentialAccess, "never");
+      assert.equal(body.grants.browserAutomation, true);
+      assert.equal(body.grants.browserDomains.includes("*"), true);
+      assert.equal(body.grants.network, true);
+      assert.equal(body.grants.networkDomains.includes("*"), true);
+      assert.equal(body.grants.generatedToolMaterialization, true);
+      assert.equal(body.grants.generatedToolExecution, true);
+      assert.equal(body.grants.generatedCode, true);
+      assert.equal(body.grants.osMutation, false);
+      assert.equal(body.grants.packageInstall, true);
+      assert.equal(body.grants.packageAllowlist.includes("*"), true);
+      assert.equal(body.grants.commands.allowPrefixes.includes("powershell *"), true);
+      assert.equal(body.grants.filesystem.readRoots.includes("C:\\Users"), true);
+      assert.equal(body.grants.riskClasses.includes("high_risk"), true);
+      assert.equal(body.grants.riskClasses.includes("credential"), false);
+      assert.equal(body.safetyBoundaries.includes("super_yolo_requires_user_confirmation"), true);
     } else if (createdId === "profile-managed-renderer") {
       managedCreatedProfileBody = body;
       assert.equal(body.grants.credentialAccess, "never");
@@ -321,6 +345,7 @@ await vite.listen();
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 560, height: 860 } });
+page.setDefaultNavigationTimeout(90000);
 
 try {
   const baseUrl = vite.resolvedUrls?.local[0];
@@ -328,7 +353,7 @@ try {
     throw new Error("Vite did not expose a local URL.");
   }
 
-  await page.goto(`${baseUrl}?daemonPort=${daemonPort}`);
+  await page.goto(`${baseUrl}?daemonPort=${daemonPort}`, { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: "Activity details" }).click();
   await page.getByText("Computer Use", { exact: true }).waitFor();
   await page.selectOption('select[aria-label="Computer Use permission profile"]', existingProfile.id);
@@ -410,6 +435,25 @@ try {
   assert.equal(yoloCreatedProfileBody?.grants?.browserDomains?.includes("*"), true);
   assert.equal(yoloCreatedProfileBody?.grants?.riskClasses?.includes("side_effect"), true);
   assert.equal(yoloCreatedProfileBody?.grants?.riskClasses?.includes("high_risk"), true);
+  const superDialogPromise = page.waitForEvent("dialog");
+  const superClickPromise = page.getByRole("button", { name: "Activate Computer Use SUPER-YOLO profile" }).click();
+  const superDialog = await superDialogPromise;
+  assert.match(superDialog.message(), /SUPER-YOLO creates a one-time profile/);
+  await superDialog.accept();
+  await superClickPromise;
+  await page.getByText("Computer Use SUPER-YOLO one-time profile draft ready.").waitFor();
+  await page.getByLabel("SUPER-YOLO permission toggles").getByText("SUPER-YOLO grants").waitFor();
+  await page.getByRole("checkbox", { name: /OS mutation/ }).uncheck();
+  assert.equal((await page.getByLabel("Computer Use permission profile JSON editor").inputValue()).includes('"osMutation": false'), true);
+  await page.getByRole("checkbox", { name: /Packages/ }).uncheck();
+  assert.equal((await page.getByLabel("Computer Use permission profile JSON editor").inputValue()).includes('"packageInstall": false'), true);
+  await page.getByRole("checkbox", { name: /Packages/ }).check();
+  await page.getByRole("button", { name: "Save managed permission profile" }).click();
+  await page.getByText("Profile created: Computer Use SUPER-YOLO one-time profile").waitFor();
+  assert.equal(superYoloCreatedProfileBody?.grants?.credentialAccess, "never");
+  assert.equal(superYoloCreatedProfileBody?.grants?.packageInstall, true);
+  assert.equal(superYoloCreatedProfileBody?.grants?.osMutation, false);
+  assert.equal(superYoloCreatedProfileBody?.grants?.browserDomains?.includes("*"), true);
   await page.getByRole("button", { name: "New managed permission profile" }).click();
   await page.getByLabel("Computer Use permission profile validation").getByText("Draft allowed").waitFor();
   await page.getByRole("button", { name: "Save managed permission profile" }).click();

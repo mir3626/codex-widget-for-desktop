@@ -26,6 +26,7 @@ import {
   collectBrowserChromeEvidenceRows,
   collectProfileGrantDetails,
   collectTerminalDeltaEvidenceRows,
+  createComputerUseSuperYoloProfileDraft,
   createComputerUseYoloProfileDraft,
   createSafeManagedProfileDraft,
   deriveOneTimeProfileRequirements,
@@ -130,6 +131,57 @@ type ComputerUseSessionsPanelProps = {
   onCancelCapabilityJob: (jobId: string) => void;
 };
 
+type SuperYoloToggleId =
+  | "network"
+  | "browser"
+  | "terminal"
+  | "generated"
+  | "packageInstall"
+  | "fileRead"
+  | "fileWrite"
+  | "osMutation"
+  | "highRisk";
+
+type SuperYoloToggleState = Record<SuperYoloToggleId, boolean>;
+
+const SUPER_YOLO_TOGGLES: Array<{ id: SuperYoloToggleId; label: string; detail: string }> = [
+  { id: "network", label: "Network", detail: "Allow broad outbound network domains." },
+  { id: "browser", label: "Browser", detail: "Allow broad browser automation domains." },
+  { id: "terminal", label: "Terminal", detail: "Allow common local command prefixes." },
+  { id: "generated", label: "Generated tools", detail: "Allow Toolsmith materialize, execute, and generated code." },
+  { id: "packageInstall", label: "Packages", detail: "Allow isolated runtime package installs." },
+  { id: "fileRead", label: "File read", detail: "Allow broad user-profile read root." },
+  { id: "fileWrite", label: "File write", detail: "Allow Codex public output write root." },
+  { id: "osMutation", label: "OS mutation", detail: "Allow explicit OS mutation requirements." },
+  { id: "highRisk", label: "High risk", detail: "Allow high-risk scoped autonomy class." }
+];
+
+const SUPER_YOLO_COMMAND_PREFIXES = [
+  "node *",
+  "npm *",
+  "npx *",
+  "git *",
+  "python *",
+  "py *",
+  "powershell *",
+  "pwsh *"
+];
+
+const SUPER_YOLO_COMMAND_DENY_PATTERNS = [
+  "cookie",
+  "password",
+  "credential",
+  "secret",
+  "token",
+  "captcha",
+  "purchase",
+  "payment"
+];
+
+const SUPER_YOLO_FILE_READ_ROOTS = ["C:\\Users"];
+const SUPER_YOLO_FILE_WRITE_ROOTS = ["C:\\Users\\Public\\Documents\\Codex Outputs"];
+const SUPER_YOLO_RISK_CLASSES: AutonomyRiskClass[] = ["read_only", "reversible", "side_effect", "high_risk"];
+
 export function ComputerUseSessionsPanel({
   daemonPort,
   refreshSignal = 0,
@@ -179,6 +231,14 @@ export function ComputerUseSessionsPanel({
   const managedProfileDraftValidation = useMemo(
     () => validateManagedProfileDraft(profileDraft),
     [profileDraft]
+  );
+  const superYoloToggleState = useMemo(
+    () => readSuperYoloToggleState(profileDraft),
+    [profileDraft]
+  );
+  const yoloDraftEnabled = useMemo(
+    () => isComputerUseYoloDraft(profileDraft) || superYoloToggleState !== null,
+    [profileDraft, superYoloToggleState]
   );
   const selectedSurfaceKind = selectedSession?.selectedSurface?.kind ?? surfaceKind;
   const awaitingJobs = useMemo(
@@ -592,6 +652,36 @@ export function ComputerUseSessionsPanel({
     setMessage("Computer Use YOLO one-time profile draft ready.");
   }
 
+  function startComputerUseSuperYoloProfileCreate() {
+    if (!yoloDraftEnabled) {
+      setMessage("Turn on YOLO first, then activate SUPER-YOLO.");
+      return;
+    }
+    const confirmed = window.confirm([
+      "SUPER-YOLO creates a one-time profile with broad local/browser/network permissions.",
+      "Credentials, cookies, CAPTCHA bypass, purchases, payments, and unattended submit actions remain blocked.",
+      "Review each permission toggle before saving. Continue?"
+    ].join("\n\n"));
+    if (!confirmed) {
+      setMessage("Computer Use SUPER-YOLO activation cancelled.");
+      return;
+    }
+    setManagedProfileId("");
+    setProfileDraftMode("create");
+    setProfileDraft(JSON.stringify(createComputerUseSuperYoloProfileDraft(), null, 2));
+    setMessage("Computer Use SUPER-YOLO one-time profile draft ready. Review each grant toggle before saving.");
+  }
+
+  function updateSuperYoloGrant(toggleId: SuperYoloToggleId, enabled: boolean) {
+    const nextDraft = updateSuperYoloProfileDraftGrant(profileDraft, toggleId, enabled);
+    if (!nextDraft) {
+      setMessage("SUPER-YOLO draft is not valid JSON.");
+      return;
+    }
+    setProfileDraft(nextDraft);
+    setMessage(`SUPER-YOLO ${toggleLabel(toggleId)} ${enabled ? "enabled" : "disabled"}.`);
+  }
+
   async function saveManagedProfileDraft() {
     const validation = validateManagedProfileDraft(profileDraft);
     if (!validation.ok || !validation.payload) {
@@ -783,6 +873,15 @@ export function ComputerUseSessionsPanel({
               <ShieldCheck size={10} />
               YOLO
             </button>
+            <button
+              type="button"
+              aria-label="Activate Computer Use SUPER-YOLO profile"
+              disabled={status === "loading" || !yoloDraftEnabled}
+              onClick={startComputerUseSuperYoloProfileCreate}
+            >
+              <ShieldCheck size={10} />
+              Super
+            </button>
             <button type="button" aria-label="Save managed permission profile" disabled={status === "loading"} onClick={() => void saveManagedProfileDraft()}>
               <Save size={10} />
               Save
@@ -816,6 +915,29 @@ export function ComputerUseSessionsPanel({
           onChange={(event) => setProfileDraft(event.target.value)}
           aria-label="Computer Use permission profile JSON editor"
         />
+        {superYoloToggleState ? (
+          <div className="computer-use-super-yolo-controls" aria-label="SUPER-YOLO permission toggles">
+            <div className="computer-use-super-yolo-head">
+              <strong>SUPER-YOLO grants</strong>
+              <small>One-time only · credentials stay never · hard safety boundaries remain active</small>
+            </div>
+            <div className="computer-use-super-yolo-grid">
+              {SUPER_YOLO_TOGGLES.map((toggle) => (
+                <label key={toggle.id} className="computer-use-super-yolo-toggle">
+                  <input
+                    type="checkbox"
+                    checked={superYoloToggleState[toggle.id]}
+                    onChange={(event) => updateSuperYoloGrant(toggle.id, event.target.checked)}
+                  />
+                  <span>
+                    <strong>{toggle.label}</strong>
+                    <small>{toggle.detail}</small>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <div className={`computer-use-profile-validation ${managedProfileDraftValidation.ok ? "ok" : "blocked"}`} aria-label="Computer Use permission profile validation">
           <strong>{managedProfileDraftValidation.ok ? "Draft allowed" : "Draft blocked"}</strong>
           <small>{managedProfileDraftValidation.summary}</small>
@@ -1275,6 +1397,127 @@ export function ComputerUseSessionsPanel({
       {message || status === "failed" ? <p className={status === "failed" ? "capability-job-error" : undefined}>{message || "Computer Use refresh failed"}</p> : null}
     </section>
   );
+}
+
+function isComputerUseYoloDraft(draft: string): boolean {
+  const payload = parseProfileDraft(draft);
+  if (!payload) {
+    return false;
+  }
+  return payload.name === "Computer Use YOLO one-time profile";
+}
+
+function readSuperYoloToggleState(draft: string): SuperYoloToggleState | null {
+  const payload = parseProfileDraft(draft);
+  if (!payload || !isSuperYoloProfilePayload(payload)) {
+    return null;
+  }
+  const grants = readRecord(payload.grants);
+  const filesystem = readRecord(grants.filesystem);
+  const commands = readRecord(grants.commands);
+  const riskClasses = readStringArrayValue(grants.riskClasses);
+  return {
+    network: grants.network === true && readStringArrayValue(grants.networkDomains).includes("*"),
+    browser: grants.browserAutomation === true && readStringArrayValue(grants.browserDomains).includes("*"),
+    terminal: readStringArrayValue(commands.allowPrefixes).length > 0,
+    generated: grants.generatedToolMaterialization === true && grants.generatedToolExecution === true && grants.generatedCode === true,
+    packageInstall: grants.packageInstall === true,
+    fileRead: readStringArrayValue(filesystem.readRoots).length > 0,
+    fileWrite: readStringArrayValue(filesystem.writeRoots).length > 0,
+    osMutation: grants.osMutation === true,
+    highRisk: riskClasses.includes("high_risk")
+  };
+}
+
+function updateSuperYoloProfileDraftGrant(draft: string, toggleId: SuperYoloToggleId, enabled: boolean): string | null {
+  const payload = parseProfileDraft(draft);
+  if (!payload || !isSuperYoloProfilePayload(payload)) {
+    return null;
+  }
+  const grants = ensureRecordField(payload, "grants");
+  const filesystem = ensureRecordField(grants, "filesystem");
+  const commands = ensureRecordField(grants, "commands");
+  switch (toggleId) {
+    case "network":
+      grants.network = enabled;
+      grants.networkDomains = enabled ? ["*"] : [];
+      break;
+    case "browser":
+      grants.browserAutomation = enabled;
+      grants.browserDomains = enabled ? ["*"] : [];
+      break;
+    case "terminal":
+      commands.allowPrefixes = enabled ? [...SUPER_YOLO_COMMAND_PREFIXES] : [];
+      commands.denyPatterns = [...SUPER_YOLO_COMMAND_DENY_PATTERNS];
+      break;
+    case "generated":
+      grants.generatedToolMaterialization = enabled;
+      grants.generatedToolExecution = enabled;
+      grants.generatedCode = enabled;
+      break;
+    case "packageInstall":
+      grants.packageInstall = enabled;
+      grants.packageAllowlist = enabled ? ["*"] : ["file:*"];
+      break;
+    case "fileRead":
+      filesystem.readRoots = enabled ? [...SUPER_YOLO_FILE_READ_ROOTS] : [];
+      break;
+    case "fileWrite":
+      filesystem.writeRoots = enabled ? [...SUPER_YOLO_FILE_WRITE_ROOTS] : [];
+      break;
+    case "osMutation":
+      grants.osMutation = enabled;
+      break;
+    case "highRisk":
+      grants.riskClasses = enabled
+        ? [...SUPER_YOLO_RISK_CLASSES]
+        : SUPER_YOLO_RISK_CLASSES.filter((riskClass) => riskClass !== "high_risk");
+      break;
+  }
+  grants.credentialAccess = "never";
+  grants.credentialLeases = [];
+  const riskClasses = readStringArrayValue(grants.riskClasses).filter((riskClass) => riskClass !== "credential");
+  grants.riskClasses = riskClasses.length ? riskClasses : ["read_only"];
+  const boundaries = readStringArrayValue(payload.safetyBoundaries);
+  if (!boundaries.includes("super_yolo_requires_user_confirmation")) {
+    payload.safetyBoundaries = ["super_yolo_requires_user_confirmation", ...boundaries];
+  }
+  return JSON.stringify(payload, null, 2);
+}
+
+function isSuperYoloProfilePayload(payload: Record<string, unknown>): boolean {
+  const boundaries = readStringArrayValue(payload.safetyBoundaries);
+  return payload.name === "Computer Use SUPER-YOLO one-time profile" ||
+    boundaries.includes("super_yolo_requires_user_confirmation");
+}
+
+function parseProfileDraft(draft: string): Record<string, unknown> | null {
+  try {
+    const payload = JSON.parse(draft || "{}");
+    return payload && typeof payload === "object" && !Array.isArray(payload)
+      ? payload as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function ensureRecordField(target: Record<string, unknown>, key: string): Record<string, unknown> {
+  const value = target[key];
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  const next: Record<string, unknown> = {};
+  target[key] = next;
+  return next;
+}
+
+function readStringArrayValue(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function toggleLabel(toggleId: SuperYoloToggleId): string {
+  return SUPER_YOLO_TOGGLES.find((toggle) => toggle.id === toggleId)?.label ?? toggleId;
 }
 
 function Metric({ label, value }: { label: string; value: string }) {

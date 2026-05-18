@@ -454,6 +454,80 @@ export function createComputerUseYoloProfileDraft(): Record<string, unknown> {
   };
 }
 
+export function createComputerUseSuperYoloProfileDraft(): Record<string, unknown> {
+  return {
+    name: "Computer Use SUPER-YOLO one-time profile",
+    mode: "scoped_yolo",
+    scope: "one_time",
+    status: "active",
+    maxUses: 1,
+    grants: {
+      network: true,
+      networkDomains: ["*"],
+      browserAutomation: true,
+      browserDomains: ["*"],
+      filesystem: {
+        readRoots: ["C:\\Users"],
+        writeRoots: ["C:\\Users\\Public\\Documents\\Codex Outputs"]
+      },
+      commands: {
+        allowPrefixes: [
+          "node *",
+          "npm *",
+          "npx *",
+          "git *",
+          "python *",
+          "py *",
+          "powershell *",
+          "pwsh *"
+        ],
+        denyPatterns: [
+          "cookie",
+          "password",
+          "credential",
+          "secret",
+          "token",
+          "captcha",
+          "purchase",
+          "payment"
+        ]
+      },
+      packageInstall: true,
+      packageAllowlist: ["*"],
+      osMutation: true,
+      generatedToolMaterialization: true,
+      generatedToolExecution: true,
+      generatedCode: true,
+      credentialAccess: "never",
+      credentialLeases: [],
+      redactionPolicy: {
+        credentials: "redact",
+        cookies: "never_store",
+        localPaths: "basename_or_hash",
+        browserHistory: "domain_only",
+        screenshots: "metadata_only",
+        debugBundles: "redacted_summary",
+        semanticMemory: "no_secret_values"
+      },
+      riskClasses: ["read_only", "reversible", "side_effect", "high_risk"],
+      maxRuntimeMs: 300000,
+      maxOutputBytes: 8388608,
+      maxIterations: 16
+    },
+    safetyBoundaries: [
+      "super_yolo_requires_user_confirmation",
+      "super_yolo_is_one_time_only",
+      "credential_and_cookie_values_are_never_extracted",
+      "captcha_bypass_is_blocked",
+      "purchase_payment_submit_require_explicit_user_commit",
+      "foreground_desktop_requires_watch_mode",
+      "terminal_destructive_patterns_remain_blocked",
+      "file_access_is_broad_when_enabled",
+      "debug_bundles_store_redacted_summaries"
+    ]
+  };
+}
+
 export function profileToEditablePayload(profile: AutonomyPermissionProfile): Record<string, unknown> {
   return {
     name: profile.name,

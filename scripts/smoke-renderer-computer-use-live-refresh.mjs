@@ -178,6 +178,7 @@ await vite.listen();
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 520, height: 820 } });
+page.setDefaultNavigationTimeout(90000);
 
 try {
   const baseUrl = vite.resolvedUrls?.local[0];
@@ -185,7 +186,7 @@ try {
     throw new Error("Vite did not expose a local URL.");
   }
 
-  await page.goto(`${baseUrl}?daemonPort=${daemonPort}`);
+  await page.goto(`${baseUrl}?daemonPort=${daemonPort}`, { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: "Activity details" }).click();
   await page.getByText("Computer Use", { exact: true }).waitFor();
   await waitUntil(() => sessionFetchCount >= 1, "Timed out waiting for initial Computer Use session fetch.");

@@ -419,13 +419,14 @@ await vite.listen();
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 560, height: 900 } });
+page.setDefaultNavigationTimeout(90000);
 
 try {
   const baseUrl = vite.resolvedUrls?.local[0];
   if (!baseUrl) {
     throw new Error("Vite did not expose a local URL.");
   }
-  await page.goto(`${baseUrl}?daemonPort=${daemonPort}`);
+  await page.goto(`${baseUrl}?daemonPort=${daemonPort}`, { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: "Activity details" }).click();
   const section = page.getByLabel("Browser Chrome evidence", { exact: true });
   await section.getByText("Browser Chrome").waitFor();
