@@ -6,16 +6,48 @@ Codex Widget for Desktop is a Tauri + React + Node daemon desktop widget. The
 daemon listens on `127.0.0.1:4128`; the renderer is served by Vite in dev.
 
 The latest completed product work is post-iter-40 daemon transport hardening:
-Browser Bridge enrolled-extension Origin hardening after command-correlation
-hardening, extension-Origin route scoping, daemon auth cache recovery, and the
-auth/nonce/CORS hardening sprint.
+Browser Bridge heartbeat/WebSocket ordering after enrolled-extension Origin
+hardening, command-correlation hardening, extension-Origin route scoping, daemon
+auth cache recovery, and the auth/nonce/CORS hardening sprint.
 The latest report work is
 `computer-use-capability-comparison.html`, a root-level Korean HTML comparison
 of widget/Codex macOS/Hermes Agent Computer Use prompt capability. Active sprint
 pointer is idle. Current active roadmap file is compacted to the current
 iteration only; historical roadmaps live under `docs/plans/archive/roadmaps/`.
 
-## Latest Update: Browser Bridge Enrolled Extension Origin Hardening
+## Latest Update: Browser Bridge Heartbeat/WebSocket Ordering
+
+Completed the next-priority code review/refactor after enrolled-extension
+Origin hardening.
+
+Review finding:
+
+- The extension service worker scheduled its Browser Bridge WebSocket
+  immediately after daemon health passed, before sending the heartbeat that now
+  enrolls the trusted extension Origin. Under the enrolled-Origin boundary, the
+  first WebSocket upgrade could be rejected and then depend on delayed reconnect
+  handling.
+
+Applied:
+
+- Moved Browser Bridge command socket scheduling until after heartbeat POST in
+  `refreshBridge`.
+- Kept restricted and permission-needed states enrolled through heartbeat before
+  opening the socket, so daemon wake events remain available without a
+  pre-enrollment upgrade.
+- Added a static extension smoke regression asserting socket scheduling occurs
+  after heartbeat enrollment markers.
+
+Verification passed:
+
+- `npm run smoke:extension`
+- `npm run smoke:browser-bridge`
+- `npm run smoke:daemon-auth-boundary`
+- `npm run smoke:browser-chrome-capability`
+- `npm run smoke:browser-action`
+- `npm run lint`
+
+## Previous Update: Browser Bridge Enrolled Extension Origin Hardening
 
 Completed the next-priority code review/refactor after Browser Bridge
 command-correlation hardening.
@@ -529,13 +561,12 @@ idle.
 
 ## Current Resume Point
 
-Worktree should be clean after the Browser Bridge enrolled-extension Origin
-hardening commit/push. Next useful work is live dogfood with the restarted
-widget: verify the Tauri renderer still obtains the daemon handshake, reload the
-Browser Bridge extension so the current source hash is active, confirm
-heartbeat/WebSocket command polling under the enrolled extension Origin, and
-then retest controlled SUPER-YOLO unlocked paths under the new transport
-boundary.
+Worktree should be clean after the Browser Bridge heartbeat/WebSocket ordering
+fix commit/push. Next useful work is live dogfood with the restarted widget:
+verify the Tauri renderer still obtains the daemon handshake, reload the Browser
+Bridge extension so the current source hash is active, confirm heartbeat occurs
+before WebSocket command polling under the enrolled extension Origin, and then
+retest controlled SUPER-YOLO unlocked paths under the new transport boundary.
 
 ## Product Boundaries
 

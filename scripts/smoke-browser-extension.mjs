@@ -69,6 +69,7 @@ if (popupCheck.status !== 0) {
 }
 
 const serviceWorker = await readFile(serviceWorkerPath, "utf8");
+verifyBridgeHeartbeatPrecedesSocketScheduling(serviceWorker);
 const bridgeModules = await Promise.all(bridgeModulePaths.map((modulePath) => readFile(modulePath, "utf8")));
 const extensionWorkerSource = [serviceWorker, ...bridgeModules].join("\n");
 for (const marker of [
@@ -229,6 +230,18 @@ function verifyLightweightNavigationFinalization() {
     false,
     "history navigation must not be finalized by lightweight URL change alone"
   );
+}
+
+function verifyBridgeHeartbeatPrecedesSocketScheduling(source) {
+  const healthCheckIndex = source.indexOf("const health = await testDaemonConnection(daemonBaseUrl);");
+  const firstSocketIndex = source.indexOf("scheduleBridgeCommandSocket(settings, reason, 0);");
+  const firstHeartbeatIndex = source.indexOf("await postHeartbeat(daemonBaseUrl, status);");
+  if (healthCheckIndex < 0 || firstSocketIndex < 0 || firstHeartbeatIndex < 0) {
+    throw new Error("Extension service worker is missing Browser Bridge heartbeat/socket scheduling markers.");
+  }
+  if (firstSocketIndex < firstHeartbeatIndex) {
+    throw new Error("Browser Bridge command socket must be scheduled after heartbeat enrollment.");
+  }
 }
 
 function assertEqual(actual, expected, label) {

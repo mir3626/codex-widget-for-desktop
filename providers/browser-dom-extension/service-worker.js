@@ -163,7 +163,6 @@ async function refreshBridge(reason) {
     await setBridgeBadge("OFF");
     return status;
   }
-  scheduleBridgeCommandSocket(settings, reason, 0);
 
   status.activeTab = {
     ...status.activeTab,
@@ -180,6 +179,7 @@ async function refreshBridge(reason) {
     status.mode = "restricted";
     status.lastError = status.activeTab.detail ?? "This browser page is restricted.";
     await postHeartbeat(daemonBaseUrl, status);
+    scheduleBridgeCommandSocket(settings, reason, 0);
     await setBridgeBadge("ERR", tab?.id);
     return status;
   }
@@ -187,6 +187,7 @@ async function refreshBridge(reason) {
     status.mode = "permission_needed";
     status.lastError = "Enable this site in the Browser Bridge popup.";
     await postHeartbeat(daemonBaseUrl, status);
+    scheduleBridgeCommandSocket(settings, reason, 0);
     await setBridgeBadge("ASK", tab?.id);
     return status;
   }
@@ -194,6 +195,7 @@ async function refreshBridge(reason) {
   status.mode = "idle";
   status.lastError = null;
   await postHeartbeat(daemonBaseUrl, status);
+  scheduleBridgeCommandSocket(settings, reason, 0);
   await setBridgeBadge("IDLE", tab?.id);
 
   try {
