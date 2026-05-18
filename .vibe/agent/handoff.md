@@ -561,12 +561,49 @@ idle.
 
 ## Current Resume Point
 
-Worktree should be clean after the Browser Bridge heartbeat/WebSocket ordering
-fix commit/push. Next useful work is live dogfood with the restarted widget:
-verify the Tauri renderer still obtains the daemon handshake, reload the Browser
-Bridge extension so the current source hash is active, confirm heartbeat occurs
-before WebSocket command polling under the enrolled extension Origin, and then
-retest controlled SUPER-YOLO unlocked paths under the new transport boundary.
+Iter-41 local-boundary hardening is implemented and focused verification passed.
+The worktree should be clean after the upcoming commit/push. Next useful work
+is live dogfood with the restarted widget under the stricter boundary: verify
+the packaged/Tauri renderer still obtains daemon auth bootstrap, reload the
+Browser Bridge extension so the current source hash is active, confirm extension
+status/poll/result routes carry the enrolled extension Origin, and retest
+controlled SUPER-YOLO unlocked paths with real approval prompts.
+
+Important iter-41 details:
+
+- `/daemon/auth/handshake` is now widget-bootstrap-origin only. No-Origin native
+  callers and arbitrary loopback ports cannot mint daemon tokens.
+- Non-extension browser-origin WebSocket upgrades require the daemon token.
+  Existing native no-Origin smoke/local clients remain compatible, but cannot
+  use auth bootstrap to mint daemon tokens.
+- Browser Bridge heartbeat/status/poll/ack/result routes require an extension
+  Origin and enrolled extension runtime id.
+- External `browserAction.execute` and Computer Session browser-action inputs no
+  longer trust `approved: true`.
+- Client-supplied evaluate `allowCredentialAccess` is stripped at plan/execute
+  boundaries; server profile unlock is the only source that re-adds it.
+- Toolsmith generated Node tools now patch DNS, UDP, and http2 network APIs in
+  addition to existing fetch/http/https/net/tls guards.
+- During final `smoke:all`, the existing Browser Perception source-size budget
+  failure was closed by moving observe helper functions into
+  `src/daemon/browser-perception/observeUtils.ts`.
+
+Focused verification passed:
+
+- `npm run build:daemon`
+- `npm run smoke:daemon-auth-boundary`
+- `npm run smoke:browser-action`
+- `npm run smoke:browser-action:e2e-control`
+- `npm run smoke:browser-action:evaluate`
+- `npm run smoke:browser-bridge`
+- `npm run smoke:browser-perception:extension-command`
+- `npm run smoke:browser-chrome-capability`
+- `npm run smoke:computer-use-session-http`
+- `npm run smoke:computer-use-browser-chrome`
+- `npm run smoke:scoped-autonomy-npm-dependency-prepare`
+- `npm run lint`
+- `npm run smoke:architecture-foundations`
+- `npm run smoke:all`
 
 ## Product Boundaries
 

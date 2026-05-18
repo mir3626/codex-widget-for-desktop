@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { BrowserAction } from "./types.js";
 
 export type EvaluateGuardResult =
   | {
@@ -69,6 +70,16 @@ export function inspectEvaluateCode(input: {
     };
   }
   if (!input.allowCredentialAccess) {
+    if (!isCredentialSafeEvaluateCode(code)) {
+      return {
+        ok: false,
+        codeHash,
+        preview,
+        timeoutMs,
+        resultLimitBytes,
+        reason: "Arbitrary evaluate code requires an explicit credential/cookie/CAPTCHA unlock."
+      };
+    }
     const matched = SECRET_ACCESS_PATTERNS.find((pattern) => pattern.test(code));
     if (matched) {
       return {
@@ -83,6 +94,14 @@ export function inspectEvaluateCode(input: {
   }
 
   return { ok: true, codeHash, preview, timeoutMs, resultLimitBytes };
+}
+
+export function applyEvaluateCredentialAccess(action: BrowserAction, allowCredentialAccess: boolean): BrowserAction {
+  if (action.type !== "evaluate") {
+    return action;
+  }
+  const { allowCredentialAccess: _ignored, ...safeAction } = action;
+  return allowCredentialAccess ? { ...safeAction, allowCredentialAccess: true } : safeAction;
 }
 
 export function summarizeEvaluatePreview(input: EvaluateGuardResult): string {
@@ -101,4 +120,21 @@ function clampInteger(value: unknown, fallback: number, maximum: number): number
     return fallback;
   }
   return Math.min(number, maximum);
+}
+
+function isCredentialSafeEvaluateCode(code: string): boolean {
+  const normalized = code.trim().replace(/\s+/g, " ");
+  return [
+    /^return document\.title;?$/i,
+    /^return document\.readyState;?$/i,
+    /^return location\.href;?$/i,
+    /^return location\.origin;?$/i,
+    /^return location\.pathname;?$/i,
+    /^return target\s*\?\s*target\.textContent\s*:\s*null;?$/i,
+    /^return target\s*\?\.\s*textContent;?$/i,
+    /^return target\s*\?\s*target\.innerText\s*:\s*null;?$/i,
+    /^return target\s*\?\.\s*innerText;?$/i,
+    /^return target\s*\?\s*target\.getAttribute\(["']aria-label["']\)\s*:\s*null;?$/i,
+    /^return target\s*\?\.\s*getAttribute\(["']aria-label["']\);?$/i
+  ].some((pattern) => pattern.test(normalized));
 }

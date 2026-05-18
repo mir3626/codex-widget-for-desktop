@@ -1,4 +1,5 @@
 import {
+  applyEvaluateCredentialAccess,
   type BrowserAction,
   type BrowserActionAuditEntry,
   type BrowserActionPlan,
@@ -25,7 +26,7 @@ export function normalizeBrowserActionPlan(input: {
     confidence: clampUnit(Number(input.input.confidence ?? 0.7)),
     steps: input.input.steps.map((step, index) => ({
       id: step.id?.trim() || `step-${index + 1}`,
-      action: step.action as BrowserAction,
+      action: applyEvaluateCredentialAccess(step.action as BrowserAction, false),
       targetSummary: step.targetSummary?.slice(0, 240),
       reason: step.reason?.slice(0, 500),
       expected: [],

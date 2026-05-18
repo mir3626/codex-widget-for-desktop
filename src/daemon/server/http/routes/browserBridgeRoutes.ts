@@ -32,7 +32,7 @@ export async function handleBrowserBridgeRoute(
     try {
       const previous = browserExtensionBridge.snapshot();
       const payload = JSON.parse(await readRequestBody(request, 128 * 1024));
-      const status = browserExtensionBridge.update(payload, { requestOrigin: readRequestOrigin(request) });
+      const status = browserExtensionBridge.update(payload, { requestOrigin: readRequestOrigin(request), requireExtensionOrigin: true });
       if (browserBridgeActiveTabChanged(previous, status)) {
         browserPerception.markDirty(`bridge_active_tab_changed:${status.reason ?? "heartbeat"}`);
       }
@@ -46,7 +46,7 @@ export async function handleBrowserBridgeRoute(
   }
 
   if (request.method === "GET" && url.pathname === "/browser-action/extension/status") {
-    const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: false });
+    const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: false, requireExtensionOrigin: true });
     if (!trustDecision.ok) {
       writeBrowserBridgeTrustDenied(response, trustDecision);
       return true;
@@ -56,13 +56,13 @@ export async function handleBrowserBridgeRoute(
   }
 
   if (request.method === "GET" && url.pathname === "/browser-action/extension/poll") {
-    const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true });
+    const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true, requireExtensionOrigin: true });
     if (!trustDecision.ok) {
       writeBrowserBridgeTrustDenied(response, trustDecision);
       return true;
     }
     const previous = browserExtensionBridge.snapshot();
-    const status = browserExtensionBridge.update(buildBrowserBridgePollStatus(url, previous), { requestOrigin: readRequestOrigin(request) });
+    const status = browserExtensionBridge.update(buildBrowserBridgePollStatus(url, previous), { requestOrigin: readRequestOrigin(request), requireExtensionOrigin: true });
     if (browserBridgeActiveTabChanged(previous, status)) {
       browserPerception.markDirty(`bridge_active_tab_changed:${status.reason ?? "poll"}`);
     }
@@ -80,7 +80,7 @@ export async function handleBrowserBridgeRoute(
 
   if (request.method === "POST" && url.pathname === "/browser-action/extension/ack") {
     try {
-      const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true });
+      const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true, requireExtensionOrigin: true });
       if (!trustDecision.ok) {
         writeBrowserBridgeTrustDenied(response, trustDecision);
         return true;
@@ -95,7 +95,7 @@ export async function handleBrowserBridgeRoute(
 
   if (request.method === "POST" && url.pathname === "/browser-action/extension/action-ack") {
     try {
-      const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true });
+      const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true, requireExtensionOrigin: true });
       if (!trustDecision.ok) {
         writeBrowserBridgeTrustDenied(response, trustDecision);
         return true;
@@ -135,7 +135,7 @@ export async function handleBrowserBridgeRoute(
 
   if (request.method === "POST" && url.pathname === "/browser-action/extension/observe-result") {
     try {
-      const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true });
+      const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true, requireExtensionOrigin: true });
       if (!trustDecision.ok) {
         writeBrowserBridgeTrustDenied(response, trustDecision);
         return true;
@@ -193,7 +193,7 @@ export async function handleBrowserBridgeRoute(
 
   if (request.method === "POST" && url.pathname === "/browser-action/extension/result") {
     try {
-      const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true });
+      const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true, requireExtensionOrigin: true });
       if (!trustDecision.ok) {
         writeBrowserBridgeTrustDenied(response, trustDecision);
         return true;
@@ -242,7 +242,7 @@ export async function handleBrowserBridgeRoute(
 
   if (request.method === "POST" && url.pathname === "/browser-action/extension/browser-chrome-result") {
     try {
-      const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true });
+      const trustDecision = browserExtensionBridge.authorizeExtensionRequest({ requestOrigin: readRequestOrigin(request), requireTrusted: true, requireExtensionOrigin: true });
       if (!trustDecision.ok) {
         writeBrowserBridgeTrustDenied(response, trustDecision);
         return true;

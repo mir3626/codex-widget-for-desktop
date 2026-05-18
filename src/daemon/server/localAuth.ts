@@ -118,6 +118,15 @@ export function createDaemonLocalAuth(input: {
     }
 
     if (url.pathname === "/daemon/auth/handshake" && request.method === "GET") {
+      if (!isWidgetAuthBootstrapOrigin(originDecision)) {
+        response.writeHead(403, { "Content-Type": "application/json; charset=utf-8" })
+          .end(JSON.stringify({
+            ok: false,
+            error: "Daemon auth bootstrap is only available to the widget app origin.",
+            code: "auth_bootstrap_origin_denied"
+          }));
+        return true;
+      }
       response.writeHead(200, { "Content-Type": "application/json; charset=utf-8" })
         .end(JSON.stringify({ ok: true, auth: describeHandshake() }));
       return true;
@@ -203,7 +212,7 @@ export function createDaemonLocalAuth(input: {
         error: originDecision.reason ?? "Origin is not allowed."
       };
     }
-    if (originDecision.kind !== "browser") {
+    if (originDecision.kind === "extension" || originDecision.kind === "native") {
       return { ok: true };
     }
     const requestUrl = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`);
@@ -316,13 +325,16 @@ function isExtensionAllowedRoute(method: string, pathname: string): boolean {
 }
 
 function requiresBrowserMutationAuth(originDecision: OriginDecision, method: string, pathname: string): boolean {
-  if (originDecision.kind !== "browser") {
+  if (originDecision.kind === "extension") {
     return false;
   }
   if (!isCorsManagedRoute(pathname) || isAuthRoute(pathname)) {
     return false;
   }
   const normalized = normalizeMethod(method);
+  if (originDecision.kind === "native") {
+    return false;
+  }
   return normalized === "POST" || normalized === "PUT" || normalized === "PATCH" || normalized === "DELETE";
 }
 
@@ -356,6 +368,32 @@ function isTrustedLoopbackHost(hostname: string): boolean {
     normalized === "::1" ||
     normalized === "localhost" ||
     normalized === "tauri.localhost";
+}
+
+function isWidgetAuthBootstrapOrigin(decision: OriginDecision): boolean {
+  if (decision.kind !== "browser" || !decision.origin) {
+    return false;
+  }
+  try {
+    const parsed = new URL(decision.origin);
+    if (parsed.protocol === "tauri:") {
+      return true;
+    }
+    const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+    if (host === "tauri.localhost") {
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    }
+    if ((host === "127.0.0.1" || host === "localhost" || host === "::1") && parsed.port === "5173") {
+      return parsed.protocol === "http:";
+    }
+    const configured = process.env.CODEX_WIDGET_DAEMON_TRUSTED_ORIGINS
+      ?.split(",")
+      .map((item) => item.trim())
+      .filter(Boolean) ?? [];
+    return configured.includes(decision.origin);
+  } catch {
+    return false;
+  }
 }
 
 function readHeader(request: IncomingMessage, name: string): string | undefined {

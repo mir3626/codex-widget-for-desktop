@@ -23,7 +23,7 @@ try {
     main: "index.js"
   }, null, 2), "utf8");
   writeFileSync(join(localPackageDir, "index.js"), "export const probe = true;\n", "utf8");
-  const forbiddenReadPath = join(tempRoot, "outside-generated-tool-read-secret.txt");
+  const forbiddenReadPath = join(tempRoot, "outside-generated-tool-read-fixture.txt");
   writeFileSync(forbiddenReadPath, "generated tool must not read this file\n", "utf8");
 
   storage = createStorageService({ appDataDir: tempRoot });
@@ -199,8 +199,11 @@ try {
   assert.equal(executed.output.dependencyWorkspaceProvided, true);
   assert.equal(executed.output.dependencyImported, true);
   assert.equal(executed.output.probeValue, true);
-  assert.equal(executed.output.sandbox?.forbiddenReadBlocked, true, "generated tool must be blocked from reading outside declared roots");
+  assert.equal(executed.output.sandbox?.forbiddenReadBlocked, true, `generated tool must be blocked from reading outside declared roots: ${JSON.stringify(executed.output.sandbox)}`);
   assert.equal(executed.output.sandbox?.forbiddenNetworkBlocked, true, "generated tool must be blocked from fetching outside declared network domains");
+  assert.equal(executed.output.sandbox?.forbiddenDnsBlocked, true, "generated tool must be blocked from resolving DNS outside declared network domains");
+  assert.equal(executed.output.sandbox?.forbiddenDgramBlocked, true, "generated tool must be blocked from UDP sockets outside declared network domains");
+  assert.equal(executed.output.sandbox?.forbiddenHttp2Blocked, true, "generated tool must be blocked from http2 outside declared network domains");
   assert.equal(executed.output.sandbox?.fullProcessEnvInherited, false, "generated tool must not inherit the daemon process environment wholesale");
   assert.equal(executed.output.artifacts.some((artifact) => artifact.role === "report" && artifact.blobId && artifact.resourceId && artifact.sha256), true);
   assert.equal(hasAbsolutePathLeak(executed.output), false, "generated tool execution output must not expose dependency workspace paths");
@@ -427,6 +430,9 @@ function hasAbsolutePathLeak(value) {
 
 function npmProbeEntrypointSource() {
   return `import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import dns from "node:dns/promises";
+import dgram from "node:dgram";
+import http2 from "node:http2";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -446,6 +452,12 @@ process.stdin.on("end", async () => {
   let forbiddenReadError = null;
   let forbiddenNetworkBlocked = false;
   let forbiddenNetworkError = null;
+  let forbiddenDnsBlocked = false;
+  let forbiddenDnsError = null;
+  let forbiddenDgramBlocked = false;
+  let forbiddenDgramError = null;
+  let forbiddenHttp2Blocked = false;
+  let forbiddenHttp2Error = null;
   if (dependencyRoot) {
     try {
       const modulePath = join(dependencyRoot, "node_modules", "codex-widget-local-npm-probe", "index.js");
@@ -483,6 +495,51 @@ process.stdin.on("end", async () => {
           : "forbidden_network_failed";
       forbiddenNetworkBlocked = forbiddenNetworkError === "ERR_NETWORK_ACCESS_DENIED" || forbiddenNetworkError.includes("network_access_denied");
     }
+    let forbiddenNetworkHost = "";
+    try {
+      forbiddenNetworkHost = new URL(input.forbiddenNetworkUrl).hostname;
+    } catch {
+      forbiddenNetworkHost = "example.com";
+    }
+    try {
+      await dns.resolve4(forbiddenNetworkHost);
+      forbiddenDnsBlocked = false;
+    } catch (error) {
+      forbiddenDnsError = error && typeof error === "object" && "code" in error
+        ? String(error.code)
+        : error && typeof error === "object" && "message" in error
+          ? String(error.message)
+          : "forbidden_dns_failed";
+      forbiddenDnsBlocked = forbiddenDnsError === "ERR_NETWORK_ACCESS_DENIED" || forbiddenDnsError.includes("network_access_denied");
+    }
+    try {
+      const socket = dgram.createSocket("udp4");
+      try {
+        socket.send(Buffer.from("x"), 53, forbiddenNetworkHost);
+        forbiddenDgramBlocked = false;
+      } finally {
+        socket.close();
+      }
+    } catch (error) {
+      forbiddenDgramError = error && typeof error === "object" && "code" in error
+        ? String(error.code)
+        : error && typeof error === "object" && "message" in error
+          ? String(error.message)
+          : "forbidden_dgram_failed";
+      forbiddenDgramBlocked = forbiddenDgramError === "ERR_NETWORK_ACCESS_DENIED" || forbiddenDgramError.includes("network_access_denied");
+    }
+    try {
+      const session = http2.connect(input.forbiddenNetworkUrl);
+      session.close();
+      forbiddenHttp2Blocked = false;
+    } catch (error) {
+      forbiddenHttp2Error = error && typeof error === "object" && "code" in error
+        ? String(error.code)
+        : error && typeof error === "object" && "message" in error
+          ? String(error.message)
+          : "forbidden_http2_failed";
+      forbiddenHttp2Blocked = forbiddenHttp2Error === "ERR_NETWORK_ACCESS_DENIED" || forbiddenHttp2Error.includes("network_access_denied");
+    }
   }
   const outputDir = typeof input.outputDir === "string" ? input.outputDir : "";
   const artifacts = [];
@@ -497,7 +554,13 @@ process.stdin.on("end", async () => {
         forbiddenReadBlocked,
         forbiddenReadError,
         forbiddenNetworkBlocked,
-        forbiddenNetworkError
+        forbiddenNetworkError,
+        forbiddenDnsBlocked,
+        forbiddenDnsError,
+        forbiddenDgramBlocked,
+        forbiddenDgramError,
+        forbiddenHttp2Blocked,
+        forbiddenHttp2Error
       }
     }, null, 2), "utf8");
     artifacts.push({ role: "report", path: reportPath, mime: "application/json" });
@@ -514,6 +577,12 @@ process.stdin.on("end", async () => {
       forbiddenReadError,
       forbiddenNetworkBlocked,
       forbiddenNetworkError,
+      forbiddenDnsBlocked,
+      forbiddenDnsError,
+      forbiddenDgramBlocked,
+      forbiddenDgramError,
+      forbiddenHttp2Blocked,
+      forbiddenHttp2Error,
       envKeys: Object.keys(process.env).sort(),
       fullProcessEnvInherited: Object.keys(process.env).some((key) => /TOKEN|SECRET|PASSWORD|COOKIE|CREDENTIAL/i.test(key))
     },

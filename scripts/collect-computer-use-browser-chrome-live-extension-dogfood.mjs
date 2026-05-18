@@ -602,7 +602,7 @@ async function waitForBridgeMode(mode) {
   let status;
   let lastLoggedAt = 0;
   while (Date.now() < deadline) {
-    status = await getJson("/browser-action/extension/status").then((payload) => payload.status).catch(() => null);
+    status = await getBridgeStatus().catch(() => null);
     if (status?.connected === true && status?.mode === mode && status?.activeTab?.permission === "allowed") {
       return status;
     }
@@ -618,6 +618,16 @@ async function waitForBridgeMode(mode) {
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
   throw new Error(`Timed out waiting for Browser Bridge mode ${mode}: ${JSON.stringify(status)}`);
+}
+
+async function getBridgeStatus() {
+  const response = await fetch(`${baseUrl}/browser-action/extension/status`, {
+    headers: { Origin: `chrome-extension://${browser.extensionId}` }
+  });
+  if (!response.ok) {
+    throw new Error(`Browser Bridge status failed (${response.status}): ${await response.text()}`);
+  }
+  return (await response.json()).status;
 }
 
 async function waitForCapabilityJob(jobId, status, timeoutMs) {

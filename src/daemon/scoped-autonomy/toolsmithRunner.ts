@@ -156,7 +156,11 @@ function writeNetworkGuard(toolDirectory: string, allowedDomains: string[]): str
 }
 
 function networkGuardSource(allowedDomains: string[]): string {
-  return `import http from "node:http";
+  return `import dgram from "node:dgram";
+import dns from "node:dns";
+import dnsPromises from "node:dns/promises";
+import http from "node:http";
+import http2 from "node:http2";
 import https from "node:https";
 import net from "node:net";
 import tls from "node:tls";
@@ -191,6 +195,12 @@ function assertNetworkAllowed(host, operation) {
     return;
   }
   const error = new Error("network_access_denied:" + operation + ":" + (host || "unknown_host"));
+  error.code = "ERR_NETWORK_ACCESS_DENIED";
+  throw error;
+}
+
+function assertNetworkDenied(operation, detail) {
+  const error = new Error("network_access_denied:" + operation + ":" + (detail || "unknown_host"));
   error.code = "ERR_NETWORK_ACCESS_DENIED";
   throw error;
 }
@@ -230,10 +240,20 @@ function hostFromRequestArgs(args) {
 
 function hostFromConnectArgs(args) {
   for (const arg of args) {
+    const urlHost = hostFromUrlLike(arg);
+    if (urlHost) return urlHost;
     const host = hostFromOptions(arg);
     if (host) return host;
   }
   return typeof args[1] === "string" ? args[1] : "";
+}
+
+function hostFromDgramSendArgs(args) {
+  for (let index = args.length - 1; index >= 1; index -= 1) {
+    const value = args[index];
+    if (typeof value === "string") return value;
+  }
+  return "";
 }
 
 function patchRequest(target, method, operation) {
@@ -254,6 +274,42 @@ function patchConnect(target, method, operation) {
   };
 }
 
+function patchResolver(target, method, operation) {
+  const original = target[method];
+  if (typeof original !== "function") return;
+  target[method] = function patchedResolver(...args) {
+    const host = typeof args[0] === "string" ? args[0] : "";
+    assertNetworkAllowed(host, operation);
+    return original.apply(this, args);
+  };
+}
+
+function patchDgramCreateSocket() {
+  const original = dgram.createSocket;
+  if (typeof original !== "function") return;
+  dgram.createSocket = function patchedCreateSocket(...args) {
+    const socket = original.apply(this, args);
+    const originalSend = socket.send;
+    const originalConnect = socket.connect;
+    socket.send = function guardedSend(...sendArgs) {
+      const host = hostFromDgramSendArgs(sendArgs);
+      if (host) {
+        assertNetworkAllowed(host, "dgram.send");
+      } else {
+        assertNetworkDenied("dgram.send", "connected_socket");
+      }
+      return originalSend.apply(this, sendArgs);
+    };
+    if (typeof originalConnect === "function") {
+      socket.connect = function guardedDgramConnect(...connectArgs) {
+        assertNetworkAllowed(hostFromConnectArgs(connectArgs), "dgram.connect");
+        return originalConnect.apply(this, connectArgs);
+      };
+    }
+    return socket;
+  };
+}
+
 if (typeof globalThis.fetch === "function") {
   const originalFetch = globalThis.fetch.bind(globalThis);
   globalThis.fetch = function guardedFetch(input, init) {
@@ -269,5 +325,11 @@ patchRequest(https, "get", "https.get");
 patchConnect(net, "connect", "net.connect");
 patchConnect(net, "createConnection", "net.createConnection");
 patchConnect(tls, "connect", "tls.connect");
+patchConnect(http2, "connect", "http2.connect");
+for (const method of ["lookup", "resolve", "resolve4", "resolve6", "resolveAny", "resolveCaa", "resolveCname", "resolveMx", "resolveNaptr", "resolveNs", "resolvePtr", "resolveSoa", "resolveSrv", "resolveTxt", "reverse"]) {
+  patchResolver(dns, method, "dns." + method);
+  patchResolver(dnsPromises, method, "dns.promises." + method);
+}
+patchDgramCreateSocket();
 `;
 }

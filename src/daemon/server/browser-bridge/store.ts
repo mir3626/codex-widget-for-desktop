@@ -6,11 +6,12 @@ const BROWSER_EXTENSION_BRIDGE_STALE_MS = 90_000;
 export type BrowserExtensionBridgeStore = {
   update: (status: BrowserExtensionBridgeStatus, context?: BrowserExtensionBridgeRequestContext) => BrowserExtensionBridgeStatus;
   snapshot: () => BrowserExtensionBridgeStatus;
-  authorizeExtensionRequest: (context?: BrowserExtensionBridgeRequestContext & { requireTrusted?: boolean }) => BrowserExtensionBridgeTrustDecision;
+  authorizeExtensionRequest: (context?: BrowserExtensionBridgeRequestContext & { requireTrusted?: boolean; requireExtensionOrigin?: boolean }) => BrowserExtensionBridgeTrustDecision;
 };
 
 export type BrowserExtensionBridgeRequestContext = {
   requestOrigin?: string;
+  requireExtensionOrigin?: boolean;
 };
 
 export type BrowserExtensionBridgeTrustDecision = {
@@ -48,7 +49,7 @@ export function createBrowserExtensionBridgeStore(input: { expectedBuild?: Brows
   return {
     update(status, context) {
       const next = normalizeBrowserExtensionBridgeStatus(status, input.expectedBuild);
-      const trustDecision = registerTrustedExtensionOrigin(next, context?.requestOrigin);
+      const trustDecision = registerTrustedExtensionOrigin(next, context?.requestOrigin, context?.requireExtensionOrigin === true);
       if (!trustDecision.ok) {
         throw new BrowserExtensionBridgeTrustError(trustDecision);
       }
@@ -67,16 +68,29 @@ export function createBrowserExtensionBridgeStore(input: { expectedBuild?: Brows
       return latest;
     },
     authorizeExtensionRequest(context) {
-      return authorizeTrustedExtensionOrigin(context?.requestOrigin, context?.requireTrusted === true);
+      return authorizeTrustedExtensionOrigin(
+        context?.requestOrigin,
+        context?.requireTrusted === true,
+        context?.requireExtensionOrigin === true
+      );
     }
   };
 
   function registerTrustedExtensionOrigin(
     status: BrowserExtensionBridgeStatus,
-    requestOrigin: string | undefined
+    requestOrigin: string | undefined,
+    requireExtensionOrigin: boolean
   ): BrowserExtensionBridgeTrustDecision {
     const origin = normalizeExtensionOrigin(requestOrigin);
     if (!origin) {
+      if (requireExtensionOrigin) {
+        return {
+          ok: false,
+          status: 403,
+          code: "browser_bridge_extension_origin_required",
+          error: "Browser Bridge extension routes require an extension Origin."
+        };
+      }
       return { ok: true };
     }
     const originRuntimeId = readExtensionOriginRuntimeId(origin);
@@ -111,10 +125,19 @@ export function createBrowserExtensionBridgeStore(input: { expectedBuild?: Brows
 
   function authorizeTrustedExtensionOrigin(
     requestOrigin: string | undefined,
-    requireTrusted: boolean
+    requireTrusted: boolean,
+    requireExtensionOrigin: boolean
   ): BrowserExtensionBridgeTrustDecision {
     const origin = normalizeExtensionOrigin(requestOrigin);
     if (!origin) {
+      if (requireExtensionOrigin) {
+        return {
+          ok: false,
+          status: 403,
+          code: "browser_bridge_extension_origin_required",
+          error: "Browser Bridge extension routes require an extension Origin."
+        };
+      }
       return { ok: true };
     }
     if (!trustedExtensionOrigin || isTrustedExtensionStale()) {

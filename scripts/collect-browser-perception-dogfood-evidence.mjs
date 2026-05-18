@@ -12,6 +12,8 @@ const assetPath = join("docs", "reports", "assets", `browser-perception-${date}`
 const smokeAppData = useSmokeAppData("codex-widget-browser-perception-dogfood");
 const daemon = await startDaemon({ port: 0 });
 const baseUrl = `http://127.0.0.1:${daemon.port}`;
+const extensionRuntimeId = "abcdefghijklmnopabcdefghijklmnop";
+const extensionOrigin = `chrome-extension://${extensionRuntimeId}`;
 const socket = new WebSocket(`ws://127.0.0.1:${daemon.port}`);
 const events = [];
 const waiters = [];
@@ -183,8 +185,9 @@ function createSnapshot(state) {
 async function postHeartbeat(url, title) {
   const response = await fetch(`${baseUrl}/browser-action/extension/heartbeat`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
     body: JSON.stringify({
+      extensionRuntimeId,
       connected: true,
       mode: "idle",
       reason: "dogfood",
@@ -204,7 +207,9 @@ async function pollCommand(snapshot) {
   url.searchParams.set("title", snapshot.title);
   url.searchParams.set("permission", "allowed");
   url.searchParams.set("mode", "browser_bridge");
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    headers: { Origin: extensionOrigin }
+  });
   if (!response.ok) throw new Error(`poll failed: ${response.status}`);
   const command = (await response.json()).command;
   if (!command) throw new Error("Expected a Browser Bridge command.");
@@ -214,7 +219,7 @@ async function pollCommand(snapshot) {
 async function postObserveAck(commandId, snapshot) {
   const response = await fetch(`${baseUrl}/browser-action/extension/ack`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
     body: JSON.stringify({
       commandId,
       status: "accepted",
@@ -228,7 +233,7 @@ async function postObserveAck(commandId, snapshot) {
 async function postObserveResult(commandId, snapshot) {
   const response = await fetch(`${baseUrl}/browser-action/extension/observe-result`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
     body: JSON.stringify({
       commandId,
       status: "succeeded",
@@ -246,7 +251,7 @@ async function postObserveResult(commandId, snapshot) {
 async function postActionResult(requestId, ok, before, after, error) {
   const response = await fetch(`${baseUrl}/browser-action/extension/result`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
     body: JSON.stringify({ requestId, ok, before, after, error })
   });
   if (!response.ok) throw new Error(`action result failed: ${response.status}`);

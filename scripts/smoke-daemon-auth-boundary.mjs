@@ -10,6 +10,7 @@ const smokeAppData = useSmokeAppData("codex-widget-daemon-auth-boundary");
 const daemon = await startDaemon({ port: 0 });
 const baseUrl = `http://127.0.0.1:${daemon.port}`;
 const trustedOrigin = "http://127.0.0.1:5173";
+const untrustedLoopbackOrigin = "http://127.0.0.1:9999";
 const maliciousOrigin = "https://malicious.example";
 const extensionRuntimeId = "abcdefghijklmnopabcdefghijklmnop";
 const extensionOrigin = `chrome-extension://${extensionRuntimeId}`;
@@ -27,11 +28,27 @@ try {
   });
   assert.equal(deniedExtensionHandshake.status, 403);
 
+  const deniedLoopbackHandshake = await fetchRaw("/daemon/auth/handshake", {
+    headers: { Origin: untrustedLoopbackOrigin }
+  });
+  assert.equal(deniedLoopbackHandshake.status, 403);
+
+  const deniedNativeHandshake = await fetchRaw("/daemon/auth/handshake");
+  assert.equal(deniedNativeHandshake.status, 403);
+
   const allowedExtensionHealth = await fetchRaw("/storage/health", {
     headers: { Origin: extensionOrigin }
   });
   assert.equal(allowedExtensionHealth.status, 200);
   assert.equal(allowedExtensionHealth.headers.get("access-control-allow-origin"), extensionOrigin);
+
+  const deniedNativeExtensionStatus = await fetchRaw("/browser-action/extension/status");
+  assert.equal(deniedNativeExtensionStatus.status, 403);
+
+  const allowedExtensionStatus = await fetchRaw("/browser-action/extension/status", {
+    headers: { Origin: extensionOrigin }
+  });
+  assert.equal(allowedExtensionStatus.status, 200);
 
   const deniedExtensionComputerUseRead = await fetchRaw("/computer-use/autonomy/profiles", {
     headers: { Origin: extensionOrigin }
@@ -52,6 +69,9 @@ try {
     activeTab: { permission: "allowed" }
   }, { Origin: extensionOrigin });
   assert.equal(allowedExtensionHeartbeat.status, 200);
+
+  const deniedNativeExtensionPoll = await fetchRaw("/browser-action/extension/poll");
+  assert.equal(deniedNativeExtensionPoll.status, 403);
 
   const deniedOtherExtensionHeartbeat = await postRaw("/browser-action/extension/heartbeat", {
     extensionRuntimeId: "ponmlkjihgfedcbaponmlkjihgfedcba",
@@ -190,19 +210,19 @@ async function postRaw(path, body, headers = {}) {
   });
 }
 
-async function assertWebSocketRejected(url, origin) {
+async function assertWebSocketRejected(url, origin, expectedStatus = 403) {
   await new Promise((resolve, reject) => {
-    const socket = new WebSocket(url, { headers: { Origin: origin } });
+    const socket = new WebSocket(url, origin ? { headers: { Origin: origin } } : undefined);
     socket.once("open", () => {
       socket.close();
       reject(new Error(`WebSocket unexpectedly opened for origin ${origin}`));
     });
     socket.once("unexpected-response", (_request, response) => {
-      assert.equal(response.statusCode, 403);
+      assert.equal(response.statusCode, expectedStatus);
       resolve();
     });
     socket.once("error", (error) => {
-      if (/Unexpected server response: 403/.test(error.message)) {
+      if (new RegExp(`Unexpected server response: ${expectedStatus}`).test(error.message)) {
         resolve();
       } else {
         reject(error);

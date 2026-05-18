@@ -1,4 +1,5 @@
 import {
+  applyEvaluateCredentialAccess,
   summarizeBrowserActionResult,
   type BrowserAction
 } from "../../../browser-action/index.js";
@@ -29,10 +30,10 @@ export async function handleBrowserActionExecuteMessage(
   try {
     const execution = await browserActions.execute({
       actionSessionId: message.actionSessionId,
-      action: message.action as BrowserAction,
+      action: applyEvaluateCredentialAccess(message.action as BrowserAction, false),
       snapshot: providers.getDomSnapshot(),
       adapterId: message.adapterId,
-      approved: message.approved,
+      approved: false,
       targetHint: message.targetHint,
       policies: storage.readBrowserActionPolicies()
     });

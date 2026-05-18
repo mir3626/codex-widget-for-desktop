@@ -20,7 +20,16 @@ process.env.CODEX_WIDGET_AUTH_MODE = "mock";
 const smokeAppData = useSmokeAppData("codex-widget-browser-action-smoke");
 const daemon = await startDaemon({ port: 0 });
 const baseUrl = `http://127.0.0.1:${daemon.port}`;
-const socket = new WebSocket(`ws://127.0.0.1:${daemon.port}`);
+const trustedOrigin = "http://127.0.0.1:5173";
+const extensionRuntimeId = "abcdefghijklmnopabcdefghijklmnop";
+const extensionOrigin = `chrome-extension://${extensionRuntimeId}`;
+const handshake = await fetchJson("/daemon/auth/handshake", {
+  headers: { Origin: trustedOrigin }
+});
+const socket = new WebSocket(
+  `ws://127.0.0.1:${daemon.port}?daemonToken=${encodeURIComponent(handshake.auth.token)}`,
+  { headers: { Origin: trustedOrigin } }
+);
 const events = [];
 const waiters = [];
 const beforeSnapshot = createSnapshot("before");
@@ -49,6 +58,7 @@ try {
   await verifyStaleReobserveRetry(beforeSnapshot, afterSnapshot);
   await verifyExtensionCommandTimeoutCancellation(beforeSnapshot);
 
+  await postExtensionHeartbeat();
   await postDomSnapshot(beforeSnapshot);
   send({ type: "browserAction.start", actionSessionId: "browser-action-smoke", mode: "auto_safe_actions" });
   await waitFor((event) => event.type === "browserAction.started" && event.actionSessionId === "browser-action-smoke", "browser action started");
@@ -107,10 +117,34 @@ try {
   send({
     type: "browserAction.execute",
     actionSessionId: "browser-action-smoke",
+    requestId: "browser-action-approval-bypass-smoke",
+    approved: true,
+    action: { type: "click", target: { kind: "element_id", id: "delete-repo" } }
+  });
+  const bypassApproval = await waitFor(
+    (event) => event.type === "interaction.required" &&
+      event.interaction?.requestId === "browser-action-approval-bypass-smoke",
+    "approved flag bypass still requires approval"
+  );
+  send({ type: "interaction.respond", id: bypassApproval.interaction.id, decision: "decline" });
+  await waitFor(
+    (event) => event.type === "browserAction.result" &&
+      event.actionSessionId === "browser-action-smoke" &&
+      event.result?.status === "cancelled",
+    "approved flag bypass decline result"
+  );
+
+  send({
+    type: "browserAction.execute",
+    actionSessionId: "browser-action-smoke",
     requestId: "browser-action-approval-smoke",
     action: { type: "click", target: { kind: "element_id", id: "delete-repo" } }
   });
-  const approval = await waitFor((event) => event.type === "interaction.required" && event.interaction?.title === "Browser action approval", "browser action approval");
+  const approval = await waitFor(
+    (event) => event.type === "interaction.required" &&
+      event.interaction?.requestId === "browser-action-approval-smoke",
+    "browser action approval"
+  );
   await waitFor(
     (event) => event.type === "capability.job" &&
       event.kind === "browser_action" &&
@@ -767,7 +801,10 @@ function createPreparedContext(snapshot, observation, overrides = {}) {
 async function postDomSnapshot(snapshot) {
   const response = await fetch(`${baseUrl}/providers/dom/snapshot`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      Origin: extensionOrigin
+    },
     body: JSON.stringify(snapshot)
   });
   if (!response.ok) {
@@ -776,7 +813,9 @@ async function postDomSnapshot(snapshot) {
 }
 
 async function pollBrowserActionCommand() {
-  const response = await fetch(`${baseUrl}/browser-action/extension/poll`);
+  const response = await fetch(`${baseUrl}/browser-action/extension/poll`, {
+    headers: { Origin: extensionOrigin }
+  });
   if (!response.ok) {
     throw new Error(`Browser Action poll failed (${response.status}).`);
   }
@@ -787,7 +826,10 @@ async function pollBrowserActionCommand() {
 async function postBrowserActionResult(requestId, ok, before, after, error) {
   const response = await fetch(`${baseUrl}/browser-action/extension/result`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      Origin: extensionOrigin
+    },
     body: JSON.stringify({ requestId, ok, before, after, error })
   });
   if (!response.ok) {
@@ -801,6 +843,35 @@ async function fetchCapabilityJob(requestId) {
     throw new Error(`Capability job GET failed (${response.status}).`);
   }
   return await response.json();
+}
+
+async function fetchJson(path, init = {}) {
+  const response = await fetch(`${baseUrl}${path}`, init);
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(`${path} returned ${response.status}: ${JSON.stringify(payload)}`);
+  }
+  return payload;
+}
+
+async function postExtensionHeartbeat() {
+  const response = await fetch(`${baseUrl}/browser-action/extension/heartbeat`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      Origin: extensionOrigin
+    },
+    body: JSON.stringify({
+      extensionRuntimeId,
+      connected: true,
+      mode: "idle",
+      updatedAt: new Date().toISOString(),
+      activeTab: { permission: "allowed" }
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`Browser Bridge heartbeat failed (${response.status}).`);
+  }
 }
 
 function send(message) {

@@ -20,6 +20,8 @@ const reportPath = join("docs", "reports", `browser-action-e2e-dogfood-evidence-
 const assetDir = join("docs", "reports", "assets", `browser-action-e2e-dogfood-${evidenceDate}`);
 const jsonPath = join(assetDir, "evidence.json");
 const screenshotPath = join(assetDir, "example-com-before.png");
+const extensionRuntimeId = "abcdefghijklmnopabcdefghijklmnop";
+const extensionOrigin = `chrome-extension://${extensionRuntimeId}`;
 
 await mkdir(assetDir, { recursive: true });
 
@@ -77,6 +79,7 @@ async function collectPromptAndExtensionEvidence() {
         }
       }
     });
+    await postExtensionHeartbeat(baseUrl, beforeSnapshot);
     socket.send(JSON.stringify({ type: "browserAction.policy.list" }));
     await waitFor((event) => event.type === "browserAction.policies", "initial policies");
     await postDomSnapshot(baseUrl, beforeSnapshot);
@@ -412,7 +415,9 @@ async function pollBrowserActionCommand(baseUrl, snapshot) {
   url.searchParams.set("windowId", "7");
   url.searchParams.set("url", snapshot.url);
   url.searchParams.set("title", snapshot.title);
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    headers: { Origin: extensionOrigin }
+  });
   if (!response.ok) {
     throw new Error(`Browser Action poll failed: ${response.status}`);
   }
@@ -426,11 +431,34 @@ async function pollBrowserActionCommand(baseUrl, snapshot) {
 async function postBrowserActionResult(baseUrl, requestId, ok, before, after, error, metadata) {
   const response = await fetch(`${baseUrl}/browser-action/extension/result`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
     body: JSON.stringify({ requestId, ok, before, after, error, metadata })
   });
   if (!response.ok) {
     throw new Error(`Browser Action result post failed: ${response.status}`);
+  }
+}
+
+async function postExtensionHeartbeat(baseUrl, snapshot) {
+  const response = await fetch(`${baseUrl}/browser-action/extension/heartbeat`, {
+    method: "POST",
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
+    body: JSON.stringify({
+      extensionRuntimeId,
+      connected: true,
+      mode: "idle",
+      updatedAt: new Date().toISOString(),
+      activeTab: {
+        tabId: 42,
+        windowId: 7,
+        url: snapshot.url,
+        title: snapshot.title,
+        permission: "allowed"
+      }
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`Browser Bridge heartbeat failed: ${response.status}`);
   }
 }
 

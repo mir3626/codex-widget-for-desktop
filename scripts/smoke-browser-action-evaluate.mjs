@@ -8,7 +8,16 @@ process.env.CODEX_WIDGET_AUTH_MODE = "mock";
 const smokeAppData = useSmokeAppData("codex-widget-browser-action-evaluate-smoke");
 const daemon = await startDaemon({ port: 0 });
 const baseUrl = `http://127.0.0.1:${daemon.port}`;
-const socket = new WebSocket(`ws://127.0.0.1:${daemon.port}`);
+const trustedOrigin = "http://127.0.0.1:5173";
+const extensionRuntimeId = "abcdefghijklmnopabcdefghijklmnop";
+const extensionOrigin = `chrome-extension://${extensionRuntimeId}`;
+const handshake = await fetchJson("/daemon/auth/handshake", {
+  headers: { Origin: trustedOrigin }
+});
+const socket = new WebSocket(
+  `ws://127.0.0.1:${daemon.port}?daemonToken=${encodeURIComponent(handshake.auth.token)}`,
+  { headers: { Origin: trustedOrigin } }
+);
 const events = [];
 const waiters = [];
 const snapshot = createSnapshot();
@@ -31,6 +40,7 @@ try {
   });
 
   verifyEvaluateSafety(snapshot);
+  await postExtensionHeartbeat();
   await postDomSnapshot(snapshot);
 
   send({ type: "browserAction.start", actionSessionId: "evaluate-normal", mode: "auto_safe_actions" });
@@ -82,11 +92,30 @@ try {
       event.actionSessionId === "evaluate-full" &&
       event.result?.status === "failed" &&
       event.result?.safety === "block" &&
-      String(event.result?.reason ?? "").includes("credential safeguard"),
+      String(event.result?.reason ?? "").includes("explicit credential/cookie/CAPTCHA unlock"),
     "credential evaluate block"
   );
-  if (!String(cookieResult.result.reason).includes("credential safeguard")) {
-    throw new Error(`Credential safeguard reason missing: ${JSON.stringify(cookieResult.result)}`);
+  if (!String(cookieResult.result.reason).includes("explicit credential/cookie/CAPTCHA unlock")) {
+    throw new Error(`Credential unlock reason missing: ${JSON.stringify(cookieResult.result)}`);
+  }
+
+  const cookieResultId = cookieResult.result.id;
+  send({
+    type: "browserAction.execute",
+    actionSessionId: "evaluate-full",
+    action: { type: "evaluate", code: "return document.cookie;", allowCredentialAccess: true }
+  });
+  const clientUnlockedCookieResult = await waitFor(
+    (event) => event.type === "browserAction.result" &&
+      event.actionSessionId === "evaluate-full" &&
+      event.result?.status === "failed" &&
+      event.result?.safety === "block" &&
+      event.result?.id !== cookieResultId &&
+      String(event.result?.reason ?? "").includes("explicit credential/cookie/CAPTCHA unlock"),
+    "client credential evaluate unlock ignored"
+  );
+  if (!String(clientUnlockedCookieResult.result.reason).includes("explicit credential/cookie/CAPTCHA unlock")) {
+    throw new Error(`Client credential unlock should be ignored: ${JSON.stringify(clientUnlockedCookieResult.result)}`);
   }
 
   console.log(`browser action evaluate smoke ok on port ${daemon.port}`);
@@ -114,6 +143,8 @@ function verifyEvaluateSafety(rawSnapshot) {
   assertEqual(full.decision, "confirm", "full control evaluate policy");
   const guarded = inspectEvaluateCode({ code: "return localStorage.getItem('token');" });
   assertEqual(guarded.ok, false, "credential guard");
+  const obfuscatedGuard = inspectEvaluateCode({ code: "return document['cookie'];" });
+  assertEqual(obfuscatedGuard.ok, false, "obfuscated credential guard");
   const unlockedGuard = inspectEvaluateCode({ code: "return document.cookie;", allowCredentialAccess: true });
   assertEqual(unlockedGuard.ok, true, "credential guard unlock");
   const unlockedSafety = decideBrowserActionSafety({
@@ -151,10 +182,42 @@ function createSnapshot() {
   };
 }
 
+async function fetchJson(path, init = {}) {
+  const response = await fetch(`${baseUrl}${path}`, init);
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(`${path} returned ${response.status}: ${JSON.stringify(payload)}`);
+  }
+  return payload;
+}
+
+async function postExtensionHeartbeat() {
+  const response = await fetch(`${baseUrl}/browser-action/extension/heartbeat`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      Origin: extensionOrigin
+    },
+    body: JSON.stringify({
+      extensionRuntimeId,
+      connected: true,
+      mode: "idle",
+      updatedAt: new Date().toISOString(),
+      activeTab: { permission: "allowed" }
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`Browser Bridge heartbeat failed (${response.status}).`);
+  }
+}
+
 async function postDomSnapshot(body) {
   const response = await fetch(`${baseUrl}/providers/dom/snapshot`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      Origin: extensionOrigin
+    },
     body: JSON.stringify(body)
   });
   if (!response.ok) {
@@ -163,7 +226,9 @@ async function postDomSnapshot(body) {
 }
 
 async function pollBrowserActionCommand() {
-  const response = await fetch(`${baseUrl}/browser-action/extension/poll`);
+  const response = await fetch(`${baseUrl}/browser-action/extension/poll`, {
+    headers: { Origin: extensionOrigin }
+  });
   if (!response.ok) {
     throw new Error(`Browser Action poll failed (${response.status}).`);
   }
@@ -174,7 +239,10 @@ async function pollBrowserActionCommand() {
 async function postBrowserActionResult(requestId, ok, before, after, error, metadata) {
   const response = await fetch(`${baseUrl}/browser-action/extension/result`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      Origin: extensionOrigin
+    },
     body: JSON.stringify({ requestId, ok, before, after, error, metadata })
   });
   if (!response.ok) {

@@ -8,6 +8,8 @@ process.env.CODEX_WIDGET_AUTH_MODE = "mock";
 const smokeAppData = useSmokeAppData("codex-widget-browser-action-e2e-control-smoke");
 const daemon = await startDaemon({ port: 0 });
 const baseUrl = `http://127.0.0.1:${daemon.port}`;
+const extensionRuntimeId = "abcdefghijklmnopabcdefghijklmnop";
+const extensionOrigin = `chrome-extension://${extensionRuntimeId}`;
 const socket = new WebSocket(`ws://127.0.0.1:${daemon.port}`);
 const events = [];
 const waiters = [];
@@ -459,8 +461,9 @@ async function postDomSnapshot(snapshot) {
 async function postBridgeHeartbeat(snapshot) {
   const response = await fetch(`${baseUrl}/browser-action/extension/heartbeat`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
     body: JSON.stringify({
+      extensionRuntimeId,
       connected: true,
       mode: "idle",
       reason: "fast-navigation-smoke",
@@ -487,7 +490,9 @@ async function postBridgeHeartbeat(snapshot) {
 }
 
 async function pollBrowserActionCommand(snapshot = beforeSnapshot) {
-  const response = await fetch(`${baseUrl}/browser-action/extension/poll?tabId=11&windowId=7&url=${encodeURIComponent(snapshot.url)}&title=${encodeURIComponent(snapshot.title)}`);
+  const response = await fetch(`${baseUrl}/browser-action/extension/poll?tabId=11&windowId=7&url=${encodeURIComponent(snapshot.url)}&title=${encodeURIComponent(snapshot.title)}`, {
+    headers: { Origin: extensionOrigin }
+  });
   if (!response.ok) {
     throw new Error(`Browser Action poll failed: ${response.status}`);
   }
@@ -497,7 +502,7 @@ async function pollBrowserActionCommand(snapshot = beforeSnapshot) {
 async function postBrowserActionResult(requestId, ok, before, after, error) {
   const response = await fetch(`${baseUrl}/browser-action/extension/result`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
     body: JSON.stringify({ requestId, ok, before, after, error })
   });
   if (!response.ok) {

@@ -7,6 +7,8 @@ process.env.CODEX_WIDGET_AUTH_MODE = "mock";
 const smokeAppData = useSmokeAppData("codex-widget-browser-chrome-capability-smoke");
 const daemon = await startDaemon({ port: 0 });
 const baseUrl = `http://127.0.0.1:${daemon.port}`;
+const extensionRuntimeId = "abcdefghijklmnopabcdefghijklmnop";
+const extensionOrigin = `chrome-extension://${extensionRuntimeId}`;
 const socket = new WebSocket(`ws://127.0.0.1:${daemon.port}`);
 const events = [];
 const waiters = [];
@@ -28,6 +30,7 @@ try {
     }
   });
 
+  await postExtensionHeartbeat();
   send({
     type: "ask",
     id: "prompt-browser-chrome-first-tab",
@@ -305,7 +308,9 @@ async function pollBrowserBridgeCommand() {
   url.searchParams.set("windowId", "1");
   url.searchParams.set("url", "https://example.test/");
   url.searchParams.set("title", "Example");
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    headers: { Origin: extensionOrigin }
+  });
   if (!response.ok) {
     throw new Error(`Browser bridge poll failed (${response.status}).`);
   }
@@ -316,11 +321,34 @@ async function pollBrowserBridgeCommand() {
 async function postBrowserChromeResult(requestId, output, metadata) {
   const response = await fetch(`${baseUrl}/browser-action/extension/browser-chrome-result`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
     body: JSON.stringify({ requestId, ok: true, output, metadata })
   });
   if (!response.ok) {
     throw new Error(`Browser Chrome result POST failed (${response.status}).`);
+  }
+}
+
+async function postExtensionHeartbeat() {
+  const response = await fetch(`${baseUrl}/browser-action/extension/heartbeat`, {
+    method: "POST",
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
+    body: JSON.stringify({
+      extensionRuntimeId,
+      connected: true,
+      mode: "idle",
+      updatedAt: new Date().toISOString(),
+      activeTab: {
+        tabId: 1,
+        windowId: 1,
+        url: "https://example.test/",
+        title: "Example",
+        permission: "allowed"
+      }
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`Browser Bridge heartbeat failed (${response.status}).`);
   }
 }
 

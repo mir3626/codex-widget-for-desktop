@@ -1030,7 +1030,9 @@ function activeTabUrlMatchesExpected(activeUrl, expectedUrl) {
 }
 
 async function readBridgeStatus(daemonUrl) {
-  const response = await fetch(new URL("/browser-action/extension/status", daemonUrl));
+  const response = await fetch(new URL("/browser-action/extension/status", daemonUrl), {
+    headers: { Origin: "chrome-extension://abcdefghijklmnopabcdefghijklmnop" }
+  });
   if (!response.ok) {
     throw new Error(`Browser Bridge status failed (${response.status}).`);
   }

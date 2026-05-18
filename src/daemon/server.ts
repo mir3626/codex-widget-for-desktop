@@ -39,7 +39,7 @@ import {
   recordBrowserActionCapabilityCommandQueued,
   recordBrowserActionCapabilityResult
 } from "./server/browser-action/capabilityMirror.js";
-import { summarizeBrowserActionResult, type BrowserAction } from "./browser-action/index.js";
+import { applyEvaluateCredentialAccess, summarizeBrowserActionResult, type BrowserAction } from "./browser-action/index.js";
 import { readAutonomyPermissionModeCapabilities } from "./scoped-autonomy/permissionProfile.js";
 
 export type DaemonHandle = {
@@ -114,7 +114,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
           ),
           snapshot: providers.getDomSnapshot(),
           adapterId,
-          approved: input.approved === true,
+          approved: false,
           targetHint: typeof input.targetHint === "string" ? input.targetHint : undefined,
           policies: storage.readBrowserActionPolicies()
         });
@@ -376,12 +376,13 @@ function applyComputerSessionPermissionModeToBrowserAction(
   profileId: string | undefined,
   action: BrowserAction
 ): BrowserAction {
-  if (action.type !== "evaluate" || action.allowCredentialAccess) {
-    return action;
+  const safeAction = applyEvaluateCredentialAccess(action, false);
+  if (safeAction.type !== "evaluate") {
+    return safeAction;
   }
   const profile = profileId ? storage.readAutonomyPermissionProfile(profileId) : null;
   const modeCapabilities = readAutonomyPermissionModeCapabilities(profile);
   return modeCapabilities.credentialCookieCaptchaUnlocked
-    ? { ...action, allowCredentialAccess: true }
-    : action;
+    ? applyEvaluateCredentialAccess(safeAction, true)
+    : safeAction;
 }

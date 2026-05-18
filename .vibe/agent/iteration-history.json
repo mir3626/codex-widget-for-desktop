@@ -1235,6 +1235,39 @@
         "daemon-local-transport-hardening": 0.92
       },
       "summary": "Iteration 40 completed daemon local transport hardening: sensitive browser-origin HTTP mutations now require a daemon token plus one-time nonce, replayed nonces are rejected, WebSocket upgrades reject untrusted browser Origins before message handling and require the daemon token for trusted browser Origins, wildcard CORS is removed from sensitive daemon paths, renderer POST/WS clients use handshake and nonce helpers, and trusted extension/no-Origin local clients remain compatible."
+    },
+    {
+      "id": "iter-41",
+      "label": "Post-Review Local Boundary Hardening",
+      "startedAt": "2026-05-19T00:05:00.000+09:00",
+      "completedAt": "2026-05-19T00:32:43.140+09:00",
+      "goal": "Use one vibe-iterate item per remaining review finding to close daemon auth bootstrap exposure, Browser Bridge no-Origin extension routes, forged Browser Action approval, client-controlled evaluate credential unlock, and incomplete Toolsmith generated-tool network guards.",
+      "plannedSprints": [
+        "iter-41-sprint-01-daemon-auth-bootstrap-boundary",
+        "iter-41-sprint-02-browser-bridge-extension-origin-required",
+        "iter-41-sprint-03-browser-action-approval-server-owned",
+        "iter-41-sprint-04-evaluate-credential-unlock-server-owned",
+        "iter-41-sprint-05-toolsmith-network-guard-coverage"
+      ],
+      "completedSprints": [
+        "iter-41-sprint-01-daemon-auth-bootstrap-boundary",
+        "iter-41-sprint-02-browser-bridge-extension-origin-required",
+        "iter-41-sprint-03-browser-action-approval-server-owned",
+        "iter-41-sprint-04-evaluate-credential-unlock-server-owned",
+        "iter-41-sprint-05-toolsmith-network-guard-coverage"
+      ],
+      "carryover": "Follow-up code review after daemon/Browser Bridge hardening found five remaining local-boundary issues that could let same-machine clients, unrelated extensions, or forged widget payloads bypass the intended approval and unlock flow.",
+      "openRisks": [
+        "The trusted widget bootstrap origin list remains local-development aware and may need a packaged Tauri production origin audit before release.",
+        "Browser Bridge status is now extension-Origin scoped; any future renderer HTTP status read should use WebSocket state instead of the extension route.",
+        "Toolsmith DNS/UDP/http2 guards cover Node built-ins, but generated tools remain subject to future Node networking APIs needing explicit review."
+      ],
+      "milestoneProgress": {
+        "daemon-local-transport-hardening": 0.97,
+        "computer-use-safety-boundaries": 0.96,
+        "scoped-autonomy-toolsmith": 0.91
+      },
+      "summary": "Iteration 41 closed five review findings: daemon auth bootstrap no longer issues tokens to no-Origin or arbitrary loopback clients, Browser Bridge extension routes require an actual enrolled extension Origin, Browser Action execute paths ignore forged approved flags, evaluate credential/cookie/CAPTCHA access is applied only from server-owned profile unlock state, and generated Toolsmith tools now guard DNS, UDP, and http2 in addition to fetch/http/https/net/tls."
     }
   ]
 }

@@ -13,6 +13,8 @@ const assetPath = path.join(assetDir, "evidence.json");
 const smokeAppData = useSmokeAppData("codex-widget-browser-extension-bridge-dogfood");
 const daemon = await startDaemon({ port: 0 });
 const baseUrl = `http://127.0.0.1:${daemon.port}`;
+const extensionRuntimeId = "abcdefghijklmnopabcdefghijklmnop";
+const extensionOrigin = `chrome-extension://${extensionRuntimeId}`;
 const socket = new WebSocket(`ws://127.0.0.1:${daemon.port}`);
 const events = [];
 const waiters = [];
@@ -137,8 +139,8 @@ try {
 async function postHeartbeat(name, payload) {
   const response = await fetch(`${baseUrl}/browser-action/extension/heartbeat`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(payload)
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
+    body: JSON.stringify({ extensionRuntimeId, ...payload })
   });
   if (!response.ok) {
     throw new Error(`${name} heartbeat failed: ${response.status}`);
@@ -148,7 +150,7 @@ async function postHeartbeat(name, payload) {
 async function postDomSnapshot(name, snapshot) {
   const response = await fetch(`${baseUrl}/providers/dom/snapshot`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
     body: JSON.stringify(snapshot)
   });
   if (!response.ok) {

@@ -7,6 +7,8 @@ process.env.CODEX_WIDGET_AUTH_MODE = "mock";
 const smokeAppData = useSmokeAppData("codex-widget-browser-perception-extension-command-smoke");
 const daemon = await startDaemon({ port: 0 });
 const baseUrl = `http://127.0.0.1:${daemon.port}`;
+const extensionRuntimeId = "abcdefghijklmnopabcdefghijklmnop";
+const extensionOrigin = `chrome-extension://${extensionRuntimeId}`;
 const socket = new WebSocket(`ws://127.0.0.1:${daemon.port}`);
 const events = [];
 const waiters = [];
@@ -86,8 +88,9 @@ try {
 async function postHeartbeat(url) {
   const response = await fetch(`${baseUrl}/browser-action/extension/heartbeat`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
     body: JSON.stringify({
+      extensionRuntimeId,
       extensionVersion: "0.1.0",
       daemonBaseUrl: baseUrl,
       connected: true,
@@ -113,7 +116,7 @@ async function postHeartbeat(url) {
 async function postAck(commandId, status) {
   const response = await fetch(`${baseUrl}/browser-action/extension/ack`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
     body: JSON.stringify({
       commandId,
       status,
@@ -130,7 +133,7 @@ async function postAck(commandId, status) {
 async function postObserveResult(commandId, snapshot) {
   const response = await fetch(`${baseUrl}/browser-action/extension/observe-result`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
     body: JSON.stringify({
       commandId,
       status: "succeeded",

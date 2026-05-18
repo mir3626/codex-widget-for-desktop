@@ -9,11 +9,14 @@ const ASYNC_DAG_WAIT_MS = 15_000;
 const smokeAppData = useSmokeAppData("codex-widget-computer-use-http-smoke");
 const daemon = await startDaemon({ port: 0 });
 const baseUrl = `http://127.0.0.1:${daemon.port}`;
+const extensionRuntimeId = "abcdefghijklmnopabcdefghijklmnop";
+const extensionOrigin = `chrome-extension://${extensionRuntimeId}`;
 const beforeSnapshot = createSnapshot("before");
 const afterSnapshot = createSnapshot("after");
 
 try {
   await postJson("/providers/dom/snapshot", beforeSnapshot);
+  await postExtensionHeartbeat(beforeSnapshot);
   const surfaces = await getJson("/computer-use/surfaces");
   assert.equal(surfaces.ok, true);
   assert.equal(surfaces.surfaces.some((surface) => surface.kind === "isolated_browser"), true);
@@ -177,7 +180,9 @@ async function postJson(path, body) {
 }
 
 async function pollBrowserActionCommand() {
-  const response = await fetch(`${baseUrl}/browser-action/extension/poll`);
+  const response = await fetch(`${baseUrl}/browser-action/extension/poll`, {
+    headers: { Origin: extensionOrigin }
+  });
   if (!response.ok) {
     throw new Error(`Browser Action poll failed (${response.status}): ${await response.text()}`);
   }
@@ -188,11 +193,34 @@ async function pollBrowserActionCommand() {
 async function postBrowserActionResult(requestId, ok, before, after, error) {
   const response = await fetch(`${baseUrl}/browser-action/extension/result`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
     body: JSON.stringify({ requestId, ok, before, after, error })
   });
   if (!response.ok) {
     throw new Error(`Browser Action result POST failed (${response.status}): ${await response.text()}`);
+  }
+}
+
+async function postExtensionHeartbeat(snapshot) {
+  const response = await fetch(`${baseUrl}/browser-action/extension/heartbeat`, {
+    method: "POST",
+    headers: { "content-type": "application/json", Origin: extensionOrigin },
+    body: JSON.stringify({
+      extensionRuntimeId,
+      connected: true,
+      mode: "idle",
+      updatedAt: new Date().toISOString(),
+      activeTab: {
+        tabId: 1,
+        windowId: 1,
+        url: snapshot.url,
+        title: snapshot.title,
+        permission: "allowed"
+      }
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`Browser Bridge heartbeat failed (${response.status}): ${await response.text()}`);
   }
 }
 

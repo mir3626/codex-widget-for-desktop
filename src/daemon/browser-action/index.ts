@@ -5,7 +5,7 @@ export { describeBrowserActionRouting, isBackgroundSafeBrowserAdapter, isTargetl
 export { cdpAdapter, extensionAdapter, nativeDesktopAdapter, playwrightAdapter } from "./adapters/index.js";
 export { buildBrowserObservation, summarizeBrowserElement, summarizeBrowserObservation } from "./browserObservation.js";
 export { buildBrowserActionPlanFromCommand, isBrowserActionDirectExecutionCommand } from "./directCommand.js";
-export { inspectEvaluateCode, summarizeEvaluatePreview } from "./evaluatePolicy.js";
+export { applyEvaluateCredentialAccess, inspectEvaluateCode, summarizeEvaluatePreview } from "./evaluatePolicy.js";
 export { buildElementGraph } from "./elementGraph.js";
 export { extractTargetPhrase, isInformationalBrowserActionQuestion, resolveBrowserActionIntent } from "./intentResolver.js";
 export { resolveBookmarkOpenTarget, resolveKnownBrowserDestinationUrl } from "./intentResolver/navigationTargets.js";
