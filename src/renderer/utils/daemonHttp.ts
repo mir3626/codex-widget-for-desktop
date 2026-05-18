@@ -17,7 +17,11 @@ export async function readDaemonAuth(daemonPort: string | number): Promise<Daemo
     cached = fetchDaemonAuth(port);
     authCache.set(port, cached);
   }
-  return await cached;
+  const auth = await cached;
+  if (!auth && authCache.get(port) === cached) {
+    authCache.delete(port);
+  }
+  return auth;
 }
 
 export function clearDaemonAuth(daemonPort: string | number): void {

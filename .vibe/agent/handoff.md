@@ -23,6 +23,9 @@ Review finding:
 - Renderer daemon auth was cached per port. If the daemon restarted on the same
   port, the renderer could keep using the stale token, causing nonce fetches or
   WebSocket reconnects to fail until a manual retry/reload.
+- A follow-up review found the same cache could also retain an initial
+  handshake failure (`null`) if the renderer asked before the daemon was ready,
+  causing future attempts on that port to skip the handshake.
 
 Applied:
 
@@ -33,6 +36,9 @@ Applied:
   handshake/nonce.
 - `useDaemonConnection` clears cached daemon auth on unexpected WebSocket close
   so reconnect starts with a fresh handshake after daemon restarts.
+- `readDaemonAuth` now evicts failed/null handshake attempts instead of caching
+  them, and the cache recovery smoke covers daemon-unavailable-before-start and
+  same-port restart recovery.
 
 Verification passed:
 

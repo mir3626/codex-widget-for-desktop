@@ -60,9 +60,7 @@ export function useDaemonConnection(input: UseDaemonConnectionInput) {
         if (stopped) {
           return;
         }
-        if (auth) {
-          clearDaemonAuth(input.daemonPort);
-        }
+        clearDaemonAuth(input.daemonPort);
         retryCount += 1;
         setStatus("reconnecting");
         const delay = Math.min(2500, 350 + retryCount * 250);
