@@ -15,9 +15,12 @@ const SAFE_REGISTRY_DATA_RE = /^[A-Za-z0-9_.:@-]{1,128}$/;
 
 export function readTerminalHardBlockReason(
   command: string,
-  options: { allowBoundedReversibleRegistryMutation?: boolean } = {}
+  options: {
+    allowBoundedReversibleRegistryMutation?: boolean;
+    allowCredentialLikeText?: boolean;
+  } = {}
 ): string | undefined {
-  if (/(?:password|passwd|token|cookie|credential|secret|api[_-]?key)\s*[:=]?\s*\S*/i.test(command)) {
+  if (!options.allowCredentialLikeText && /(?:password|passwd|token|cookie|credential|secret|api[_-]?key)\s*[:=]?\s*\S*/i.test(command)) {
     return "terminal_command_credential_like";
   }
   if (/\b(?:format|shutdown|reboot|bcdedit|cipher\s+\/w|diskpart)\b/i.test(command)) {

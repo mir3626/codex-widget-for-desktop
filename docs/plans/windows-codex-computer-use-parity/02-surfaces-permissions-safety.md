@@ -117,6 +117,20 @@ Default:
 - No OS settings mutation.
 - No foreground desktop action without active watch-mode approval.
 
+## User-Facing Permission Modes
+
+The current implementation distinguishes three user-facing permission tiers.
+See `docs/plans/computer-use-permission-modes.md` for the canonical table.
+
+- YOLO mode grants broad one-time work but keeps credential/cookie/CAPTCHA and
+  payment/purchase safety groups locked.
+- SUPER-YOLO mode is a confirmed one-time escalation for broader local,
+  browser, terminal, generated-code, package-install, and OS-mutation grants;
+  both high-risk safety groups are still default-off.
+- SUPER-YOLO + safety boundary unlock lets the matching category satisfy
+  profile-level permission requirements, then hands off to runtime approval,
+  redaction, restricted-page, signed-helper, and environment checks.
+
 ## Permission Checkpoints
 
 Do not rely on a single initial profile check. Enforce permissions at:
@@ -210,14 +224,19 @@ settings pages, extension pages, password manager pages, or security prompts.
 
 Current policy:
 
-- Do not store credentials.
-- Do not read secrets from UI fields.
-- Do not type passwords automatically.
+- Do not store credentials, cookies, tokens, passwords, or payment values.
 - Redact token/cookie/payment/password-like data from evidence.
-- If a task requires authentication, ask the user to take over for the
-  credential step, then continue only after a safe post-auth observation.
+- YOLO and default SUPER-YOLO keep credential/cookie/CAPTCHA requirements
+  blocked at the profile layer.
+- SUPER-YOLO + credential/cookie/CAPTCHA unlock may let those requirements
+  proceed to the runtime path, but raw values remain redacted/transient and
+  Browser Action or foreground flows may still require confirmation or manual
+  takeover.
+- SUPER-YOLO + payment/purchase unlock may let purchase/payment requirements
+  proceed to explicit approval paths; it does not silently commit orders,
+  payments, subscriptions, or checkout submissions.
 
-Future secure credential flow is out of scope for this handoff.
+Future raw credential vault retrieval remains out of scope for this handoff.
 
 ## File Policy
 

@@ -64,6 +64,29 @@ try {
   assert.equal(denied.browserProfilePolicy.defaultDeny, true);
   assert.equal(denied.browserProfilePolicy.redactionPolicy.cookies, "never_store");
 
+  const superYoloUnlockProfile = storage.createAutonomyPermissionProfile({
+    name: "SUPER-YOLO browser profile unlock",
+    mode: "scoped_yolo",
+    scope: "one_time",
+    grants: {
+      browserAutomation: true,
+      browserDomains: ["example.com"],
+      credentialAccess: "never",
+      riskClasses: ["read_only", "high_risk"],
+      credentialLeases: []
+    },
+    safetyBoundaries: [
+      "super_yolo_requires_user_confirmation",
+      "credential_cookie_captcha_boundary_released_by_user",
+      "DISCLAIMER: credential_cookie_captcha_override_acknowledged_user_accepts_account_security_privacy_lockout_site_terms_and_captcha_policy_risk"
+    ]
+  });
+  const superYoloAllowed = evaluateAutonomyPermission({ profile: superYoloUnlockProfile, requirements });
+  assert.equal(superYoloAllowed.allowed, true, JSON.stringify(superYoloAllowed, null, 2));
+  assert.equal(superYoloAllowed.browserProfilePolicy.status, "allowed");
+  assert.equal(superYoloAllowed.browserProfilePolicy.matchedLeaseIds.length, 0);
+  assert.match(superYoloAllowed.browserProfilePolicy.reason, /SUPER-YOLO/);
+
   const leaseProfile = storage.createAutonomyPermissionProfile({
     name: "Browser profile explicit leases",
     mode: "scoped_yolo",

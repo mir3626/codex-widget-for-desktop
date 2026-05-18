@@ -5,15 +5,59 @@
 Codex Widget for Desktop is a Tauri + React + Node daemon desktop widget. The
 daemon listens on `127.0.0.1:4128`; the renderer is served by Vite in dev.
 
-The latest completed product work is the Computer Use SUPER-YOLO permission
-override UI, after Computer Use catch-up capability recipes through `iter-39`.
+The latest completed product work is mode-aware Computer Use SUPER-YOLO safety
+boundary unlock execution and documentation, after the SUPER-YOLO permission
+override UI and Computer Use catch-up capability recipes through `iter-39`.
 The latest report work is
 `computer-use-capability-comparison.html`, a root-level Korean HTML comparison
 of widget/Codex macOS/Hermes Agent Computer Use prompt capability. Active sprint
 pointer is idle. Current active roadmap file is compacted to the current
 iteration only; historical roadmaps live under `docs/plans/archive/roadmaps/`.
 
-## Latest Update: Computer Use SUPER-YOLO Permission Overrides
+## Latest Update: Computer Use SUPER-YOLO Mode-Aware Execution
+
+Connected the SUPER-YOLO safety boundary unlock model to current documentation
+and runtime permission paths.
+
+Applied:
+
+- Added `docs/plans/computer-use-permission-modes.md` as the canonical mode
+  matrix for YOLO, SUPER-YOLO, and SUPER-YOLO plus category-specific safety
+  boundary unlocks.
+- Updated current architecture/planning MD files so stale "always blocked"
+  credential/cookie/CAPTCHA and payment/purchase wording now reflects
+  mode-aware behavior.
+- `evaluateAutonomyPermission` now recognizes:
+  - `super_yolo_requires_user_confirmation`
+  - `credential_cookie_captcha_boundary_released_by_user`
+  - `payment_purchase_boundary_released_by_user`
+- Credential/profile/cookie/CAPTCHA unlock can satisfy profile-level
+  credential, browser profile/session/account/cookie, credential risk, and
+  matching command requirements.
+- Payment/purchase unlock can satisfy profile-level high-risk payment/purchase
+  and matching command requirements.
+- Computer Session terminal execution now lets credential-like commands pass
+  the hard-block only when the active profile has the credential/cookie/CAPTCHA
+  unlock; persisted capability job input is redacted and raw input remains
+  transient.
+- Computer Session Browser Action evaluate now derives
+  `allowCredentialAccess` from the active profile unlock, while
+  `full_control_dev` approval remains required.
+
+Verification passed:
+
+- `npm run build:daemon`
+- `node scripts/smoke-computer-use-credential-consent.mjs`
+- `node scripts/smoke-computer-use-browser-profile-permission.mjs`
+- `node scripts/smoke-browser-action-evaluate.mjs`
+- `npm run lint`
+- `node scripts/smoke-renderer-computer-use-profile-draft.mjs`
+- `node scripts/audit-computer-use-implementation-ready-parity.mjs`
+  (`implementation_ready_with_external_deferred`, passed=9, missing=0)
+- `node scripts/smoke-architecture-foundations.mjs`
+- `npm run smoke:all`
+
+## Previous Update: Computer Use SUPER-YOLO Permission Overrides
 
 Added user-facing SUPER-YOLO override controls in the Computer Use permission
 profile manager.
@@ -271,9 +315,11 @@ idle.
 
 ## Current Resume Point
 
-Worktree should be clean after the iter-38 commit/push. Next useful work is
-live reloading/testing of the installed Browser Bridge extension and then
-bounded expansion of additional Browser Chrome controls.
+Worktree should be clean after the mode-aware SUPER-YOLO execution commit/push.
+Next useful work is live dogfood of the unlocked paths in a controlled profile:
+Browser Action evaluate with credential access, authenticated browser profile
+read-only flow, and an explicit payment/purchase approval dry run that does not
+commit a real transaction.
 
 ## Product Boundaries
 
@@ -281,7 +327,10 @@ bounded expansion of additional Browser Chrome controls.
   external blockers.
 - VM/RDP/Windows Sandbox backends, GPU ASR, and human microphone corpus
   validation remain deferred environment/user-input work.
-- Unrestricted credential flows, unattended high-risk Windows mutation, and
-  authenticated browser profile/cookie access remain blocked by policy.
-- Credential implementation remains reference-only for vault handles and does
-  not retrieve raw secrets from Windows Credential Manager or DPAPI.
+- Raw credential persistence, unattended high-risk Windows mutation, and
+  unattended payment/purchase commits remain blocked by policy.
+- Authenticated browser profile/cookie access is profile-level blocked in YOLO
+  and default SUPER-YOLO, but can proceed to redacted runtime paths under
+  SUPER-YOLO plus credential/cookie/CAPTCHA unlock.
+- Credential implementation remains redacted/reference-only for vault handles
+  and does not retrieve raw secrets from Windows Credential Manager or DPAPI.

@@ -17,6 +17,7 @@ import {
   inferEvalModalitiesFromCapabilityKind,
   recordCapabilityJobEvalStep
 } from "../computer-use-eval/index.js";
+import { readAutonomyPermissionModeCapabilities } from "../scoped-autonomy/permissionProfile.js";
 import type {
   CapabilityHandler,
   CapabilityHandlerOutput,
@@ -726,7 +727,10 @@ function sanitizeCapabilityInputForPersistence(kind: CapabilityJobKind, input: u
     const record = input && typeof input === "object" ? input as Record<string, unknown> : {};
     const command = typeof record.command === "string" ? record.command : "";
     if (containsSensitiveText(command)) {
-      throw new Error("Refusing to persist or execute a terminal capability command containing credential-like text.");
+      if (!hasCredentialCookieCaptchaPermissionUnlock(record.permissionDecision)) {
+        throw new Error("Refusing to persist or execute a terminal capability command containing credential-like text.");
+      }
+      return redactSensitiveCapabilityValue(input);
     }
   }
   if (kind === "browser_chrome" && isFileUploadBrowserChromeInput(input)) {
@@ -739,10 +743,23 @@ function sanitizeCapabilityInputForPersistence(kind: CapabilityJobKind, input: u
 }
 
 function requiresTransientCapabilityInput(kind: CapabilityJobKind, input: unknown): boolean {
+  if (kind === "terminal") {
+    const record = input && typeof input === "object" ? input as Record<string, unknown> : {};
+    const command = typeof record.command === "string" ? record.command : "";
+    return containsSensitiveText(command) && hasCredentialCookieCaptchaPermissionUnlock(record.permissionDecision);
+  }
   return kind === "browser_chrome" && (
     (isFileUploadBrowserChromeInput(input) && containsFileUploadPaths(input)) ||
     (isPermissionBrowserChromeInput(input) && containsPermissionUrl(input))
   );
+}
+
+function hasCredentialCookieCaptchaPermissionUnlock(value: unknown): boolean {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const capabilities = readAutonomyPermissionModeCapabilities(value as { mode?: string; safetyBoundaries?: string[] });
+  return capabilities.credentialCookieCaptchaUnlocked;
 }
 
 function isFileUploadBrowserChromeInput(input: unknown): boolean {

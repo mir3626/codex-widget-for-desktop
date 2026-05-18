@@ -40,7 +40,10 @@ import { auditComputerUseVerifier, finalizeEvalRunFromSteps } from "../computer-
 import { recordStructuredFailure } from "../failure-memory/index.js";
 import { buildPerceptionGraphFromNativeObservation, buildPerceptionGraphFromOcr, buildPerceptionGraphFromScreenObservation } from "../perception-graph/index.js";
 import { ScopedAutonomyRuntime, type ScopedAutonomyDagResult } from "../scoped-autonomy/index.js";
-import { evaluateAutonomyPermission } from "../scoped-autonomy/permissionProfile.js";
+import {
+  evaluateAutonomyPermission,
+  readAutonomyPermissionModeCapabilities
+} from "../scoped-autonomy/permissionProfile.js";
 import type { ComputerSessionEffectVerification } from "./effectVerifier.js";
 import { ExecutionSurfaceManager } from "./surfaceManager.js";
 import {
@@ -2158,8 +2161,10 @@ export class ComputerSessionRuntime {
         reason: "Bounded reversible HKCU app-registry mutation requires an explicit OS mutation grant."
       });
     }
+    const profile = state.summary.profileId ? this.options.storage.readAutonomyPermissionProfile(state.summary.profileId) : null;
     const hardBlockReason = readTerminalHardBlockReason(command, {
-      allowBoundedReversibleRegistryMutation: Boolean(reversibleRegistryMutation)
+      allowBoundedReversibleRegistryMutation: Boolean(reversibleRegistryMutation),
+      allowCredentialLikeText: readAutonomyPermissionModeCapabilities(profile).credentialCookieCaptchaUnlocked
     });
     if (hardBlockReason) {
       return {
@@ -2176,7 +2181,6 @@ export class ComputerSessionRuntime {
         requirements
       };
     }
-    const profile = this.options.storage.readAutonomyPermissionProfile(state.summary.profileId);
     if (!profile) {
       return {
         status: "not_applicable",

@@ -43,8 +43,16 @@ Target architecture:
 - Permission profile is required before implementation or execution.
 - Missing permission produces a structured blocked result, not a workaround.
 - Memory and previous successes may rank choices but cannot prove current UI or authority.
-- Generated tools must not read tokens, cookies, browser profiles, OS credential stores, SSH keys, payment data, or password managers.
-- Generated tools must not mutate Windows settings, install packages, run destructive shell commands, or submit forms unless profile scope explicitly allows that risk and the existing approval model also allows it.
+- Generated tools must not persist tokens, cookies, browser profiles, OS
+  credential stores, SSH keys, payment data, or password-manager values.
+- YOLO and default SUPER-YOLO keep credential/cookie/CAPTCHA and
+  payment/purchase category blocks in place. SUPER-YOLO plus the matching
+  safety boundary unlock can satisfy profile-level permission requirements for
+  that category, but runtime approval, redaction, and evidence rules still
+  apply.
+- Generated tools must not mutate Windows settings, install packages, run
+  destructive shell commands, or submit forms unless profile scope explicitly
+  allows that risk and the existing approval model also allows it.
 - Restricted pages and browser-internal pages stay restricted unless a native helper explicitly supports a safe bounded action.
 - Generated code lives in a daemon runtime workspace, not in repo source, unless the user explicitly requests a durable source change.
 - Generated tool artifacts must be redacted, scoped, and linked into the eval ledger.
@@ -67,6 +75,10 @@ Daemon-owned permission profiles define scoped autonomy:
 - Credential policy: currently `never` or future `ask`.
 - Runtime limits: timeout and output byte caps.
 - Expiry and disabled states.
+
+User-facing Computer Use presets are documented in
+`docs/plans/computer-use-permission-modes.md`: YOLO, SUPER-YOLO, and
+SUPER-YOLO plus category-specific safety boundary unlocks.
 
 Profiles are stored in SQLite so user intent is auditable and revocable.
 
@@ -174,7 +186,9 @@ Failure memory may suggest future grants, aliases, or recovery hints, but it can
 - Production signing certificate/service for native helpers.
 - Arbitrary generated code synthesis beyond built-in reviewed templates.
 - Unattended Windows settings mutation.
-- Credential access, browser profile cookie access, and password-manager access.
+- Credential access, browser profile cookie access, payment/purchase, and
+  password-manager access unless the user explicitly selects SUPER-YOLO and the
+  matching safety boundary unlock; even then, raw secret persistence and
+  unattended commits remain blocked by runtime policy.
 - Real live crawl of high-risk or authenticated pages.
 - Renderer UX for profile grant editing and run inspection.
-

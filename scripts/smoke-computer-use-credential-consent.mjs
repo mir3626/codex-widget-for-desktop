@@ -10,6 +10,7 @@ import {
   sanitizeAutonomyInput,
   summarizeCredentialPolicy
 } from "../dist/daemon/scoped-autonomy/index.js";
+import { readTerminalHardBlockReason } from "../dist/daemon/computer-use/terminalSafetyPolicy.js";
 import { useSmokeAppData } from "./smoke-isolation.mjs";
 
 process.env.CODEX_WIDGET_AUTH_MODE = "mock";
@@ -55,6 +56,96 @@ try {
   assert.equal(denied.allowed, false);
   assert.equal(denied.credentialPolicy.status, "blocked");
   assert.equal(denied.credentialPolicy.vaultAccess, "reference_only");
+
+  const superYoloUnlockProfile = storage.createAutonomyPermissionProfile({
+    name: "SUPER-YOLO credential unlock without lease",
+    mode: "scoped_yolo",
+    scope: "one_time",
+    grants: {
+      commands: {
+        allowPrefixes: ["powershell *"],
+        denyPatterns: ["password", "cookie", "credential", "payment"]
+      },
+      credentialAccess: "never",
+      riskClasses: ["read_only", "high_risk"],
+      credentialLeases: [],
+      redactionPolicy: {
+        credentials: "redact",
+        cookies: "never_store",
+        localPaths: "basename_or_hash",
+        browserHistory: "domain_only",
+        screenshots: "metadata_only",
+        debugBundles: "redacted_summary",
+        semanticMemory: "no_secret_values"
+      }
+    },
+    safetyBoundaries: [
+      "super_yolo_requires_user_confirmation",
+      "credential_cookie_captcha_boundary_released_by_user",
+      "DISCLAIMER: credential_cookie_captcha_override_acknowledged_user_accepts_account_security_privacy_lockout_site_terms_and_captcha_policy_risk"
+    ]
+  });
+  const superYoloAllowed = evaluateAutonomyPermission({
+    profile: superYoloUnlockProfile,
+    requirements: [
+      requirement,
+      credentialRisk,
+      {
+        type: "command",
+        value: "powershell -NoProfile -Command \"Write-Output password=placeholder\"",
+        reason: "Credential-cookie-CAPTCHA unlock allows the permission profile to reach the redacted terminal execution path."
+      }
+    ]
+  });
+  assert.equal(superYoloAllowed.allowed, true, JSON.stringify(superYoloAllowed, null, 2));
+  assert.equal(superYoloAllowed.credentialPolicy.status, "allowed");
+  assert.equal(superYoloAllowed.credentialPolicy.matchedLeaseIds.length, 0);
+  assert.match(superYoloAllowed.reason, /credential_cookie_captcha_boundary_released_by_user/);
+  assert.equal(
+    readTerminalHardBlockReason("powershell -NoProfile -Command \"Write-Output password=placeholder\""),
+    "terminal_command_credential_like"
+  );
+  assert.equal(
+    readTerminalHardBlockReason("powershell -NoProfile -Command \"Write-Output password=placeholder\"", { allowCredentialLikeText: true }),
+    undefined
+  );
+
+  const superYoloPaymentUnlockProfile = storage.createAutonomyPermissionProfile({
+    name: "SUPER-YOLO payment unlock",
+    mode: "scoped_yolo",
+    scope: "one_time",
+    grants: {
+      commands: {
+        allowPrefixes: ["powershell *"],
+        denyPatterns: ["payment", "purchase", "checkout", "card"]
+      },
+      credentialAccess: "never",
+      riskClasses: ["read_only"],
+      credentialLeases: []
+    },
+    safetyBoundaries: [
+      "super_yolo_requires_user_confirmation",
+      "payment_purchase_boundary_released_by_user",
+      "DISCLAIMER: payment_purchase_override_acknowledged_user_accepts_financial_order_refund_tax_subscription_and_legal_responsibility"
+    ]
+  });
+  const superYoloPaymentAllowed = evaluateAutonomyPermission({
+    profile: superYoloPaymentUnlockProfile,
+    requirements: [
+      {
+        type: "command",
+        value: "powershell -NoProfile -Command \"Write-Output payment-flow\"",
+        reason: "Payment/purchase unlock allows the permission profile to reach the explicit approval path."
+      },
+      {
+        type: "risk_class",
+        value: "high_risk",
+        reason: "Payment purchase flow is high risk."
+      }
+    ]
+  });
+  assert.equal(superYoloPaymentAllowed.allowed, true, JSON.stringify(superYoloPaymentAllowed, null, 2));
+  assert.match(superYoloPaymentAllowed.reason, /payment_purchase_boundary_released_by_user/);
 
   const leaseProfile = storage.createAutonomyPermissionProfile({
     name: "Credential consent with lease",

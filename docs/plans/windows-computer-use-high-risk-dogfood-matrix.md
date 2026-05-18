@@ -24,6 +24,21 @@ release signing controls are visible in the widget.
 | `credential_sensitive` | Passwords, tokens, cookies, payment data, account secrets | Block or redact; no persistence of raw values |
 | `destructive` | Delete real user data, disable protections, irreversible settings | Block by default |
 
+## Mode-Aware High-Risk Policy
+
+Use `docs/plans/computer-use-permission-modes.md` as the current mode reference.
+The matrix below keeps its conservative default, but mode changes affect
+profile-level permission blocks:
+
+- YOLO and default SUPER-YOLO keep `credential_sensitive` and payment/purchase
+  category operations blocked at the profile layer.
+- SUPER-YOLO + credential/cookie/CAPTCHA unlock lets credential/profile/cookie
+  requirements proceed to redacted runtime paths.
+- SUPER-YOLO + payment/purchase unlock lets payment/purchase requirements
+  proceed to explicit approval paths.
+- No mode may persist raw password, token, cookie, credential, or payment
+  values in evidence, debug bundles, semantic memory, or logs.
+
 ## Scenario Matrix
 
 | ID | Surface | Workflow | Risk | Automation path | Required evidence | Rollback |
@@ -46,8 +61,10 @@ release signing controls are visible in the widget.
 - Live Windows mutation scenarios must preserve the original state and prove
   rollback before the report is accepted.
 - Credential-like input must fail before persistence or be redacted before
-  storage. Raw credentials must not appear in capability job input, resources,
-  ledger activity, or reports.
+  storage. Under SUPER-YOLO + credential/cookie/CAPTCHA unlock, raw terminal
+  input may be held transiently for execution only while persisted capability
+  job input is redacted. Raw credentials must not appear in capability job
+  input, resources, ledger activity, or reports.
 - Stale context, wrong window, helper timeout, helper signature failure, and
   verification mismatch are expected failure classes, not reasons to bypass the
   daemon.

@@ -114,6 +114,15 @@ function verifyEvaluateSafety(rawSnapshot) {
   assertEqual(full.decision, "confirm", "full control evaluate policy");
   const guarded = inspectEvaluateCode({ code: "return localStorage.getItem('token');" });
   assertEqual(guarded.ok, false, "credential guard");
+  const unlockedGuard = inspectEvaluateCode({ code: "return document.cookie;", allowCredentialAccess: true });
+  assertEqual(unlockedGuard.ok, true, "credential guard unlock");
+  const unlockedSafety = decideBrowserActionSafety({
+    action: { type: "evaluate", code: "return document.cookie;", allowCredentialAccess: true },
+    mode: "full_control_dev",
+    targetConfidence: 1,
+    target: observation.elements[0]
+  });
+  assertEqual(unlockedSafety.decision, "confirm", "credential evaluate unlock still requires approval");
 }
 
 function createSnapshot() {

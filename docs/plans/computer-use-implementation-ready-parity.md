@@ -45,6 +45,27 @@ The current implementation adds this lease/vault/redaction contract without
 retrieving secrets from Windows Credential Manager or DPAPI. That retrieval can
 be added later behind the same lease boundary.
 
+### YOLO And SUPER-YOLO Mode Scope
+
+The active mode matrix lives in
+`docs/plans/computer-use-permission-modes.md`.
+
+- YOLO mode keeps credential/cookie/CAPTCHA and payment/purchase categories
+  locked.
+- SUPER-YOLO mode broadens local/browser/tool grants after a user confirmation,
+  but both safety categories remain default-off.
+- SUPER-YOLO + credential/cookie/CAPTCHA unlock can satisfy profile-level
+  `credential_access`, browser profile/session/account/cookie, credential risk,
+  and matching command requirements so the runtime can continue into redacted
+  approval/execution paths.
+- SUPER-YOLO + payment/purchase unlock can satisfy profile-level
+  payment/purchase high-risk and command requirements so the runtime can
+  continue into explicit approval/execution paths.
+
+These unlocks do not change the redaction contract: raw credential, cookie,
+token, password, and payment values still must not be persisted in debug
+bundles, eval resources, semantic memory, or logs.
+
 ## VM And Sandbox Deferral
 
 High-risk host mutation should stay blocked unless an isolated execution surface
@@ -84,7 +105,10 @@ User test evidence should include:
 
 ## Acceptance
 
-- Credential access is denied without a live consent lease.
+- Credential access is denied without a live consent lease unless SUPER-YOLO +
+  credential/cookie/CAPTCHA unlock is explicitly present.
+- With that unlock, credential/profile requirements pass only as profile-level
+  permission and remain subject to redaction and runtime approval.
 - Credential leases can be revoked and revoke immediately blocks future
   evaluation.
 - Vault references are reference-only and redacted.

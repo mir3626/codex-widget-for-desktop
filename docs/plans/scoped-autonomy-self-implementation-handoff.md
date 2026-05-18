@@ -26,7 +26,16 @@ Deliver scoped YOLO computer-use behavior without unrestricted YOLO. The daemon 
 
 ## Safety Boundaries
 
-- Credential storage remains unimplemented and credential access defaults to denied.
+- Credential storage remains unimplemented and credential access defaults to
+  denied.
+- The active user-facing mode matrix is
+  `docs/plans/computer-use-permission-modes.md`: YOLO, SUPER-YOLO, and
+  SUPER-YOLO plus category-specific safety boundary unlocks.
+- YOLO and default SUPER-YOLO still block credential/cookie/CAPTCHA and
+  payment/purchase requirements at the profile layer. SUPER-YOLO plus the
+  matching unlock can satisfy those profile-level requirements so the runtime
+  proceeds to approval/execution, while raw sensitive values remain redacted or
+  transient.
 - Generated code only materializes in daemon runtime workspace unless a future explicit promotion flow is added.
 - Generated tools execute only after permission checks and smoke pass.
 - Command execution is prefix-bounded and terminal generated tools avoid shell expansion.
@@ -57,9 +66,11 @@ and generated-tool breadth runs.
 
 - Official app-server custom client-tool contract.
 - Production signing certificate/service.
-- Unrestricted credential flows.
+- Unrestricted raw credential persistence or password-manager extraction.
 - Unattended high-risk Windows mutation.
-- Authenticated browser profile/cookie access.
+- Authenticated browser profile/cookie access unless SUPER-YOLO plus
+  credential/cookie/CAPTCHA unlock is active; raw cookies and passwords still
+  cannot be persisted.
 - GPU ASR validation.
 - Human microphone corpus benchmark.
 

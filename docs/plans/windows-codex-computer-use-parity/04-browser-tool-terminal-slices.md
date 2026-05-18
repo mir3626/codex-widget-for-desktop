@@ -199,6 +199,11 @@ Use for:
 Rules:
 
 - Commands must match allowlist/profile.
+- Category deny patterns for credential/cookie/CAPTCHA or payment/purchase
+  remain active in YOLO and default SUPER-YOLO. SUPER-YOLO plus the matching
+  safety boundary unlock can satisfy those profile-level blocks, after which
+  terminal input is redacted for persistence and raw sensitive input is kept
+  transient.
 - No shell expansion for generated tools unless explicitly allowed.
 - PTY sessions must be owned by session id when run as computer-use nodes.
 - Terminal output must be redacted and size-limited.
@@ -300,6 +305,18 @@ Rules:
 - Avoid exporting raw profile data.
 - Prefer redacted evidence.
 - Never treat profile access as default YOLO.
+- Authenticated profile/session/account/cookie access is blocked in YOLO and
+  default SUPER-YOLO unless explicit leases cover it.
+- SUPER-YOLO + credential/cookie/CAPTCHA unlock can satisfy the profile-level
+  browser profile requirements and let the operation reach runtime approval and
+  redacted evidence paths. It does not export raw cookies, passwords, tokens,
+  or browser history.
+
+## Mode Reference
+
+Use `docs/plans/computer-use-permission-modes.md` when adding new browser,
+tool, or terminal slices. New slices must state whether they work under YOLO,
+SUPER-YOLO, or SUPER-YOLO plus one of the safety boundary unlock categories.
 
 ## Acceptance Criteria For This Shard
 

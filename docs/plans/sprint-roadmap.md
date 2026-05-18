@@ -19,6 +19,12 @@ gap while preserving local safety boundaries: no raw credential extraction, no
 CAPTCHA bypass, no unattended purchase/submission, and no unsupported VM/native
 mutation.
 
+Mode follow-up: `docs/plans/computer-use-permission-modes.md` now defines the
+active YOLO, SUPER-YOLO, and SUPER-YOLO + safety boundary unlock behavior. The
+older sprint wording remains true for YOLO/default SUPER-YOLO; category unlocks
+now clear profile-level permission blocks while keeping redaction, approval,
+and external-boundary checks active.
+
 ### iter-39-sprint-01-user-yolo-mode-setting
 
 Goal: add a user-facing Computer Use YOLO preset that creates a scoped,

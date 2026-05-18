@@ -38,6 +38,7 @@ import {
   recordBrowserActionCapabilityResult
 } from "./server/browser-action/capabilityMirror.js";
 import { summarizeBrowserActionResult, type BrowserAction } from "./browser-action/index.js";
+import { readAutonomyPermissionModeCapabilities } from "./scoped-autonomy/permissionProfile.js";
 
 export type DaemonHandle = {
   port: number;
@@ -103,7 +104,11 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonHa
         }
         const execution = await browserActions.execute({
           actionSessionId,
-          action: readComputerSessionBrowserAction(input.action),
+          action: applyComputerSessionPermissionModeToBrowserAction(
+            storage,
+            session.profileId,
+            readComputerSessionBrowserAction(input.action)
+          ),
           snapshot: providers.getDomSnapshot(),
           adapterId,
           approved: input.approved === true,
@@ -320,4 +325,19 @@ function readComputerSessionBrowserAction(input: unknown): BrowserAction {
   return input && typeof input === "object" && typeof (input as Record<string, unknown>).type === "string"
     ? input as BrowserAction
     : { type: "read", reason: "Computer Session Browser Action operation did not include an action payload." };
+}
+
+function applyComputerSessionPermissionModeToBrowserAction(
+  storage: ReturnType<typeof createStorageService>,
+  profileId: string | undefined,
+  action: BrowserAction
+): BrowserAction {
+  if (action.type !== "evaluate" || action.allowCredentialAccess) {
+    return action;
+  }
+  const profile = profileId ? storage.readAutonomyPermissionProfile(profileId) : null;
+  const modeCapabilities = readAutonomyPermissionModeCapabilities(profile);
+  return modeCapabilities.credentialCookieCaptchaUnlocked
+    ? { ...action, allowCredentialAccess: true }
+    : action;
 }

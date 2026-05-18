@@ -98,10 +98,15 @@ This file records items that should not be silently downgraded to complete.
   `local_document_conversion`, `terminal_generated_tool`, and
   `browser_download_verify`, with 2026-05-16 dogfood evidence.
 - Required scope expansion: unrestricted arbitrary code synthesis, unsandboxed
-  external package installation, unattended Windows settings mutation, live
-  authenticated crawling, credential access, and native high-risk mutation remain
-  blocked or deferred until sandboxing, signing, review, and user-facing grant
-  controls are stronger.
+  external package installation, unattended Windows settings mutation, and
+  native high-risk mutation remain blocked or deferred until sandboxing,
+  signing, review, and user-facing grant controls are stronger.
+- Mode update: YOLO and default SUPER-YOLO still block
+  credential/cookie/CAPTCHA and payment/purchase categories. SUPER-YOLO plus the
+  matching safety boundary unlock can now clear profile-level permission blocks
+  for those categories, but redaction, runtime approval, restricted-page,
+  signed-helper, and external-contract blockers still apply. See
+  `docs/plans/computer-use-permission-modes.md`.
 
 ## Mascot Motion Assets
 
